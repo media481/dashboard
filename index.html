@@ -49,6 +49,11 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        html {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* Edge/IE */
+        }
+        html::-webkit-scrollbar { display: none; } /* Chrome/Safari */
         body {
             background: var(--bg);
             color: var(--ink);
@@ -65,7 +70,7 @@
 
         /* ===== SIDEBAR ===== */
         .sidebar {
-            background: var(--brand-deep);
+            background: var(--brand);
             color: #EAF3EF;
             padding: 28px 20px;
             display: flex;
@@ -400,7 +405,10 @@
             overflow-x: auto;
             border-radius: 10px;
             border: 1px solid var(--line);
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* Edge/IE */
         }
+        .table-container::-webkit-scrollbar { display: none; } /* Chrome/Safari */
         .table-container table {
             width: 100%;
             border-collapse: collapse;
@@ -709,7 +717,7 @@
             left: 0;
             bottom: 0;
             width: 280px;
-            background: var(--brand-deep);
+            background: var(--brand);
             padding: 24px 20px;
             overflow-y: auto;
             transform: translateX(-100%);
@@ -2523,7 +2531,7 @@ async function loadKbJamaahForProgram(programId) {
         const totalDp = jamaah.filter(j => j.status === 'dp').length;
 
         container.innerHTML = `
-            <div style="overflow-x:auto;">
+            <div class="table-container" style="overflow-x:auto;">
                 <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
                     <span class="status-badge available">${jamaah.length} Total Jamaah</span>
                     <span class="status-badge available">${totalLunas} Lunas</span>
