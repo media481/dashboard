@@ -400,6 +400,48 @@
         .tab-panel.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
+        /* ===== ADMIN PAGE (full-screen, non-modal) ===== */
+        .admin-page { animation: fadeIn .25s ease; }
+        .admin-page-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+        }
+        .admin-back-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid var(--line);
+            background: var(--surface);
+            color: var(--ink);
+            cursor: pointer;
+            font-size: 15px;
+            transition: all .15s;
+            flex-shrink: 0;
+        }
+        .admin-back-btn:hover { background: var(--bg); border-color: var(--brand); color: var(--brand); }
+        .admin-page-header h1 {
+            font-family: 'Space Grotesk';
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .admin-page-header p {
+            color: var(--ink-soft);
+            font-size: 13.5px;
+            margin-top: 4px;
+        }
+        .admin-page-body {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 24px;
+        }
+
         /* ===== TABLE ===== */
         .table-container {
             overflow-x: auto;
@@ -813,7 +855,7 @@
             </button>
 
             <div class="nav-label">Manajemen</div>
-            <button class="nav-item" onclick="openAdminModal()">
+            <button class="nav-item" id="adminNavItem" onclick="openAdminPanel()">
                 <i class="fa-solid fa-lock"></i> Admin Panel
             </button>
         </nav>
@@ -829,6 +871,7 @@
 
     <!-- ===== MAIN ===== -->
     <main>
+    <div id="dashboardView">
         <div class="topbar">
             <div class="topbar-left">
                 <h1>Dashboard Repository</h1>
@@ -839,7 +882,7 @@
                     <i class="fa-solid fa-magnifying-glass"></i>
                     <input type="text" id="searchInput" placeholder="Cari program, maskapai..." oninput="handleSearchInput(event)">
                 </div>
-                <button class="btn-primary" onclick="openAdminModal()">
+                <button class="btn-primary" onclick="openAdminPanel()">
                     <i class="fa-solid fa-plus"></i> Tambah
                 </button>
                 <button class="hamburger-toggle" onclick="toggleMobileSidebar()">
@@ -962,6 +1005,23 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- ===== ADMIN PAGE (full screen, non-modal) ===== -->
+    <div id="adminPageView" class="admin-page" style="display:none;">
+        <div class="admin-page-header">
+            <button class="admin-back-btn" onclick="closeAdminPanel()" title="Kembali ke Dashboard">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <div>
+                <h1><span id="adminPageTitle">Admin Panel</span></h1>
+                <p>Kelola data program umroh</p>
+            </div>
+        </div>
+        <div class="admin-page-body" id="adminPanelBody">
+            <!-- Admin content rendered by JS -->
+        </div>
+    </div>
     </main>
 </div>
 
@@ -988,7 +1048,7 @@
                 <i class="fa-solid fa-plane-departure"></i> Keberangkatan
             </button>
             <div class="nav-label">Manajemen</div>
-            <button class="nav-item" onclick="openAdminModal(); toggleMobileSidebar();">
+            <button class="nav-item" onclick="openAdminPanel(); toggleMobileSidebar();">
                 <i class="fa-solid fa-lock"></i> Admin Panel
             </button>
         </nav>
@@ -997,19 +1057,6 @@
 
 <!-- ===== TOAST ===== -->
 <div class="toast" id="toast"><i class="fa-solid fa-check-circle"></i> <span id="toastMessage">Berhasil!</span></div>
-
-<!-- ===== MODAL: ADMIN ===== -->
-<div class="modal-overlay" id="adminModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2><i class="fa-solid fa-database"></i> <span id="adminModalTitle">Admin Panel</span></h2>
-            <button class="modal-close" onclick="closeAdminModal()">&times;</button>
-        </div>
-        <div class="modal-body" id="adminModalBody">
-            <!-- Admin content rendered by JS -->
-        </div>
-    </div>
-</div>
 
 <!-- ===== MODAL: JADWAL TAMU ===== -->
 <div class="modal-overlay" id="jadwalModal">
@@ -1613,8 +1660,8 @@ function setAdminSession(role) {
             sessionStorage.removeItem('admin_logged_in');
             sessionStorage.removeItem('admin_role');
             sessionStorage.removeItem('admin_login_time');
-            const modal = document.getElementById('adminModal');
-            if (modal.classList.contains('open')) closeAdminModal();
+            const adminView = document.getElementById('adminPageView');
+            if (adminView.style.display !== 'none') closeAdminPanel();
             showToast('⏰ Sesi berakhir, silakan login ulang.', 'error');
         }
     }, SESSION_DURATION);
@@ -1675,22 +1722,44 @@ function logoutAdmin() {
     sessionStorage.removeItem('admin_role');
     sessionStorage.removeItem('admin_login_time');
     if (sessionTimeout) clearTimeout(sessionTimeout);
-    closeAdminModal();
+    closeAdminPanel();
     showToast('Berhasil logout');
 }
 
 // ============================================================
 // 13. ADMIN PANEL
 // ============================================================
-function openAdminModal() {
+let previousActiveTab = null;
+
+function openAdminPanel() {
     checkSession();
-    const modal = document.getElementById('adminModal');
-    modal.classList.add('open');
+
+    // Remember which dashboard tab was active so we can restore it on close
+    const activeTabBtn = document.querySelector('.sidebar .nav-item[data-tab].active');
+    previousActiveTab = activeTabBtn ? activeTabBtn.dataset.tab : null;
+
+    document.getElementById('dashboardView').style.display = 'none';
+    document.getElementById('adminPageView').style.display = 'block';
+
+    document.querySelectorAll('.sidebar .nav-item[data-tab]').forEach(item => item.classList.remove('active'));
+    const adminNav = document.getElementById('adminNavItem');
+    if (adminNav) adminNav.classList.add('active');
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     renderAdminPanel();
 }
 
-function closeAdminModal() {
-    document.getElementById('adminModal').classList.remove('open');
+function closeAdminPanel() {
+    document.getElementById('adminPageView').style.display = 'none';
+    document.getElementById('dashboardView').style.display = 'block';
+
+    const adminNav = document.getElementById('adminNavItem');
+    if (adminNav) adminNav.classList.remove('active');
+    if (previousActiveTab) {
+        document.querySelectorAll('.sidebar .nav-item[data-tab]').forEach(item => {
+            item.classList.toggle('active', item.dataset.tab === previousActiveTab);
+        });
+    }
 }
 
 function renderMaskapaiOptions(selected = '') {
@@ -1700,7 +1769,7 @@ function renderMaskapaiOptions(selected = '') {
 }
 
 async function renderAdminPanel() {
-    const container = document.getElementById('adminModalBody');
+    const container = document.getElementById('adminPanelBody');
     if (adminLoggedIn) {
         const isAdmin = currentRole === 'administrator';
         const { data } = await supabaseClient.from('programs').select('*').order('created_at');
