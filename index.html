@@ -1291,6 +1291,16 @@ function parseDateFromString(dateStr) {
 
 function formatRupiah(amount) {
     if (!amount && amount !== 0) return '-';
+    if (typeof amount === 'string') {
+        const trimmed = amount.trim();
+        if (!trimmed) return '-';
+        // Sudah dalam bentuk teks terformat (mis. "Rp 32.500.000") -> tampilkan apa adanya
+        if (/rp/i.test(trimmed) || /[^\d.,\s]/.test(trimmed)) return trimmed;
+        // String angka murni (mis. "32500000") -> lanjut diformat di bawah
+        const parsed = parseInt(trimmed.replace(/[^\d]/g, ''), 10);
+        if (!parsed) return trimmed;
+        amount = parsed;
+    }
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
@@ -1497,7 +1507,7 @@ function renderTable(data) {
 
         return `<tr>
             <td><strong>${escapeHtml(item.nama||'')}</strong></td>
-            <td>${formatRupiah(item.harga_quint)}</td>
+            <td>${escapeHtml(formatRupiah(item.harga_quint))}</td>
             <td>${escapeHtml(item.tgl||'-')}</td>
             <td>${escapeHtml(item.durasi||'-')}</td>
             <td>${escapeHtml(item.maskapai||'-')}</td>
@@ -2725,7 +2735,7 @@ function renderFeaturedSection() {
     grid.innerHTML = featuredPrograms.map(p => `
         <div class="featured-card">
             <div class="fc-title">⭐ ${escapeHtml(p.nama)}</div>
-            <div class="fc-meta">${formatRupiah(p.harga_quint)} • ${escapeHtml(p.tgl)}</div>
+            <div class="fc-meta">${escapeHtml(formatRupiah(p.harga_quint))} • ${escapeHtml(p.tgl)}</div>
             <div class="fc-meta" style="margin-top:4px;">${escapeHtml(p.maskapai || '')} • ${escapeHtml(p.durasi || '')}</div>
         </div>
     `).join('');
