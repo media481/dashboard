@@ -32,6 +32,10 @@ icons/                ← 9 file ikon PWA sesuai daftar di manifest.json
 sql/
   00_setup_semua_tabel.sql     ← CREATE TABLE + RLS untuk semua tabel (dari nol)
   create_kwt_kuitansi.sql      ← SQL khusus tabel kwt_kuitansi
+.github/workflows/
+  keep-supabase-alive.yml      ← ping REST API tiap 3 hari biar project Supabase
+                                  free tier tidak auto-pause (butuh secret
+                                  SUPABASE_URL & SUPABASE_ANON_KEY di repo GitHub)
 supabase/functions/
   send-telegram/index.ts       ← proxy ke Telegram Bot API
   scan-poster-ocr/index.ts     ← OCR poster pakai Gemini Vision (butuh GEMINI_API_KEY)
