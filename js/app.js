@@ -937,7 +937,7 @@ function renderAdminTable() {
             <td><strong>${escapeHtml(p.nama||'-')}</strong></td>
             <td>${escapeHtml(p.tgl||'-')}</td>
             <td>${escapeHtml(p.durasi||'-')}</td>
-            <td>${escapeHtml(p.harga_quad||'-')}</td>
+            <td>${escapeHtml(p.harga_quad || p.harga_quint || '-')}</td>
             <td>${escapeHtml(p.harga_double||'-')}</td>
             <td>${escapeHtml(p.harga_triple||'-')}</td>
             <td>${escapeHtml(p.maskapai||'-')}</td>
@@ -1151,6 +1151,8 @@ async function editAdminProgram(id) {
     if (error || !data) { showToast('Program tidak ditemukan', 'error'); return; }
 
     const unpacked = unpackProgramAdminData(data);
+    // Data lama: harga_quint sebenarnya dipakai sebagai harga Quad (tidak ada tipe kamar Quint)
+    if (!unpacked.harga_quad && unpacked.harga_quint) unpacked.harga_quad = unpacked.harga_quint;
 
     setAdminFormData(unpacked);
     editingProgramId = id;
