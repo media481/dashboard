@@ -132,3 +132,41 @@ supabase/functions/README.md   <- panduan deploy lengkap
   `GEMINI_API_KEY` (gratis dari https://aistudio.google.com/apikey).
 
 Cara deploy ada lengkap di `supabase/functions/README.md` (pakai Supabase CLI).
+
+## Ronde 7: Restrukturisasi Sidebar berbasis Role + Menu Login
+Perubahan utama pada `index.html` (sidebar desktop & mobile), `css/style.css`,
+dan `js/app.js`:
+
+1. **Sidebar sekarang role-aware** (class `.nav-loggedin-only` & `.nav-admin-only`
+   ditoggle via JS, fungsi `renderSidebarNav()` di `js/app.js`):
+   - Guest / belum login → hanya menu "Program Umroh" & "Unggulan".
+   - User & Admin (sudah login) → tambahan menu "Jadwal Tamu" & "Keberangkatan".
+   - Admin saja → tambahan section "Manajemen": Edit & Tambah Program, Crosscheck,
+     Telegram, Pengaturan User — masing-masing sekarang jadi **menu sidebar
+     tersendiri**, bukan lagi tab-bar di dalam halaman Admin Panel
+     (`admin-subtabs-bar` yang lama sudah dihapus dari `renderAdminPanel()`).
+2. **Menu Login/Logout** ditambahkan di paling bawah sidebar (di atas kotak
+   profil), menggantikan tombol generik "Admin Panel" yang lama. Berubah
+   otomatis jadi "Logout" setelah login berhasil.
+3. `openAdminPanel(subtab)` sekarang menerima parameter opsional
+   (`'program' | 'crosscheck' | 'telegram' | 'usersettings'`) supaya klik menu
+   sidebar langsung membuka subtab yang relevan tanpa perlu tab-bar internal.
+4. **Bug fix**: `editAdminProgram()` & `showAdminForm()` sebelumnya bisa gagal
+   diam-diam kalau halaman Admin belum pernah dibuka dalam sesi tsb (elemen
+   form belum ter-render di DOM). Ditambahkan `ensureAdminProgramPageReady()`
+   supaya form selalu tersedia sebelum diisi — penting agar role **user** bisa
+   langsung edit/hapus dari tabel Program Umroh di dashboard utama.
+5. Tombol "Tambah" di topbar dashboard (`#btnTambahProgram`) kini ikut
+   disembunyikan untuk guest, konsisten dengan `applyRoleUIVisibility()`.
+6. `service-worker.js` versi cache dinaikkan ke **v19** karena `index.html`,
+   `css/style.css`, dan `js/app.js` berubah signifikan.
+
+### Catatan/asumsi yang perlu dikonfirmasi
+- Role **guest yang login pakai password guest** (bukan pengunjung anonim)
+  tetap diberi akses lihat "Jadwal Tamu" & "Keberangkatan" (read-only, tanpa
+  tombol tambah/edit/hapus — itu tetap dijaga oleh `canManageProgramData()`
+  yang hanya mengizinkan admin & user). Hanya pengunjung yang **belum login
+  sama sekali** yang dibatasi ke "Program Umroh" & "Unggulan" saja. Kalau
+  ternyata role guest (setelah login) juga harus dibatasi sama seperti
+  pengunjung anonim, tinggal beri tahu — tinggal ubah kondisi di
+  `renderSidebarNav()`.

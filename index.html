@@ -47,23 +47,41 @@
             <button class="nav-item" data-tab="unggulan">
                 <i class="fa-solid fa-star"></i> Unggulan
             </button>
-            <button class="nav-item" data-tab="info">
+            <button class="nav-item nav-loggedin-only" data-tab="info" style="display:none;">
                 <i class="fa-solid fa-calendar-check"></i> Jadwal Tamu
             </button>
-            <button class="nav-item" data-tab="keberangkatan">
+            <button class="nav-item nav-loggedin-only" data-tab="keberangkatan" style="display:none;">
                 <i class="fa-solid fa-plane-departure"></i> Keberangkatan
             </button>
 
-            <div class="nav-label">Manajemen</div>
-            <button class="nav-item" id="adminNavItem" onclick="openAdminPanel()">
-                <i class="fa-solid fa-lock"></i> Admin Panel
+            <div class="nav-label nav-admin-only" style="display:none;">Manajemen</div>
+            <button class="nav-item nav-admin-only" data-subtab="program" style="display:none;" onclick="openAdminPanel('program')">
+                <i class="fa-solid fa-kaaba"></i> Edit &amp; Tambah Program
             </button>
+            <button class="nav-item nav-admin-only" data-subtab="crosscheck" style="display:none;" onclick="openAdminPanel('crosscheck')">
+                <i class="fa-solid fa-magnifying-glass-chart"></i> Crosscheck
+            </button>
+            <button class="nav-item nav-admin-only" data-subtab="telegram" style="display:none;" onclick="openAdminPanel('telegram')">
+                <i class="fa-brands fa-telegram"></i> Telegram
+            </button>
+            <button class="nav-item nav-admin-only" data-subtab="usersettings" style="display:none;" onclick="openAdminPanel('usersettings')">
+                <i class="fa-solid fa-user-gear"></i> Pengaturan User
+            </button>
+
+            <div class="nav-login-area">
+                <button class="nav-item login-btn" onclick="openAdminPanel()">
+                    <i class="fa-solid fa-arrow-right-to-bracket"></i> Login
+                </button>
+                <button class="nav-item logout-btn" style="display:none;" onclick="logoutAdmin()">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+                </button>
+            </div>
         </nav>
 
         <div class="sidebar-foot">
-            <div class="avatar">AH</div>
+            <div class="avatar" id="sidebarAvatar">GT</div>
             <div>
-                <div class="who">Admin</div>
+                <div class="who" id="sidebarWho">Guest</div>
                 <div class="role">PT Amiru Haramain</div>
             </div>
         </div>
@@ -82,7 +100,7 @@
                     <i class="fa-solid fa-magnifying-glass"></i>
                     <input type="text" id="searchInput" placeholder="Cari program, maskapai..." oninput="handleSearchInput(event)">
                 </div>
-                <button class="btn-primary" onclick="openAdminPanel()">
+                <button class="btn-primary" id="btnTambahProgram" onclick="openAdminPanel('program')" style="display:none;">
                     <i class="fa-solid fa-plus"></i> Tambah
                 </button>
                 <button class="hamburger-toggle" onclick="toggleMobileSidebar()">
@@ -128,11 +146,11 @@
                 <button class="tab-btn" data-tab="unggulan">
                     <i class="fa-solid fa-star"></i> <span>Unggulan</span>
                 </button>
-                <button class="tab-btn" data-tab="info">
+                <button class="tab-btn nav-loggedin-only" data-tab="info" style="display:none;">
                     <i class="fa-solid fa-calendar-check"></i> <span>Jadwal Tamu</span>
                     <span class="badge" id="jadwalBadge" style="display:none;">0</span>
                 </button>
-                <button class="tab-btn" data-tab="keberangkatan">
+                <button class="tab-btn nav-loggedin-only" data-tab="keberangkatan" style="display:none;">
                     <i class="fa-solid fa-plane-departure"></i> <span>Keberangkatan</span>
                 </button>
             </div>
@@ -215,7 +233,7 @@
             </button>
             <div>
                 <h1><span id="adminPageTitle">Admin Panel</span></h1>
-                <p>Kelola data program umroh</p>
+                <p id="adminPageSubtitle">Kelola data program umroh</p>
             </div>
         </div>
         <div class="admin-page-body" id="adminPanelBody">
@@ -241,16 +259,35 @@
             <button class="nav-item" data-tab="unggulan" onclick="switchTab('unggulan'); toggleMobileSidebar();">
                 <i class="fa-solid fa-star"></i> Unggulan
             </button>
-            <button class="nav-item" data-tab="info" onclick="switchTab('info'); toggleMobileSidebar();">
+            <button class="nav-item nav-loggedin-only" data-tab="info" style="display:none;" onclick="switchTab('info'); toggleMobileSidebar();">
                 <i class="fa-solid fa-calendar-check"></i> Jadwal Tamu
             </button>
-            <button class="nav-item" data-tab="keberangkatan" onclick="switchTab('keberangkatan'); toggleMobileSidebar();">
+            <button class="nav-item nav-loggedin-only" data-tab="keberangkatan" style="display:none;" onclick="switchTab('keberangkatan'); toggleMobileSidebar();">
                 <i class="fa-solid fa-plane-departure"></i> Keberangkatan
             </button>
-            <div class="nav-label">Manajemen</div>
-            <button class="nav-item" onclick="openAdminPanel(); toggleMobileSidebar();">
-                <i class="fa-solid fa-lock"></i> Admin Panel
+
+            <div class="nav-label nav-admin-only" style="display:none;">Manajemen</div>
+            <button class="nav-item nav-admin-only" data-subtab="program" style="display:none;" onclick="openAdminPanel('program'); toggleMobileSidebar();">
+                <i class="fa-solid fa-kaaba"></i> Edit &amp; Tambah Program
             </button>
+            <button class="nav-item nav-admin-only" data-subtab="crosscheck" style="display:none;" onclick="openAdminPanel('crosscheck'); toggleMobileSidebar();">
+                <i class="fa-solid fa-magnifying-glass-chart"></i> Crosscheck
+            </button>
+            <button class="nav-item nav-admin-only" data-subtab="telegram" style="display:none;" onclick="openAdminPanel('telegram'); toggleMobileSidebar();">
+                <i class="fa-brands fa-telegram"></i> Telegram
+            </button>
+            <button class="nav-item nav-admin-only" data-subtab="usersettings" style="display:none;" onclick="openAdminPanel('usersettings'); toggleMobileSidebar();">
+                <i class="fa-solid fa-user-gear"></i> Pengaturan User
+            </button>
+
+            <div class="nav-login-area">
+                <button class="nav-item login-btn" onclick="openAdminPanel(); toggleMobileSidebar();">
+                    <i class="fa-solid fa-arrow-right-to-bracket"></i> Login
+                </button>
+                <button class="nav-item logout-btn" style="display:none;" onclick="logoutAdmin(); toggleMobileSidebar();">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+                </button>
+            </div>
         </nav>
     </div>
 </div>

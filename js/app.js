@@ -424,6 +424,7 @@ function setAdminSession(role) {
             sessionStorage.removeItem('admin_login_time');
             const adminView = document.getElementById('adminPageView');
             if (adminView.style.display !== 'none') closeAdminPanel();
+            renderSidebarNav();
             showToast('⏰ Sesi berakhir, silakan login ulang.', 'error');
         }
     }, SESSION_DURATION);
@@ -465,7 +466,9 @@ function checkAdminLogin() {
     if (matchedUser) {
         loginAttempts = 0;
         setAdminSession(matchedUser.role);
-        renderAdminPanel();
+        closeAdminPanel();
+        renderSidebarNav();
+        showToast(`✅ Berhasil login sebagai ${matchedUser.label}`);
     } else {
         loginAttempts++;
         if (loginAttempts >= 5) {
@@ -513,6 +516,7 @@ function logoutAdmin() {
     sessionStorage.removeItem('admin_login_time');
     if (sessionTimeout) clearTimeout(sessionTimeout);
     closeAdminPanel();
+    renderSidebarNav();
     showToast('Berhasil logout');
 }
 
@@ -521,7 +525,9 @@ function logoutAdmin() {
 // ============================================================
 let previousActiveTab = null;
 
-function openAdminPanel() {
+// subtab: 'program' | 'crosscheck' | 'telegram' | 'usersettings' (opsional).
+// Dipanggil dari menu sidebar "Manajemen" (admin) atau tombol "Login"/"Tambah" (tanpa param).
+async function openAdminPanel(subtab) {
     checkSession();
 
     // Remember which dashboard tab was active so we can restore it on close
@@ -531,20 +537,22 @@ function openAdminPanel() {
     document.getElementById('dashboardView').style.display = 'none';
     document.getElementById('adminPageView').style.display = 'block';
 
-    document.querySelectorAll('.sidebar .nav-item[data-tab]').forEach(item => item.classList.remove('active'));
-    const adminNav = document.getElementById('adminNavItem');
-    if (adminNav) adminNav.classList.add('active');
+    document.querySelectorAll('.sidebar .nav-item').forEach(item => item.classList.remove('active'));
+    const activeNav = subtab
+        ? document.querySelector(`.sidebar .nav-item[data-subtab="${subtab}"]`)
+        : document.querySelector('.sidebar .login-btn');
+    if (activeNav) activeNav.classList.add('active');
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    renderAdminPanel();
+    await renderAdminPanel();
+    if (subtab && adminLoggedIn) switchAdminSubTab(subtab);
 }
 
 function closeAdminPanel() {
     document.getElementById('adminPageView').style.display = 'none';
     document.getElementById('dashboardView').style.display = 'block';
 
-    const adminNav = document.getElementById('adminNavItem');
-    if (adminNav) adminNav.classList.remove('active');
+    document.querySelectorAll('.sidebar .nav-item').forEach(item => item.classList.remove('active'));
     if (previousActiveTab) {
         document.querySelectorAll('.sidebar .nav-item[data-tab]').forEach(item => {
             item.classList.toggle('active', item.dataset.tab === previousActiveTab);
@@ -581,10 +589,24 @@ function getAdminLoginBoxHtml() {
     </div>`;
 }
 
+const ADMIN_SUBTAB_META = {
+    program: { title: 'Edit & Tambah Program', subtitle: 'Kelola data program umroh' },
+    crosscheck: { title: 'Crosscheck', subtitle: 'Bandingkan poster dengan data program yang tersimpan' },
+    telegram: { title: 'Telegram', subtitle: 'Atur notifikasi otomatis ke grup/chat Telegram' },
+    usersettings: { title: 'Pengaturan User', subtitle: 'Atur password untuk masing-masing role' }
+};
+
 function switchAdminSubTab(name) {
     adminSubTab = name;
-    document.querySelectorAll('.admin-subtab-btn').forEach(b => b.classList.toggle('active', b.dataset.subtab === name));
     document.querySelectorAll('.admin-subtab-panel').forEach(p => p.style.display = (p.id === 'adminSubTab-' + name) ? 'block' : 'none');
+    document.querySelectorAll('.sidebar .nav-item[data-subtab]').forEach(b => b.classList.toggle('active', b.dataset.subtab === name));
+
+    const meta = ADMIN_SUBTAB_META[name] || ADMIN_SUBTAB_META.program;
+    const titleEl = document.getElementById('adminPageTitle');
+    const subtitleEl = document.getElementById('adminPageSubtitle');
+    if (titleEl) titleEl.textContent = meta.title;
+    if (subtitleEl) subtitleEl.textContent = meta.subtitle;
+
     if (name === 'crosscheck') { renderCxProgramSelector(); if (cxSelectedProgram) renderCxPanel(cxSelectedProgram); }
     if (name === 'telegram') { renderTgRecipients(); }
 }
@@ -604,14 +626,6 @@ async function renderAdminPanel() {
         adminPrograms = data || [];
 
         container.innerHTML = `
-            ${isAdmin ? `
-            <div class="admin-subtabs-bar">
-                <button class="admin-subtab-btn active" data-subtab="program" onclick="switchAdminSubTab('program')"><i class="fa-solid fa-kaaba"></i> Program</button>
-                <button class="admin-subtab-btn" data-subtab="crosscheck" onclick="switchAdminSubTab('crosscheck')"><i class="fa-solid fa-magnifying-glass-chart"></i> Crosscheck</button>
-                <button class="admin-subtab-btn" data-subtab="telegram" onclick="switchAdminSubTab('telegram')"><i class="fa-brands fa-telegram"></i> Telegram</button>
-                <button class="admin-subtab-btn" data-subtab="usersettings" onclick="switchAdminSubTab('usersettings')"><i class="fa-solid fa-user-gear"></i> Pengaturan User</button>
-            </div>
-            ` : ''}
             <div class="admin-subtab-panel" id="adminSubTab-program" style="display:block;">
             <div class="admin-toolbar">
                 ${canEditData ? `<button class="btn-primary" onclick="showAdminForm()"><i class="fa-solid fa-plus"></i> Tambah Program</button>` : `<span class="admin-role-note"><i class="fa-solid fa-eye"></i> Mode lihat saja (Guest)</span>`}
@@ -881,6 +895,10 @@ async function renderAdminPanel() {
         }
     } else {
         // Not logged in
+        const titleEl = document.getElementById('adminPageTitle');
+        const subtitleEl = document.getElementById('adminPageSubtitle');
+        if (titleEl) titleEl.textContent = 'Login';
+        if (subtitleEl) subtitleEl.textContent = 'Masuk untuk mengakses fitur pengelolaan';
         container.innerHTML = getAdminLoginBoxHtml();
         setTimeout(() => {
             const pwd = document.getElementById('adminPasswordInput');
@@ -919,8 +937,18 @@ function renderAdminTable() {
 // ============================================================
 // 14. ADMIN CRUD OPERATIONS
 // ============================================================
-function showAdminForm() {
+async function ensureAdminProgramPageReady() {
+    const needsOpen = document.getElementById('adminPageView').style.display === 'none' || !document.getElementById('adminFormContainer');
+    if (needsOpen) {
+        await openAdminPanel('program');
+    } else if (adminSubTab !== 'program') {
+        switchAdminSubTab('program');
+    }
+}
+
+async function showAdminForm() {
     if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menambah program', 'error'); return; }
+    await ensureAdminProgramPageReady();
     editingProgramId = null;
     document.getElementById('adminFormTitle').innerText = 'Tambah Program Baru';
     document.getElementById('adminFormContainer').style.display = 'block';
@@ -984,13 +1012,47 @@ function canManageProgramData() {
     return adminLoggedIn && (currentRole === 'admin' || currentRole === 'user');
 }
 
-// Sembunyikan tombol tambah data (Jadwal Tamu, Data Jamaah) dari guest/publik yang belum login
+// Sembunyikan tombol tambah data (Jadwal Tamu, Data Jamaah, Program) dari guest/publik yang belum login
 function applyRoleUIVisibility() {
     const canEdit = canManageProgramData();
     const btnJadwal = document.getElementById('btnTambahJadwal');
     const btnJamaah = document.getElementById('btnTambahJamaah');
+    const btnProgram = document.getElementById('btnTambahProgram');
     if (btnJadwal) btnJadwal.style.display = canEdit ? '' : 'none';
     if (btnJamaah) btnJamaah.style.display = canEdit ? '' : 'none';
+    if (btnProgram) btnProgram.style.display = canEdit ? '' : 'none';
+}
+
+// ============================================================
+// 12c. SIDEBAR NAV — tampilan menu sidebar menyesuaikan role
+// ============================================================
+// guest / belum login : hanya "Program Umroh" & "Unggulan"
+// user  (sudah login)  : + "Jadwal Tamu" & "Keberangkatan" (boleh edit/hapus langsung di tabel)
+// admin (sudah login)  : + menu "Manajemen" (Edit & Tambah Program, Crosscheck, Telegram, Pengaturan User)
+function renderSidebarNav() {
+    const loggedIn = !!adminLoggedIn;
+    const isAdminRole = loggedIn && currentRole === 'admin';
+    const roleLabels = { admin: 'Admin', user: 'User', guest: 'Guest' };
+
+    document.querySelectorAll('.nav-loggedin-only').forEach(el => { el.style.display = loggedIn ? '' : 'none'; });
+    document.querySelectorAll('.nav-admin-only').forEach(el => { el.style.display = isAdminRole ? '' : 'none'; });
+    document.querySelectorAll('.login-btn').forEach(el => { el.style.display = loggedIn ? 'none' : ''; });
+    document.querySelectorAll('.logout-btn').forEach(el => { el.style.display = loggedIn ? '' : 'none'; });
+
+    const whoEl = document.getElementById('sidebarWho');
+    const avatarEl = document.getElementById('sidebarAvatar');
+    const label = loggedIn ? (roleLabels[currentRole] || 'User') : 'Guest';
+    if (whoEl) whoEl.textContent = label;
+    if (avatarEl) avatarEl.textContent = label.slice(0, 2).toUpperCase();
+
+    // Kalau baru saja logout/kena timeout sementara sedang di tab yang kini disembunyikan,
+    // kembalikan ke tab "Program Umroh" supaya tidak nyangkut di halaman kosong.
+    if (!loggedIn) {
+        const activePanel = document.querySelector('.tab-panel.active');
+        if (activePanel && (activePanel.id === 'tab-info' || activePanel.id === 'tab-keberangkatan')) {
+            switchTab('umroh');
+        }
+    }
 }
 
 async function saveAdminProgram() {
@@ -1052,6 +1114,7 @@ async function saveAdminProgram() {
 
 async function editAdminProgram(id) {
     if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengedit program', 'error'); return; }
+    await ensureAdminProgramPageReady();
     const { data, error } = await supabaseClient.from('programs').select('*').eq('id', id).single();
     if (error || !data) { showToast('Program tidak ditemukan', 'error'); return; }
 
@@ -2338,6 +2401,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadUserRoles();
     checkSession(); // pulihkan status login (kalau ada) sebelum render tabel utama
     applyRoleUIVisibility();
+    renderSidebarNav();
     await loadFeaturedIds();
     await loadJadwal();
     await loadKbJamaah();
