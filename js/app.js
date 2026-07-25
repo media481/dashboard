@@ -1481,6 +1481,13 @@ function importAdminData() {
 // 17. DELETE CONFIRM
 // ============================================================
 function openDeleteModal(table, id, name) {
+    if (table === 'programs') {
+        const jumlahJamaah = (kbJamaahList || []).filter(j => String(j.program_id) === String(id)).length;
+        if (jumlahJamaah > 0) {
+            showToast(`Tidak bisa hapus "${name}" — masih ada ${jumlahJamaah} jamaah terdaftar di program ini. Pindahkan atau hapus dulu data jamaahnya.`, 'error');
+            return;
+        }
+    }
     deleteTarget.table = table;
     deleteTarget.id = id;
     deleteTarget.name = name;
@@ -1504,6 +1511,29 @@ async function confirmDeleteAction() {
         return;
     }
 
+    if (deleteTarget.table === 'programs') {
+        // Cek ulang langsung ke database (bukan cache kbJamaahList di browser),
+        // untuk jaga-jaga kalau ada jamaah yang baru saja didaftarkan oleh
+        // admin/perangkat lain tepat sebelum tombol hapus ini ditekan.
+        try {
+            const { count, error: countErr } = await supabaseClient
+                .from('kb_jamaah')
+                .select('id', { count: 'exact', head: true })
+                .eq('program_id', deleteTarget.id);
+            if (countErr) throw countErr;
+            if (count && count > 0) {
+                showToast(`Tidak bisa hapus — masih ada ${count} jamaah terdaftar di program ini.`, 'error');
+                closeDeleteConfirmModal();
+                return;
+            }
+        } catch (err) {
+            console.error('Cek jamaah sebelum hapus program gagal:', err);
+            showToast('Gagal memverifikasi data jamaah, coba lagi', 'error');
+            closeDeleteConfirmModal();
+            return;
+        }
+    }
+
     try {
         const result = await supabaseClient.from(deleteTarget.table).delete().eq('id', deleteTarget.id);
         if (result.error) throw result.error;
@@ -1523,6 +1553,7 @@ async function confirmDeleteAction() {
         } else if (deleteTarget.table === 'kb_jamaah') {
             await loadKbJamaah();
             renderKbProgramSelector();
+            renderDokProgramSelector();
             updateMetrics();
         }
 
@@ -1845,20 +1876,33 @@ function renderKbProgramSelector() {
         return;
     }
 
-    // Keep current selection
+    // Hanya tampilkan program yang memang sudah ada jamaah yang mendaftar,
+    // supaya admin tinggal pilih tanpa perlu mencari di daftar panjang.
+    const programsWithJamaah = dataUmroh.filter(p =>
+        (kbJamaahList || []).some(j => String(j.program_id) === String(p.id))
+    );
+
+    if (programsWithJamaah.length === 0) {
+        select.innerHTML = '<option value="">-- Belum ada jamaah terdaftar --</option>';
+        loadKbJamaahForProgram('');
+        return;
+    }
+
+    // Keep current selection (kalau masih ada di daftar terfilter)
     const currentVal = select.value;
     select.innerHTML = '<option value="">-- Pilih Program --</option>' +
-        dataUmroh.map(p => `<option value="${p.id}">${escapeHtml(p.nama)} (${escapeHtml(p.tgl || '-')})</option>`).join('');
-    if (currentVal) select.value = currentVal;
+        programsWithJamaah.map(p => `<option value="${p.id}">${escapeHtml(p.nama)} (${escapeHtml(p.tgl || '-')})</option>`).join('');
+    select.value = (currentVal && programsWithJamaah.some(p => String(p.id) === String(currentVal))) ? currentVal : '';
 
-    // Also populate modal select
+    // Modal "Tambah Jamaah" tetap tampilkan SEMUA program (termasuk yang belum
+    // punya jamaah sama sekali), karena di situlah jamaah pertama didaftarkan.
     const modalSelect = document.getElementById('kb_program');
     if (modalSelect) {
         modalSelect.innerHTML = dataUmroh.map(p => `<option value="${p.id}">${escapeHtml(p.nama)}</option>`).join('');
     }
 
     // Load jamaah for selected program
-    if (select.value) loadKbJamaahForProgram(select.value);
+    loadKbJamaahForProgram(select.value);
 }
 
 function selectKbProgram(id) {
@@ -2053,9 +2097,7 @@ async function saveKbJamaah(e) {
         showToast(id ? 'Data jamaah berhasil diperbarui' : 'Data jamaah berhasil ditambahkan');
         closeKbModal();
         await loadKbJamaah();
-        if (document.getElementById('kbProgramSelect').value) {
-            loadKbJamaahForProgram(document.getElementById('kbProgramSelect').value);
-        }
+        renderKbProgramSelector();
         updateMetrics();
 
     } catch (err) {
@@ -2235,12 +2277,24 @@ function renderDokProgramSelector() {
         return;
     }
 
+    // Hanya tampilkan program yang memang sudah ada jamaah yang mendaftar,
+    // supaya admin tinggal pilih tanpa perlu mencari di daftar panjang.
+    const programsWithJamaah = dataUmroh.filter(p =>
+        (kbJamaahList || []).some(j => String(j.program_id) === String(p.id))
+    );
+
+    if (programsWithJamaah.length === 0) {
+        select.innerHTML = '<option value="">-- Belum ada jamaah terdaftar --</option>';
+        loadDokumenForProgram('');
+        return;
+    }
+
     const currentVal = select.value;
     select.innerHTML = '<option value="">-- Pilih Program --</option>' +
-        dataUmroh.map(p => `<option value="${p.id}">${escapeHtml(p.nama)} (${escapeHtml(p.tgl || '-')})</option>`).join('');
-    if (currentVal) select.value = currentVal;
+        programsWithJamaah.map(p => `<option value="${p.id}">${escapeHtml(p.nama)} (${escapeHtml(p.tgl || '-')})</option>`).join('');
+    select.value = (currentVal && programsWithJamaah.some(p => String(p.id) === String(currentVal))) ? currentVal : '';
 
-    if (select.value) loadDokumenForProgram(select.value);
+    loadDokumenForProgram(select.value);
 }
 
 function selectDokProgram(id) {
@@ -3081,5 +3135,164 @@ function hidePosterPopup() {
 }
 window.showPosterPopup = showPosterPopup;
 window.hidePosterPopup = hidePosterPopup;
+
+// ============================================================
+// 25. CUSTOM SEARCHABLE SELECT (pengganti dropdown <select> native)
+// ============================================================
+// Membungkus <select class="searchable-select"> dengan UI kustom (bisa dicari)
+// tanpa mengubah cara select tsb dipakai di tempat lain: .value masih bisa
+// dibaca/ditulis seperti biasa, dan innerHTML options masih bisa diisi ulang
+// (dropdown akan otomatis sinkron lewat MutationObserver).
+(function () {
+    let openWrapper = null;
+
+    function closeAllPanels() {
+        if (openWrapper) {
+            openWrapper.classList.remove('open');
+            openWrapper = null;
+        }
+    }
+    document.addEventListener('mousedown', (e) => {
+        if (openWrapper && !openWrapper.contains(e.target)) closeAllPanels();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeAllPanels();
+    });
+
+    function highlightMatch(text, query) {
+        if (!query) return escapeHtml(text);
+        const idx = text.toLowerCase().indexOf(query.toLowerCase());
+        if (idx === -1) return escapeHtml(text);
+        return escapeHtml(text.slice(0, idx)) + '<mark>' + escapeHtml(text.slice(idx, idx + query.length)) + '</mark>' + escapeHtml(text.slice(idx + query.length));
+    }
+
+    function enhanceSearchableSelect(selectEl) {
+        if (!selectEl || selectEl.dataset.csEnhanced) return;
+        selectEl.dataset.csEnhanced = '1';
+        selectEl.classList.add('cs-native-select');
+        selectEl.setAttribute('tabindex', '-1');
+        selectEl.setAttribute('aria-hidden', 'true');
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'cs-select-wrapper' + (selectEl.dataset.csInline === '1' ? ' cs-inline' : '');
+        selectEl.parentNode.insertBefore(wrapper, selectEl);
+        wrapper.appendChild(selectEl);
+
+        const trigger = document.createElement('button');
+        trigger.type = 'button';
+        trigger.className = 'cs-select-trigger';
+        trigger.innerHTML = '<span class="cs-select-value"></span><i class="fa-solid fa-chevron-down cs-select-caret"></i>';
+        wrapper.appendChild(trigger);
+
+        const panel = document.createElement('div');
+        panel.className = 'cs-select-panel';
+        const searchPlaceholder = selectEl.getAttribute('data-search-placeholder') || 'Cari paket umroh...';
+        panel.innerHTML =
+            '<div class="cs-select-search-wrap"><i class="fa-solid fa-magnifying-glass"></i>' +
+            '<input type="text" class="cs-select-search" placeholder="' + escapeHtml(searchPlaceholder) + '" autocomplete="off"></div>' +
+            '<div class="cs-select-options"></div>';
+        wrapper.appendChild(panel);
+
+        const searchInput = panel.querySelector('.cs-select-search');
+        const optionsWrap = panel.querySelector('.cs-select-options');
+        const valueLabel = trigger.querySelector('.cs-select-value');
+
+        function updateLabel() {
+            const opt = selectEl.options[selectEl.selectedIndex];
+            const placeholder = selectEl.getAttribute('data-placeholder') || 'Pilih program...';
+            if (opt && opt.value !== '') {
+                valueLabel.textContent = opt.textContent;
+                valueLabel.classList.remove('cs-placeholder');
+            } else {
+                valueLabel.textContent = (opt && opt.textContent) || placeholder;
+                valueLabel.classList.add('cs-placeholder');
+            }
+        }
+
+        function renderOptions(query) {
+            const q = (query || '').trim().toLowerCase();
+            const opts = Array.from(selectEl.options);
+            optionsWrap.innerHTML = '';
+            let anyVisible = false;
+            opts.forEach((opt) => {
+                const text = opt.textContent || '';
+                if (q && !text.toLowerCase().includes(q)) return;
+                anyVisible = true;
+                const item = document.createElement('div');
+                item.className = 'cs-select-option' +
+                    (opt.value === selectEl.value ? ' selected' : '') +
+                    (opt.disabled ? ' disabled' : '');
+                item.innerHTML = highlightMatch(text, q);
+                if (!opt.disabled) {
+                    item.addEventListener('click', () => {
+                        if (selectEl.value !== opt.value) {
+                            selectEl.value = opt.value;
+                            selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                        closeAllPanels();
+                    });
+                }
+                optionsWrap.appendChild(item);
+            });
+            if (!anyVisible) {
+                optionsWrap.innerHTML = '<div class="cs-select-empty"><i class="fa-solid fa-magnifying-glass" style="margin-right:6px;"></i>Paket tidak ditemukan</div>';
+            }
+        }
+
+        function openPanel() {
+            if (selectEl.disabled) return;
+            closeAllPanels();
+            wrapper.classList.add('open');
+            openWrapper = wrapper;
+            searchInput.value = '';
+            renderOptions('');
+            setTimeout(() => searchInput.focus(), 0);
+        }
+
+        trigger.addEventListener('click', () => {
+            if (wrapper.classList.contains('open')) closeAllPanels();
+            else openPanel();
+        });
+        searchInput.addEventListener('input', () => renderOptions(searchInput.value));
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { closeAllPanels(); trigger.focus(); }
+        });
+
+        // Sinkron ulang saat options di-generate ulang lewat innerHTML (mis. setelah data dimuat)
+        new MutationObserver(() => {
+            updateLabel();
+            if (wrapper.classList.contains('open')) renderOptions(searchInput.value);
+        }).observe(selectEl, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled'] });
+
+        // Intercept `.value = ...` (dipakai di banyak tempat di app.js) supaya label ikut update
+        const nativeDesc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+        Object.defineProperty(selectEl, 'value', {
+            configurable: true,
+            get() { return nativeDesc.get.call(selectEl); },
+            set(v) { nativeDesc.set.call(selectEl, v); updateLabel(); }
+        });
+
+        // Field required: tampilkan panel & fokus pencarian alih-alih bubble native yang salah posisi
+        selectEl.addEventListener('invalid', (e) => {
+            e.preventDefault();
+            trigger.classList.add('cs-invalid');
+            openPanel();
+        });
+        selectEl.addEventListener('change', () => trigger.classList.remove('cs-invalid'));
+
+        updateLabel();
+    }
+
+    function scanAndEnhance() {
+        document.querySelectorAll('select.searchable-select').forEach(enhanceSearchableSelect);
+    }
+
+    document.addEventListener('DOMContentLoaded', scanAndEnhance);
+    // Beberapa select (mis. di dalam modal) baru muncul/berubah setelah interaksi user,
+    // observer ini memastikan select baru tetap ikut diperkaya otomatis.
+    new MutationObserver(scanAndEnhance).observe(document.documentElement, { childList: true, subtree: true });
+
+    window.enhanceSearchableSelect = enhanceSearchableSelect;
+})();
 
 console.log('🚀 Amiru Admin Dashboard loaded!');

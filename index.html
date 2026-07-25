@@ -233,7 +233,7 @@
                 <!-- TAB: Keberangkatan (jamaah + pembayaran & cicilan digabung) -->
                 <div class="tab-panel" id="tab-keberangkatan">
                     <div class="kb-program-selector" id="kbProgramSelector">
-                        <select id="kbProgramSelect" onchange="selectKbProgram(this.value)">
+                        <select id="kbProgramSelect" class="searchable-select" data-cs-inline="1" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." onchange="selectKbProgram(this.value)">
                             <option value="">-- Pilih Program --</option>
                         </select>
                         <button class="btn-primary" id="btnTambahJamaah" onclick="openKbModal()" style="font-size:12px;padding:6px 14px;">
@@ -254,7 +254,7 @@
                 <!-- TAB: Kelengkapan Dokumen -->
                 <div class="tab-panel" id="tab-dokumen">
                     <div class="kb-program-selector" id="dokProgramSelector">
-                        <select id="dokProgramSelect" onchange="selectDokProgram(this.value)">
+                        <select id="dokProgramSelect" class="searchable-select" data-cs-inline="1" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." onchange="selectDokProgram(this.value)">
                             <option value="">-- Pilih Program --</option>
                         </select>
                     </div>
@@ -428,7 +428,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Program Diminati</label>
-                        <select id="pf_program">
+                        <select id="pf_program" class="searchable-select" data-placeholder="-- Belum Ditentukan --" data-search-placeholder="Cari paket umroh...">
                             <option value="">-- Belum Ditentukan --</option>
                         </select>
                     </div>
@@ -477,7 +477,7 @@
                 <input type="hidden" id="kb_editId" value="">
                 <div class="form-group">
                     <label>Program Keberangkatan <span class="required">*</span></label>
-                    <select id="kb_program" required></select>
+                    <select id="kb_program" class="searchable-select" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." required></select>
                 </div>
                 <div class="form-group">
                     <label>Nama Lengkap <span class="required">*</span></label>
