@@ -888,6 +888,83 @@
         .skeleton-table .sk-status { width: 30%; }
         .skeleton-table .sk-icons { display: flex; gap: 6px; }
         .skeleton-table .sk-icon { width: 20px; height: 20px; border-radius: 4px; background: var(--line); }
+        /* ===== ADMIN SUB-TABS (Program / Crosscheck / Telegram) ===== */
+        .admin-subtabs-bar { display: flex; gap: 6px; margin-bottom: 22px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+        .admin-subtab-btn {
+            border: none; background: none; padding: 10px 16px; font-size: 13.5px; font-weight: 600;
+            color: var(--ink-soft); cursor: pointer; border-bottom: 2px solid transparent; display: flex; align-items: center; gap: 7px;
+            font-family: 'Inter', sans-serif; transition: color .15s ease, border-color .15s ease;
+        }
+        .admin-subtab-btn:hover { color: var(--brand); }
+        .admin-subtab-btn.active { color: var(--brand); border-bottom-color: var(--brand); }
+        .admin-section-header { margin-bottom: 18px; }
+        .admin-section-header h4 { font-family: 'Space Grotesk'; font-size: 16px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+        .admin-section-header p { font-size: 12.5px; color: var(--ink-soft); margin-top: 3px; }
+
+        /* ===== CROSSCHECK ===== */
+        .cx-label-sm { font-size: 11.5px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
+        .cx-program-selector { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+        .cx-program-pill {
+            border: 1px solid var(--line); background: var(--surface); border-radius: 20px; padding: 7px 14px;
+            font-size: 12.5px; font-weight: 600; color: var(--ink); cursor: pointer; display: flex; align-items: center; gap: 5px;
+        }
+        .cx-program-pill.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+        .cx-program-pill.has-warning { border-color: var(--warn); }
+        .cx-pill-warn { color: var(--warn); font-size: 9px; margin-left: 2px; }
+        .cx-empty { text-align: center; padding: 40px 20px; color: var(--ink-soft); }
+        .cx-empty i { font-size: 28px; display: block; margin-bottom: 10px; opacity: .5; }
+        .cx-status-bar { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
+        .cx-status-bar.ok { background: var(--success-tint); color: #1b6b48; }
+        .cx-status-bar.warn { background: var(--warn-tint); color: #8a4a12; }
+        .cx-status-bar.missing { background: var(--bg); color: var(--ink-soft); border: 1px solid var(--line); }
+        .cx-status-bar.scanning { background: var(--brand-tint); color: var(--brand-deep); }
+        .cx-ocr-progress-wrap { background: rgba(0,0,0,0.08); border-radius: 6px; height: 5px; margin-top: 8px; overflow: hidden; }
+        .cx-ocr-progress-bar { background: var(--brand); height: 100%; transition: width .3s ease; }
+        .cx-mismatch-count { background: var(--danger-tint); color: var(--danger); font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 20px; }
+        .cx-source-tag { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-left: 8px; }
+        .cx-source-tag.ocr { background: var(--brand-tint); color: var(--brand-deep); }
+        .cx-source-tag.manual { background: var(--warn-tint); color: #8a4a12; }
+        .cx-parse-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; color: var(--ink); cursor: pointer; }
+        .cx-parse-btn:hover { border-color: var(--brand); color: var(--brand); }
+        .cx-parse-btn:disabled { opacity: .5; cursor: not-allowed; }
+        .cx-section-title { font-size: 13px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+        .cx-compare-row { display: grid; grid-template-columns: 1fr auto 1fr auto auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 8px; margin-bottom: 6px; background: var(--surface); border: 1px solid var(--line); }
+        .cx-compare-row.cx-match { border-color: var(--success); background: var(--success-tint); }
+        .cx-compare-row.cx-mismatch { border-color: var(--danger); background: var(--danger-tint); }
+        .cx-compare-col { min-width: 0; }
+        .cx-compare-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-soft); letter-spacing: .3px; display: flex; align-items: center; }
+        .cx-compare-val { font-size: 12.5px; font-weight: 600; color: var(--ink); word-break: break-word; }
+        .cx-compare-val.empty { color: var(--ink-soft); font-style: italic; font-weight: 400; }
+        .cx-divider { width: 1px; align-self: stretch; background: var(--line); }
+        .cx-match-pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+        .cx-match-pill.ok { background: var(--success); color: #fff; }
+        .cx-match-pill.no { background: var(--danger); color: #fff; }
+        .cx-match-pill.skip { background: var(--line); color: var(--ink-soft); }
+        .cx-value.empty { color: var(--ink-soft); font-style: italic; }
+
+        /* ===== TELEGRAM ===== */
+        .tg-info-box { background: var(--brand-tint); border: 1px solid #cfe0ef; border-radius: 10px; padding: 14px 18px; font-size: 12.5px; color: var(--brand-deep); line-height: 1.7; margin-bottom: 18px; }
+        .tg-settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+        .tg-hint { font-size: 11.5px; color: var(--ink-soft); margin-bottom: 10px; }
+        .tg-recipients-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+        .tg-recipient-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+        .tg-recipient-row input.tg-chat-id, .tg-recipient-row input.tg-label {
+            border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; font-size: 12.5px; font-family: inherit; background: var(--bg);
+        }
+        .tg-type-label { font-size: 11.5px; color: var(--ink-soft); display: flex; align-items: center; gap: 4px; cursor: pointer; }
+        .tg-remove-btn { border: none; background: var(--danger-tint); color: var(--danger); width: 28px; height: 28px; border-radius: 7px; cursor: pointer; margin-left: auto; }
+        .tg-add-btn { border: 1px dashed var(--line); background: transparent; color: var(--brand); font-weight: 600; font-size: 12.5px; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+        .tg-status.ok { color: var(--success); font-weight: 600; font-size: 12.5px; }
+        .tg-status.err { color: var(--danger); font-weight: 600; font-size: 12.5px; }
+        .tg-notif-log { margin-top: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; max-height: 160px; overflow-y: auto; font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+        .tg-notif-log p.ok { color: var(--success); margin: 2px 0; }
+        .tg-notif-log p.err { color: var(--danger); margin: 2px 0; }
+
+        @media (max-width: 760px) {
+            .tg-settings-grid { grid-template-columns: 1fr; }
+            .cx-compare-row { grid-template-columns: 1fr; }
+            .cx-divider { display: none; }
+        }
     </style>
 </head>
 <body>
@@ -1349,6 +1426,14 @@ let featuredIds = [];
 let jadwalList = [], editingJadwalId = null;
 let kbJamaahList = [], kbSelectedProgram = null, editingKbId = null;
 let deleteTarget = { table: null, id: null, name: '' };
+let adminSubTab = 'program';
+// ---- Crosscheck module state ----
+let cxSelectedProgram = null;
+let cxScanningIds = new Set(); // program id yang sedang di-OCR
+let cxOcrProgress = {}; // {progId: 0..100}
+// ---- Telegram module state ----
+let _tgConfigCache = null;
+const TG_REMINDER_KEY = 'amiru_tg_reminder_sent'; // { programId: 'YYYY-MM-DD' }
 
 // ============================================================
 // 3. UTILITY FUNCTIONS
@@ -1850,6 +1935,14 @@ function getAdminLoginBoxHtml() {
     </div>`;
 }
 
+function switchAdminSubTab(name) {
+    adminSubTab = name;
+    document.querySelectorAll('.admin-subtab-btn').forEach(b => b.classList.toggle('active', b.dataset.subtab === name));
+    document.querySelectorAll('.admin-subtab-panel').forEach(p => p.style.display = (p.id === 'adminSubTab-' + name) ? 'block' : 'none');
+    if (name === 'crosscheck') { renderCxProgramSelector(); if (cxSelectedProgram) renderCxPanel(cxSelectedProgram); }
+    if (name === 'telegram') { renderTgRecipients(); }
+}
+
 async function renderAdminPanel() {
     const container = document.getElementById('adminPanelBody');
     if (adminLoggedIn) {
@@ -1859,6 +1952,12 @@ async function renderAdminPanel() {
 
         container.innerHTML = `
             ${isAdmin ? `
+            <div class="admin-subtabs-bar">
+                <button class="admin-subtab-btn active" data-subtab="program" onclick="switchAdminSubTab('program')"><i class="fa-solid fa-kaaba"></i> Program</button>
+                <button class="admin-subtab-btn" data-subtab="crosscheck" onclick="switchAdminSubTab('crosscheck')"><i class="fa-solid fa-magnifying-glass-chart"></i> Crosscheck</button>
+                <button class="admin-subtab-btn" data-subtab="telegram" onclick="switchAdminSubTab('telegram')"><i class="fa-brands fa-telegram"></i> Telegram</button>
+            </div>
+            <div class="admin-subtab-panel" id="adminSubTab-program" style="display:block;">
             <div class="admin-toolbar">
                 <button class="btn-primary" onclick="showAdminForm()"><i class="fa-solid fa-plus"></i> Tambah Program</button>
                 <div class="admin-toolbar-right">
@@ -1945,6 +2044,16 @@ async function renderAdminPanel() {
                                 <input type="text" id="admin_hotel_madinah" placeholder="Nama hotel & bintang" maxlength="100">
                             </div>
                         </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Makan Makkah</label>
+                                <input type="text" id="admin_makan_makkah" placeholder="3x Sehari / 2x Sehari" maxlength="80">
+                            </div>
+                            <div class="form-group">
+                                <label>Makan Madinah</label>
+                                <input type="text" id="admin_makan_madinah" placeholder="3x Sehari / 2x Sehari" maxlength="80">
+                            </div>
+                        </div>
                     </div>
 
                     <div class="admin-fieldset">
@@ -2014,6 +2123,56 @@ async function renderAdminPanel() {
                         </thead>
                         <tbody id="adminTableBody"></tbody>
                     </table>
+                </div>
+            </div>
+            </div>
+
+            <div class="admin-subtab-panel" id="adminSubTab-crosscheck" style="display:none;">
+                <div class="admin-section-header">
+                    <div><h4><i class="fa-solid fa-magnifying-glass-chart"></i> Crosscheck Data Program</h4>
+                    <p>Poster dibaca otomatis (OCR) & dibandingkan dengan data teks program saat disimpan</p></div>
+                </div>
+                <div class="cx-label-sm">Pilih Program:</div>
+                <div class="cx-program-selector" id="cxProgramSelector"></div>
+                <div id="cxPanelContent">
+                    <div class="cx-empty"><i class="fa-solid fa-magnifying-glass-chart"></i><p>Pilih program di atas untuk melihat data crosscheck.</p></div>
+                </div>
+            </div>
+
+            <div class="admin-subtab-panel" id="adminSubTab-telegram" style="display:none;">
+                <div class="admin-section-header">
+                    <div><h4><i class="fa-brands fa-telegram"></i> Notifikasi Telegram</h4>
+                    <p>Kirim notifikasi otomatis ke grup/chat Telegram saat ada program/jadwal baru</p></div>
+                </div>
+                <div class="tg-info-box">
+                    <b>📌 Cara Setup:</b><br>
+                    1. Buat bot via <b>@BotFather</b> di Telegram → dapatkan <b>Bot Token</b><br>
+                    2. Tambahkan bot ke grup/chat yang diinginkan, jadikan <b>Admin</b><br>
+                    3. Dapatkan <b>Chat ID</b> via <code>@userinfobot</code> atau <code>https://api.telegram.org/bot[TOKEN]/getUpdates</code><br>
+                    4. Buat <b>Edge Function</b> di Supabase bernama <code>send-telegram</code> → isi URL-nya di bawah<br>
+                    5. Simpan konfigurasi → notifikasi otomatis aktif!
+                </div>
+                <div class="tg-settings-grid">
+                    <div class="form-group">
+                        <label>Bot Token</label>
+                        <input type="text" id="tg_bot_token" placeholder="1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ" style="font-family:'IBM Plex Mono',monospace;">
+                    </div>
+                    <div class="form-group">
+                        <label>Edge Function URL</label>
+                        <input type="url" id="tg_edge_url" placeholder="https://xxx.supabase.co/functions/v1/send-telegram" style="font-family:'IBM Plex Mono',monospace;">
+                    </div>
+                </div>
+                <div class="cx-label-sm">Penerima Notifikasi</div>
+                <p class="tg-hint">Centang jenis notifikasi yang diterima tiap penerima. <b>Pengingat 1 bulan</b> dikirim otomatis saat halaman dibuka.</p>
+                <div class="tg-recipients-list" id="tgRecipientsList"></div>
+                <button class="tg-add-btn" onclick="addTgRecipient()"><i class="fa-solid fa-plus"></i> Tambah Penerima</button>
+                <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;">
+                    <button class="btn-primary" onclick="saveTgConfig()"><i class="fa-solid fa-save"></i> Simpan Konfigurasi</button>
+                    <button class="btn-cancel" onclick="testTgNotif()"><i class="fa-solid fa-paper-plane"></i> Test Kirim</button>
+                </div>
+                <div id="tgStatusMsg" style="margin-top:12px;"></div>
+                <div class="tg-notif-log" id="tgNotifLog" style="display:none;">
+                    <p style="color:var(--ink-soft);font-size:11px;margin-bottom:6px;">▶ LOG PENGIRIMAN TELEGRAM:</p>
                 </div>
             </div>
             ` : getAdminLoginBoxHtml()}
@@ -2096,6 +2255,8 @@ function getAdminFormData() {
         harga_double: document.getElementById('admin_harga_double')?.value || '',
         hotel_makkah: document.getElementById('admin_hotel_makkah')?.value || '',
         hotel_madinah: document.getElementById('admin_hotel_madinah')?.value || '',
+        makan_makkah: document.getElementById('admin_makan_makkah')?.value || '',
+        makan_madinah: document.getElementById('admin_makan_madinah')?.value || '',
         link_poster: document.getElementById('admin_link_poster')?.value || '',
         link_itinerary: document.getElementById('admin_link_itinerary')?.value || '',
         link_metaads: document.getElementById('admin_link_metaads')?.value || '',
@@ -2118,6 +2279,8 @@ function setAdminFormData(data) {
     document.getElementById('admin_harga_double').value = data.harga_double || '';
     document.getElementById('admin_hotel_makkah').value = data.hotel_makkah || '';
     document.getElementById('admin_hotel_madinah').value = data.hotel_madinah || '';
+    document.getElementById('admin_makan_makkah').value = data.makan_makkah || '';
+    document.getElementById('admin_makan_madinah').value = data.makan_madinah || '';
     document.getElementById('admin_link_poster').value = data.link_poster || '';
     document.getElementById('admin_link_itinerary').value = data.link_itinerary || '';
     document.getElementById('admin_link_metaads').value = data.link_metaads || '';
@@ -2147,7 +2310,7 @@ async function saveAdminProgram() {
     if (!formData.teks_wa) formData.teks_wa = generateAutoWAText(formData);
 
     // Pack admin-only fields
-    const adminOnlyFields = ['harga_quad','harga_triple','harga_double','hotel_makkah','hotel_madinah','termasuk','tidak_termasuk','catatan_cx'];
+    const adminOnlyFields = ['harga_quad','harga_triple','harga_double','hotel_makkah','hotel_madinah','makan_makkah','makan_madinah','termasuk','tidak_termasuk','catatan_cx'];
     const adl = {};
     adminOnlyFields.forEach(f => { if (formData[f]) adl[f] = formData[f]; });
     const saveData = { ...formData };
@@ -2155,18 +2318,28 @@ async function saveAdminProgram() {
     if (Object.keys(adl).length > 0) saveData.admin_data_lengkap = JSON.stringify(adl);
 
     try {
+        const isEdit = !!editingProgramId;
         let result;
         if (editingProgramId) {
-            result = await supabaseClient.from('programs').update(saveData).eq('id', editingProgramId);
+            result = await supabaseClient.from('programs').update(saveData).eq('id', editingProgramId).select();
         } else {
-            result = await supabaseClient.from('programs').insert([saveData]);
+            result = await supabaseClient.from('programs').insert([saveData]).select();
         }
         if (result.error) throw result.error;
+        const savedRow = (result.data && result.data[0]) || (isEdit ? { id: editingProgramId } : null);
 
         showToast(editingProgramId ? 'Program berhasil diperbarui' : 'Program berhasil ditambahkan');
         hideAdminForm();
         await loadDataFromSupabase(true);
         await renderAdminPanel();
+
+        // Notifikasi Telegram otomatis (dinamis: hanya terkirim jika konfigurasi Telegram sudah diisi)
+        sendTelegramNotif(formatTgProgram(formData, isEdit), 'program');
+
+        // Crosscheck otomatis: kalau ada link poster, baca & bandingkan otomatis di background
+        if (saveData.link_poster && savedRow && savedRow.id) {
+            autoScanPosterForProgram(savedRow.id);
+        }
 
     } catch (err) {
         console.error('Save program error:', err);
@@ -2197,6 +2370,14 @@ async function deleteProgramById(id) {
     const { error } = await supabaseClient.from('programs').delete().eq('id', id);
     if (error) throw error;
     sessionStorage.removeItem(CACHE_KEY);
+}
+
+// Dipakai modul Crosscheck & Telegram untuk update parsial 1 program tanpa re-render penuh
+async function updateProgramById(id, patch) {
+    const { data, error } = await supabaseClient.from('programs').update(patch).eq('id', id).select();
+    if (error) throw error;
+    sessionStorage.removeItem(CACHE_KEY);
+    return data && data[0];
 }
 
 async function clearAllAdminData() {
@@ -2630,6 +2811,7 @@ async function saveJadwalTamu(e) {
         await loadJadwal();
         renderJadwalSection();
         updateMetrics();
+        sendTelegramNotif(formatTgJadwal(data, !!id), 'jadwal');
 
     } catch (err) {
         console.error('Save jadwal error:', err);
@@ -2869,6 +3051,290 @@ function downloadKuitansiPDF() {
 }
 
 // ============================================================
+// 21A. CROSSCHECK MODULE (OCR poster vs data teks)
+// ============================================================
+const CX_OCR_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/scan-poster-ocr`;
+
+async function cxRunOcr(progId, imageUrl, onProgress) {
+    onProgress(20);
+    const res = await fetch(CX_OCR_FUNCTION_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl }),
+    });
+    onProgress(80);
+    if (!res.ok) {
+        let detail = '';
+        try { detail = (await res.json()).error || ''; } catch (e) {}
+        throw new Error(detail || `Server OCR gagal (status ${res.status})`);
+    }
+    const data = await res.json();
+    if (!data || !data.fields) throw new Error('Respons OCR tidak valid.');
+    onProgress(100);
+    return data; // { fields: {...}, raw_text: "..." }
+}
+
+// Dipanggil otomatis tiap kali program (dengan link poster) disimpan
+async function autoScanPosterForProgram(progId) {
+    const prog = adminPrograms.find(p => String(p.id) === String(progId));
+    if (!prog || !prog.link_poster) return;
+    if (cxScanningIds.has(String(progId))) return;
+
+    cxScanningIds.add(String(progId));
+    cxOcrProgress[progId] = 0;
+    if (String(cxSelectedProgram) === String(progId)) renderCxPanel(progId);
+    renderCxProgramSelector();
+
+    try {
+        const result = await cxRunOcr(progId, prog.link_poster, (pct) => {
+            cxOcrProgress[progId] = pct;
+            if (String(cxSelectedProgram) === String(progId)) {
+                const bar = document.getElementById('cxOcrBar_' + progId);
+                if (bar) bar.style.width = pct + '%';
+            }
+        });
+
+        const parsed = { ...result.fields };
+        Object.keys(parsed).forEach(k => { if (!parsed[k]) delete parsed[k]; });
+        parsed._raw_ocr_text = (result.raw_text || '').slice(0, 4000);
+
+        const adl = (() => { try { return prog.admin_data_lengkap ? (typeof prog.admin_data_lengkap === 'string' ? JSON.parse(prog.admin_data_lengkap) : prog.admin_data_lengkap) : {}; } catch(e) { return {}; } })();
+        adl.poster_data = parsed;
+        adl.poster_data_source = 'ocr';
+        adl.poster_scanned_at = new Date().toISOString();
+
+        await updateProgramById(progId, { admin_data_lengkap: JSON.stringify(adl) });
+        const idx = adminPrograms.findIndex(p => String(p.id) === String(progId));
+        if (idx >= 0) adminPrograms[idx].admin_data_lengkap = JSON.stringify(adl);
+
+        const mismatchCount = cxCountMismatch(progId);
+        if (mismatchCount > 0) {
+            showToast(`⚠️ Crosscheck "${prog.nama}": ${mismatchCount} data tidak cocok dengan poster!`, 'error');
+        } else {
+            showToast(`✅ Crosscheck "${prog.nama}": semua data cocok dengan poster.`);
+        }
+    } catch (err) {
+        showToast('❌ Pembacaan poster gagal: ' + err.message, 'error');
+    } finally {
+        cxScanningIds.delete(String(progId));
+        delete cxOcrProgress[progId];
+        renderCxProgramSelector();
+        if (String(cxSelectedProgram) === String(progId)) renderCxPanel(progId);
+    }
+}
+
+function cxNormalizeHarga(str) {
+    if (!str) return '';
+    return String(str).replace(/[^0-9]/g, '');
+}
+function cxNormalizeMaskapai(str) {
+    return String(str || '').toLowerCase().trim().replace(/\b(airlines?|airways|air)\b/gi, '').replace(/\s+/g, ' ').trim();
+}
+function cxValuesMatch(field, a, b) {
+    if (!a || !b) return false;
+    if (field && field.indexOf('harga') === 0) {
+        const na = cxNormalizeHarga(a), nb = cxNormalizeHarga(b);
+        return na !== '' && na === nb;
+    }
+    if (field === 'maskapai') {
+        const na = cxNormalizeMaskapai(a), nb = cxNormalizeMaskapai(b);
+        if (!na || !nb) return false;
+        return na === nb || na.includes(nb) || nb.includes(na);
+    }
+    return a.toLowerCase().trim() === b.toLowerCase().trim();
+}
+
+function cxCountMismatch(progId) {
+    const prog = adminPrograms.find(p => String(p.id) === String(progId));
+    if (!prog) return 0;
+    const adl = (() => { try { return prog.admin_data_lengkap ? (typeof prog.admin_data_lengkap === 'string' ? JSON.parse(prog.admin_data_lengkap) : prog.admin_data_lengkap) : {}; } catch(e) { return {}; } })();
+    const pd = adl.poster_data || {};
+    const pairs = [
+        ['nama', prog.nama, pd.nama], ['tgl', prog.tgl, pd.tgl], ['durasi', prog.durasi, pd.durasi], ['maskapai', prog.maskapai, pd.maskapai],
+        ['harga_quint', prog.harga_quint, pd.harga_quint], ['harga_quad', adl.harga_quad, pd.harga_quad], ['harga_triple', adl.harga_triple, pd.harga_triple],
+        ['harga_double', adl.harga_double, pd.harga_double], ['hotel_makkah', adl.hotel_makkah, pd.hotel_makkah], ['hotel_madinah', adl.hotel_madinah, pd.hotel_madinah],
+    ];
+    return pairs.filter(([field, a, b]) => a && b && !cxValuesMatch(field, a, b)).length;
+}
+
+function renderCxProgramSelector() {
+    const sel = document.getElementById('cxProgramSelector');
+    if (!sel) return;
+    if (!adminPrograms || !adminPrograms.length) {
+        sel.innerHTML = '<div style="font-size:13px;color:var(--ink-soft);font-style:italic;">Belum ada program.</div>';
+        return;
+    }
+    sel.innerHTML = adminPrograms.map(p => {
+        const adl = (() => { try { return p.admin_data_lengkap ? (typeof p.admin_data_lengkap === 'string' ? JSON.parse(p.admin_data_lengkap) : p.admin_data_lengkap) : null; } catch(e) { return null; } })();
+        const hasData = adl && Object.keys(adl).length > 0;
+        const isActive = String(cxSelectedProgram) === String(p.id);
+        const isScanning = cxScanningIds.has(String(p.id));
+        const mismatchCount = adl && adl.poster_data ? cxCountMismatch(p.id) : 0;
+        return `<button class="cx-program-pill${isActive?' active':''}${mismatchCount>0?' has-warning':''}" onclick="selectCxProgram('${p.id}')">
+            ${escapeHtml(p.nama||'Program')}
+            ${isScanning ? '<i class="fa-solid fa-spinner fa-spin" style="color:var(--brand);font-size:9px;margin-left:2px;" title="Sedang scan poster..."></i>' : ''}
+            ${!isScanning && hasData ? '<i class="fa-solid fa-circle-check" style="color:var(--success);font-size:9px;margin-left:2px;" title="Ada data lengkap"></i>' : ''}
+            ${!isScanning && mismatchCount>0 ? `<i class="fa-solid fa-triangle-exclamation cx-pill-warn" title="${mismatchCount} data tidak cocok"></i>` : ''}
+        </button>`;
+    }).join('');
+}
+
+function selectCxProgram(id) {
+    cxSelectedProgram = id;
+    renderCxProgramSelector();
+    renderCxPanel(id);
+}
+
+function renderCxPanel(progId) {
+    const content = document.getElementById('cxPanelContent');
+    if (!content) return;
+    const prog = adminPrograms.find(p => String(p.id) === String(progId));
+    if (!prog) { content.innerHTML = '<div class="cx-empty"><i class="fa-solid fa-magnifying-glass-chart"></i><p>Program tidak ditemukan.</p></div>'; return; }
+    const adl = (() => { try { return prog.admin_data_lengkap ? (typeof prog.admin_data_lengkap === 'string' ? JSON.parse(prog.admin_data_lengkap) : prog.admin_data_lengkap) : {}; } catch(e) { return {}; } })();
+    const val = (v) => v ? escapeHtml(v) : '<span class="cx-value empty">—</span>';
+    const hasAdl = Object.keys(adl).length > 0;
+    const hasPoster = !!prog.link_poster;
+
+    const buildCompareRows = () => {
+        const rows = [
+            { label: 'Nama Program',  plain: prog.nama,        poster: null, field: 'nama' },
+            { label: 'Tanggal',       plain: prog.tgl,         poster: null, field: 'tgl' },
+            { label: 'Durasi',        plain: prog.durasi,      poster: null, field: 'durasi' },
+            { label: 'Maskapai',      plain: prog.maskapai,    poster: null, field: 'maskapai' },
+            { label: 'Harga Quint',   plain: prog.harga_quint, poster: null, field: 'harga_quint' },
+            { label: 'Harga Quad',    plain: adl.harga_quad,   poster: null, field: 'harga_quad' },
+            { label: 'Harga Triple',  plain: adl.harga_triple, poster: null, field: 'harga_triple' },
+            { label: 'Harga Double',  plain: adl.harga_double, poster: null, field: 'harga_double' },
+            { label: 'Hotel Makkah',  plain: adl.hotel_makkah, poster: null, field: 'hotel_makkah' },
+            { label: 'Hotel Madinah', plain: adl.hotel_madinah,poster: null, field: 'hotel_madinah' },
+        ];
+        const pd = (() => { try { return adl.poster_data ? (typeof adl.poster_data === 'string' ? JSON.parse(adl.poster_data) : adl.poster_data) : {}; } catch(e) { return {}; } })();
+        rows.forEach(r => { if (pd[r.field]) r.poster = pd[r.field]; });
+        return rows.map(r => {
+            const hasBoth = r.plain && r.poster;
+            const isMatch = hasBoth && cxValuesMatch(r.field, r.plain, r.poster);
+            const rowClass = hasBoth ? (isMatch ? 'cx-match' : 'cx-mismatch') : '';
+            const pill = hasBoth ? `<span class="cx-match-pill ${isMatch?'ok':'no'}">${isMatch?'✓ Cocok':'✗ Beda'}</span>` : `<span class="cx-match-pill skip">—</span>`;
+            return `<div class="cx-compare-row ${rowClass}">
+                <div class="cx-compare-col"><div class="cx-compare-label"><i class="fa-solid fa-file-lines"></i> Teks</div><div class="cx-compare-val ${r.plain?'':'empty'}">${r.plain ? escapeHtml(r.plain) : '—'}</div></div>
+                <div class="cx-divider"></div>
+                <div class="cx-compare-col"><div class="cx-compare-label"><i class="fa-solid fa-image"></i> Poster</div><div class="cx-compare-val ${r.poster?'':'empty'}">${r.poster ? escapeHtml(r.poster) : '—'}</div></div>
+                <div style="display:flex;align-items:center;padding-left:8px;"><div class="cx-compare-label" style="min-width:60px;">${escapeHtml(r.label)}</div></div>
+                ${pill}
+            </div>`;
+        }).join('');
+    };
+
+    const isScanning = cxScanningIds.has(String(progId));
+    const mismatchCount = adl.poster_data ? cxCountMismatch(progId) : 0;
+    const posterSource = adl.poster_data_source === 'ocr' ? 'ocr' : (adl.poster_data ? 'manual' : null);
+
+    content.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:700;color:var(--brand-deep);">${escapeHtml(prog.nama||'Program')}</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            ${mismatchCount > 0 ? `<span class="cx-mismatch-count"><i class="fa-solid fa-triangle-exclamation"></i> ${mismatchCount} tidak cocok</span>` : ''}
+            <button class="cx-parse-btn" onclick="openCxEditModal('${prog.id}')"><i class="fa-solid fa-edit"></i> Input Manual</button>
+            ${hasPoster ? `<button class="cx-parse-btn" onclick="autoScanPosterForProgram('${prog.id}')" ${isScanning?'disabled':''}><i class="fa-solid fa-${isScanning?'spinner fa-spin':'arrows-rotate'}"></i> ${isScanning?'Memindai...':'Scan Ulang Poster'}</button>` : ''}
+            ${hasPoster ? `<button class="cx-parse-btn" onclick="window.open('${escapeHtml(prog.link_poster)}','_blank')"><i class="fa-solid fa-image"></i> Lihat Poster</button>` : ''}
+        </div>
+    </div>
+    ${isScanning ? `
+    <div class="cx-status-bar scanning">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <div style="flex:1;">
+            <div>Membaca poster otomatis dengan AI (OCR)... bisa sampai ±20 detik.</div>
+            <div class="cx-ocr-progress-wrap"><div class="cx-ocr-progress-bar" id="cxOcrBar_${progId}" style="width:${cxOcrProgress[progId]||0}%;"></div></div>
+        </div>
+    </div>` : `
+    <div class="cx-status-bar ${mismatchCount > 0 ? 'warn' : (hasAdl ? 'ok' : 'missing')}">
+        <i class="fa-solid fa-${mismatchCount > 0 ? 'triangle-exclamation' : (hasAdl ? 'circle-check' : 'circle-info')}"></i>
+        ${mismatchCount > 0
+            ? `Ditemukan <b>${mismatchCount} field</b> yang tidak cocok antara data teks & poster.`
+            : (hasAdl ? 'Data lengkap tersedia. ' + (adl.poster_data ? 'Data poster sudah terbaca — semua cocok.' : (hasPoster ? 'Poster akan dibaca otomatis saat program disimpan, atau klik Scan Ulang Poster.' : 'Belum ada link poster.')) : 'Belum ada data lengkap.')}
+        ${posterSource ? `<span class="cx-source-tag ${posterSource}">${posterSource === 'ocr' ? 'Sumber: OCR otomatis' : 'Sumber: Input manual'}</span>` : ''}
+    </div>`}
+    ${adl.poster_data ? `
+    <div class="cx-section-title" style="margin-top:20px;"><i class="fa-solid fa-code-compare"></i> Perbandingan: Data Teks vs Poster</div>
+    <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Hijau = cocok &nbsp;·&nbsp; Merah = tidak sesuai${posterSource==='ocr' ? ' &nbsp;·&nbsp; Hasil OCR bisa salah baca, koreksi via Input Manual.' : ''}</div>
+    ${buildCompareRows()}` : ''}
+    `;
+}
+
+function openCxEditModal(progId) {
+    const prog = adminPrograms.find(p => String(p.id) === String(progId));
+    if (!prog) return;
+    const adl = (() => { try { return prog.admin_data_lengkap ? (typeof prog.admin_data_lengkap === 'string' ? JSON.parse(prog.admin_data_lengkap) : prog.admin_data_lengkap) : {}; } catch(e) { return {}; } })();
+    const pd = adl.poster_data || {};
+    let modal = document.getElementById('cxEditModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'cxEditModal';
+        modal.className = 'modal-overlay';
+        modal.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+        document.body.appendChild(modal);
+    }
+    const fields = [
+        { key: 'nama', label: 'Nama Program', val: pd.nama || prog.nama || '' },
+        { key: 'tgl', label: 'Tanggal', val: pd.tgl || prog.tgl || '' },
+        { key: 'durasi', label: 'Durasi', val: pd.durasi || prog.durasi || '' },
+        { key: 'maskapai', label: 'Maskapai', val: pd.maskapai || prog.maskapai || '' },
+        { key: 'harga_quint', label: 'Harga Quint', val: pd.harga_quint || prog.harga_quint || '' },
+        { key: 'harga_quad', label: 'Harga Quad', val: pd.harga_quad || adl.harga_quad || '' },
+        { key: 'harga_triple', label: 'Harga Triple', val: pd.harga_triple || adl.harga_triple || '' },
+        { key: 'harga_double', label: 'Harga Double', val: pd.harga_double || adl.harga_double || '' },
+        { key: 'hotel_makkah', label: 'Hotel Makkah', val: pd.hotel_makkah || adl.hotel_makkah || '' },
+        { key: 'hotel_madinah', label: 'Hotel Madinah', val: pd.hotel_madinah || adl.hotel_madinah || '' },
+    ];
+    modal.innerHTML = `
+    <div class="modal-content" style="max-width:600px;">
+        <div class="modal-header">
+            <h2>Input Data Poster</h2>
+            <button class="modal-close" onclick="document.getElementById('cxEditModal').classList.remove('open')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;">Ketik data yang tertera di poster untuk dibandingkan dengan data teks program.</p>
+            ${adl.poster_data_source === 'ocr' && pd._raw_ocr_text ? `
+            <details style="margin-bottom:16px;">
+                <summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--brand);">📄 Lihat teks mentah hasil OCR</summary>
+                <div style="margin-top:8px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px;font-size:11.5px;white-space:pre-wrap;max-height:140px;overflow-y:auto;">${escapeHtml(pd._raw_ocr_text)}</div>
+            </details>` : ''}
+            <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                ${fields.map(f => `<div class="form-group"><label>${escapeHtml(f.label)}</label><input type="text" id="cxp_${f.key}" value="${escapeHtml(f.val)}" placeholder="Dari poster..."></div>`).join('')}
+            </div>
+            <div class="form-actions" style="border-top:none;padding-top:14px;">
+                <button class="btn-submit" onclick="saveCxPosterData('${prog.id}')"><i class="fa-solid fa-save"></i> Simpan & Bandingkan</button>
+                <button class="btn-cancel" onclick="document.getElementById('cxEditModal').classList.remove('open')">Batal</button>
+            </div>
+        </div>
+    </div>`;
+    modal.classList.add('open');
+}
+
+async function saveCxPosterData(progId) {
+    const prog = adminPrograms.find(p => String(p.id) === String(progId));
+    if (!prog) return;
+    const adl = (() => { try { return prog.admin_data_lengkap ? (typeof prog.admin_data_lengkap === 'string' ? JSON.parse(prog.admin_data_lengkap) : prog.admin_data_lengkap) : {}; } catch(e) { return {}; } })();
+    const keys = ['nama','tgl','durasi','maskapai','harga_quint','harga_quad','harga_triple','harga_double','hotel_makkah','hotel_madinah'];
+    const pd = {};
+    keys.forEach(k => { const el = document.getElementById('cxp_' + k); if (el && el.value.trim()) pd[k] = el.value.trim(); });
+    adl.poster_data = pd;
+    adl.poster_data_source = 'manual';
+    adl.poster_scanned_at = new Date().toISOString();
+    try {
+        await updateProgramById(progId, { admin_data_lengkap: JSON.stringify(adl) });
+        const idx = adminPrograms.findIndex(p => String(p.id) === String(progId));
+        if (idx >= 0) adminPrograms[idx].admin_data_lengkap = JSON.stringify(adl);
+        document.getElementById('cxEditModal').classList.remove('open');
+        renderCxProgramSelector();
+        renderCxPanel(progId);
+        showToast('✅ Data poster disimpan — crosscheck siap!');
+    } catch (err) {
+        showToast('❌ Gagal simpan: ' + err.message, 'error');
+    }
+}
+
+// ============================================================
 // 21. FEATURED PROGRAMS
 // ============================================================
 async function loadFeaturedIds() {
@@ -2901,6 +3367,238 @@ function renderFeaturedSection() {
             <div class="fc-meta" style="margin-top:4px;">${escapeHtml(p.maskapai || '')} • ${escapeHtml(p.durasi || '')}</div>
         </div>
     `).join('');
+}
+
+// ============================================================
+// 21B. TELEGRAM MODULE
+// ============================================================
+async function getTgConfig() {
+    if (_tgConfigCache) return _tgConfigCache;
+    try {
+        const { data, error } = await supabaseClient.from('tg_config').select('key, value');
+        if (error || !data || !data.length) return {};
+        const cfg = {};
+        data.forEach(row => { try { cfg[row.key] = JSON.parse(row.value); } catch { cfg[row.key] = row.value; } });
+        _tgConfigCache = cfg;
+        return cfg;
+    } catch { return {}; }
+}
+
+async function saveTgConfig() {
+    const botToken = document.getElementById('tg_bot_token')?.value.trim();
+    const edgeUrl  = document.getElementById('tg_edge_url')?.value.trim();
+    if (!botToken) { showTgStatus('❌ Bot Token wajib diisi', 'err'); return; }
+    if (!edgeUrl)  { showTgStatus('❌ Edge Function URL wajib diisi', 'err'); return; }
+    const recipients = collectTgRecipients();
+    if (!recipients.length) { showTgStatus('❌ Tambahkan minimal 1 penerima', 'err'); return; }
+    showTgStatus('⏳ Menyimpan...', 'ok');
+    try {
+        const rows = [
+            { key: 'botToken', value: botToken },
+            { key: 'edgeUrl', value: edgeUrl },
+            { key: 'recipients', value: JSON.stringify(recipients) },
+        ];
+        const { error } = await supabaseClient.from('tg_config').upsert(rows, { onConflict: 'key' });
+        if (error) throw error;
+        _tgConfigCache = null;
+        showTgStatus('✅ Konfigurasi tersimpan!', 'ok');
+    } catch (err) {
+        showTgStatus('❌ Gagal simpan: ' + err.message, 'err');
+    }
+}
+
+function collectTgRecipients() {
+    const rows = document.querySelectorAll('.tg-recipient-row');
+    const result = [];
+    rows.forEach(row => {
+        const chatId = row.querySelector('.tg-chat-id')?.value.trim();
+        const label  = row.querySelector('.tg-label')?.value.trim();
+        const types  = [...row.querySelectorAll('.tg-type-check:checked')].map(c => c.value);
+        if (chatId) result.push({ chatId, label: label || chatId, types });
+    });
+    return result;
+}
+
+async function renderTgRecipients() {
+    const list = document.getElementById('tgRecipientsList');
+    if (!list) return;
+    list.innerHTML = '<p style="color:var(--ink-soft);font-size:12px;">⏳ Memuat konfigurasi...</p>';
+    const cfg = await getTgConfig();
+    const tokenInput = document.getElementById('tg_bot_token');
+    const edgeInput  = document.getElementById('tg_edge_url');
+    if (tokenInput && cfg.botToken) tokenInput.value = cfg.botToken;
+    if (edgeInput  && cfg.edgeUrl)  edgeInput.value  = cfg.edgeUrl;
+    const recipients = typeof cfg.recipients === 'string' ? JSON.parse(cfg.recipients) : (cfg.recipients || []);
+    list.innerHTML = '';
+    if (!recipients.length) { addTgRecipient(); return; }
+    recipients.forEach(r => addTgRecipientRow(r));
+}
+
+function addTgRecipient() {
+    addTgRecipientRow({ chatId: '', label: '', types: ['program', 'jadwal', 'reminder'] });
+}
+
+function addTgRecipientRow(r) {
+    const list = document.getElementById('tgRecipientsList');
+    if (!list) return;
+    const row = document.createElement('div');
+    row.className = 'tg-recipient-row';
+    const typeOpts = [
+        { val: 'program', label: '📦 Program Baru' },
+        { val: 'jadwal', label: '📅 Jadwal Tamu' },
+        { val: 'reminder', label: '🔔 Pengingat 1 Bulan' },
+    ];
+    row.innerHTML = `
+        <input class="tg-chat-id" placeholder="Chat ID (mis: -1001234567890)" value="${escapeHtml(r.chatId||'')}">
+        <input class="tg-label" placeholder="Label (mis: Grup Admin)" value="${escapeHtml(r.label||'')}">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            ${typeOpts.map(t => `<label class="tg-type-label"><input type="checkbox" class="tg-type-check" value="${t.val}" ${(r.types||[]).includes(t.val)?'checked':''}> ${t.label}</label>`).join('')}
+        </div>
+        <button class="tg-remove-btn" onclick="this.closest('.tg-recipient-row').remove()" title="Hapus penerima"><i class="fa-solid fa-times"></i></button>`;
+    list.appendChild(row);
+}
+
+function showTgStatus(msg, type) {
+    const el = document.getElementById('tgStatusMsg');
+    if (!el) return;
+    el.innerHTML = `<span class="tg-status ${type}">${escapeHtml(msg)}</span>`;
+    setTimeout(() => { if (el) el.innerHTML = ''; }, 4000);
+}
+
+function logTg(msg, ok = true) {
+    const log = document.getElementById('tgNotifLog');
+    if (!log) return;
+    log.style.display = 'block';
+    const p = document.createElement('p');
+    p.className = ok ? 'ok' : 'err';
+    p.textContent = '[' + new Date().toLocaleTimeString('id-ID') + '] ' + msg;
+    log.appendChild(p);
+    log.scrollTop = log.scrollHeight;
+}
+
+async function sendTelegramNotif(message, eventType = 'program') {
+    const cfg = await getTgConfig();
+    if (!cfg.botToken || !cfg.edgeUrl) return; // belum dikonfigurasi -> lewati diam-diam
+    const recipients = typeof cfg.recipients === 'string' ? JSON.parse(cfg.recipients) : (cfg.recipients || []);
+    const targets = recipients.filter(r => (r.types || []).includes(eventType));
+    if (!targets.length) return;
+    for (const target of targets) {
+        try {
+            const res = await fetch(cfg.edgeUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bot_token: cfg.botToken, chat_id: target.chatId, message, parse_mode: 'HTML' })
+            });
+            const result = await res.json().catch(() => ({}));
+            if (res.ok && result.ok !== false) logTg('✅ Terkirim ke ' + target.label, true);
+            else logTg('❌ Gagal ke ' + target.label + ': ' + (result.description || res.status), false);
+        } catch (err) {
+            logTg('❌ Error ke ' + target.label + ': ' + err.message, false);
+        }
+    }
+}
+
+function formatTgProgram(data, isEdit = false) {
+    const icon = isEdit ? '✏️' : '🆕';
+    const action = isEdit ? 'diperbarui' : 'ditambahkan';
+    return `${icon} <b>Program Umroh ${action}!</b>
+
+🕌 <b>${escapeHtml(data.nama||'-')}</b>
+📅 Berangkat: ${escapeHtml(data.tgl||'-')}
+⏳ Durasi: ${escapeHtml(data.durasi||'-')}
+✈️ Maskapai: ${escapeHtml(data.maskapai||'-')}
+💰 Harga: ${escapeHtml(data.harga_quint||'-')}
+
+📌 <i>PT Amiru Haramain Indonesia</i>
+🕐 ${new Date().toLocaleString('id-ID')}`;
+}
+
+function formatTgJadwal(entry, isEdit = false) {
+    const icon = isEdit ? '✏️' : '📅';
+    const action = isEdit ? 'diperbarui' : 'baru';
+    const tglFormatted = entry.tgl
+        ? new Date(entry.tgl).toLocaleDateString('id-ID', {weekday:'long',day:'numeric',month:'long',year:'numeric'})
+        : '-';
+    return `${icon} <b>Jadwal Tamu ${action}!</b>
+
+👤 <b>${escapeHtml(entry.nama||'-')}</b>
+🏠 Asal: ${escapeHtml(entry.asal||'-')}
+📅 Tanggal: ${tglFormatted}
+🕐 Jam: ${escapeHtml(entry.jam||'belum ditentukan')}
+👥 Jumlah: ${entry.jumlah ? entry.jumlah + ' orang' : '-'}
+💼 Keperluan: ${escapeHtml(entry.keperluan||'-')}${entry.catatan ? '\n📝 Catatan: '+escapeHtml(entry.catatan) : ''}
+
+📌 <i>PT Amiru Haramain Indonesia</i>`;
+}
+
+function formatTgReminder(data, sisaHari) {
+    const urgency = sisaHari <= 7 ? '🚨' : sisaHari <= 14 ? '⚠️' : '🔔';
+    return `${urgency} <b>PENGINGAT — Program Hampir Berangkat!</b>
+
+🕌 <b>${escapeHtml(data.nama||'-')}</b>
+📅 Tanggal Berangkat: ${escapeHtml(data.tgl||'-')}
+⏰ <b>Sisa ${sisaHari} hari lagi!</b>
+⏳ Durasi: ${escapeHtml(data.durasi||'-')}
+✈️ Maskapai: ${escapeHtml(data.maskapai||'-')}
+💰 Harga: ${escapeHtml(data.harga_quint||'-')}
+
+📌 <i>PT Amiru Haramain Indonesia</i>
+🕐 ${new Date().toLocaleString('id-ID')}`;
+}
+
+async function checkAndSendReminders() {
+    const cfg = await getTgConfig();
+    if (!cfg.botToken || !cfg.edgeUrl) return;
+    const recipients = typeof cfg.recipients === 'string' ? JSON.parse(cfg.recipients) : (cfg.recipients || []);
+    const targets = recipients.filter(r => (r.types||[]).includes('reminder'));
+    if (!targets.length) return;
+    if (!dataUmroh || !dataUmroh.length) return;
+
+    let sentLog = {};
+    try {
+        const { data } = await supabaseClient.from('tg_config').select('value').eq('key', TG_REMINDER_KEY).single();
+        if (data) sentLog = JSON.parse(data.value);
+    } catch {}
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const todayStr = today.toISOString().split('T')[0];
+    let changed = false;
+
+    for (const prog of dataUmroh) {
+        if (!prog.tgl) continue;
+        const tglBerangkat = parseDateFromString(prog.tgl);
+        if (!tglBerangkat || isNaN(tglBerangkat.getTime())) continue;
+        tglBerangkat.setHours(0,0,0,0);
+        const sisaMs = tglBerangkat - today;
+        const sisaHari = Math.ceil(sisaMs / (1000 * 60 * 60 * 24));
+        if (sisaHari < 0 || sisaHari > 30) continue;
+
+        const key = String(prog.id);
+        if (sentLog[key] === todayStr) continue;
+
+        const msg = formatTgReminder(prog, sisaHari);
+        await sendTelegramNotif(msg, 'reminder');
+        sentLog[key] = todayStr;
+        changed = true;
+    }
+
+    if (changed) {
+        await supabaseClient.from('tg_config').upsert([{ key: TG_REMINDER_KEY, value: JSON.stringify(sentLog) }], { onConflict: 'key' });
+    }
+}
+
+async function testTgNotif() {
+    await saveTgConfig();
+    const waktu = new Date().toLocaleString('id-ID');
+    const msgProgram = `🧪 <b>TEST — Program Baru</b>\n\n🕌 <b>Contoh: Umroh Ramadhan</b>\n📅 Berangkat: 01 Maret 2027\n⏳ Durasi: 9 Hari\n✈️ Maskapai: Saudia Airlines\n💰 Harga: Rp 34.500.000\n\n📌 <i>PT Amiru Haramain Indonesia</i>\n🕐 ${waktu}`;
+    const msgJadwal = `🧪 <b>TEST — Jadwal Tamu Baru</b>\n\n👤 <b>H. Budi Santoso</b>\n🏠 Asal: Ponorogo\n📅 Tanggal: Senin, 27 Januari 2027\n🕐 Jam: 09:00\n👥 Jumlah: 3 orang\n💼 Keperluan: Konsultasi Paket Umroh\n\n📌 <i>PT Amiru Haramain Indonesia</i>`;
+    const msgReminder = `🔔 <b>TEST — Pengingat Program</b>\n\n🕌 <b>Umroh Spesial Akbar</b>\n📅 Tanggal Berangkat: 15 Februari 2027\n⏰ <b>Sisa 20 hari lagi!</b>\n\n📌 <i>PT Amiru Haramain Indonesia</i>\n🕐 ${waktu}`;
+
+    showTgStatus('⏳ Mengirim test...', 'ok');
+    await sendTelegramNotif(msgProgram, 'program');
+    await sendTelegramNotif(msgJadwal, 'jadwal');
+    await sendTelegramNotif(msgReminder, 'reminder');
+    showTgStatus('✅ Test selesai! Cek log di bawah.', 'ok');
 }
 
 // ============================================================
@@ -2938,6 +3636,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const key = th.getAttribute('data-sort');
         if (key) th.onclick = () => sortTable(key);
     });
+
+    // Cek & kirim pengingat Telegram untuk program yang berangkat ≤30 hari lagi (1x/hari)
+    setTimeout(() => checkAndSendReminders(), 2000);
 });
 
 // ============================================================
