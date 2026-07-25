@@ -53,6 +53,9 @@
             <button class="nav-item nav-loggedin-only" data-tab="keberangkatan" style="display:none;">
                 <i class="fa-solid fa-plane-departure"></i> Keberangkatan
             </button>
+            <button class="nav-item nav-loggedin-only" data-tab="pembayaran" style="display:none;">
+                <i class="fa-solid fa-money-bill-wave"></i> Pembayaran &amp; Cicilan
+            </button>
 
             <div class="nav-label nav-admin-only" style="display:none;">Manajemen</div>
             <button class="nav-item nav-admin-only" data-subtab="program" style="display:none;" onclick="openAdminPanel('program')">
@@ -157,6 +160,9 @@
                 <button class="tab-btn nav-loggedin-only" data-tab="keberangkatan" style="display:none;">
                     <i class="fa-solid fa-plane-departure"></i> <span>Keberangkatan</span>
                 </button>
+                <button class="tab-btn nav-loggedin-only" data-tab="pembayaran" style="display:none;">
+                    <i class="fa-solid fa-money-bill-wave"></i> <span>Pembayaran &amp; Cicilan</span>
+                </button>
             </div>
 
             <div class="tab-panels">
@@ -225,6 +231,22 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- TAB: Pembayaran & Cicilan -->
+                <div class="tab-panel" id="tab-pembayaran">
+                    <div class="kb-program-selector" id="pmbProgramSelector">
+                        <select id="pmbProgramSelect" onchange="selectPmbProgram(this.value)">
+                            <option value="">-- Pilih Program --</option>
+                        </select>
+                    </div>
+                    <div id="pmbSummary"></div>
+                    <div id="pmbContent">
+                        <div class="kb-no-program">
+                            <i class="fa-solid fa-money-bill-wave"></i>
+                            <p>Pilih program di atas untuk memantau pembayaran jamaah.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -268,6 +290,9 @@
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="keberangkatan" style="display:none;" onclick="switchTab('keberangkatan'); toggleMobileSidebar();">
                 <i class="fa-solid fa-plane-departure"></i> Keberangkatan
+            </button>
+            <button class="nav-item nav-loggedin-only" data-tab="pembayaran" style="display:none;" onclick="switchTab('pembayaran'); toggleMobileSidebar();">
+                <i class="fa-solid fa-money-bill-wave"></i> Pembayaran &amp; Cicilan
             </button>
 
             <div class="nav-label nav-admin-only" style="display:none;">Manajemen</div>
@@ -419,6 +444,57 @@
                 <div class="form-actions">
                     <button type="submit" class="btn-submit"><i class="fa-solid fa-save"></i> Simpan</button>
                     <button type="button" class="btn-cancel" onclick="closeKbModal()">Batal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL: KELOLA CICILAN JAMAAH ===== -->
+<div class="modal-overlay" id="cicilanModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-money-bill-wave"></i> <span id="cicilanModalTitle">Kelola Cicilan</span></h2>
+            <button class="modal-close" onclick="closeCicilanModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="cicilanRingkasan" style="background:var(--brand-tint);border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:13px;line-height:1.8;"></div>
+
+            <div style="margin-bottom:16px;">
+                <div style="font-weight:700;font-size:12px;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px;">Riwayat Pembayaran</div>
+                <div id="cicilanHistoryList" style="max-height:220px;overflow-y:auto;"></div>
+            </div>
+
+            <form id="cicilanForm" onsubmit="saveCicilan(event)">
+                <input type="hidden" id="cic_jamaahId" value="">
+                <div style="font-weight:700;font-size:12px;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px;">Tambah Pembayaran</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tanggal <span class="required">*</span></label>
+                        <input type="date" id="cic_tanggal" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Jumlah (Rp) <span class="required">*</span></label>
+                        <input type="number" id="cic_jumlah" placeholder="5000000" min="1" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Metode</label>
+                        <select id="cic_metode">
+                            <option value="Transfer">Transfer</option>
+                            <option value="Cash">Cash / Tunai</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Keterangan</label>
+                        <input type="text" id="cic_keterangan" placeholder="Cicilan ke-2, dsb (opsional)">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit"><i class="fa-solid fa-plus"></i> Tambah Pembayaran</button>
+                    <button type="button" class="btn-cancel" onclick="closeCicilanModal()">Tutup</button>
                 </div>
             </form>
         </div>

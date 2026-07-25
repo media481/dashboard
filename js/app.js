@@ -33,6 +33,8 @@ let loginAttempts = 0, loginLockTime = 0;
 let featuredIds = [];
 let jadwalList = [], editingJadwalId = null;
 let kbJamaahList = [], kbSelectedProgram = null, editingKbId = null;
+let pmbSelectedProgram = null, pmbJamaahHarga = {}; // {jamaahId: hargaProgramNumber} cache per render
+let cicilanList = [], cicilanJamaahId = null;
 let deleteTarget = { table: null, id: null, name: '' };
 let adminSubTab = 'program';
 // ---- Crosscheck module state ----
@@ -110,6 +112,15 @@ function parseDateFromString(dateStr) {
         }
     }
     return new Date(dateStr);
+}
+
+// Ubah teks harga (mis. "Rp 32.500.000", "32500000", atau angka) jadi number murni.
+// Dipakai untuk menghitung sisa tagihan di fitur Pembayaran & Cicilan.
+function parseRupiahToNumber(val) {
+    if (val === null || val === undefined || val === '') return 0;
+    if (typeof val === 'number') return val;
+    const digits = String(val).replace(/[^\d]/g, '');
+    return digits ? parseInt(digits, 10) : 0;
 }
 
 function formatRupiah(amount) {
@@ -206,6 +217,7 @@ function switchTab(tabId) {
     });
     if (tabId === 'info') renderJadwalSection();
     if (tabId === 'keberangkatan') renderKbProgramSelector();
+    if (tabId === 'pembayaran') renderPmbProgramSelector();
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1851,6 +1863,297 @@ async function saveKbJamaah(e) {
     } catch (err) {
         console.error('Save keberangkatan error:', err);
         showToast('Gagal menyimpan: ' + err.message, 'error');
+    }
+}
+
+// ============================================================
+// 19B. PEMBAYARAN & CICILAN JAMAAH
+// ============================================================
+function renderPmbProgramSelector() {
+    const select = document.getElementById('pmbProgramSelect');
+    if (!select) return;
+
+    if (!dataUmroh || dataUmroh.length === 0) {
+        select.innerHTML = '<option value="">-- Belum ada program --</option>';
+        return;
+    }
+
+    const currentVal = select.value;
+    select.innerHTML = '<option value="">-- Pilih Program --</option>' +
+        dataUmroh.map(p => `<option value="${p.id}">${escapeHtml(p.nama)} (${escapeHtml(p.tgl || '-')})</option>`).join('');
+    if (currentVal) select.value = currentVal;
+
+    if (select.value) loadPembayaranForProgram(select.value);
+}
+
+function selectPmbProgram(id) {
+    document.getElementById('pmbProgramSelect').value = id;
+    loadPembayaranForProgram(id);
+}
+
+async function loadPembayaranForProgram(programId) {
+    pmbSelectedProgram = programId || null;
+    const container = document.getElementById('pmbContent');
+    const summaryEl = document.getElementById('pmbSummary');
+    summaryEl.innerHTML = '';
+
+    if (!programId) {
+        container.innerHTML = `<div class="kb-no-program"><i class="fa-solid fa-money-bill-wave"></i><p>Pilih program di atas untuk memantau pembayaran jamaah.</p></div>`;
+        return;
+    }
+
+    const program = dataUmroh.find(p => String(p.id) === String(programId));
+    const hargaProgram = parseRupiahToNumber(program ? program.harga_quint : 0);
+
+    try {
+        const { data: jamaahData, error: jErr } = await withRetry(
+            () => supabaseClient.from('kb_jamaah').select('*').eq('program_id', programId).order('nama', { ascending: true }),
+            { label: 'Muat data jamaah' }
+        );
+        if (jErr) throw jErr;
+        const jamaah = jamaahData || [];
+
+        if (!jamaah.length) {
+            container.innerHTML = `<div class="kb-no-program"><i class="fa-solid fa-user-slash"></i><p>Belum ada jamaah terdaftar untuk program ini.</p></div>`;
+            return;
+        }
+
+        const jamaahIds = jamaah.map(j => j.id);
+        const { data: bayarData, error: bErr } = await withRetry(
+            () => supabaseClient.from('pembayaran_jamaah').select('jamaah_id, jumlah').in('jamaah_id', jamaahIds),
+            { label: 'Muat data pembayaran' }
+        );
+        if (bErr) throw bErr;
+
+        const totalPerJamaah = {};
+        (bayarData || []).forEach(b => {
+            totalPerJamaah[b.jamaah_id] = (totalPerJamaah[b.jamaah_id] || 0) + Number(b.jumlah || 0);
+        });
+
+        let grandTotalTagihan = 0, grandTotalDibayar = 0;
+
+        const rows = jamaah.map(j => {
+            const dibayar = totalPerJamaah[j.id] || 0;
+            const sisa = Math.max(hargaProgram - dibayar, 0);
+            const pct = hargaProgram > 0 ? Math.min(100, Math.round((dibayar / hargaProgram) * 100)) : 0;
+            grandTotalTagihan += hargaProgram;
+            grandTotalDibayar += dibayar;
+
+            let statusLabel, statusClass;
+            if (hargaProgram > 0 && dibayar >= hargaProgram) { statusLabel = '✅ Lunas'; statusClass = 'available'; }
+            else if (dibayar > 0) { statusLabel = '🔄 Cicilan'; statusClass = 'limited'; }
+            else { statusLabel = '⏳ Belum Bayar'; statusClass = 'full'; }
+
+            return `
+                <tr style="border-bottom:1px solid var(--line);">
+                    <td style="padding:10px 14px;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
+                    <td style="padding:10px 14px;white-space:nowrap;">${formatRupiah(hargaProgram)}</td>
+                    <td style="padding:10px 14px;white-space:nowrap;color:var(--success);font-weight:600;">${formatRupiah(dibayar)}</td>
+                    <td style="padding:10px 14px;white-space:nowrap;color:${sisa > 0 ? 'var(--danger)' : 'var(--ink-soft)'};font-weight:600;">${formatRupiah(sisa)}</td>
+                    <td style="padding:10px 14px;min-width:110px;">
+                        <div style="background:var(--line);border-radius:6px;height:8px;overflow:hidden;">
+                            <div style="background:var(--brand);height:100%;width:${pct}%;"></div>
+                        </div>
+                        <span style="font-size:10px;color:var(--ink-soft);">${pct}%</span>
+                    </td>
+                    <td style="padding:10px 14px;"><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                    <td style="padding:10px 14px;">
+                        <button class="btn-primary" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${j.id}')">
+                            <i class="fa-solid fa-money-bill-wave"></i> Kelola
+                        </button>
+                    </td>
+                </tr>`;
+        }).join('');
+
+        const grandSisa = Math.max(grandTotalTagihan - grandTotalDibayar, 0);
+        summaryEl.innerHTML = `
+            <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+                <span class="status-badge available">Total Tagihan: ${formatRupiah(grandTotalTagihan)}</span>
+                <span class="status-badge available">Total Dibayar: ${formatRupiah(grandTotalDibayar)}</span>
+                <span class="status-badge ${grandSisa > 0 ? 'full' : 'available'}">Sisa: ${formatRupiah(grandSisa)}</span>
+            </div>`;
+
+        container.innerHTML = `
+            <div class="table-container" style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead style="background:var(--bg);">
+                        <tr>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Nama</th>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Harga Program</th>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Dibayar</th>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Sisa</th>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Progress</th>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Status</th>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>`;
+
+        if (!hargaProgram) {
+            summaryEl.innerHTML += `<div style="font-size:12px;color:var(--warn);margin-bottom:10px;"><i class="fa-solid fa-triangle-exclamation"></i> Harga program ini belum diisi, sisa tagihan tidak bisa dihitung akurat.</div>`;
+        }
+
+    } catch (err) {
+        console.error('Load pembayaran error:', err);
+        container.innerHTML = `<div class="kb-no-program" style="color:var(--danger);">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <p>Gagal memuat data pembayaran — periksa koneksi internet.</p>
+        </div>`;
+    }
+}
+
+async function openCicilanModal(jamaahId) {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengelola pembayaran', 'error'); return; }
+    cicilanJamaahId = jamaahId;
+    const modal = document.getElementById('cicilanModal');
+    document.getElementById('cicilanForm').reset();
+    document.getElementById('cic_jamaahId').value = jamaahId;
+    document.getElementById('cic_tanggal').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('cicilanHistoryList').innerHTML = '<div style="padding:12px;color:var(--ink-soft);font-size:12px;">Memuat riwayat...</div>';
+    document.getElementById('cicilanRingkasan').innerHTML = '';
+    modal.classList.add('open');
+    await loadCicilanHistory(jamaahId);
+}
+
+function closeCicilanModal() {
+    document.getElementById('cicilanModal').classList.remove('open');
+    cicilanJamaahId = null;
+}
+
+async function loadCicilanHistory(jamaahId) {
+    try {
+        const { data: jamaahRow, error: jErr } = await withRetry(
+            () => supabaseClient.from('kb_jamaah').select('*').eq('id', jamaahId).single(),
+            { label: 'Muat data jamaah' }
+        );
+        if (jErr) throw jErr;
+
+        const program = dataUmroh.find(p => String(p.id) === String(jamaahRow.program_id));
+        const hargaProgram = parseRupiahToNumber(program ? program.harga_quint : 0);
+
+        const { data, error } = await withRetry(
+            () => supabaseClient.from('pembayaran_jamaah').select('*').eq('jamaah_id', jamaahId).order('tanggal', { ascending: false }),
+            { label: 'Muat riwayat cicilan' }
+        );
+        if (error) throw error;
+        cicilanList = data || [];
+
+        document.getElementById('cicilanModalTitle').textContent = 'Kelola Cicilan — ' + (jamaahRow.nama || '');
+
+        const totalDibayar = cicilanList.reduce((sum, c) => sum + Number(c.jumlah || 0), 0);
+        const sisa = Math.max(hargaProgram - totalDibayar, 0);
+        document.getElementById('cicilanRingkasan').innerHTML = `
+            <div><strong>Harga Program:</strong> ${formatRupiah(hargaProgram)}</div>
+            <div><strong>Total Dibayar:</strong> <span style="color:var(--success);">${formatRupiah(totalDibayar)}</span></div>
+            <div><strong>Sisa Tagihan:</strong> <span style="color:${sisa > 0 ? 'var(--danger)' : 'var(--success)'};">${formatRupiah(sisa)}</span></div>`;
+
+        renderCicilanHistory();
+
+    } catch (err) {
+        console.error('Load cicilan history error:', err);
+        document.getElementById('cicilanHistoryList').innerHTML = `<div style="padding:12px;color:var(--danger);font-size:12px;">Gagal memuat riwayat pembayaran.</div>`;
+    }
+}
+
+function renderCicilanHistory() {
+    const listEl = document.getElementById('cicilanHistoryList');
+    if (!cicilanList.length) {
+        listEl.innerHTML = `<div style="padding:12px;color:var(--ink-soft);font-size:12px;">Belum ada pembayaran tercatat.</div>`;
+        return;
+    }
+    listEl.innerHTML = cicilanList.map(c => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line);font-size:12.5px;">
+            <div>
+                <strong>${formatRupiah(Number(c.jumlah || 0))}</strong>
+                <span style="color:var(--ink-soft);"> — ${escapeHtml(c.tanggal || '-')}${c.metode ? ' · ' + escapeHtml(c.metode) : ''}</span>
+                ${c.keterangan ? `<br><span style="color:var(--ink-soft);font-size:11px;">${escapeHtml(c.keterangan)}</span>` : ''}
+            </div>
+            <button type="button" onclick="deleteCicilan('${c.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;" title="Hapus pembayaran ini">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        </div>`).join('');
+}
+
+async function saveCicilan(e) {
+    e.preventDefault();
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengelola pembayaran', 'error'); return; }
+    const jamaahId = document.getElementById('cic_jamaahId').value;
+    const tanggal = document.getElementById('cic_tanggal').value;
+    const jumlah = parseInt(document.getElementById('cic_jumlah').value, 10);
+    const metode = document.getElementById('cic_metode').value;
+    const keterangan = document.getElementById('cic_keterangan').value.trim();
+
+    if (!jamaahId) { showToast('Data jamaah tidak valid', 'error'); return; }
+    if (!tanggal) { showToast('Tanggal wajib diisi', 'error'); return; }
+    if (!jumlah || jumlah <= 0) { showToast('Jumlah pembayaran wajib diisi', 'error'); return; }
+
+    try {
+        const { error } = await supabaseClient.from('pembayaran_jamaah').insert([{ jamaah_id: jamaahId, tanggal, jumlah, metode, keterangan }]);
+        if (error) throw error;
+
+        showToast('Pembayaran berhasil dicatat');
+        document.getElementById('cicilanForm').reset();
+        document.getElementById('cic_jamaahId').value = jamaahId;
+        document.getElementById('cic_tanggal').value = new Date().toISOString().slice(0, 10);
+
+        await syncJamaahStatus(jamaahId);
+        await loadCicilanHistory(jamaahId);
+        if (pmbSelectedProgram) await loadPembayaranForProgram(pmbSelectedProgram);
+
+    } catch (err) {
+        console.error('Save cicilan error:', err);
+        showToast('Gagal menyimpan pembayaran: ' + err.message, 'error');
+    }
+}
+
+async function deleteCicilan(id) {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menghapus pembayaran', 'error'); return; }
+    if (!confirm('Hapus catatan pembayaran ini?')) return;
+
+    try {
+        const { error } = await supabaseClient.from('pembayaran_jamaah').delete().eq('id', id);
+        if (error) throw error;
+
+        showToast('Pembayaran berhasil dihapus');
+        const jamaahId = cicilanJamaahId;
+        await syncJamaahStatus(jamaahId);
+        await loadCicilanHistory(jamaahId);
+        if (pmbSelectedProgram) await loadPembayaranForProgram(pmbSelectedProgram);
+
+    } catch (err) {
+        console.error('Delete cicilan error:', err);
+        showToast('Gagal menghapus: ' + err.message, 'error');
+    }
+}
+
+// Sinkronkan kolom status di kb_jamaah (lunas/dp/pending) berdasarkan total
+// pembayaran yang sudah tercatat, supaya badge status di tab Keberangkatan
+// selalu konsisten dengan data di tab Pembayaran & Cicilan.
+async function syncJamaahStatus(jamaahId) {
+    try {
+        const { data: jamaahRow, error: jErr } = await supabaseClient.from('kb_jamaah').select('*').eq('id', jamaahId).single();
+        if (jErr || !jamaahRow) return;
+
+        const program = dataUmroh.find(p => String(p.id) === String(jamaahRow.program_id));
+        const hargaProgram = parseRupiahToNumber(program ? program.harga_quint : 0);
+
+        const { data: bayarData, error: bErr } = await supabaseClient.from('pembayaran_jamaah').select('jumlah').eq('jamaah_id', jamaahId);
+        if (bErr) return;
+
+        const totalDibayar = (bayarData || []).reduce((sum, b) => sum + Number(b.jumlah || 0), 0);
+        let statusBaru;
+        if (hargaProgram > 0 && totalDibayar >= hargaProgram) statusBaru = 'lunas';
+        else if (totalDibayar > 0) statusBaru = 'dp';
+        else statusBaru = 'pending';
+
+        if (statusBaru !== jamaahRow.status) {
+            await supabaseClient.from('kb_jamaah').update({ status: statusBaru }).eq('id', jamaahId);
+            await loadKbJamaah();
+        }
+    } catch (err) {
+        console.warn('Sync status jamaah gagal (non-fatal):', err);
     }
 }
 

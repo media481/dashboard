@@ -32,6 +32,8 @@ icons/                ← 9 file ikon PWA sesuai daftar di manifest.json
 sql/
   00_setup_semua_tabel.sql     ← CREATE TABLE + RLS untuk semua tabel (dari nol)
   create_kwt_kuitansi.sql      ← SQL khusus tabel kwt_kuitansi
+  tambah_pembayaran_jamaah.sql ← migrasi tambahan: tabel pembayaran_jamaah
+                                  (jalankan ini di project yang SUDAH jalan)
 .github/workflows/
   keep-supabase-alive.yml      ← ping REST API tiap 3 hari biar project Supabase
                                   free tier tidak auto-pause (butuh secret
@@ -59,6 +61,7 @@ cek dulu apakah direferensikan di `index.html`/`service-worker.js` sebelum diasu
 | `programs` | Data program Umroh (field admin-only digabung di kolom `admin_data_lengkap` jsonb) |
 | `jadwal_tamu` | Jadwal kunjungan tamu ke kantor |
 | `kb_jamaah` | Data jamaah per program |
+| `pembayaran_jamaah` | Riwayat pembayaran/cicilan per jamaah (fitur "Pembayaran & Cicilan") |
 | `featured_programs` | Program yang ditandai unggulan (diakses via `fetch()` REST langsung, bukan `.from()`) |
 | `app_config` | Password login admin/CS (key-value) |
 | `tg_config` | Config notifikasi Telegram (bot token, edge URL, daftar penerima) |
@@ -76,7 +79,9 @@ password default di `app_config`, lalu update `SUPABASE_URL` & `SUPABASE_ANON_KE
 9. Render Table — 10. Search & Sort — 11. Detail Modal — 12. Admin Login —
 13. Admin Panel — 14. Admin CRUD Operations — 15. Parse Broadcast (auto-isi form dari
 teks broadcast WA) — 16. Export/Import — 17. Delete Confirm — 18. Jadwal Tamu (CRUD) —
-19. Keberangkatan (CRUD) — 20. Kuitansi — 21. Featured Programs —
+19. Keberangkatan (CRUD) — 19B. Pembayaran & Cicilan (monitoring pembayaran/cicilan
+per jamaah, terhubung ke harga program & auto-sync status di kb_jamaah) —
+20. Kuitansi — 21. Featured Programs —
 21A. Crosscheck Module (OCR poster vs data) — 21B. Telegram Module —
 22. Init — 23. Close Modals on Overlay Click — 24. Poster Hover Popup
 
