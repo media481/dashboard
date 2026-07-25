@@ -162,6 +162,17 @@ function generateAutoWAText(data) {
 // 5. TAB SWITCHING
 // ============================================================
 function switchTab(tabId) {
+    // Kalau sedang di halaman Admin Panel, otomatis kembali dulu ke dashboard
+    // supaya menu navigasi (Program, Unggulan, Jadwal Tamu, Keberangkatan)
+    // langsung bisa diakses tanpa harus klik "Kembali" secara manual.
+    const adminView = document.getElementById('adminPageView');
+    if (adminView && adminView.style.display !== 'none') {
+        adminView.style.display = 'none';
+        document.getElementById('dashboardView').style.display = 'block';
+        if (currentData && currentData.length) renderTable(currentData);
+        applyRoleUIVisibility();
+    }
+
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tabId);
     });
