@@ -53,6 +53,28 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
+// Retry helper untuk request baca (SELECT) yang gagal karena masalah jaringan
+// (mis. ERR_CONNECTION_TIMED_OUT, ERR_QUIC_PROTOCOL_ERROR, ERR_CONNECTION_ABORTED).
+// HANYA dipakai untuk operasi baca — jangan dipakai untuk insert/update/upsert
+// karena retry bisa menyebabkan data dobel jika request pertama sebenarnya sukses
+// tapi responsnya yang gagal sampai ke browser.
+async function withRetry(fn, { retries = 2, delayMs = 1000, label = '' } = {}) {
+    let lastErr;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            return await fn();
+        } catch (err) {
+            lastErr = err;
+            if (attempt < retries) {
+                console.warn(`${label || 'Request'} gagal (percobaan ${attempt + 1}/${retries + 1}), coba lagi dalam ${delayMs}ms...`, err);
+                await new Promise(r => setTimeout(r, delayMs));
+                delayMs *= 2; // exponential backoff: 1s, 2s, 4s, ...
+            }
+        }
+    }
+    throw lastErr;
+}
+
 // Escape aman untuk disisipkan di dalam atribut onclick="...('...')"
 // (escapeHtml saja tidak cukup karena tidak meng-escape tanda kutip tunggal)
 function escapeJsAttr(str) {
@@ -249,7 +271,10 @@ async function loadDataFromSupabase(forceRefresh = false) {
     }
 
     try {
-        const { data, error } = await supabaseClient.from('programs').select('*').order('created_at', { ascending: true });
+        const { data, error } = await withRetry(
+            () => supabaseClient.from('programs').select('*').order('created_at', { ascending: true }),
+            { label: 'Muat data program' }
+        );
         if (error) throw error;
 
         const plainData = (data || []).map(p => ({
@@ -278,10 +303,14 @@ async function loadDataFromSupabase(forceRefresh = false) {
     } catch (err) {
         const msg = err?.message || String(err);
         loadingEl.innerHTML = `<div style="padding:40px;text-align:center;color:var(--danger);">
-            <i class="fa-solid fa-circle-exclamation" style="font-size:24px;display:block;margin-bottom:10px;"></i>
-            Gagal memuat data: ${escapeHtml(msg)}
+            <i class="fa-solid fa-wifi" style="font-size:24px;display:block;margin-bottom:10px;"></i>
+            Gagal memuat data. Periksa koneksi internet Anda.<br>
+            <span style="font-size:12px;color:var(--ink-soft);">${escapeHtml(msg)}</span><br>
+            <button onclick="loadDataFromSupabase(true)" style="margin-top:12px;padding:6px 16px;border-radius:6px;border:none;background:var(--accent,#2563eb);color:#fff;cursor:pointer;">
+                <i class="fa-solid fa-rotate-right"></i> Coba Lagi
+            </button>
         </div>`;
-        showToast('Gagal memuat data program', 'error');
+        showToast('Gagal memuat data — periksa koneksi internet', 'error');
     }
 }
 
@@ -1357,7 +1386,7 @@ async function exportAdminData() {
         const headers = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY };
         const res = await fetch(`${SUPABASE_URL}/rest/v1/programs?select=*&order=created_at.asc`, { headers });
         const backup = {
-            _meta: { app: 'Amiru Repository', exported_at: new Date().toISOString(), version: '2.0' },
+            _meta: { app: 'Dashboard Amiru', exported_at: new Date().toISOString(), version: '2.0' },
             programs: res.ok ? await res.json() : []
         };
         const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
@@ -1488,13 +1517,17 @@ function closeDeleteConfirmModal() {
 // ============================================================
 async function loadJadwal() {
     try {
-        const { data, error } = await supabaseClient.from('jadwal_tamu').select('*').order('tgl', { ascending: true });
+        const { data, error } = await withRetry(
+            () => supabaseClient.from('jadwal_tamu').select('*').order('tgl', { ascending: true }),
+            { label: 'Muat jadwal tamu' }
+        );
         if (error) throw error;
         jadwalList = data || [];
         updateMetrics();
     } catch (err) {
         console.error('Load jadwal error:', err);
         jadwalList = [];
+        showToast('Gagal memuat jadwal tamu — periksa koneksi internet', 'error');
     }
 }
 
@@ -1634,13 +1667,17 @@ async function saveJadwalTamu(e) {
 // ============================================================
 async function loadKbJamaah() {
     try {
-        const { data, error } = await supabaseClient.from('kb_jamaah').select('*').order('nama', { ascending: true });
+        const { data, error } = await withRetry(
+            () => supabaseClient.from('kb_jamaah').select('*').order('nama', { ascending: true }),
+            { label: 'Muat data jamaah' }
+        );
         if (error) throw error;
         kbJamaahList = data || [];
         updateMetrics();
     } catch (err) {
         console.error('Load kb_jamaah error:', err);
         kbJamaahList = [];
+        showToast('Gagal memuat data jamaah — periksa koneksi internet', 'error');
     }
 }
 
@@ -2151,9 +2188,12 @@ async function saveCxPosterData(progId) {
 // ============================================================
 async function loadFeaturedIds() {
     try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/featured_programs?select=program_id`, {
-            headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
-        });
+        const res = await withRetry(
+            () => fetch(`${SUPABASE_URL}/rest/v1/featured_programs?select=program_id`, {
+                headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+            }),
+            { label: 'Muat program unggulan' }
+        );
         featuredIds = res.ok ? (await res.json()).map(r => String(r.program_id)) : [];
     } catch (err) {
         console.error('loadFeaturedIds error:', err);
@@ -2187,7 +2227,10 @@ function renderFeaturedSection() {
 async function getTgConfig() {
     if (_tgConfigCache) return _tgConfigCache;
     try {
-        const { data, error } = await supabaseClient.from('tg_config').select('key, value');
+        const { data, error } = await withRetry(
+            () => supabaseClient.from('tg_config').select('key, value'),
+            { label: 'Muat konfigurasi Telegram' }
+        );
         if (error || !data || !data.length) return {};
         const cfg = {};
         data.forEach(row => { try { cfg[row.key] = JSON.parse(row.value); } catch { cfg[row.key] = row.value; } });

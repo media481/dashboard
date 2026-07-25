@@ -1,13 +1,13 @@
 {
-  "name": "Amiru Repository",
-  "short_name": "Amiru Repository",
+  "name": "Dashboard Amiru",
+  "short_name": "Dashboard Amiru",
   "description": "Repository Program Umroh PT Amiru Haramain Indonesia",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#ffffff",
-  "theme_color": "#1a6fa8",
+  "theme_color": "#22519e",
   "lang": "id",
   "dir": "ltr",
   "icons": [
