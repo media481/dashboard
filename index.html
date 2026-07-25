@@ -34,6 +34,9 @@
 <div class="app">
     <!-- ===== SIDEBAR ===== -->
     <aside class="sidebar" id="sidebar">
+        <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" onclick="toggleSidebarCollapse()" title="Ciutkan sidebar">
+            <i class="fa-solid fa-angles-left"></i>
+        </button>
         <div class="brand">
             <div class="brand-icon">𝞚</div>
             <div class="brand-text">Dashboard Amiru<span>Sistem Manajemen</span></div>
@@ -41,52 +44,52 @@
 
         <nav>
             <div class="nav-label">Navigasi</div>
-            <button class="nav-item active" data-tab="umroh">
-                <i class="fa-solid fa-list"></i> Program Umroh
+            <button class="nav-item active" data-tab="umroh" title="Program Umroh">
+                <i class="fa-solid fa-list"></i> <span class="nav-text">Program Umroh</span>
             </button>
-            <button class="nav-item" data-tab="unggulan">
-                <i class="fa-solid fa-star"></i> Unggulan
+            <button class="nav-item" data-tab="unggulan" title="Unggulan">
+                <i class="fa-solid fa-star"></i> <span class="nav-text">Unggulan</span>
             </button>
-            <button class="nav-item nav-loggedin-only" data-tab="info" style="display:none;">
-                <i class="fa-solid fa-calendar-check"></i> Jadwal Tamu
+            <button class="nav-item nav-loggedin-only" data-tab="info" style="display:none;" title="Jadwal Tamu">
+                <i class="fa-solid fa-calendar-check"></i> <span class="nav-text">Jadwal Tamu</span>
             </button>
-            <button class="nav-item nav-loggedin-only" data-tab="pendaftaran" style="display:none;">
-                <i class="fa-solid fa-clipboard-list"></i> Form Pendaftaran
+            <button class="nav-item nav-loggedin-only" data-tab="pendaftaran" style="display:none;" title="Form Pendaftaran">
+                <i class="fa-solid fa-clipboard-list"></i> <span class="nav-text">Form Pendaftaran</span>
             </button>
-            <button class="nav-item nav-loggedin-only" data-tab="keberangkatan" style="display:none;">
-                <i class="fa-solid fa-plane-departure"></i> Keberangkatan
+            <button class="nav-item nav-loggedin-only" data-tab="keberangkatan" style="display:none;" title="Keberangkatan">
+                <i class="fa-solid fa-plane-departure"></i> <span class="nav-text">Keberangkatan</span>
             </button>
-            <button class="nav-item nav-loggedin-only" data-tab="dokumen" style="display:none;">
-                <i class="fa-solid fa-file-circle-check"></i> Kelengkapan Dokumen
+            <button class="nav-item nav-loggedin-only" data-tab="dokumen" style="display:none;" title="Kelengkapan Dokumen">
+                <i class="fa-solid fa-file-circle-check"></i> <span class="nav-text">Kelengkapan Dokumen</span>
             </button>
 
             <div class="nav-label nav-admin-only" style="display:none;">Manajemen</div>
-            <button class="nav-item nav-admin-only" data-subtab="program" style="display:none;" onclick="openAdminPanel('program')">
-                <i class="fa-solid fa-kaaba"></i> Edit &amp; Tambah Program
+            <button class="nav-item nav-admin-only" data-subtab="program" style="display:none;" onclick="openAdminPanel('program')" title="Edit &amp; Tambah Program">
+                <i class="fa-solid fa-kaaba"></i> <span class="nav-text">Edit &amp; Tambah Program</span>
             </button>
-            <button class="nav-item nav-admin-only" data-subtab="crosscheck" style="display:none;" onclick="openAdminPanel('crosscheck')">
-                <i class="fa-solid fa-magnifying-glass-chart"></i> Crosscheck
+            <button class="nav-item nav-admin-only" data-subtab="crosscheck" style="display:none;" onclick="openAdminPanel('crosscheck')" title="Crosscheck">
+                <i class="fa-solid fa-magnifying-glass-chart"></i> <span class="nav-text">Crosscheck</span>
             </button>
-            <button class="nav-item nav-admin-only" data-subtab="telegram" style="display:none;" onclick="openAdminPanel('telegram')">
-                <i class="fa-brands fa-telegram"></i> Telegram
+            <button class="nav-item nav-admin-only" data-subtab="telegram" style="display:none;" onclick="openAdminPanel('telegram')" title="Telegram">
+                <i class="fa-brands fa-telegram"></i> <span class="nav-text">Telegram</span>
             </button>
-            <button class="nav-item nav-admin-only" data-subtab="usersettings" style="display:none;" onclick="openAdminPanel('usersettings')">
-                <i class="fa-solid fa-user-gear"></i> Pengaturan User
+            <button class="nav-item nav-admin-only" data-subtab="usersettings" style="display:none;" onclick="openAdminPanel('usersettings')" title="Pengaturan User">
+                <i class="fa-solid fa-user-gear"></i> <span class="nav-text">Pengaturan User</span>
             </button>
 
             <div class="nav-login-area">
-                <button class="nav-item login-btn" onclick="openAdminPanel()">
-                    <i class="fa-solid fa-arrow-right-to-bracket"></i> Login
+                <button class="nav-item login-btn" onclick="openAdminPanel()" title="Login">
+                    <i class="fa-solid fa-arrow-right-to-bracket"></i> <span class="nav-text">Login</span>
                 </button>
-                <button class="nav-item logout-btn" style="display:none;" onclick="logoutAdmin()">
-                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+                <button class="nav-item logout-btn" style="display:none;" onclick="logoutAdmin()" title="Logout">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> <span class="nav-text">Logout</span>
                 </button>
             </div>
         </nav>
 
         <div class="sidebar-foot">
             <div class="avatar" id="sidebarAvatar">GT</div>
-            <div>
+            <div class="sidebar-foot-text">
                 <div class="who" id="sidebarWho">Guest</div>
                 <div class="role">PT Amiru Haramain</div>
             </div>

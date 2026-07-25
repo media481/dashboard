@@ -36,6 +36,10 @@
             display: grid;
             grid-template-columns: 260px 1fr;
             min-height: 100vh;
+            transition: grid-template-columns .2s ease;
+        }
+        @media (min-width: 769px) {
+            .app.sidebar-collapsed { grid-template-columns: 76px 1fr; }
         }
 
         /* ===== SIDEBAR ===== */
@@ -49,10 +53,47 @@
             top: 0;
             height: 100vh;
             overflow-y: auto;
+            overflow-x: hidden;
             z-index: 100;
+            transition: padding .2s ease;
         }
         .sidebar::-webkit-scrollbar { width: 4px; }
         .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
+        .sidebar-collapse-btn {
+            align-self: flex-end;
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.08);
+            border: none;
+            color: #CFE2DB;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            cursor: pointer;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+            transition: background .15s ease, transform .2s ease, align-self .2s ease;
+        }
+        .sidebar-collapse-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
+        .sidebar.collapsed .sidebar-collapse-btn { align-self: center; transform: rotate(180deg); }
+
+        .sidebar.collapsed .brand { justify-content: center; }
+        .sidebar.collapsed .brand-text,
+        .sidebar.collapsed .nav-label,
+        .sidebar.collapsed .nav-item .nav-text,
+        .sidebar.collapsed .sidebar-foot-text {
+            display: none;
+        }
+        .sidebar.collapsed .nav-item {
+            justify-content: center;
+            gap: 0;
+            padding: 10px 0;
+        }
+        .sidebar.collapsed .nav-item i { width: auto; font-size: 17px; }
+        .sidebar.collapsed .sidebar-foot { justify-content: center; }
 
         .brand {
             display: flex;
@@ -867,6 +908,7 @@
         @media (max-width: 768px) {
             .app { grid-template-columns: 1fr; }
             .sidebar { display: none; }
+            .sidebar-collapse-btn { display: none; }
             main { padding: 16px; }
             .topbar { flex-direction: column; }
             .topbar-actions { width: 100%; }

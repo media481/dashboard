@@ -1117,6 +1117,27 @@ function applyRoleUIVisibility() {
 // guest / belum login : hanya "Program Umroh" & "Unggulan"
 // user  (sudah login)  : + "Jadwal Tamu" & "Keberangkatan" (boleh edit/hapus langsung di tabel)
 // admin (sudah login)  : + menu "Manajemen" (Edit & Tambah Program, Crosscheck, Telegram, Pengaturan User)
+
+// Minimize sidebar jadi ikon saja (desktop). Preferensi disimpan di localStorage
+// supaya tetap ciut/lebar yang sama tiap kali dashboard dibuka lagi.
+const SIDEBAR_COLLAPSE_KEY = 'amiru_sidebar_collapsed';
+function applySidebarCollapse(collapsed) {
+    document.getElementById('sidebar')?.classList.toggle('collapsed', collapsed);
+    document.querySelector('.app')?.classList.toggle('sidebar-collapsed', collapsed);
+    const btn = document.getElementById('sidebarCollapseBtn');
+    if (btn) btn.title = collapsed ? 'Perluas sidebar' : 'Ciutkan sidebar';
+}
+function toggleSidebarCollapse() {
+    const collapsed = !document.getElementById('sidebar')?.classList.contains('collapsed');
+    applySidebarCollapse(collapsed);
+    try { localStorage.setItem(SIDEBAR_COLLAPSE_KEY, collapsed ? '1' : '0'); } catch (e) {}
+}
+(function initSidebarCollapse() {
+    let saved = '0';
+    try { saved = localStorage.getItem(SIDEBAR_COLLAPSE_KEY) || '0'; } catch (e) {}
+    if (saved === '1') applySidebarCollapse(true);
+})();
+
 function renderSidebarNav() {
     const loggedIn = !!adminLoggedIn;
     const isAdminRole = loggedIn && currentRole === 'admin';
