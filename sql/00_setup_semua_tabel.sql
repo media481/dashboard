@@ -82,6 +82,7 @@ create table if not exists kb_jamaah (
     asal text,
     status text,
     catatan text,
+    dokumen jsonb not null default '{}'::jsonb,
     created_at timestamptz not null default now()
 );
 

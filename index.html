@@ -56,6 +56,9 @@
             <button class="nav-item nav-loggedin-only" data-tab="pembayaran" style="display:none;">
                 <i class="fa-solid fa-money-bill-wave"></i> Pembayaran &amp; Cicilan
             </button>
+            <button class="nav-item nav-loggedin-only" data-tab="dokumen" style="display:none;">
+                <i class="fa-solid fa-file-circle-check"></i> Kelengkapan Dokumen
+            </button>
 
             <div class="nav-label nav-admin-only" style="display:none;">Manajemen</div>
             <button class="nav-item nav-admin-only" data-subtab="program" style="display:none;" onclick="openAdminPanel('program')">
@@ -163,6 +166,9 @@
                 <button class="tab-btn nav-loggedin-only" data-tab="pembayaran" style="display:none;">
                     <i class="fa-solid fa-money-bill-wave"></i> <span>Pembayaran &amp; Cicilan</span>
                 </button>
+                <button class="tab-btn nav-loggedin-only" data-tab="dokumen" style="display:none;">
+                    <i class="fa-solid fa-file-circle-check"></i> <span>Kelengkapan Dokumen</span>
+                </button>
             </div>
 
             <div class="tab-panels">
@@ -247,6 +253,22 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- TAB: Kelengkapan Dokumen -->
+                <div class="tab-panel" id="tab-dokumen">
+                    <div class="kb-program-selector" id="dokProgramSelector">
+                        <select id="dokProgramSelect" onchange="selectDokProgram(this.value)">
+                            <option value="">-- Pilih Program --</option>
+                        </select>
+                    </div>
+                    <div id="dokSummary"></div>
+                    <div id="dokContent">
+                        <div class="kb-no-program">
+                            <i class="fa-solid fa-file-circle-check"></i>
+                            <p>Pilih program di atas untuk mengecek kelengkapan dokumen jamaah.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -293,6 +315,9 @@
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="pembayaran" style="display:none;" onclick="switchTab('pembayaran'); toggleMobileSidebar();">
                 <i class="fa-solid fa-money-bill-wave"></i> Pembayaran &amp; Cicilan
+            </button>
+            <button class="nav-item nav-loggedin-only" data-tab="dokumen" style="display:none;" onclick="switchTab('dokumen'); toggleMobileSidebar();">
+                <i class="fa-solid fa-file-circle-check"></i> Kelengkapan Dokumen
             </button>
 
             <div class="nav-label nav-admin-only" style="display:none;">Manajemen</div>

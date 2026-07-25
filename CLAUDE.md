@@ -34,6 +34,8 @@ sql/
   create_kwt_kuitansi.sql      ← SQL khusus tabel kwt_kuitansi
   tambah_pembayaran_jamaah.sql ← migrasi tambahan: tabel pembayaran_jamaah
                                   (jalankan ini di project yang SUDAH jalan)
+  tambah_dokumen_jamaah.sql    ← migrasi tambahan: kolom kb_jamaah.dokumen jsonb
+                                  (jalankan ini di project yang SUDAH jalan)
 .github/workflows/
   keep-supabase-alive.yml      ← ping REST API tiap 3 hari biar project Supabase
                                   free tier tidak auto-pause (butuh secret
@@ -60,7 +62,7 @@ cek dulu apakah direferensikan di `index.html`/`service-worker.js` sebelum diasu
 |---|---|
 | `programs` | Data program Umroh (field admin-only digabung di kolom `admin_data_lengkap` jsonb) |
 | `jadwal_tamu` | Jadwal kunjungan tamu ke kantor |
-| `kb_jamaah` | Data jamaah per program |
+| `kb_jamaah` | Data jamaah per program (kolom `dokumen` jsonb = checklist kelengkapan dokumen per jamaah) |
 | `pembayaran_jamaah` | Riwayat pembayaran/cicilan per jamaah (fitur "Pembayaran & Cicilan") |
 | `featured_programs` | Program yang ditandai unggulan (diakses via `fetch()` REST langsung, bukan `.from()`) |
 | `app_config` | Password login admin/CS (key-value) |
@@ -81,6 +83,8 @@ password default di `app_config`, lalu update `SUPABASE_URL` & `SUPABASE_ANON_KE
 teks broadcast WA) — 16. Export/Import — 17. Delete Confirm — 18. Jadwal Tamu (CRUD) —
 19. Keberangkatan (CRUD) — 19B. Pembayaran & Cicilan (monitoring pembayaran/cicilan
 per jamaah, terhubung ke harga program & auto-sync status di kb_jamaah) —
+19C. Kelengkapan Dokumen (checklist dokumen per jamaah, disimpan di kolom
+kb_jamaah.dokumen jsonb) —
 20. Kuitansi — 21. Featured Programs —
 21A. Crosscheck Module (OCR poster vs data) — 21B. Telegram Module —
 22. Init — 23. Close Modals on Overlay Click — 24. Poster Hover Popup

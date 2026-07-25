@@ -35,6 +35,14 @@ let jadwalList = [], editingJadwalId = null;
 let kbJamaahList = [], kbSelectedProgram = null, editingKbId = null;
 let pmbSelectedProgram = null, pmbJamaahHarga = {}; // {jamaahId: hargaProgramNumber} cache per render
 let cicilanList = [], cicilanJamaahId = null;
+let dokSelectedProgram = null;
+const DOKUMEN_JENIS = [
+    { key: 'ktp', label: 'KTP' },
+    { key: 'kk', label: 'Kartu Keluarga' },
+    { key: 'paspor', label: 'Paspor' },
+    { key: 'foto', label: 'Pas Foto' },
+    { key: 'vaksin', label: 'Buku Vaksin Meningitis' }
+];
 let deleteTarget = { table: null, id: null, name: '' };
 let adminSubTab = 'program';
 // ---- Crosscheck module state ----
@@ -218,6 +226,7 @@ function switchTab(tabId) {
     if (tabId === 'info') renderJadwalSection();
     if (tabId === 'keberangkatan') renderKbProgramSelector();
     if (tabId === 'pembayaran') renderPmbProgramSelector();
+    if (tabId === 'dokumen') renderDokProgramSelector();
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -2154,6 +2163,140 @@ async function syncJamaahStatus(jamaahId) {
         }
     } catch (err) {
         console.warn('Sync status jamaah gagal (non-fatal):', err);
+    }
+}
+
+// ============================================================
+// 19C. KELENGKAPAN DOKUMEN JAMAAH
+// Checklist dokumen per jamaah (KTP, KK, Paspor, dst), disimpan di kolom
+// kb_jamaah.dokumen (jsonb, format {key: true/false}). Guest hanya bisa
+// lihat, user & admin bisa centang/uncentang langsung dari tabel.
+// ============================================================
+function renderDokProgramSelector() {
+    const select = document.getElementById('dokProgramSelect');
+    if (!select) return;
+
+    if (!dataUmroh || dataUmroh.length === 0) {
+        select.innerHTML = '<option value="">-- Belum ada program --</option>';
+        return;
+    }
+
+    const currentVal = select.value;
+    select.innerHTML = '<option value="">-- Pilih Program --</option>' +
+        dataUmroh.map(p => `<option value="${p.id}">${escapeHtml(p.nama)} (${escapeHtml(p.tgl || '-')})</option>`).join('');
+    if (currentVal) select.value = currentVal;
+
+    if (select.value) loadDokumenForProgram(select.value);
+}
+
+function selectDokProgram(id) {
+    document.getElementById('dokProgramSelect').value = id;
+    loadDokumenForProgram(id);
+}
+
+async function loadDokumenForProgram(programId) {
+    dokSelectedProgram = programId || null;
+    const container = document.getElementById('dokContent');
+    const summaryEl = document.getElementById('dokSummary');
+    summaryEl.innerHTML = '';
+
+    if (!programId) {
+        container.innerHTML = `<div class="kb-no-program"><i class="fa-solid fa-file-circle-check"></i><p>Pilih program di atas untuk mengecek kelengkapan dokumen jamaah.</p></div>`;
+        return;
+    }
+
+    try {
+        const { data, error } = await withRetry(
+            () => supabaseClient.from('kb_jamaah').select('*').eq('program_id', programId).order('nama', { ascending: true }),
+            { label: 'Muat data jamaah' }
+        );
+        if (error) throw error;
+        const jamaah = data || [];
+
+        if (!jamaah.length) {
+            container.innerHTML = `<div class="kb-no-program"><i class="fa-solid fa-user-slash"></i><p>Belum ada jamaah terdaftar untuk program ini.</p></div>`;
+            return;
+        }
+
+        const totalDok = DOKUMEN_JENIS.length;
+        const totalLengkap = jamaah.filter(j => isDokumenLengkap(j.dokumen)).length;
+
+        summaryEl.innerHTML = `
+            <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+                <span class="status-badge available">${jamaah.length} Total Jamaah</span>
+                <span class="status-badge available">${totalLengkap} Dokumen Lengkap</span>
+                ${jamaah.length - totalLengkap > 0 ? `<span class="status-badge full">${jamaah.length - totalLengkap} Belum Lengkap</span>` : ''}
+            </div>`;
+
+        const canEdit = canManageProgramData();
+
+        container.innerHTML = `
+            <div class="table-container" style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead style="background:var(--bg);">
+                        <tr>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Nama</th>
+                            ${DOKUMEN_JENIS.map(d => `<th style="padding:10px 14px;text-align:center;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">${escapeHtml(d.label)}</th>`).join('')}
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${jamaah.map(j => {
+                            const dok = j.dokumen || {};
+                            const lengkap = isDokumenLengkap(dok);
+                            return `
+                            <tr style="border-bottom:1px solid var(--line);">
+                                <td style="padding:10px 14px;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
+                                ${DOKUMEN_JENIS.map(d => `
+                                    <td style="padding:10px 14px;text-align:center;">
+                                        <input type="checkbox" ${dok[d.key] ? 'checked' : ''} ${canEdit ? '' : 'disabled'}
+                                            onchange="toggleDokumenJamaah('${j.id}','${d.key}',this.checked)"
+                                            style="width:16px;height:16px;cursor:${canEdit ? 'pointer' : 'default'};">
+                                    </td>`).join('')}
+                                <td style="padding:10px 14px;">
+                                    <span class="status-badge ${lengkap ? 'available' : 'full'}">${lengkap ? '✅ Lengkap' : '⏳ Belum Lengkap'}</span>
+                                </td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+            <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;">${totalDok} jenis dokumen dicek: ${DOKUMEN_JENIS.map(d => d.label).join(', ')}.</p>
+        `;
+
+    } catch (err) {
+        console.error('Load dokumen jamaah error:', err);
+        container.innerHTML = `<div class="kb-no-program" style="color:var(--danger);">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <p>Gagal memuat data dokumen — periksa koneksi internet.</p>
+        </div>`;
+    }
+}
+
+function isDokumenLengkap(dok) {
+    if (!dok) return false;
+    return DOKUMEN_JENIS.every(d => !!dok[d.key]);
+}
+
+async function toggleDokumenJamaah(jamaahId, key, checked) {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengubah data dokumen', 'error'); return; }
+    try {
+        const { data: jamaahRow, error: jErr } = await supabaseClient.from('kb_jamaah').select('dokumen').eq('id', jamaahId).single();
+        if (jErr) throw jErr;
+
+        const dokBaru = { ...(jamaahRow.dokumen || {}), [key]: checked };
+        const { error } = await supabaseClient.from('kb_jamaah').update({ dokumen: dokBaru }).eq('id', jamaahId);
+        if (error) throw error;
+
+        const idx = kbJamaahList.findIndex(j => j.id === jamaahId);
+        if (idx > -1) kbJamaahList[idx].dokumen = dokBaru;
+
+        if (dokSelectedProgram) await loadDokumenForProgram(dokSelectedProgram);
+
+    } catch (err) {
+        console.error('Update dokumen jamaah error:', err);
+        showToast('Gagal menyimpan status dokumen: ' + err.message, 'error');
+        if (dokSelectedProgram) await loadDokumenForProgram(dokSelectedProgram);
     }
 }
 
