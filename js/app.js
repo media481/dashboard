@@ -634,7 +634,14 @@ async function renderAdminPanel() {
         const isGuest = currentRole === 'guest';
         const canEditData = isAdmin || isUser; // boleh tambah/edit/hapus program
         const { data } = await supabaseClient.from('programs').select('*').order('created_at');
-        adminPrograms = (data || []).map(unpackProgramAdminData);
+        adminPrograms = (data || []).map(unpackProgramAdminData).sort((a, b) => {
+            const da = a.tgl ? parseDateFromString(a.tgl) : null;
+            const db = b.tgl ? parseDateFromString(b.tgl) : null;
+            if (!da && !db) return 0;
+            if (!da) return 1;  // program tanpa tanggal ditaruh di bawah
+            if (!db) return -1;
+            return da - db;
+        });
 
         container.innerHTML = `
             <div class="admin-subtab-panel" id="adminSubTab-program" style="display:block;">
