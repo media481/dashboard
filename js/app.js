@@ -634,7 +634,7 @@ async function renderAdminPanel() {
         const isGuest = currentRole === 'guest';
         const canEditData = isAdmin || isUser; // boleh tambah/edit/hapus program
         const { data } = await supabaseClient.from('programs').select('*').order('created_at');
-        adminPrograms = data || [];
+        adminPrograms = (data || []).map(unpackProgramAdminData);
 
         container.innerHTML = `
             <div class="admin-subtab-panel" id="adminSubTab-program" style="display:block;">
@@ -956,6 +956,19 @@ function renderAdminTable() {
 // ============================================================
 // 14. ADMIN CRUD OPERATIONS
 // ============================================================
+// Bongkar kolom JSON admin_data_lengkap (harga_quad/triple/double, hotel, makan, dll)
+// ke level atas object program, supaya bisa langsung dipakai di tabel & form.
+function unpackProgramAdminData(row) {
+    if (!row) return row;
+    if (row.admin_data_lengkap) {
+        try {
+            const adl = typeof row.admin_data_lengkap === 'string' ? JSON.parse(row.admin_data_lengkap) : row.admin_data_lengkap;
+            return { ...row, ...adl };
+        } catch (e) { /* biarkan row apa adanya kalau JSON rusak */ }
+    }
+    return row;
+}
+
 async function ensureAdminProgramPageReady() {
     const needsOpen = document.getElementById('adminPageView').style.display === 'none' || !document.getElementById('adminFormContainer');
     if (needsOpen) {
@@ -1137,15 +1150,9 @@ async function editAdminProgram(id) {
     const { data, error } = await supabaseClient.from('programs').select('*').eq('id', id).single();
     if (error || !data) { showToast('Program tidak ditemukan', 'error'); return; }
 
-    // Parse admin_data_lengkap if exists
-    if (data.admin_data_lengkap) {
-        try {
-            const adl = typeof data.admin_data_lengkap === 'string' ? JSON.parse(data.admin_data_lengkap) : data.admin_data_lengkap;
-            Object.assign(data, adl);
-        } catch (e) {}
-    }
+    const unpacked = unpackProgramAdminData(data);
 
-    setAdminFormData(data);
+    setAdminFormData(unpacked);
     editingProgramId = id;
     document.getElementById('adminFormTitle').innerText = 'Edit Program';
     document.getElementById('adminFormContainer').style.display = 'block';
