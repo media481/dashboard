@@ -36,13 +36,53 @@ bukan SQL — nama filenya menyesatkan. SQL yang benar untuk tabel `kwt_kuitansi
 ada di `sql/create_kwt_kuitansi.sql` dan itu yang dipertahankan. File yang salah
 label dipindah ke `_legacy_unused/create_kwt_kuitansi_MISLABELED_actually_js.sql`.
 
-## Struktur akhir folder aktif
+## Ronde 3: Pecah index.html jadi 3 file
+index.html tadinya self-contained (CSS + JS inline, 3656 baris). Sekarang dipecah:
+- `index.html` — struktur HTML saja (457 baris), load `css/style.css` via `<link>`
+  dan `js/app.js` via `<script src>`
+- `css/style.css` — semua styling (937 baris)
+- `js/app.js` — semua logic termasuk koneksi Supabase (2261 baris)
+
+Koneksi Supabase sekarang ada di `js/app.js` baris 4-5 (`SUPABASE_URL`, `SUPABASE_ANON_KEY`).
+
+`service-worker.js` sudah disesuaikan lagi: `css/style.css` dan `js/app.js`
+dikembalikan ke daftar precache, versi cache dinaikkan ke v17.
+
+## Struktur akhir folder aktif (final)
 ```
-index.html                     ← aplikasi utama (self-contained + koneksi Supabase)
-manifest.json                  ← config PWA
-service-worker.js              ← sudah diperbaiki
-icons/                         ← 9 ikon sesuai manifest.json
-sql/create_kwt_kuitansi.sql    ← SQL yang benar
+index.html          ← struktur halaman
+css/style.css        ← styling
+js/app.js            ← logic + koneksi Supabase
+manifest.json         ← config PWA
+service-worker.js     ← precache list sinkron dengan struktur di atas
+icons/                ← 9 ikon sesuai manifest.json
+sql/create_kwt_kuitansi.sql
 ```
-Semua yang lain ada di `_legacy_unused/` — tidak dihapus, tinggal review lalu
-hapus manual kalau sudah yakin tidak dibutuhkan lagi.
+
+## Ronde 4: Tambah modul Poster Hover Popup
+Dari `poster-popup.js` yang di-upload, isinya sebenarnya 3 bagian berbeda:
+1. **`resolveImageUrl` / `showPosterPopup` / `hidePosterPopup`** — modul baru,
+   BELUM ada di project → ditambahkan ke `js/app.js` (bagian "24. POSTER HOVER POPUP").
+   Ditambah kecil: `img.onload`/`img.onerror` supaya loading spinner & pesan error
+   benar-benar hilang/muncul sesuai kondisi (di kode asli belum di-wire).
+2. **`checkAdminLogin`** — SUDAH ADA di `js/app.js`, versi yang sudah ada malah
+   lebih lengkap (ada logika reset lockout otomatis). Tidak ditambahkan lagi
+   supaya tidak duplikat/timpa fungsi yang lebih baik.
+3. **`openDrawer` / `closeDrawer`** — TIDAK ditambahkan. Project sudah punya
+   mekanisme sidebar mobile sendiri (`toggleMobileSidebar()` + elemen
+   `#mobileSidebarOverlay`), jadi `openDrawer`/`closeDrawer` (pakai id
+   `#mobileOverlay`) redundan dan tidak dipakai tombol mana pun.
+
+Markup HTML popup (`#posterPopup`, `#posterPopupImg`, dst) ditambahkan di
+`index.html` sebelum `</body>`, dan styling-nya di `css/style.css`
+(bagian "POSTER HOVER POPUP").
+
+### Belum otomatis tersambung
+Fungsi ini butuh elemen pemicu (misalnya thumbnail/link poster program) dengan
+atribut `data-poster="URL"` dan `data-nama="Nama Program"`, plus:
+```html
+onmouseenter="showPosterPopup(event, this)" onmouseleave="hidePosterPopup()"
+```
+Saya belum tahu persis di elemen/tabel mana kamu mau preview ini muncul
+(mis. di daftar program admin, di tabel crosscheck, dll), jadi trigger-nya
+belum saya pasang ke elemen manapun. Kabari saja di elemen mana, nanti saya pasangkan.
