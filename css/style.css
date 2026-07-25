@@ -640,6 +640,39 @@
         }
         .jadwal-empty i { font-size: 28px; display: block; margin-bottom: 10px; opacity: .4; }
 
+        /* ===== FORM PENDAFTARAN ===== */
+        .pendaftaran-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 14px;
+        }
+        .pendaftaran-card {
+            background: var(--bg);
+            border-radius: 10px;
+            padding: 14px 16px;
+            border: 1px solid var(--line);
+            border-left: 4px solid var(--brand);
+        }
+        .pendaftaran-card .jc-title { font-weight: 600; font-size: 14px; }
+        .pendaftaran-card .jc-meta {
+            font-size: 12.5px;
+            color: var(--ink-soft);
+            margin-top: 4px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .pendaftaran-card .jc-meta i { width: 16px; }
+        .pendaftaran-card.status-deal { border-left-color: var(--success); background: var(--success-tint); }
+        .pendaftaran-card.status-batal { border-left-color: var(--danger); opacity: .7; }
+        .pendaftaran-empty {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--ink-soft);
+            grid-column: 1 / -1;
+        }
+        .pendaftaran-empty i { font-size: 28px; display: block; margin-bottom: 10px; opacity: .4; }
+
         /* ===== KEBERANGKATAN ===== */
         .kb-program-selector {
             margin-bottom: 16px;

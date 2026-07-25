@@ -32,6 +32,7 @@ let debounceTimer = null, sessionTimeout = null;
 let loginAttempts = 0, loginLockTime = 0;
 let featuredIds = [];
 let jadwalList = [], editingJadwalId = null;
+let pendaftaranList = [], editingPendaftaranId = null;
 let kbJamaahList = [], kbSelectedProgram = null, editingKbId = null;
 let pmbSelectedProgram = null, pmbJamaahHarga = {}; // {jamaahId: hargaProgramNumber} cache per render
 let cicilanList = [], cicilanJamaahId = null;
@@ -224,6 +225,7 @@ function switchTab(tabId) {
         item.classList.toggle('active', item.dataset.tab === tabId);
     });
     if (tabId === 'info') renderJadwalSection();
+    if (tabId === 'pendaftaran') renderPendaftaranSection();
     if (tabId === 'keberangkatan') renderKbProgramSelector();
     if (tabId === 'pembayaran') renderPmbProgramSelector();
     if (tabId === 'dokumen') renderDokProgramSelector();
@@ -1516,6 +1518,9 @@ async function confirmDeleteAction() {
         } else if (deleteTarget.table === 'jadwal_tamu') {
             await loadJadwal();
             renderJadwalSection();
+        } else if (deleteTarget.table === 'pendaftaran') {
+            await loadPendaftaran();
+            renderPendaftaranSection();
         } else if (deleteTarget.table === 'kb_jamaah') {
             await loadKbJamaah();
             renderKbProgramSelector();
@@ -1679,6 +1684,136 @@ async function saveJadwalTamu(e) {
 
     } catch (err) {
         console.error('Save jadwal error:', err);
+        showToast('Gagal menyimpan: ' + err.message, 'error');
+    }
+}
+
+// ============================================================
+// 18B. FORM PENDAFTARAN (CRUD)
+// Daftar minat calon jamaah — nama, WA, program yang diminati, asal —
+// dicatat di sini sebelum resmi jadi data manifest di tab Keberangkatan
+// (kb_jamaah). Tidak otomatis terhubung/berpindah ke kb_jamaah; kalau
+// calon jamaah deal, staf input manual sebagai data jamaah baru di
+// Keberangkatan.
+// ============================================================
+async function loadPendaftaran() {
+    try {
+        const { data, error } = await withRetry(
+            () => supabaseClient.from('pendaftaran').select('*').order('created_at', { ascending: false }),
+            { label: 'Muat data pendaftaran' }
+        );
+        if (error) throw error;
+        pendaftaranList = data || [];
+    } catch (err) {
+        console.error('Load pendaftaran error:', err);
+        pendaftaranList = [];
+        showToast('Gagal memuat data pendaftaran — periksa koneksi internet', 'error');
+    }
+}
+
+function renderPendaftaranSection() {
+    const grid = document.getElementById('pendaftaranGrid');
+    if (!grid) return;
+
+    if (!pendaftaranList.length) {
+        grid.innerHTML = `<div class="pendaftaran-empty"><i class="fa-solid fa-clipboard-list"></i>Belum ada pendaftaran. Klik "Tambah Pendaftaran" untuk menambahkan.</div>`;
+        return;
+    }
+
+    const statusMap = {
+        baru: { label: '🆕 Baru', badge: 'limited' },
+        dihubungi: { label: '🔄 Dihubungi', badge: 'limited' },
+        deal: { label: '✅ Deal', badge: 'available' },
+        batal: { label: '❌ Batal', badge: 'full' }
+    };
+
+    grid.innerHTML = pendaftaranList.map(p => {
+        const program = dataUmroh.find(x => String(x.id) === String(p.program_id));
+        const st = statusMap[p.status] || statusMap.baru;
+        return `<div class="pendaftaran-card status-${p.status || 'baru'}">
+            <div class="jc-title">${escapeHtml(p.nama || '-')}</div>
+            <div class="jc-meta">
+                <span><i class="fa-solid fa-kaaba"></i> ${escapeHtml(program ? program.nama : 'Belum ditentukan')}</span>
+                ${p.asal ? `<span><i class="fa-solid fa-location-dot"></i> ${escapeHtml(p.asal)}</span>` : ''}
+            </div>
+            <div class="jc-meta" style="margin-top:4px;">
+                <span class="status-badge ${st.badge}">${st.label}</span>
+                ${p.catatan ? `<span style="color:var(--ink-soft);">${escapeHtml(p.catatan)}</span>` : ''}
+            </div>
+            <div class="jc-actions" style="margin-top:8px;display:flex;gap:6px;justify-content:flex-end;">
+                ${p.wa ? `<a href="https://wa.me/${p.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(p.nama||'')}%20kami%20dari%20PT%20Amiru%20Haramain%20Indonesia" target="_blank" style="background:#25D366;color:#fff;border:none;padding:2px 10px;border-radius:4px;font-size:11px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;"><i class="fab fa-whatsapp"></i></a>` : ''}
+                <button type="button" onclick="openPendaftaranModal('${p.id}')" style="background:var(--brand-tint);color:var(--brand);border:none;padding:2px 10px;border-radius:4px;font-size:11px;cursor:pointer;"><i class="fa-solid fa-pen"></i></button>
+                <button type="button" onclick="openDeleteModal('pendaftaran', '${p.id}', '${escapeHtml(p.nama || '').replace(/'/g, "\\'")}')" style="background:var(--danger-tint);color:var(--danger);border:none;padding:2px 10px;border-radius:4px;font-size:11px;cursor:pointer;"><i class="fa-solid fa-trash"></i></button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function openPendaftaranModal(id = null) {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menambah pendaftaran', 'error'); return; }
+    const modal = document.getElementById('pendaftaranModal');
+    const form = document.getElementById('pendaftaranForm');
+    form.reset();
+    document.getElementById('p_editId').value = '';
+
+    const programSelect = document.getElementById('pf_program');
+    programSelect.innerHTML = '<option value="">-- Belum Ditentukan --</option>' +
+        (dataUmroh || []).map(prog => `<option value="${prog.id}">${escapeHtml(prog.nama)}</option>`).join('');
+
+    if (id) {
+        const p = pendaftaranList.find(item => item.id === id);
+        if (!p) { showToast('Data tidak ditemukan', 'error'); return; }
+        document.getElementById('pendaftaranModalTitle').textContent = 'Edit Pendaftaran';
+        document.getElementById('p_editId').value = p.id;
+        document.getElementById('pf_nama').value = p.nama || '';
+        document.getElementById('pf_program').value = p.program_id || '';
+        document.getElementById('pf_wa').value = p.wa || '';
+        document.getElementById('pf_asal').value = p.asal || '';
+        document.getElementById('pf_status').value = p.status || 'baru';
+        document.getElementById('pf_catatan').value = p.catatan || '';
+    } else {
+        document.getElementById('pendaftaranModalTitle').textContent = 'Tambah Pendaftaran';
+        document.getElementById('pf_status').value = 'baru';
+    }
+
+    modal.classList.add('open');
+}
+
+function closePendaftaranModal() {
+    document.getElementById('pendaftaranModal').classList.remove('open');
+}
+
+async function savePendaftaran(e) {
+    e.preventDefault();
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menyimpan pendaftaran', 'error'); return; }
+    const id = document.getElementById('p_editId').value;
+    const data = {
+        program_id: document.getElementById('pf_program').value || null,
+        nama: document.getElementById('pf_nama').value.trim(),
+        wa: document.getElementById('pf_wa').value.trim(),
+        asal: document.getElementById('pf_asal').value.trim(),
+        status: document.getElementById('pf_status').value,
+        catatan: document.getElementById('pf_catatan').value.trim()
+    };
+
+    if (!data.nama) { showToast('Nama calon jamaah wajib diisi', 'error'); return; }
+
+    try {
+        let result;
+        if (id) {
+            result = await supabaseClient.from('pendaftaran').update(data).eq('id', id);
+        } else {
+            result = await supabaseClient.from('pendaftaran').insert([data]);
+        }
+        if (result.error) throw result.error;
+
+        showToast(id ? 'Pendaftaran berhasil diperbarui' : 'Pendaftaran berhasil ditambahkan');
+        closePendaftaranModal();
+        await loadPendaftaran();
+        renderPendaftaranSection();
+
+    } catch (err) {
+        console.error('Save pendaftaran error:', err);
         showToast('Gagal menyimpan: ' + err.message, 'error');
     }
 }
@@ -2927,11 +3062,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderSidebarNav();
     await loadFeaturedIds();
     await loadJadwal();
+    await loadPendaftaran();
     await loadKbJamaah();
     await loadDataFromSupabase();
 
     // Render sections
     renderJadwalSection();
+    renderPendaftaranSection();
     renderKbProgramSelector();
     renderFeaturedSection();
 

@@ -36,6 +36,8 @@ sql/
                                   (jalankan ini di project yang SUDAH jalan)
   tambah_dokumen_jamaah.sql    ← migrasi tambahan: kolom kb_jamaah.dokumen jsonb
                                   (jalankan ini di project yang SUDAH jalan)
+  tambah_pendaftaran.sql       ← migrasi tambahan: tabel pendaftaran (calon jamaah)
+                                  (jalankan ini di project yang SUDAH jalan)
 .github/workflows/
   keep-supabase-alive.yml      ← ping REST API tiap 3 hari biar project Supabase
                                   free tier tidak auto-pause (butuh secret
@@ -63,6 +65,7 @@ cek dulu apakah direferensikan di `index.html`/`service-worker.js` sebelum diasu
 | `programs` | Data program Umroh (field admin-only digabung di kolom `admin_data_lengkap` jsonb) |
 | `jadwal_tamu` | Jadwal kunjungan tamu ke kantor |
 | `kb_jamaah` | Data jamaah per program (kolom `dokumen` jsonb = checklist kelengkapan dokumen per jamaah) |
+| `pendaftaran` | Daftar minat calon jamaah (nama, WA, program diminati, asal) sebelum resmi masuk `kb_jamaah` |
 | `pembayaran_jamaah` | Riwayat pembayaran/cicilan per jamaah (fitur "Pembayaran & Cicilan") |
 | `featured_programs` | Program yang ditandai unggulan (diakses via `fetch()` REST langsung, bukan `.from()`) |
 | `app_config` | Password login admin/CS (key-value) |
@@ -81,6 +84,7 @@ password default di `app_config`, lalu update `SUPABASE_URL` & `SUPABASE_ANON_KE
 9. Render Table — 10. Search & Sort — 11. Detail Modal — 12. Admin Login —
 13. Admin Panel — 14. Admin CRUD Operations — 15. Parse Broadcast (auto-isi form dari
 teks broadcast WA) — 16. Export/Import — 17. Delete Confirm — 18. Jadwal Tamu (CRUD) —
+18B. Form Pendaftaran (CRUD daftar minat calon jamaah, tabel `pendaftaran`) —
 19. Keberangkatan (CRUD) — 19B. Pembayaran & Cicilan (monitoring pembayaran/cicilan
 per jamaah, terhubung ke harga program & auto-sync status di kb_jamaah) —
 19C. Kelengkapan Dokumen (checklist dokumen per jamaah, disimpan di kolom

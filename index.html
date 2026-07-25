@@ -50,6 +50,9 @@
             <button class="nav-item nav-loggedin-only" data-tab="info" style="display:none;">
                 <i class="fa-solid fa-calendar-check"></i> Jadwal Tamu
             </button>
+            <button class="nav-item nav-loggedin-only" data-tab="pendaftaran" style="display:none;">
+                <i class="fa-solid fa-clipboard-list"></i> Form Pendaftaran
+            </button>
             <button class="nav-item nav-loggedin-only" data-tab="keberangkatan" style="display:none;">
                 <i class="fa-solid fa-plane-departure"></i> Keberangkatan
             </button>
@@ -160,6 +163,9 @@
                     <i class="fa-solid fa-calendar-check"></i> <span>Jadwal Tamu</span>
                     <span class="badge" id="jadwalBadge" style="display:none;">0</span>
                 </button>
+                <button class="tab-btn nav-loggedin-only" data-tab="pendaftaran" style="display:none;">
+                    <i class="fa-solid fa-clipboard-list"></i> <span>Form Pendaftaran</span>
+                </button>
                 <button class="tab-btn nav-loggedin-only" data-tab="keberangkatan" style="display:none;">
                     <i class="fa-solid fa-plane-departure"></i> <span>Keberangkatan</span>
                 </button>
@@ -214,6 +220,19 @@
                     </div>
                     <div class="jadwal-grid" id="jadwalGrid">
                         <div class="jadwal-empty"><i class="fa-solid fa-calendar-xmark"></i>Belum ada jadwal tamu.</div>
+                    </div>
+                </div>
+
+                <!-- TAB: Form Pendaftaran -->
+                <div class="tab-panel" id="tab-pendaftaran">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+                        <p style="color:var(--ink-soft);font-size:13px;">Daftar minat calon jamaah sebelum resmi masuk data Keberangkatan</p>
+                        <button class="btn-primary" id="btnTambahPendaftaran" onclick="openPendaftaranModal()" style="font-size:12px;padding:6px 14px;">
+                            <i class="fa-solid fa-plus"></i> Tambah Pendaftaran
+                        </button>
+                    </div>
+                    <div class="pendaftaran-grid" id="pendaftaranGrid">
+                        <div class="pendaftaran-empty"><i class="fa-solid fa-clipboard-list"></i>Belum ada pendaftaran.</div>
                     </div>
                 </div>
 
@@ -309,6 +328,9 @@
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="info" style="display:none;" onclick="switchTab('info'); toggleMobileSidebar();">
                 <i class="fa-solid fa-calendar-check"></i> Jadwal Tamu
+            </button>
+            <button class="nav-item nav-loggedin-only" data-tab="pendaftaran" style="display:none;" onclick="switchTab('pendaftaran'); toggleMobileSidebar();">
+                <i class="fa-solid fa-clipboard-list"></i> Form Pendaftaran
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="keberangkatan" style="display:none;" onclick="switchTab('keberangkatan'); toggleMobileSidebar();">
                 <i class="fa-solid fa-plane-departure"></i> Keberangkatan
@@ -408,6 +430,60 @@
                 <div class="form-actions">
                     <button type="submit" class="btn-submit"><i class="fa-solid fa-save"></i> Simpan</button>
                     <button type="button" class="btn-cancel" onclick="closeJadwalModal()">Batal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL: FORM PENDAFTARAN ===== -->
+<div class="modal-overlay" id="pendaftaranModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-clipboard-list"></i> <span id="pendaftaranModalTitle">Tambah Pendaftaran</span></h2>
+            <button class="modal-close" onclick="closePendaftaranModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="pendaftaranForm" onsubmit="savePendaftaran(event)">
+                <input type="hidden" id="p_editId" value="">
+                <div class="form-group">
+                    <label>Nama Calon Jamaah <span class="required">*</span></label>
+                    <input type="text" id="pf_nama" placeholder="Contoh: Ahmad Fauzi" required maxlength="150">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Program Diminati</label>
+                        <select id="pf_program">
+                            <option value="">-- Belum Ditentukan --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>No. WhatsApp</label>
+                        <input type="tel" id="pf_wa" placeholder="628xxxxxxxxxx">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Asal Daerah</label>
+                        <input type="text" id="pf_asal" placeholder="Contoh: Magetan, Jawa Timur">
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="pf_status">
+                            <option value="baru">Baru</option>
+                            <option value="dihubungi">Dihubungi</option>
+                            <option value="deal">Deal</option>
+                            <option value="batal">Batal</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Catatan</label>
+                    <input type="text" id="pf_catatan" placeholder="Catatan tambahan...">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit"><i class="fa-solid fa-save"></i> Simpan</button>
+                    <button type="button" class="btn-cancel" onclick="closePendaftaranModal()">Batal</button>
                 </div>
             </form>
         </div>
