@@ -66,7 +66,7 @@ cek dulu apakah direferensikan di `index.html`/`service-worker.js` sebelum diasu
 | `jadwal_tamu` | Jadwal kunjungan tamu ke kantor |
 | `kb_jamaah` | Data jamaah per program (kolom `dokumen` jsonb = checklist kelengkapan dokumen per jamaah) |
 | `pendaftaran` | Daftar minat calon jamaah (nama, WA, program diminati, asal) sebelum resmi masuk `kb_jamaah` |
-| `pembayaran_jamaah` | Riwayat pembayaran/cicilan per jamaah (fitur "Pembayaran & Cicilan") |
+| `pembayaran_jamaah` | Riwayat pembayaran/cicilan per jamaah (tampil menyatu di tab "Keberangkatan") |
 | `featured_programs` | Program yang ditandai unggulan (diakses via `fetch()` REST langsung, bukan `.from()`) |
 | `app_config` | Password login admin/CS (key-value) |
 | `tg_config` | Config notifikasi Telegram (bot token, edge URL, daftar penerima) |
@@ -85,8 +85,9 @@ password default di `app_config`, lalu update `SUPABASE_URL` & `SUPABASE_ANON_KE
 13. Admin Panel — 14. Admin CRUD Operations — 15. Parse Broadcast (auto-isi form dari
 teks broadcast WA) — 16. Export/Import — 17. Delete Confirm — 18. Jadwal Tamu (CRUD) —
 18B. Form Pendaftaran (CRUD daftar minat calon jamaah, tabel `pendaftaran`) —
-19. Keberangkatan (CRUD) — 19B. Pembayaran & Cicilan (monitoring pembayaran/cicilan
-per jamaah, terhubung ke harga program & auto-sync status di kb_jamaah) —
+19. Keberangkatan (CRUD data jamaah + tabel pembayaran/cicilan tergabung dalam satu tab,
+terhubung ke harga program & auto-sync status di kb_jamaah) — 19B. Kelola Cicilan
+(modal dipakai dari tombol "Bayar" di tabel Keberangkatan) —
 19C. Kelengkapan Dokumen (checklist dokumen per jamaah, disimpan di kolom
 kb_jamaah.dokumen jsonb) —
 20. Kuitansi — 21. Featured Programs —

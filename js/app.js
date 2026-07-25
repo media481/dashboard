@@ -34,7 +34,6 @@ let featuredIds = [];
 let jadwalList = [], editingJadwalId = null;
 let pendaftaranList = [], editingPendaftaranId = null;
 let kbJamaahList = [], kbSelectedProgram = null, editingKbId = null;
-let pmbSelectedProgram = null, pmbJamaahHarga = {}; // {jamaahId: hargaProgramNumber} cache per render
 let cicilanList = [], cicilanJamaahId = null;
 let dokSelectedProgram = null;
 const DOKUMEN_JENIS = [
@@ -227,7 +226,6 @@ function switchTab(tabId) {
     if (tabId === 'info') renderJadwalSection();
     if (tabId === 'pendaftaran') renderPendaftaranSection();
     if (tabId === 'keberangkatan') renderKbProgramSelector();
-    if (tabId === 'pembayaran') renderPmbProgramSelector();
     if (tabId === 'dokumen') renderDokProgramSelector();
 }
 
@@ -1139,7 +1137,8 @@ function renderSidebarNav() {
     // kembalikan ke tab "Program Umroh" supaya tidak nyangkut di halaman kosong.
     if (!loggedIn) {
         const activePanel = document.querySelector('.tab-panel.active');
-        if (activePanel && (activePanel.id === 'tab-info' || activePanel.id === 'tab-keberangkatan')) {
+        const loggedinOnlyIds = ['tab-info', 'tab-pendaftaran', 'tab-keberangkatan', 'tab-dokumen'];
+        if (activePanel && loggedinOnlyIds.includes(activePanel.id)) {
             switchTab('umroh');
         }
     }
@@ -1868,14 +1867,22 @@ function selectKbProgram(id) {
 }
 
 async function loadKbJamaahForProgram(programId) {
+    kbSelectedProgram = programId || null;
     const container = document.getElementById('kbJamaahContent');
     if (!programId) {
         container.innerHTML = `<div class="kb-no-program"><i class="fa-solid fa-plane-departure"></i><p>Pilih program di atas untuk melihat daftar jamaah.</p></div>`;
         return;
     }
 
+    const program = dataUmroh.find(p => String(p.id) === String(programId));
+    const hargaProgram = parseRupiahToNumber(program ? program.harga_quint : 0);
+    const canEdit = canManageProgramData();
+
     try {
-        const { data, error } = await supabaseClient.from('kb_jamaah').select('*').eq('program_id', programId).order('nama', { ascending: true });
+        const { data, error } = await withRetry(
+            () => supabaseClient.from('kb_jamaah').select('*').eq('program_id', programId).order('nama', { ascending: true }),
+            { label: 'Muat data jamaah' }
+        );
         if (error) throw error;
 
         const jamaah = data || [];
@@ -1884,39 +1891,86 @@ async function loadKbJamaahForProgram(programId) {
             return;
         }
 
-        const totalLunas = jamaah.filter(j => j.status === 'lunas').length;
-        const totalDp = jamaah.filter(j => j.status === 'dp').length;
+        const jamaahIds = jamaah.map(j => j.id);
+        const { data: bayarData, error: bErr } = await withRetry(
+            () => supabaseClient.from('pembayaran_jamaah').select('jamaah_id, jumlah').in('jamaah_id', jamaahIds),
+            { label: 'Muat data pembayaran' }
+        );
+        if (bErr) throw bErr;
+
+        const totalPerJamaah = {};
+        (bayarData || []).forEach(b => {
+            totalPerJamaah[b.jamaah_id] = (totalPerJamaah[b.jamaah_id] || 0) + Number(b.jumlah || 0);
+        });
+
+        let grandTotalTagihan = 0, grandTotalDibayar = 0;
+
+        const rows = jamaah.map(j => {
+            const dibayar = totalPerJamaah[j.id] || 0;
+            const sisa = Math.max(hargaProgram - dibayar, 0);
+            const pct = hargaProgram > 0 ? Math.min(100, Math.round((dibayar / hargaProgram) * 100)) : 0;
+            grandTotalTagihan += hargaProgram;
+            grandTotalDibayar += dibayar;
+
+            let statusLabel, statusClass;
+            if (hargaProgram > 0 && dibayar >= hargaProgram) { statusLabel = '✅ Lunas'; statusClass = 'available'; }
+            else if (dibayar > 0) { statusLabel = '🔄 Cicilan'; statusClass = 'limited'; }
+            else { statusLabel = '⏳ Belum Bayar'; statusClass = 'full'; }
+
+            return `
+                <tr style="border-bottom:1px solid var(--line);">
+                    <td style="padding:10px 14px;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
+                    <td style="padding:10px 14px;">${j.nik || '-'}</td>
+                    <td style="padding:10px 14px;">${j.paspor || '-'}</td>
+                    <td style="padding:10px 14px;white-space:nowrap;">${formatRupiah(hargaProgram)}</td>
+                    <td style="padding:10px 14px;white-space:nowrap;color:var(--success);font-weight:600;">${formatRupiah(dibayar)}</td>
+                    <td style="padding:10px 14px;white-space:nowrap;color:${sisa > 0 ? 'var(--danger)' : 'var(--ink-soft)'};font-weight:600;">${formatRupiah(sisa)}</td>
+                    <td style="padding:10px 14px;min-width:110px;">
+                        <div style="background:var(--line);border-radius:6px;height:8px;overflow:hidden;">
+                            <div style="background:var(--brand);height:100%;width:${pct}%;"></div>
+                        </div>
+                        <span style="font-size:10px;color:var(--ink-soft);">${pct}%</span>
+                    </td>
+                    <td style="padding:10px 14px;"><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                    <td style="padding:10px 14px;white-space:nowrap;">
+                        <button class="btn-primary" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${j.id}')">
+                            <i class="fa-solid fa-money-bill-wave"></i> Bayar
+                        </button>
+                        ${canEdit ? `
+                        <button type="button" onclick="openKbModal('${j.id}')" style="background:var(--brand-tint);color:var(--brand);border:none;padding:5px 8px;border-radius:6px;font-size:11px;cursor:pointer;" title="Edit data jamaah"><i class="fa-solid fa-pen"></i></button>
+                        <button type="button" onclick="openDeleteModal('kb_jamaah', '${j.id}', '${escapeHtml(j.nama || '').replace(/'/g, "\\'")}')" style="background:var(--danger-tint);color:var(--danger);border:none;padding:5px 8px;border-radius:6px;font-size:11px;cursor:pointer;" title="Hapus data jamaah"><i class="fa-solid fa-trash"></i></button>
+                        ` : ''}
+                    </td>
+                </tr>`;
+        }).join('');
+
+        const grandSisa = Math.max(grandTotalTagihan - grandTotalDibayar, 0);
+        const totalLunas = jamaah.filter(j => hargaProgram > 0 && (totalPerJamaah[j.id] || 0) >= hargaProgram).length;
 
         container.innerHTML = `
+            <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+                <span class="status-badge available">${jamaah.length} Total Jamaah</span>
+                <span class="status-badge available">${totalLunas} Lunas</span>
+                <span class="status-badge available">Total Dibayar: ${formatRupiah(grandTotalDibayar)}</span>
+                <span class="status-badge ${grandSisa > 0 ? 'full' : 'available'}">Sisa Tagihan: ${formatRupiah(grandSisa)}</span>
+            </div>
+            ${!hargaProgram ? `<div style="font-size:12px;color:var(--warn);margin-bottom:10px;"><i class="fa-solid fa-triangle-exclamation"></i> Harga program ini belum diisi, sisa tagihan tidak bisa dihitung akurat.</div>` : ''}
             <div class="table-container" style="overflow-x:auto;">
-                <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
-                    <span class="status-badge available">${jamaah.length} Total Jamaah</span>
-                    <span class="status-badge available">${totalLunas} Lunas</span>
-                    ${totalDp > 0 ? `<span class="status-badge limited">${totalDp} DP / Cicilan</span>` : ''}
-                </div>
                 <table style="width:100%;border-collapse:collapse;font-size:13px;">
                     <thead style="background:var(--bg);">
                         <tr>
                             <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Nama</th>
                             <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">NIK</th>
                             <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Paspor</th>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Harga Program</th>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Dibayar</th>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Sisa</th>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Progress</th>
                             <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Status</th>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        ${jamaah.map(j => `
-                            <tr style="border-bottom:1px solid var(--line);">
-                                <td style="padding:10px 14px;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
-                                <td style="padding:10px 14px;">${j.nik || '-'}</td>
-                                <td style="padding:10px 14px;">${j.paspor || '-'}</td>
-                                <td style="padding:10px 14px;">
-                                    <span class="status-badge ${j.status === 'lunas' ? 'available' : j.status === 'dp' ? 'limited' : 'full'}">
-                                        ${j.status === 'lunas' ? '✅ Lunas' : j.status === 'dp' ? '🔄 DP/Cicilan' : '⏳ Pending'}
-                                    </span>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
+                    <tbody>${rows}</tbody>
                 </table>
             </div>
         `;
@@ -2011,143 +2065,8 @@ async function saveKbJamaah(e) {
 }
 
 // ============================================================
-// 19B. PEMBAYARAN & CICILAN JAMAAH
+// 19B. KELOLA CICILAN (modal dipakai dari tombol "Bayar" di tabel Keberangkatan)
 // ============================================================
-function renderPmbProgramSelector() {
-    const select = document.getElementById('pmbProgramSelect');
-    if (!select) return;
-
-    if (!dataUmroh || dataUmroh.length === 0) {
-        select.innerHTML = '<option value="">-- Belum ada program --</option>';
-        return;
-    }
-
-    const currentVal = select.value;
-    select.innerHTML = '<option value="">-- Pilih Program --</option>' +
-        dataUmroh.map(p => `<option value="${p.id}">${escapeHtml(p.nama)} (${escapeHtml(p.tgl || '-')})</option>`).join('');
-    if (currentVal) select.value = currentVal;
-
-    if (select.value) loadPembayaranForProgram(select.value);
-}
-
-function selectPmbProgram(id) {
-    document.getElementById('pmbProgramSelect').value = id;
-    loadPembayaranForProgram(id);
-}
-
-async function loadPembayaranForProgram(programId) {
-    pmbSelectedProgram = programId || null;
-    const container = document.getElementById('pmbContent');
-    const summaryEl = document.getElementById('pmbSummary');
-    summaryEl.innerHTML = '';
-
-    if (!programId) {
-        container.innerHTML = `<div class="kb-no-program"><i class="fa-solid fa-money-bill-wave"></i><p>Pilih program di atas untuk memantau pembayaran jamaah.</p></div>`;
-        return;
-    }
-
-    const program = dataUmroh.find(p => String(p.id) === String(programId));
-    const hargaProgram = parseRupiahToNumber(program ? program.harga_quint : 0);
-
-    try {
-        const { data: jamaahData, error: jErr } = await withRetry(
-            () => supabaseClient.from('kb_jamaah').select('*').eq('program_id', programId).order('nama', { ascending: true }),
-            { label: 'Muat data jamaah' }
-        );
-        if (jErr) throw jErr;
-        const jamaah = jamaahData || [];
-
-        if (!jamaah.length) {
-            container.innerHTML = `<div class="kb-no-program"><i class="fa-solid fa-user-slash"></i><p>Belum ada jamaah terdaftar untuk program ini.</p></div>`;
-            return;
-        }
-
-        const jamaahIds = jamaah.map(j => j.id);
-        const { data: bayarData, error: bErr } = await withRetry(
-            () => supabaseClient.from('pembayaran_jamaah').select('jamaah_id, jumlah').in('jamaah_id', jamaahIds),
-            { label: 'Muat data pembayaran' }
-        );
-        if (bErr) throw bErr;
-
-        const totalPerJamaah = {};
-        (bayarData || []).forEach(b => {
-            totalPerJamaah[b.jamaah_id] = (totalPerJamaah[b.jamaah_id] || 0) + Number(b.jumlah || 0);
-        });
-
-        let grandTotalTagihan = 0, grandTotalDibayar = 0;
-
-        const rows = jamaah.map(j => {
-            const dibayar = totalPerJamaah[j.id] || 0;
-            const sisa = Math.max(hargaProgram - dibayar, 0);
-            const pct = hargaProgram > 0 ? Math.min(100, Math.round((dibayar / hargaProgram) * 100)) : 0;
-            grandTotalTagihan += hargaProgram;
-            grandTotalDibayar += dibayar;
-
-            let statusLabel, statusClass;
-            if (hargaProgram > 0 && dibayar >= hargaProgram) { statusLabel = '✅ Lunas'; statusClass = 'available'; }
-            else if (dibayar > 0) { statusLabel = '🔄 Cicilan'; statusClass = 'limited'; }
-            else { statusLabel = '⏳ Belum Bayar'; statusClass = 'full'; }
-
-            return `
-                <tr style="border-bottom:1px solid var(--line);">
-                    <td style="padding:10px 14px;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
-                    <td style="padding:10px 14px;white-space:nowrap;">${formatRupiah(hargaProgram)}</td>
-                    <td style="padding:10px 14px;white-space:nowrap;color:var(--success);font-weight:600;">${formatRupiah(dibayar)}</td>
-                    <td style="padding:10px 14px;white-space:nowrap;color:${sisa > 0 ? 'var(--danger)' : 'var(--ink-soft)'};font-weight:600;">${formatRupiah(sisa)}</td>
-                    <td style="padding:10px 14px;min-width:110px;">
-                        <div style="background:var(--line);border-radius:6px;height:8px;overflow:hidden;">
-                            <div style="background:var(--brand);height:100%;width:${pct}%;"></div>
-                        </div>
-                        <span style="font-size:10px;color:var(--ink-soft);">${pct}%</span>
-                    </td>
-                    <td style="padding:10px 14px;"><span class="status-badge ${statusClass}">${statusLabel}</span></td>
-                    <td style="padding:10px 14px;">
-                        <button class="btn-primary" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${j.id}')">
-                            <i class="fa-solid fa-money-bill-wave"></i> Kelola
-                        </button>
-                    </td>
-                </tr>`;
-        }).join('');
-
-        const grandSisa = Math.max(grandTotalTagihan - grandTotalDibayar, 0);
-        summaryEl.innerHTML = `
-            <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
-                <span class="status-badge available">Total Tagihan: ${formatRupiah(grandTotalTagihan)}</span>
-                <span class="status-badge available">Total Dibayar: ${formatRupiah(grandTotalDibayar)}</span>
-                <span class="status-badge ${grandSisa > 0 ? 'full' : 'available'}">Sisa: ${formatRupiah(grandSisa)}</span>
-            </div>`;
-
-        container.innerHTML = `
-            <div class="table-container" style="overflow-x:auto;">
-                <table style="width:100%;border-collapse:collapse;font-size:13px;">
-                    <thead style="background:var(--bg);">
-                        <tr>
-                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Nama</th>
-                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Harga Program</th>
-                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Dibayar</th>
-                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Sisa</th>
-                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Progress</th>
-                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Status</th>
-                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>${rows}</tbody>
-                </table>
-            </div>`;
-
-        if (!hargaProgram) {
-            summaryEl.innerHTML += `<div style="font-size:12px;color:var(--warn);margin-bottom:10px;"><i class="fa-solid fa-triangle-exclamation"></i> Harga program ini belum diisi, sisa tagihan tidak bisa dihitung akurat.</div>`;
-        }
-
-    } catch (err) {
-        console.error('Load pembayaran error:', err);
-        container.innerHTML = `<div class="kb-no-program" style="color:var(--danger);">
-            <i class="fa-solid fa-circle-exclamation"></i>
-            <p>Gagal memuat data pembayaran — periksa koneksi internet.</p>
-        </div>`;
-    }
-}
-
 async function openCicilanModal(jamaahId) {
     if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengelola pembayaran', 'error'); return; }
     cicilanJamaahId = jamaahId;
@@ -2244,7 +2163,7 @@ async function saveCicilan(e) {
 
         await syncJamaahStatus(jamaahId);
         await loadCicilanHistory(jamaahId);
-        if (pmbSelectedProgram) await loadPembayaranForProgram(pmbSelectedProgram);
+        if (kbSelectedProgram) await loadKbJamaahForProgram(kbSelectedProgram);
 
     } catch (err) {
         console.error('Save cicilan error:', err);
@@ -2264,7 +2183,7 @@ async function deleteCicilan(id) {
         const jamaahId = cicilanJamaahId;
         await syncJamaahStatus(jamaahId);
         await loadCicilanHistory(jamaahId);
-        if (pmbSelectedProgram) await loadPembayaranForProgram(pmbSelectedProgram);
+        if (kbSelectedProgram) await loadKbJamaahForProgram(kbSelectedProgram);
 
     } catch (err) {
         console.error('Delete cicilan error:', err);

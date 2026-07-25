@@ -56,9 +56,6 @@
             <button class="nav-item nav-loggedin-only" data-tab="keberangkatan" style="display:none;">
                 <i class="fa-solid fa-plane-departure"></i> Keberangkatan
             </button>
-            <button class="nav-item nav-loggedin-only" data-tab="pembayaran" style="display:none;">
-                <i class="fa-solid fa-money-bill-wave"></i> Pembayaran &amp; Cicilan
-            </button>
             <button class="nav-item nav-loggedin-only" data-tab="dokumen" style="display:none;">
                 <i class="fa-solid fa-file-circle-check"></i> Kelengkapan Dokumen
             </button>
@@ -169,9 +166,6 @@
                 <button class="tab-btn nav-loggedin-only" data-tab="keberangkatan" style="display:none;">
                     <i class="fa-solid fa-plane-departure"></i> <span>Keberangkatan</span>
                 </button>
-                <button class="tab-btn nav-loggedin-only" data-tab="pembayaran" style="display:none;">
-                    <i class="fa-solid fa-money-bill-wave"></i> <span>Pembayaran &amp; Cicilan</span>
-                </button>
                 <button class="tab-btn nav-loggedin-only" data-tab="dokumen" style="display:none;">
                     <i class="fa-solid fa-file-circle-check"></i> <span>Kelengkapan Dokumen</span>
                 </button>
@@ -236,7 +230,7 @@
                     </div>
                 </div>
 
-                <!-- TAB: Keberangkatan -->
+                <!-- TAB: Keberangkatan (jamaah + pembayaran & cicilan digabung) -->
                 <div class="tab-panel" id="tab-keberangkatan">
                     <div class="kb-program-selector" id="kbProgramSelector">
                         <select id="kbProgramSelect" onchange="selectKbProgram(this.value)">
@@ -252,23 +246,7 @@
                     <div id="kbJamaahContent">
                         <div class="kb-no-program">
                             <i class="fa-solid fa-plane-departure"></i>
-                            <p>Pilih program di atas untuk melihat daftar jamaah.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- TAB: Pembayaran & Cicilan -->
-                <div class="tab-panel" id="tab-pembayaran">
-                    <div class="kb-program-selector" id="pmbProgramSelector">
-                        <select id="pmbProgramSelect" onchange="selectPmbProgram(this.value)">
-                            <option value="">-- Pilih Program --</option>
-                        </select>
-                    </div>
-                    <div id="pmbSummary"></div>
-                    <div id="pmbContent">
-                        <div class="kb-no-program">
-                            <i class="fa-solid fa-money-bill-wave"></i>
-                            <p>Pilih program di atas untuk memantau pembayaran jamaah.</p>
+                            <p>Pilih program di atas untuk melihat daftar jamaah & pembayaran.</p>
                         </div>
                     </div>
                 </div>
@@ -334,9 +312,6 @@
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="keberangkatan" style="display:none;" onclick="switchTab('keberangkatan'); toggleMobileSidebar();">
                 <i class="fa-solid fa-plane-departure"></i> Keberangkatan
-            </button>
-            <button class="nav-item nav-loggedin-only" data-tab="pembayaran" style="display:none;" onclick="switchTab('pembayaran'); toggleMobileSidebar();">
-                <i class="fa-solid fa-money-bill-wave"></i> Pembayaran &amp; Cicilan
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="dokumen" style="display:none;" onclick="switchTab('dokumen'); toggleMobileSidebar();">
                 <i class="fa-solid fa-file-circle-check"></i> Kelengkapan Dokumen
