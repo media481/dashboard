@@ -397,8 +397,10 @@ async function loadUserRoles() {
         const { data, error } = await supabaseClient.from('app_config').select('key, value');
         if (error || !data) return;
         data.forEach(row => {
-            if (row.key === 'pass_administrator') USER_ROLES[row.value] = { role: 'administrator', label: 'Administrator' };
-            if (row.key === 'pass_cs') USER_ROLES[row.value] = { role: 'cs', label: 'CS / Customer Service' };
+            // 'pass_administrator' tetap didukung sebagai alias lama untuk role 'admin'
+            if (row.key === 'pass_admin' || row.key === 'pass_administrator') USER_ROLES[row.value] = { role: 'admin', label: 'Admin' };
+            if (row.key === 'pass_user') USER_ROLES[row.value] = { role: 'user', label: 'User' };
+            if (row.key === 'pass_guest') USER_ROLES[row.value] = { role: 'guest', label: 'Guest' };
         });
     } catch (_) {}
 }
@@ -430,7 +432,7 @@ function checkSession() {
     const savedRole = sessionStorage.getItem('admin_role');
     if (loggedIn === 'true' && loginTime && (Date.now() - parseInt(loginTime) < SESSION_DURATION)) {
         adminLoggedIn = true;
-        currentRole = savedRole || 'administrator';
+        currentRole = savedRole || 'admin';
         setAdminSession(currentRole);
     } else {
         sessionStorage.removeItem('admin_logged_in');
@@ -469,6 +471,34 @@ function checkAdminLogin() {
         } else {
             errorDiv.innerText = `❌ Password salah! Sisa percobaan: ${5 - loginAttempts}`;
         }
+    }
+}
+
+// ============================================================
+// 12b. PENGATURAN USER (kelola password per role, admin only)
+// ============================================================
+async function saveUserSettings() {
+    if (currentRole !== 'admin') { showToast('Hanya Admin yang boleh mengubah pengaturan user', 'error'); return; }
+    const statusEl = document.getElementById('usSettingsStatus');
+    const vals = {
+        pass_admin: document.getElementById('us_pass_admin')?.value.trim() || '',
+        pass_user: document.getElementById('us_pass_user')?.value.trim() || '',
+        pass_guest: document.getElementById('us_pass_guest')?.value.trim() || ''
+    };
+    const rows = Object.entries(vals).filter(([, v]) => v).map(([key, value]) => ({ key, value }));
+    if (!rows.length) { if (statusEl) statusEl.innerHTML = '<span style="color:var(--ink-soft);font-size:12.5px;">Tidak ada perubahan — isi kolom yang ingin diubah.</span>'; return; }
+    try {
+        const { error } = await supabaseClient.from('app_config').upsert(rows, { onConflict: 'key' });
+        if (error) throw error;
+        USER_ROLES = {};
+        await loadUserRoles();
+        ['us_pass_admin','us_pass_user','us_pass_guest'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--success);font-size:12.5px;">✅ Password berhasil disimpan.</span>';
+        showToast('Pengaturan user berhasil disimpan');
+    } catch (err) {
+        console.error('saveUserSettings error:', err);
+        if (statusEl) statusEl.innerHTML = `<span style="color:var(--danger);font-size:12.5px;">❌ Gagal menyimpan: ${escapeHtml(err.message)}</span>`;
+        showToast('Gagal menyimpan pengaturan user', 'error');
     }
 }
 
@@ -534,8 +564,9 @@ function getAdminLoginBoxHtml() {
             <p>Masukkan password untuk masuk</p>
         </div>
         <div class="admin-login-body">
-            <div class="admin-role-chip"><i class="fa-solid fa-user-shield"></i> <span><b>Administrator</b> — akses penuh</span></div>
-            <div class="admin-role-chip"><i class="fa-solid fa-headset"></i> <span><b>CS</b> — kelola jadwal tamu</span></div>
+            <div class="admin-role-chip"><i class="fa-solid fa-user-shield"></i> <span><b>Admin</b> — akses penuh</span></div>
+            <div class="admin-role-chip"><i class="fa-solid fa-user-pen"></i> <span><b>User</b> — kelola data program</span></div>
+            <div class="admin-role-chip"><i class="fa-solid fa-eye"></i> <span><b>Guest</b> — lihat data saja</span></div>
             <input type="password" id="adminPasswordInput" placeholder="Password" onkeydown="if(event.key==='Enter')checkAdminLogin()">
             <button onclick="checkAdminLogin()" class="btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Masuk</button>
             <div id="adminLoginError" class="admin-login-error"></div>
@@ -554,7 +585,14 @@ function switchAdminSubTab(name) {
 async function renderAdminPanel() {
     const container = document.getElementById('adminPanelBody');
     if (adminLoggedIn) {
-        const isAdmin = currentRole === 'administrator';
+        // ---- Role tiers ----
+        // admin  : akses penuh (Program + Crosscheck + Telegram + Pengaturan User)
+        // user   : hanya kelola data Program (tambah/edit/hapus), tidak bisa masuk subtab lain
+        // guest  : hanya boleh melihat data Program (read-only), tidak ada tombol aksi
+        const isAdmin = currentRole === 'admin';
+        const isUser = currentRole === 'user';
+        const isGuest = currentRole === 'guest';
+        const canEditData = isAdmin || isUser; // boleh tambah/edit/hapus program
         const { data } = await supabaseClient.from('programs').select('*').order('created_at');
         adminPrograms = data || [];
 
@@ -564,18 +602,23 @@ async function renderAdminPanel() {
                 <button class="admin-subtab-btn active" data-subtab="program" onclick="switchAdminSubTab('program')"><i class="fa-solid fa-kaaba"></i> Program</button>
                 <button class="admin-subtab-btn" data-subtab="crosscheck" onclick="switchAdminSubTab('crosscheck')"><i class="fa-solid fa-magnifying-glass-chart"></i> Crosscheck</button>
                 <button class="admin-subtab-btn" data-subtab="telegram" onclick="switchAdminSubTab('telegram')"><i class="fa-brands fa-telegram"></i> Telegram</button>
+                <button class="admin-subtab-btn" data-subtab="usersettings" onclick="switchAdminSubTab('usersettings')"><i class="fa-solid fa-user-gear"></i> Pengaturan User</button>
             </div>
+            ` : ''}
             <div class="admin-subtab-panel" id="adminSubTab-program" style="display:block;">
             <div class="admin-toolbar">
-                <button class="btn-primary" onclick="showAdminForm()"><i class="fa-solid fa-plus"></i> Tambah Program</button>
+                ${canEditData ? `<button class="btn-primary" onclick="showAdminForm()"><i class="fa-solid fa-plus"></i> Tambah Program</button>` : `<span class="admin-role-note"><i class="fa-solid fa-eye"></i> Mode lihat saja (Guest)</span>`}
                 <div class="admin-toolbar-right">
+                    ${isAdmin ? `
                     <button class="btn-icon-ghost" onclick="exportAdminData()" title="Export Data"><i class="fa-solid fa-download"></i></button>
                     <button class="btn-icon-ghost" onclick="importAdminData()" title="Import Data"><i class="fa-solid fa-upload"></i></button>
                     <button class="btn-icon-ghost danger" onclick="clearAllAdminData()" title="Hapus Semua Data"><i class="fa-solid fa-trash"></i></button>
+                    ` : ''}
                     <button class="btn-logout" onclick="logoutAdmin()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Logout</button>
                 </div>
             </div>
 
+            ${canEditData ? `
             <div id="adminFormContainer" class="admin-form-card" style="display:none;">
                 <div class="admin-form-head">
                     <h3><i class="fa-solid fa-file-pen"></i> <span id="adminFormTitle">Tambah Program Baru</span></h3>
@@ -713,6 +756,7 @@ async function renderAdminPanel() {
                     <button class="btn-cancel" onclick="hideAdminForm()">Batal</button>
                 </div>
             </div>
+            ` : ''}
 
             <div class="admin-table-card">
                 <div class="admin-table-head">
@@ -726,7 +770,7 @@ async function renderAdminPanel() {
                                 <th>Nama Program</th>
                                 <th>Harga</th>
                                 <th>Tanggal</th>
-                                <th style="text-align:right;">Aksi</th>
+                                ${canEditData ? `<th style="text-align:right;">Aksi</th>` : ''}
                             </tr>
                         </thead>
                         <tbody id="adminTableBody"></tbody>
@@ -735,6 +779,7 @@ async function renderAdminPanel() {
             </div>
             </div>
 
+            ${isAdmin ? `
             <div class="admin-subtab-panel" id="adminSubTab-crosscheck" style="display:none;">
                 <div class="admin-section-header">
                     <div><h4><i class="fa-solid fa-magnifying-glass-chart"></i> Crosscheck Data Program</h4>
@@ -783,14 +828,38 @@ async function renderAdminPanel() {
                     <p style="color:var(--ink-soft);font-size:11px;margin-bottom:6px;">▶ LOG PENGIRIMAN TELEGRAM:</p>
                 </div>
             </div>
-            ` : getAdminLoginBoxHtml()}
+
+            <div class="admin-subtab-panel" id="adminSubTab-usersettings" style="display:none;">
+                <div class="admin-section-header">
+                    <div><h4><i class="fa-solid fa-user-gear"></i> Pengaturan User</h4>
+                    <p>Atur password untuk masing-masing role: Admin (akses penuh), User (kelola data program), Guest (lihat saja)</p></div>
+                </div>
+                <div class="admin-fieldset">
+                    <div class="admin-fieldset-title"><i class="fa-solid fa-key"></i> Password per Role</div>
+                    <div class="form-group">
+                        <label>Password Admin</label>
+                        <input type="text" id="us_pass_admin" placeholder="Kosongkan jika tidak ingin mengubah" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label>Password User</label>
+                        <input type="text" id="us_pass_user" placeholder="Kosongkan jika tidak ingin mengubah" autocomplete="off">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>Password Guest</label>
+                        <input type="text" id="us_pass_guest" placeholder="Kosongkan jika tidak ingin mengubah" autocomplete="off">
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+                    <button class="btn-primary" onclick="saveUserSettings()"><i class="fa-solid fa-save"></i> Simpan Password</button>
+                </div>
+                <div id="usSettingsStatus" style="margin-top:12px;"></div>
+            </div>
+            ` : ''}
         `;
 
-        // If admin is logged in, render the admin table
-        if (adminLoggedIn && currentRole === 'administrator') {
-            renderAdminTable();
-
-            // Set up date input listener
+        // Render tabel & siapkan form untuk role yang boleh mengedit
+        renderAdminTable();
+        if (canEditData) {
             const dateInput = document.getElementById('admin_tgl_date');
             if (dateInput) {
                 dateInput.addEventListener('change', function() {
@@ -816,10 +885,11 @@ async function renderAdminPanel() {
 function renderAdminTable() {
     const tbody = document.getElementById('adminTableBody');
     if (!tbody) return;
+    const canEditData = currentRole === 'admin' || currentRole === 'user';
     const countEl = document.querySelector('.admin-table-head .count');
     if (countEl) countEl.textContent = `${adminPrograms.length} program`;
     if (!adminPrograms.length) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--ink-soft);">Belum ada program. Klik "Tambah Program" untuk mulai.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="${canEditData ? 4 : 3}" style="text-align:center;padding:30px;color:var(--ink-soft);">Belum ada program.${canEditData ? ' Klik "Tambah Program" untuk mulai.' : ''}</td></tr>`;
         return;
     }
     tbody.innerHTML = adminPrograms.map(p => `
@@ -827,12 +897,14 @@ function renderAdminTable() {
             <td><strong>${escapeHtml(p.nama||'-')}</strong></td>
             <td>${escapeHtml(p.harga_quint||'-')}</td>
             <td>${escapeHtml(p.tgl||'-')}</td>
+            ${canEditData ? `
             <td style="text-align:right;">
                 <div class="action-btns" style="justify-content:flex-end;">
                     <button onclick="editAdminProgram('${p.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
                     <button onclick="openDeleteModal('programs','${p.id}','${escapeJsAttr(p.nama)}')" class="danger" title="Hapus"><i class="fa-solid fa-trash"></i></button>
                 </div>
             </td>
+            ` : ''}
         </tr>
     `).join('');
 }
@@ -841,6 +913,7 @@ function renderAdminTable() {
 // 14. ADMIN CRUD OPERATIONS
 // ============================================================
 function showAdminForm() {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menambah program', 'error'); return; }
     editingProgramId = null;
     document.getElementById('adminFormTitle').innerText = 'Tambah Program Baru';
     document.getElementById('adminFormContainer').style.display = 'block';
@@ -899,7 +972,13 @@ function setAdminFormData(data) {
     document.getElementById('admin_teks_wa').value = data.teks_wa || '';
 }
 
+// Guard: hanya role 'admin' & 'user' yang boleh tambah/edit/hapus data program
+function canManageProgramData() {
+    return adminLoggedIn && (currentRole === 'admin' || currentRole === 'user');
+}
+
 async function saveAdminProgram() {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengubah data program', 'error'); return; }
     const nama = document.getElementById('admin_nama')?.value.trim();
     if (!nama) { alert('Nama program wajib diisi!'); return; }
     if (!isValidProgramName(nama)) { alert('Nama program mengandung karakter tidak valid!'); return; }
@@ -956,6 +1035,7 @@ async function saveAdminProgram() {
 }
 
 async function editAdminProgram(id) {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengedit program', 'error'); return; }
     const { data, error } = await supabaseClient.from('programs').select('*').eq('id', id).single();
     if (error || !data) { showToast('Program tidak ditemukan', 'error'); return; }
 
@@ -989,6 +1069,7 @@ async function updateProgramById(id, patch) {
 }
 
 async function clearAllAdminData() {
+    if (currentRole !== 'admin') { showToast('Hanya Admin yang boleh menghapus semua data', 'error'); return; }
     if (!confirm('⚠️ PERINGATAN: Hapus SEMUA program?')) return;
     try {
         const { data } = await supabaseClient.from('programs').select('id');
@@ -1179,6 +1260,7 @@ async function exportAdminData() {
 }
 
 function importAdminData() {
+    if (currentRole !== 'admin') { showToast('Hanya Admin yang boleh import data', 'error'); return; }
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
@@ -1252,6 +1334,11 @@ function onDeleteConfirmInput() {
 
 async function confirmDeleteAction() {
     if (!deleteTarget.id || !deleteTarget.table) return;
+    if (deleteTarget.table === 'programs' && !canManageProgramData()) {
+        showToast('Akun Anda tidak punya izin untuk menghapus program', 'error');
+        closeDeleteConfirmModal();
+        return;
+    }
 
     try {
         const result = await supabaseClient.from(deleteTarget.table).delete().eq('id', deleteTarget.id);
