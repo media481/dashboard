@@ -1,0 +1,27 @@
+name: Supabase Keepalive
+
+on:
+  schedule:
+    # Ping setiap 3 hari sekali (jam 07:00 WIB = 00:00 UTC)
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # bisa dijalankan manual dari GitHub
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase (REST API)
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/programs?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+
+          echo "HTTP Status: $STATUS"
+
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Supabase aktif!"
+          else
+            echo "⚠️ Ping gagal, status: $STATUS"
+            exit 1
+          fi
