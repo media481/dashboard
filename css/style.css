@@ -335,7 +335,10 @@
             border-bottom: 1px solid var(--line);
             overflow-x: auto;
             flex-wrap: nowrap;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* Edge/IE */
         }
+        .tabs-bar::-webkit-scrollbar { display: none; } /* Chrome/Safari */
         .tab-btn {
             padding: 10px 18px;
             border: none;
