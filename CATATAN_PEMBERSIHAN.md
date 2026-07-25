@@ -112,3 +112,23 @@ paste seluruh isi `sql/00_setup_semua_tabel.sql` -> Run.
 Setelah tabel dibuat, jangan lupa:
 1. Ganti password default di `app_config` (`pass_administrator`, `pass_cs`)
 2. Update `SUPABASE_URL` & `SUPABASE_ANON_KEY` di `js/app.js` baris 4-5
+
+## Ronde 6: Edge Functions (send-telegram & scan-poster-ocr)
+Dicek dari `amirubase-main__1_.zip` yang di-upload — ternyata **source code
+Edge Function-nya tidak ada di repo itu**, cuma kode client yang memanggil
+endpoint-nya. Function aslinya kemungkinan dibuat langsung lewat Supabase
+Dashboard tanpa pernah di-commit.
+
+Karena itu, saya TULIS ULANG kedua function dari nol berdasarkan kontrak
+request/response yang dipakai `js/app.js`, ditaruh di:
+```
+supabase/functions/send-telegram/index.ts
+supabase/functions/scan-poster-ocr/index.ts
+supabase/functions/README.md   <- panduan deploy lengkap
+```
+
+- `send-telegram`: proxy ke Telegram Bot API, tidak butuh secret tambahan.
+- `scan-poster-ocr`: baca poster pakai Gemini Vision, butuh secret
+  `GEMINI_API_KEY` (gratis dari https://aistudio.google.com/apikey).
+
+Cara deploy ada lengkap di `supabase/functions/README.md` (pakai Supabase CLI).
