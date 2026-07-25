@@ -86,3 +86,29 @@ onmouseenter="showPosterPopup(event, this)" onmouseleave="hidePosterPopup()"
 Saya belum tahu persis di elemen/tabel mana kamu mau preview ini muncul
 (mis. di daftar program admin, di tabel crosscheck, dll), jadi trigger-nya
 belum saya pasang ke elemen manapun. Kabari saja di elemen mana, nanti saya pasangkan.
+
+## Ronde 5: SQL setup untuk Supabase project baru
+File baru: `sql/00_setup_semua_tabel.sql` — berisi CREATE TABLE + RLS policy
+untuk SEMUA tabel yang dipakai project ini (dikumpulkan dari seluruh
+`.from('...')` call di `js/app.js`):
+
+| Tabel | Fungsi |
+|---|---|
+| `programs` | Data program umroh (field admin-only digabung di kolom `admin_data_lengkap` jsonb) |
+| `jadwal_tamu` | Jadwal kunjungan tamu |
+| `kb_jamaah` | Data jamaah per program |
+| `featured_programs` | Program yang ditandai unggulan |
+| `app_config` | Password login admin/CS (key-value) — sudah diisi password placeholder, WAJIB diganti |
+| `tg_config` | Config notifikasi Telegram (key-value) |
+| `kwt_kuitansi` | Kuitansi (tabel disiapkan, belum otomatis dipakai app.js saat ini) |
+
+Cara pakai: buka Supabase Dashboard project baru -> SQL Editor -> New query ->
+paste seluruh isi `sql/00_setup_semua_tabel.sql` -> Run.
+
+**Yang TIDAK dibuat oleh SQL ini** (harus di-setup manual terpisah):
+- Edge Function `scan-poster-ocr` (dipakai fitur Crosscheck OCR)
+- Edge Function `send-telegram` (dipakai fitur notifikasi Telegram)
+
+Setelah tabel dibuat, jangan lupa:
+1. Ganti password default di `app_config` (`pass_administrator`, `pass_cs`)
+2. Update `SUPABASE_URL` & `SUPABASE_ANON_KEY` di `js/app.js` baris 4-5
