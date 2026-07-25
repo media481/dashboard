@@ -674,7 +674,7 @@ async function renderAdminPanel() {
                                 <input type="text" id="admin_nama" placeholder="Contoh: Umroh Reguler 9 Hari" maxlength="200">
                             </div>
                             <div class="form-group">
-                                <label>Tanggal</label>
+                                <label>Tanggal Berangkat</label>
                                 <input type="date" id="admin_tgl_date">
                                 <input type="hidden" id="admin_tgl">
                             </div>
@@ -695,12 +695,12 @@ async function renderAdminPanel() {
                         <div class="admin-fieldset-title"><i class="fa-solid fa-tags"></i> Harga per Kamar</div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Harga Quint</label>
-                                <input type="text" id="admin_harga_quint" placeholder="Rp 32.500.000" maxlength="50">
-                            </div>
-                            <div class="form-group">
                                 <label>Harga Quad</label>
                                 <input type="text" id="admin_harga_quad" placeholder="Rp 35.000.000" maxlength="50">
+                            </div>
+                            <div class="form-group">
+                                <label>Harga Double</label>
+                                <input type="text" id="admin_harga_double" placeholder="Rp 42.000.000" maxlength="50">
                             </div>
                         </div>
                         <div class="form-row">
@@ -709,8 +709,8 @@ async function renderAdminPanel() {
                                 <input type="text" id="admin_harga_triple" placeholder="Rp 37.500.000" maxlength="50">
                             </div>
                             <div class="form-group">
-                                <label>Harga Double</label>
-                                <input type="text" id="admin_harga_double" placeholder="Rp 42.000.000" maxlength="50">
+                                <label>Harga Quint</label>
+                                <input type="text" id="admin_harga_quint" placeholder="Rp 32.500.000" maxlength="50">
                             </div>
                         </div>
                     </div>
@@ -800,8 +800,12 @@ async function renderAdminPanel() {
                         <thead>
                             <tr>
                                 <th>Nama Program</th>
-                                <th>Harga</th>
-                                <th>Tanggal</th>
+                                <th>Tanggal Berangkat</th>
+                                <th>Durasi</th>
+                                <th>Quad</th>
+                                <th>Double</th>
+                                <th>Triple</th>
+                                <th>Maskapai</th>
                                 ${canEditData ? `<th style="text-align:right;">Aksi</th>` : ''}
                             </tr>
                         </thead>
@@ -925,14 +929,18 @@ function renderAdminTable() {
     const countEl = document.querySelector('.admin-table-head .count');
     if (countEl) countEl.textContent = `${adminPrograms.length} program`;
     if (!adminPrograms.length) {
-        tbody.innerHTML = `<tr><td colspan="${canEditData ? 4 : 3}" style="text-align:center;padding:30px;color:var(--ink-soft);">Belum ada program.${canEditData ? ' Klik "Tambah Program" untuk mulai.' : ''}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${canEditData ? 8 : 7}" style="text-align:center;padding:30px;color:var(--ink-soft);">Belum ada program.${canEditData ? ' Klik "Tambah Program" untuk mulai.' : ''}</td></tr>`;
         return;
     }
     tbody.innerHTML = adminPrograms.map(p => `
         <tr>
             <td><strong>${escapeHtml(p.nama||'-')}</strong></td>
-            <td>${escapeHtml(p.harga_quint||'-')}</td>
             <td>${escapeHtml(p.tgl||'-')}</td>
+            <td>${escapeHtml(p.durasi||'-')}</td>
+            <td>${escapeHtml(p.harga_quad||'-')}</td>
+            <td>${escapeHtml(p.harga_double||'-')}</td>
+            <td>${escapeHtml(p.harga_triple||'-')}</td>
+            <td>${escapeHtml(p.maskapai||'-')}</td>
             ${canEditData ? `
             <td style="text-align:right;">
                 <div class="action-btns" style="justify-content:flex-end;">
