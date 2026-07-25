@@ -174,7 +174,7 @@
                 <div class="tab-panel" id="tab-info">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
                         <p style="color:var(--ink-soft);font-size:13px;">Jadwal kunjungan tamu ke kantor</p>
-                        <button class="btn-primary" onclick="openJadwalModal()" style="font-size:12px;padding:6px 14px;">
+                        <button class="btn-primary" id="btnTambahJadwal" onclick="openJadwalModal()" style="font-size:12px;padding:6px 14px;">
                             <i class="fa-solid fa-plus"></i> Tambah Jadwal
                         </button>
                     </div>
@@ -189,7 +189,7 @@
                         <select id="kbProgramSelect" onchange="selectKbProgram(this.value)">
                             <option value="">-- Pilih Program --</option>
                         </select>
-                        <button class="btn-primary" onclick="openKbModal()" style="font-size:12px;padding:6px 14px;">
+                        <button class="btn-primary" id="btnTambahJamaah" onclick="openKbModal()" style="font-size:12px;padding:6px 14px;">
                             <i class="fa-solid fa-user-plus"></i> Tambah Jamaah
                         </button>
                         <button class="btn-success" onclick="openKuitansiModal()" style="font-size:12px;padding:6px 14px;">
