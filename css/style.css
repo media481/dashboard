@@ -275,14 +275,17 @@
         .metrics {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            margin-bottom: 28px;
+            gap: 12px;
+            margin-bottom: 22px;
         }
         .metric-card {
             background: var(--surface);
             border: 1px solid var(--line);
             border-radius: var(--radius);
-            padding: 18px 20px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
             transition: box-shadow .2s;
         }
         .metric-card:hover { box-shadow: var(--shadow); }
@@ -293,28 +296,25 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 14px;
-            font-size: 16px;
+            font-size: 15px;
+            flex-shrink: 0;
         }
+        .metric-card .m-info { min-width: 0; }
         .metric-card .m-label {
-            font-size: 12.5px;
+            font-size: 11.5px;
             color: var(--ink-soft);
             font-weight: 500;
-            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .metric-card .m-value {
             font-family: 'IBM Plex Mono';
-            font-size: 21px;
+            font-size: 18px;
             font-weight: 600;
             letter-spacing: -.3px;
+            line-height: 1.25;
         }
-        .metric-card .m-sub {
-            font-size: 11.5px;
-            margin-top: 6px;
-            font-weight: 600;
-        }
-        .m-sub.up { color: var(--success); }
-        .m-sub.warn { color: var(--danger); }
 
         .icon-brand { background: var(--brand-tint); color: var(--brand); }
         .icon-warn { background: var(--warn-tint); color: #9C7A1F; }
@@ -846,7 +846,7 @@
             .modal-content { margin: 10px; max-height: 95vh; }
         }
         @media (max-width: 480px) {
-            .metrics { grid-template-columns: 1fr; }
+            .metrics { grid-template-columns: 1fr 1fr; gap: 8px; }
             .tab-btn { padding: 6px 10px; font-size: 11px; }
             .tab-btn i { font-size: 13px; }
         }
