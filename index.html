@@ -1598,6 +1598,9 @@ function sortTable(column) {
     currentSort.asc = currentSort.column === column ? !currentSort.asc : true;
     currentSort.column = column;
     applySortToData();
+    document.querySelectorAll('th.sortable .sort-icon').forEach(el => el.textContent = '⇅');
+    const activeTh = document.querySelector(`th.sortable[data-sort="${column}"] .sort-icon`);
+    if (activeTh) activeTh.textContent = currentSort.asc ? '▲' : '▼';
     renderTable(currentData);
 }
 
@@ -2839,6 +2842,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderJadwalSection();
     renderKbProgramSelector();
     renderFeaturedSection();
+
+    // Bind sort listeners on table headers (nama, tgl, maskapai, isAvailable)
+    document.querySelectorAll('th.sortable').forEach(th => {
+        const key = th.getAttribute('data-sort');
+        if (key) th.onclick = () => sortTable(key);
+    });
 });
 
 // ============================================================
