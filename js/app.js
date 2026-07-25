@@ -281,10 +281,11 @@ function renderTable(data) {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
     const now = new Date();
+    const canEdit = canManageProgramData(); // admin & user boleh edit/hapus, guest & publik hanya lihat
     if (!data || !data.length) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--ink-soft);">
             <i class="fa-solid fa-inbox" style="font-size:24px;display:block;margin-bottom:10px;"></i>
-            Belum ada program umroh. Klik "Tambah" untuk menambahkan.
+            Belum ada program umroh.${canEdit ? ' Klik "Tambah" untuk menambahkan.' : ''}
         </td></tr>`;
         return;
     }
@@ -315,8 +316,10 @@ function renderTable(data) {
             <td>
                 <div class="action-btns">
                     <button onclick="openDetailModal('${item.id}')" title="Detail"><i class="fa-solid fa-eye"></i></button>
+                    ${canEdit ? `
                     <button onclick="editAdminProgram('${item.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
                     <button class="danger" onclick="openDeleteModal('programs','${item.id}','${escapeJsAttr(item.nama)}')" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+                    ` : ''}
                 </div>
             </td>
             <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
@@ -547,6 +550,10 @@ function closeAdminPanel() {
             item.classList.toggle('active', item.dataset.tab === previousActiveTab);
         });
     }
+    // Status login bisa berubah (login/logout) selagi Admin Panel terbuka —
+    // render ulang tabel utama supaya tombol Edit/Hapus ikut menyesuaikan role terbaru
+    if (currentData && currentData.length) renderTable(currentData);
+    applyRoleUIVisibility();
 }
 
 function renderMaskapaiOptions(selected = '') {
@@ -975,6 +982,15 @@ function setAdminFormData(data) {
 // Guard: hanya role 'admin' & 'user' yang boleh tambah/edit/hapus data program
 function canManageProgramData() {
     return adminLoggedIn && (currentRole === 'admin' || currentRole === 'user');
+}
+
+// Sembunyikan tombol tambah data (Jadwal Tamu, Data Jamaah) dari guest/publik yang belum login
+function applyRoleUIVisibility() {
+    const canEdit = canManageProgramData();
+    const btnJadwal = document.getElementById('btnTambahJadwal');
+    const btnJamaah = document.getElementById('btnTambahJamaah');
+    if (btnJadwal) btnJadwal.style.display = canEdit ? '' : 'none';
+    if (btnJamaah) btnJamaah.style.display = canEdit ? '' : 'none';
 }
 
 async function saveAdminProgram() {
@@ -1444,6 +1460,7 @@ function renderJadwalSection() {
 }
 
 function openJadwalModal(id = null) {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menambah jadwal', 'error'); return; }
     const modal = document.getElementById('jadwalModal');
     const form = document.getElementById('jadwalForm');
     form.reset();
@@ -1477,6 +1494,7 @@ function closeJadwalModal() {
 
 async function saveJadwalTamu(e) {
     e.preventDefault();
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menyimpan jadwal', 'error'); return; }
     const id = document.getElementById('j_editId').value;
     const data = {
         nama: document.getElementById('jf_nama').value.trim(),
@@ -1623,6 +1641,7 @@ async function loadKbJamaahForProgram(programId) {
 }
 
 function openKbModal(id = null) {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menambah data jamaah', 'error'); return; }
     const modal = document.getElementById('kbModal');
     const form = document.getElementById('kbForm');
     form.reset();
@@ -1662,6 +1681,7 @@ function closeKbModal() {
 
 async function saveKbJamaah(e) {
     e.preventDefault();
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menyimpan data jamaah', 'error'); return; }
     const id = document.getElementById('kb_editId').value;
     const data = {
         program_id: document.getElementById('kb_program').value,
@@ -2316,6 +2336,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Load data
     await loadUserRoles();
+    checkSession(); // pulihkan status login (kalau ada) sebelum render tabel utama
+    applyRoleUIVisibility();
     await loadFeaturedIds();
     await loadJadwal();
     await loadKbJamaah();
