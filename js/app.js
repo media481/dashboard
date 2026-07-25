@@ -653,7 +653,6 @@ async function renderAdminPanel() {
                     <button class="btn-icon-ghost" onclick="importAdminData()" title="Import Data"><i class="fa-solid fa-upload"></i></button>
                     <button class="btn-icon-ghost danger" onclick="clearAllAdminData()" title="Hapus Semua Data"><i class="fa-solid fa-trash"></i></button>
                     ` : ''}
-                    <button class="btn-logout" onclick="logoutAdmin()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Logout</button>
                 </div>
             </div>
 
