@@ -2281,12 +2281,58 @@ function tanggalIndonesia(isoDate) {
     return `${d.getDate()} ${bulan[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+// Palet & skala font institusional dipakai konsisten di kedua jenis nota
+// supaya terasa satu identitas resmi (kop surat lembaga/bank).
+const NOTA_TEMA = {
+    navy: '#1a355b',
+    navyDeep: '#0f2138',
+    gold: '#b8935a',
+    tint: '#eef2f7',
+    line: '#d7dfe9',
+    inkSoft: '#64758A'
+};
+
+function buildNotaWatermarkHTML() {
+    return `
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none;z-index:0;">
+            <div style="transform:rotate(-28deg);font-size:54px;font-weight:800;letter-spacing:.12em;color:${NOTA_TEMA.navy};opacity:.045;white-space:nowrap;font-family:Georgia,'Times New Roman',serif;">${escapeHtml(NOTA_PERUSAHAAN.brand)}</div>
+        </div>`;
+}
+
 function buildNotaHeaderHTML() {
     return `
-        <div style="text-align:center;border-bottom:3px solid #1a6fa8;padding-bottom:14px;margin-bottom:16px;">
-            <img src="${NOTA_PERUSAHAAN.logo}" alt="${escapeHtml(NOTA_PERUSAHAAN.brand)}" style="height:64px;width:auto;display:inline-block;margin-bottom:6px;">
-            <div style="font-size:11px;font-weight:700;color:#333;margin-top:2px;">${escapeHtml(NOTA_PERUSAHAAN.nama)}</div>
-            <div style="font-size:9.5px;color:#777;margin-top:4px;line-height:1.5;">${escapeHtml(NOTA_PERUSAHAAN.alamat)}<br>Telp. ${escapeHtml(NOTA_PERUSAHAAN.telp)} &middot; ${escapeHtml(NOTA_PERUSAHAAN.email)}</div>
+        <div style="position:relative;z-index:1;border-bottom:3px double ${NOTA_TEMA.navy};padding-bottom:12px;margin-bottom:18px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+                <img src="${NOTA_PERUSAHAAN.logo}" alt="${escapeHtml(NOTA_PERUSAHAAN.brand)}" style="height:52px;width:auto;display:block;flex-shrink:0;">
+                <div style="text-align:right;">
+                    <div style="font-size:13px;font-weight:800;color:${NOTA_TEMA.navy};letter-spacing:.01em;">${escapeHtml(NOTA_PERUSAHAAN.nama)}</div>
+                    <div style="font-size:9px;color:${NOTA_TEMA.inkSoft};margin-top:4px;line-height:1.55;max-width:270px;margin-left:auto;">${escapeHtml(NOTA_PERUSAHAAN.alamat)}</div>
+                    <div style="font-size:9px;color:${NOTA_TEMA.inkSoft};margin-top:1px;">Telp. ${escapeHtml(NOTA_PERUSAHAAN.telp)} &middot; ${escapeHtml(NOTA_PERUSAHAAN.email)}</div>
+                </div>
+            </div>
+        </div>`;
+}
+
+function buildNotaTitleBarHTML(judul, metaLines) {
+    const meta = metaLines.map(m => `<div style="margin-top:2px;">${m}</div>`).join('');
+    return `
+        <div style="position:relative;z-index:1;background:${NOTA_TEMA.navy};background-image:linear-gradient(135deg, ${NOTA_TEMA.navy} 0%, ${NOTA_TEMA.navyDeep} 100%);color:#fff;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;border-radius:3px;margin-bottom:18px;box-shadow:0 1px 0 ${NOTA_TEMA.gold} inset;">
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:15px;font-weight:700;letter-spacing:.09em;">${judul}</div>
+            <div style="text-align:right;font-size:9.5px;line-height:1.5;color:#e7edf5;">${meta}</div>
+        </div>`;
+}
+
+function buildNotaSignatureHTML(kiriLabel, kananLabel) {
+    return `
+        <div style="position:relative;z-index:1;display:flex;justify-content:space-between;font-size:10.5px;text-align:center;margin-top:26px;color:#333;">
+            <div>
+                <div style="font-size:9.5px;color:${NOTA_TEMA.inkSoft};margin-bottom:38px;">&nbsp;</div>
+                <div style="border-top:1px solid #999;padding-top:5px;width:140px;font-weight:600;">${escapeHtml(kiriLabel)}</div>
+            </div>
+            <div>
+                <div style="font-size:9.5px;color:${NOTA_TEMA.inkSoft};margin-bottom:38px;">&nbsp;</div>
+                <div style="border-top:1px solid #999;padding-top:5px;width:140px;font-weight:600;">${escapeHtml(kananLabel)}</div>
+            </div>
         </div>`;
 }
 
@@ -2300,51 +2346,56 @@ function buildNotaHTML(cicilan) {
     const jumlah = Number(cicilan.jumlah || 0);
     const statusLunas = hargaProgram > 0 && totalDibayarSemua >= hargaProgram;
 
+    const baris = (label, value, opts = {}) => `
+        <tr>
+            <td style="padding:5px 0;font-size:11px;color:${NOTA_TEMA.inkSoft};width:118px;vertical-align:top;">${label}</td>
+            <td style="padding:5px 0;font-size:11px;color:#1a1a1a;vertical-align:top;${opts.bold ? 'font-weight:700;' : ''}">: ${value}</td>
+        </tr>`;
+
+    const infoRows = [
+        baris('Diterima Dari', escapeHtml(jamaah.nama || '-'), { bold: true }),
+        baris('Program Umroh', `${escapeHtml(program.nama || '-')}${program.tgl ? ' (' + escapeHtml(program.tgl) + ')' : ''}`),
+        baris('Metode Bayar', escapeHtml(cicilan.metode || '-')),
+        cicilan.keterangan ? baris('Keterangan', escapeHtml(cicilan.keterangan)) : ''
+    ].join('');
+
     return `
-    <div style="width:480px;background:#fff;font-family:'Inter',Arial,sans-serif;color:#1a1a1a;padding:28px;box-sizing:border-box;border:1px solid #e1e8f0;">
+    <div style="position:relative;width:500px;background:#fff;font-family:'Inter',Arial,sans-serif;color:#1a1a1a;padding:30px 32px;box-sizing:border-box;border:1px solid ${NOTA_TEMA.line};overflow:hidden;">
+        ${buildNotaWatermarkHTML()}
         ${buildNotaHeaderHTML()}
+        ${buildNotaTitleBarHTML('NOTA PEMBAYARAN', [
+            `No. ${escapeHtml(nomorNota(cicilan))}`,
+            `${escapeHtml(tanggalIndonesia(cicilan.tanggal))}`
+        ])}
 
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <div style="font-size:16px;font-weight:800;letter-spacing:.5px;">NOTA PEMBAYARAN</div>
-            <div style="text-align:right;font-size:10.5px;color:#555;">
-                <div>No. ${escapeHtml(nomorNota(cicilan))}</div>
-                <div>${escapeHtml(tanggalIndonesia(cicilan.tanggal))}</div>
-            </div>
+        <table style="position:relative;z-index:1;width:100%;border-collapse:collapse;margin-bottom:16px;">
+            ${infoRows}
+        </table>
+
+        <div style="position:relative;z-index:1;background:${NOTA_TEMA.tint};border:1px solid ${NOTA_TEMA.line};border-left:4px solid ${NOTA_TEMA.navy};border-radius:3px;padding:14px 18px;margin-bottom:16px;">
+            <div style="font-size:9.5px;color:${NOTA_TEMA.inkSoft};text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;">Jumlah Diterima</div>
+            <div style="font-size:23px;font-weight:800;color:${NOTA_TEMA.navy};line-height:1.2;">${formatRupiah(jumlah)}</div>
+            <div style="font-size:10.5px;color:#555;font-style:italic;margin-top:5px;">Terbilang: ${rupiahTerbilang(jumlah)}</div>
         </div>
 
-        <div style="font-size:12px;line-height:2;margin-bottom:14px;">
-            <div style="display:grid;grid-template-columns:130px 1fr;">
-                <span style="color:#777;">Diterima Dari</span><span style="font-weight:700;">: ${escapeHtml(jamaah.nama || '-')}</span>
-                <span style="color:#777;">Program Umroh</span><span>: ${escapeHtml(program.nama || '-')}${program.tgl ? ' (' + escapeHtml(program.tgl) + ')' : ''}</span>
-                <span style="color:#777;">Metode Bayar</span><span>: ${escapeHtml(cicilan.metode || '-')}</span>
-                ${cicilan.keterangan ? `<span style="color:#777;">Keterangan</span><span>: ${escapeHtml(cicilan.keterangan)}</span>` : ''}
-            </div>
-        </div>
+        <table style="position:relative;z-index:1;width:100%;border-collapse:collapse;font-size:11px;border-top:1px solid ${NOTA_TEMA.line};padding-top:2px;margin-bottom:6px;">
+            <tr>
+                <td style="padding:6px 0;color:${NOTA_TEMA.inkSoft};">Harga Program</td>
+                <td style="padding:6px 0;text-align:right;">${formatRupiah(hargaProgram)}</td>
+            </tr>
+            <tr>
+                <td style="padding:6px 0;color:${NOTA_TEMA.inkSoft};border-top:1px dashed ${NOTA_TEMA.line};">Total Dibayar (s.d. hari ini)</td>
+                <td style="padding:6px 0;text-align:right;color:#279E70;font-weight:700;border-top:1px dashed ${NOTA_TEMA.line};">${formatRupiah(totalDibayarSemua)}</td>
+            </tr>
+            <tr>
+                <td style="padding:6px 0;color:${NOTA_TEMA.inkSoft};border-top:1px dashed ${NOTA_TEMA.line};">Sisa Tagihan</td>
+                <td style="padding:6px 0;text-align:right;color:${sisaTagihan > 0 ? '#C0392B' : '#279E70'};font-weight:700;border-top:1px dashed ${NOTA_TEMA.line};">${statusLunas ? 'LUNAS' : formatRupiah(sisaTagihan)}</td>
+            </tr>
+        </table>
 
-        <div style="background:#f4f7fb;border-radius:8px;padding:14px 16px;margin-bottom:14px;">
-            <div style="font-size:10.5px;color:#777;text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px;">Jumlah Diterima</div>
-            <div style="font-size:22px;font-weight:800;color:#1a6fa8;">${formatRupiah(jumlah)}</div>
-            <div style="font-size:11px;color:#555;font-style:italic;margin-top:4px;">Terbilang: ${rupiahTerbilang(jumlah)}</div>
-        </div>
+        ${buildNotaSignatureHTML('Jamaah / Penyerah', NOTA_PERUSAHAAN.brand)}
 
-        <div style="font-size:11.5px;line-height:1.9;border-top:1px dashed #ccc;padding-top:10px;margin-bottom:20px;">
-            <div style="display:flex;justify-content:space-between;"><span style="color:#777;">Harga Program</span><span>${formatRupiah(hargaProgram)}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#777;">Total Dibayar (s.d. hari ini)</span><span style="color:#279E70;font-weight:700;">${formatRupiah(totalDibayarSemua)}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#777;">Sisa Tagihan</span><span style="color:${sisaTagihan > 0 ? '#C0392B' : '#279E70'};font-weight:700;">${statusLunas ? 'LUNAS' : formatRupiah(sisaTagihan)}</span></div>
-        </div>
-
-        <div style="display:flex;justify-content:space-between;font-size:11px;text-align:center;margin-top:24px;">
-            <div>
-                <div style="height:40px;"></div>
-                <div style="border-top:1px solid #999;padding-top:4px;width:130px;">Jamaah / Penyerah</div>
-            </div>
-            <div>
-                <div style="height:40px;"></div>
-                <div style="border-top:1px solid #999;padding-top:4px;width:130px;">${escapeHtml(NOTA_PERUSAHAAN.brand)}</div>
-            </div>
-        </div>
-
-        <div style="text-align:center;font-size:9px;color:#aaa;margin-top:20px;">Nota ini dibuat otomatis oleh sistem sebagai bukti pembayaran yang sah.</div>
+        <div style="position:relative;z-index:1;text-align:center;font-size:8.5px;color:#a0a8b3;margin-top:22px;padding-top:10px;border-top:1px solid ${NOTA_TEMA.line};">Dokumen ini dicetak otomatis oleh sistem dan sah sebagai bukti pembayaran resmi ${escapeHtml(NOTA_PERUSAHAAN.brand)}.</div>
     </div>`;
 }
 
@@ -2415,53 +2466,63 @@ function buildNotaRiwayatHTML() {
     const statusLunas = hargaProgram > 0 && totalDibayar >= hargaProgram;
 
     const rows = riwayat.length ? riwayat.map((c, i) => `
-        <tr>
-            <td style="padding:7px 6px;border-bottom:1px solid #eee;text-align:center;color:#888;">${i + 1}</td>
-            <td style="padding:7px 6px;border-bottom:1px solid #eee;">${escapeHtml(tanggalIndonesia(c.tanggal))}</td>
-            <td style="padding:7px 6px;border-bottom:1px solid #eee;">${escapeHtml(c.metode || '-')}</td>
-            <td style="padding:7px 6px;border-bottom:1px solid #eee;">${escapeHtml(c.keterangan || '-')}</td>
-            <td style="padding:7px 6px;border-bottom:1px solid #eee;text-align:right;font-weight:700;white-space:nowrap;">${formatRupiah(Number(c.jumlah || 0))}</td>
+        <tr style="background:${i % 2 === 0 ? '#fff' : NOTA_TEMA.tint};">
+            <td style="padding:8px 6px;border-bottom:1px solid ${NOTA_TEMA.line};text-align:center;color:${NOTA_TEMA.inkSoft};font-size:11px;">${i + 1}</td>
+            <td style="padding:8px 6px;border-bottom:1px solid ${NOTA_TEMA.line};font-size:11px;">${escapeHtml(tanggalIndonesia(c.tanggal))}</td>
+            <td style="padding:8px 6px;border-bottom:1px solid ${NOTA_TEMA.line};font-size:11px;">${escapeHtml(c.metode || '-')}</td>
+            <td style="padding:8px 6px;border-bottom:1px solid ${NOTA_TEMA.line};font-size:11px;">${escapeHtml(c.keterangan || '-')}</td>
+            <td style="padding:8px 6px;border-bottom:1px solid ${NOTA_TEMA.line};text-align:right;font-weight:700;font-size:11px;white-space:nowrap;">${formatRupiah(Number(c.jumlah || 0))}</td>
         </tr>`).join('') : `
-        <tr><td colspan="5" style="padding:16px 6px;text-align:center;color:#999;">Belum ada pembayaran tercatat.</td></tr>`;
+        <tr><td colspan="5" style="padding:18px 6px;text-align:center;color:#999;font-size:11px;">Belum ada pembayaran tercatat.</td></tr>`;
+
+    const baris = (label, value, opts = {}) => `
+        <tr>
+            <td style="padding:5px 0;font-size:11px;color:${NOTA_TEMA.inkSoft};width:118px;vertical-align:top;">${label}</td>
+            <td style="padding:5px 0;font-size:11px;color:#1a1a1a;vertical-align:top;${opts.bold ? 'font-weight:700;' : ''}">: ${value}</td>
+        </tr>`;
 
     return `
-    <div style="width:560px;background:#fff;font-family:'Inter',Arial,sans-serif;color:#1a1a1a;padding:28px;box-sizing:border-box;border:1px solid #e1e8f0;">
+    <div style="position:relative;width:580px;background:#fff;font-family:'Inter',Arial,sans-serif;color:#1a1a1a;padding:30px 32px;box-sizing:border-box;border:1px solid ${NOTA_TEMA.line};overflow:hidden;">
+        ${buildNotaWatermarkHTML()}
         ${buildNotaHeaderHTML()}
+        ${buildNotaTitleBarHTML('NOTA RIWAYAT PEMBAYARAN', [
+            `Dicetak: ${escapeHtml(tanggalIndonesia(new Date().toISOString().slice(0, 10)))}`
+        ])}
 
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <div style="font-size:16px;font-weight:800;letter-spacing:.5px;">NOTA RIWAYAT PEMBAYARAN</div>
-            <div style="text-align:right;font-size:10.5px;color:#555;">
-                <div>Dicetak: ${escapeHtml(tanggalIndonesia(new Date().toISOString().slice(0, 10)))}</div>
-            </div>
-        </div>
+        <table style="position:relative;z-index:1;width:100%;border-collapse:collapse;margin-bottom:16px;">
+            ${baris('Nama Jamaah', escapeHtml(jamaah.nama || '-'), { bold: true })}
+            ${baris('Program Umroh', `${escapeHtml(program.nama || '-')}${program.tgl ? ' (' + escapeHtml(program.tgl) + ')' : ''}`)}
+        </table>
 
-        <div style="font-size:12px;line-height:2;margin-bottom:14px;">
-            <div style="display:grid;grid-template-columns:130px 1fr;">
-                <span style="color:#777;">Nama Jamaah</span><span style="font-weight:700;">: ${escapeHtml(jamaah.nama || '-')}</span>
-                <span style="color:#777;">Program Umroh</span><span>: ${escapeHtml(program.nama || '-')}${program.tgl ? ' (' + escapeHtml(program.tgl) + ')' : ''}</span>
-            </div>
-        </div>
-
-        <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:16px;">
+        <table style="position:relative;z-index:1;width:100%;border-collapse:collapse;margin-bottom:16px;border:1px solid ${NOTA_TEMA.line};">
             <thead>
-                <tr style="background:#f4f7fb;">
-                    <th style="padding:8px 6px;text-align:center;font-size:10px;text-transform:uppercase;color:#777;">No</th>
-                    <th style="padding:8px 6px;text-align:left;font-size:10px;text-transform:uppercase;color:#777;">Tanggal</th>
-                    <th style="padding:8px 6px;text-align:left;font-size:10px;text-transform:uppercase;color:#777;">Metode</th>
-                    <th style="padding:8px 6px;text-align:left;font-size:10px;text-transform:uppercase;color:#777;">Keterangan</th>
-                    <th style="padding:8px 6px;text-align:right;font-size:10px;text-transform:uppercase;color:#777;">Jumlah</th>
+                <tr style="background:${NOTA_TEMA.navy};">
+                    <th style="padding:9px 6px;text-align:center;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">No</th>
+                    <th style="padding:9px 6px;text-align:left;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">Tanggal</th>
+                    <th style="padding:9px 6px;text-align:left;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">Metode</th>
+                    <th style="padding:9px 6px;text-align:left;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">Keterangan</th>
+                    <th style="padding:9px 6px;text-align:right;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">Jumlah</th>
                 </tr>
             </thead>
             <tbody>${rows}</tbody>
         </table>
 
-        <div style="font-size:11.5px;line-height:1.9;border-top:1px dashed #ccc;padding-top:10px;margin-bottom:20px;">
-            <div style="display:flex;justify-content:space-between;"><span style="color:#777;">Harga Program</span><span>${formatRupiah(hargaProgram)}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#777;">Total Dibayar (${riwayat.length}x transaksi)</span><span style="color:#279E70;font-weight:700;">${formatRupiah(totalDibayar)}</span></div>
-            <div style="display:flex;justify-content:space-between;"><span style="color:#777;">Sisa Tagihan</span><span style="color:${sisaTagihan > 0 ? '#C0392B' : '#279E70'};font-weight:700;">${statusLunas ? 'LUNAS' : formatRupiah(sisaTagihan)}</span></div>
-        </div>
+        <table style="position:relative;z-index:1;width:100%;border-collapse:collapse;font-size:11px;border-top:1px solid ${NOTA_TEMA.line};margin-bottom:6px;">
+            <tr>
+                <td style="padding:6px 0;color:${NOTA_TEMA.inkSoft};">Harga Program</td>
+                <td style="padding:6px 0;text-align:right;">${formatRupiah(hargaProgram)}</td>
+            </tr>
+            <tr>
+                <td style="padding:6px 0;color:${NOTA_TEMA.inkSoft};border-top:1px dashed ${NOTA_TEMA.line};">Total Dibayar (${riwayat.length}x transaksi)</td>
+                <td style="padding:6px 0;text-align:right;color:#279E70;font-weight:700;border-top:1px dashed ${NOTA_TEMA.line};">${formatRupiah(totalDibayar)}</td>
+            </tr>
+            <tr>
+                <td style="padding:6px 0;color:${NOTA_TEMA.inkSoft};border-top:1px dashed ${NOTA_TEMA.line};">Sisa Tagihan</td>
+                <td style="padding:6px 0;text-align:right;color:${sisaTagihan > 0 ? '#C0392B' : '#279E70'};font-weight:700;border-top:1px dashed ${NOTA_TEMA.line};">${statusLunas ? 'LUNAS' : formatRupiah(sisaTagihan)}</td>
+            </tr>
+        </table>
 
-        <div style="text-align:center;font-size:9px;color:#aaa;">Nota ini dibuat otomatis oleh sistem sebagai rekap riwayat pembayaran.</div>
+        <div style="position:relative;z-index:1;text-align:center;font-size:8.5px;color:#a0a8b3;margin-top:18px;padding-top:10px;border-top:1px solid ${NOTA_TEMA.line};">Dokumen ini dicetak otomatis oleh sistem sebagai rekap riwayat pembayaran resmi ${escapeHtml(NOTA_PERUSAHAAN.brand)}.</div>
     </div>`;
 }
 
