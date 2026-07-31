@@ -38,6 +38,11 @@ sql/
                                   (jalankan ini di project yang SUDAH jalan)
   tambah_pendaftaran.sql       ← migrasi tambahan: tabel pendaftaran (calon jamaah)
                                   (jalankan ini di project yang SUDAH jalan)
+  tambah_nota_audit.sql        ← migrasi tambahan: nomor nota resmi dari DB (trigger +
+                                  sequence, kolom pembayaran_jamaah.nomor_nota) + tabel
+                                  nota_audit_log (ledger append-only, UPDATE/DELETE
+                                  diblokir trigger) — lihat panel Admin > Audit Nota
+                                  (jalankan ini di project yang SUDAH jalan)
 .github/workflows/
   keep-supabase-alive.yml      ← ping REST API tiap 3 hari biar project Supabase
                                   free tier tidak auto-pause (butuh secret

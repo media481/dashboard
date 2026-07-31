@@ -536,6 +536,11 @@ function checkAdminLogin() {
     if (matchedUser) {
         loginAttempts = 0;
         setAdminSession(matchedUser.role);
+        // Password login masih dibagi bersama per role (bukan akun individual),
+        // jadi nama petugas dicatat terpisah supaya log audit nota bisa
+        // menunjukkan siapa orangnya, bukan cuma role Admin/User/Guest.
+        const petugasNama = document.getElementById('adminPetugasInput')?.value.trim() || '';
+        try { sessionStorage.setItem('admin_petugas_nama', petugasNama); } catch (_) {}
         closeAdminPanel();
         renderSidebarNav();
         showToast(`✅ Berhasil login sebagai ${matchedUser.label}`);
@@ -584,6 +589,7 @@ function logoutAdmin() {
     sessionStorage.removeItem('admin_logged_in');
     sessionStorage.removeItem('admin_role');
     sessionStorage.removeItem('admin_login_time');
+    sessionStorage.removeItem('admin_petugas_nama');
     if (sessionTimeout) clearTimeout(sessionTimeout);
     closeAdminPanel();
     renderSidebarNav();
@@ -652,6 +658,7 @@ function getAdminLoginBoxHtml() {
             <div class="admin-role-chip"><i class="fa-solid fa-user-shield"></i> <span><b>Admin</b> — akses penuh</span></div>
             <div class="admin-role-chip"><i class="fa-solid fa-user-pen"></i> <span><b>User</b> — kelola data program</span></div>
             <div class="admin-role-chip"><i class="fa-solid fa-eye"></i> <span><b>Guest</b> — lihat data saja</span></div>
+            <input type="text" id="adminPetugasInput" placeholder="Nama Petugas (opsional, untuk log audit)" maxlength="100" onkeydown="if(event.key==='Enter')checkAdminLogin()">
             <input type="password" id="adminPasswordInput" placeholder="Password" onkeydown="if(event.key==='Enter')checkAdminLogin()">
             <button onclick="checkAdminLogin()" class="btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Masuk</button>
             <div id="adminLoginError" class="admin-login-error"></div>
@@ -663,6 +670,7 @@ const ADMIN_SUBTAB_META = {
     program: { title: 'Edit & Tambah Program', subtitle: 'Kelola data program umroh' },
     crosscheck: { title: 'Crosscheck', subtitle: 'Bandingkan poster dengan data program yang tersimpan' },
     telegram: { title: 'Telegram', subtitle: 'Atur notifikasi otomatis ke grup/chat Telegram' },
+    auditnota: { title: 'Audit Nota', subtitle: 'Log audit setiap nota yang diterbitkan — append-only, tidak bisa diubah' },
     usersettings: { title: 'Pengaturan User', subtitle: 'Atur password untuk masing-masing role' }
 };
 
@@ -679,6 +687,7 @@ function switchAdminSubTab(name) {
 
     if (name === 'crosscheck') { renderCxProgramSelector(); if (cxSelectedProgram) renderCxPanel(cxSelectedProgram); }
     if (name === 'telegram') { renderTgRecipients(); }
+    if (name === 'auditnota') { loadNotaAuditLog(true); }
 }
 
 async function renderAdminPanel() {
@@ -927,6 +936,46 @@ async function renderAdminPanel() {
                 <div id="tgStatusMsg" style="margin-top:12px;"></div>
                 <div class="tg-notif-log" id="tgNotifLog" style="display:none;">
                     <p style="color:var(--ink-soft);font-size:11px;margin-bottom:6px;">▶ LOG PENGIRIMAN TELEGRAM:</p>
+                </div>
+            </div>
+
+            <div class="admin-subtab-panel" id="adminSubTab-auditnota" style="display:none;">
+                <div class="admin-section-header">
+                    <div><h4><i class="fa-solid fa-file-shield"></i> Audit Nota</h4>
+                    <p>Setiap nota yang diunduh (pembayaran & riwayat) otomatis tercatat di sini. Log ini append-only — tidak bisa diedit atau dihapus siapa pun, termasuk Admin.</p></div>
+                </div>
+                <div class="admin-toolbar">
+                    <input type="text" id="auditNotaSearch" placeholder="Cari nama jamaah / no. nota / kode verifikasi..." style="flex:1;min-width:220px;" oninput="handleAuditNotaSearchInput()">
+                    <select id="auditNotaFilterJenis" onchange="loadNotaAuditLog(true)" style="min-width:160px;">
+                        <option value="">Semua Jenis</option>
+                        <option value="pembayaran">Nota Pembayaran</option>
+                        <option value="riwayat">Nota Riwayat</option>
+                    </select>
+                </div>
+                <div class="admin-table-card">
+                    <div class="admin-table-head">
+                        <h4>Log Audit Nota</h4>
+                        <span class="count" id="auditNotaCount">0 baris</span>
+                    </div>
+                    <div class="admin-table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Waktu</th>
+                                    <th>No. Nota</th>
+                                    <th>Jenis</th>
+                                    <th>Jamaah</th>
+                                    <th>Jumlah</th>
+                                    <th>Dicetak Oleh</th>
+                                    <th>Kode Verifikasi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="auditNotaTableBody"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--ink-soft);">Memuat...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div style="display:flex;justify-content:center;margin-top:14px;">
+                    <button class="btn-cancel" id="auditNotaLoadMoreBtn" onclick="loadNotaAuditLog(false)" style="display:none;"><i class="fa-solid fa-rotate"></i> Muat Lebih Banyak</button>
                 </div>
             </div>
 
@@ -2268,9 +2317,130 @@ function rupiahTerbilang(n) {
 }
 
 function nomorNota(cicilan) {
+    // Nomor resmi dibuat & dikunci oleh database (trigger + sequence, lihat
+    // sql/tambah_nota_audit.sql) supaya sekuensial, permanen, dan tidak
+    // berubah tiap nota dicetak ulang. Fallback di bawah HANYA dipakai kalau
+    // migrasi SQL itu belum dijalankan di project Supabase — diberi label
+    // "(sementara)" secara eksplisit supaya tidak disalahartikan sebagai nomor resmi.
+    if (cicilan && cicilan.nomor_nota) return cicilan.nomor_nota;
     const tgl = (cicilan.tanggal || '').replace(/-/g, '');
     const idPart = String(cicilan.id || '').replace(/[^a-zA-Z0-9]/g, '').slice(-5).toUpperCase();
-    return `AHI/NOTA/${tgl || '000000'}/${idPart || '00000'}`;
+    return `AHI/NOTA/${tgl || '000000'}/${idPart || '00000'} (sementara)`;
+}
+
+// ============================================================
+// 19D. AUDIT NOTA — hash & log tiap kali nota diterbitkan/diunduh
+// ============================================================
+// SHA-256 hex memakai Web Crypto API bawaan browser (tanpa library tambahan).
+async function sha256Hex(text) {
+    const buf = new TextEncoder().encode(text);
+    const digest = await crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Kode Verifikasi yang dicetak di nota (pendek, mudah dibaca & diketik ulang)
+// = 10 karakter pertama dari hash konten nota. Karena hash-nya deterministik
+// dari data nota (nomor, jamaah, jumlah, tanggal), siapa pun bisa menghitung
+// ulang hash yang sama dari data aslinya untuk mengecek nota itu tidak dipalsukan.
+function getPetugasNama() {
+    try { return sessionStorage.getItem('admin_petugas_nama') || ''; } catch (_) { return ''; }
+}
+
+// Mencatat 1 baris ke nota_audit_log (ledger append-only) setelah nota
+// berhasil diunduh. Kegagalan di sini TIDAK membatalkan unduhan nota (nota
+// sudah terlanjur di tangan user) — cukup dicatat ke console & toast ringan,
+// supaya UX unduh nota tidak terasa rapuh hanya karena koneksi ke DB gempal.
+async function logNotaAudit({ jenis, nomorNotaValue, jamaahId, jamaahNama, programNama, jumlah, metadata }) {
+    try {
+        const konten = JSON.stringify({ jenis, nomorNotaValue, jamaahId, jamaahNama, jumlah, metadata, dicetak: new Date().toISOString() });
+        const hash = await sha256Hex(konten);
+        const kodeVerifikasi = hash.slice(0, 10).toUpperCase();
+        const { error } = await supabaseClient.from('nota_audit_log').insert([{
+            nomor_nota: nomorNotaValue,
+            jenis,
+            jamaah_id: jamaahId || null,
+            jamaah_nama: jamaahNama || null,
+            program_nama: programNama || null,
+            jumlah: jumlah != null ? jumlah : null,
+            dicetak_oleh_role: currentRole || 'publik',
+            dicetak_oleh_nama: getPetugasNama() || null,
+            kode_verifikasi: kodeVerifikasi,
+            hash_konten: hash,
+            metadata: metadata || null
+        }]);
+        if (error) throw error;
+        return kodeVerifikasi;
+    } catch (err) {
+        console.warn('Gagal mencatat audit nota (non-fatal):', err);
+        return null;
+    }
+}
+
+// ---- Panel Admin "Audit Nota": daftar log yang bisa dicari/difilter, dengan
+// pagination "Muat Lebih Banyak" (range-based, hemat data dibanding load semua). ----
+const AUDIT_NOTA_PAGE_SIZE = 25;
+let auditNotaOffset = 0;
+let auditNotaSearchDebounce = null;
+
+function handleAuditNotaSearchInput() {
+    clearTimeout(auditNotaSearchDebounce);
+    auditNotaSearchDebounce = setTimeout(() => loadNotaAuditLog(true), 350);
+}
+
+async function loadNotaAuditLog(reset) {
+    if (currentRole !== 'admin') return;
+    const tbody = document.getElementById('auditNotaTableBody');
+    const loadMoreBtn = document.getElementById('auditNotaLoadMoreBtn');
+    const countEl = document.getElementById('auditNotaCount');
+    if (!tbody) return;
+
+    if (reset) {
+        auditNotaOffset = 0;
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--ink-soft);">Memuat...</td></tr>';
+    }
+
+    const search = (document.getElementById('auditNotaSearch')?.value || '').trim();
+    const jenis = document.getElementById('auditNotaFilterJenis')?.value || '';
+
+    try {
+        let query = supabaseClient.from('nota_audit_log').select('*', { count: 'exact' }).order('created_at', { ascending: false });
+        if (jenis) query = query.eq('jenis', jenis);
+        if (search) {
+            const s = search.replace(/[%,]/g, '');
+            query = query.or(`jamaah_nama.ilike.%${s}%,nomor_nota.ilike.%${s}%,kode_verifikasi.ilike.%${s}%`);
+        }
+        query = query.range(auditNotaOffset, auditNotaOffset + AUDIT_NOTA_PAGE_SIZE - 1);
+
+        const { data, error, count } = await query;
+        if (error) throw error;
+
+        const rows = data || [];
+        const jenisLabel = { pembayaran: 'Nota Pembayaran', riwayat: 'Nota Riwayat' };
+        const rowsHtml = rows.map(r => `
+            <tr>
+                <td style="white-space:nowrap;font-size:12px;">${escapeHtml(new Date(r.created_at).toLocaleString('id-ID'))}</td>
+                <td style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;white-space:nowrap;">${escapeHtml(r.nomor_nota || '-')}</td>
+                <td>${escapeHtml(jenisLabel[r.jenis] || r.jenis)}</td>
+                <td>${escapeHtml(r.jamaah_nama || '-')}</td>
+                <td style="white-space:nowrap;">${r.jumlah != null ? formatRupiah(Number(r.jumlah)) : '-'}</td>
+                <td>${escapeHtml(r.dicetak_oleh_nama || '-')} <span style="color:var(--ink-soft);font-size:11px;">(${escapeHtml(r.dicetak_oleh_role || '-')})</span></td>
+                <td style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;">${escapeHtml(r.kode_verifikasi || '-')}</td>
+            </tr>`).join('');
+
+        if (reset) {
+            tbody.innerHTML = rowsHtml || '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--ink-soft);">Belum ada nota yang tercatat.</td></tr>';
+        } else {
+            tbody.insertAdjacentHTML('beforeend', rowsHtml);
+        }
+
+        auditNotaOffset += rows.length;
+        if (countEl) countEl.textContent = `${count != null ? count : auditNotaOffset} baris`;
+        if (loadMoreBtn) loadMoreBtn.style.display = (count != null && auditNotaOffset < count) ? '' : 'none';
+    } catch (err) {
+        console.error('loadNotaAuditLog error:', err);
+        if (reset) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--danger);">Gagal memuat log audit: ${escapeHtml(err.message)}. Pastikan migrasi sql/tambah_nota_audit.sql sudah dijalankan di Supabase.</td></tr>`;
+        showToast('Gagal memuat log audit nota', 'error');
+    }
 }
 
 function tanggalIndonesia(isoDate) {
@@ -2336,7 +2506,7 @@ function buildNotaSignatureHTML(kiriLabel, kananLabel) {
         </div>`;
 }
 
-function buildNotaHTML(cicilan) {
+function buildNotaHTML(cicilan, kodeVerifikasi) {
     const jamaah = cicilanJamaahInfo || {};
     const program = cicilanProgramInfo || {};
     const hargaProgram = cicilanHargaProgram || 0;
@@ -2395,7 +2565,10 @@ function buildNotaHTML(cicilan) {
 
         ${buildNotaSignatureHTML('Jamaah / Penyerah', NOTA_PERUSAHAAN.brand)}
 
-        <div style="position:relative;z-index:1;text-align:center;font-size:8.5px;color:#a0a8b3;margin-top:22px;padding-top:10px;border-top:1px solid ${NOTA_TEMA.line};">Dokumen ini dicetak otomatis oleh sistem dan sah sebagai bukti pembayaran resmi ${escapeHtml(NOTA_PERUSAHAAN.brand)}.</div>
+        <div style="position:relative;z-index:1;text-align:center;font-size:8.5px;color:#a0a8b3;margin-top:22px;padding-top:10px;border-top:1px solid ${NOTA_TEMA.line};">
+            Dokumen ini dicetak otomatis oleh sistem dan sah sebagai bukti pembayaran resmi ${escapeHtml(NOTA_PERUSAHAAN.brand)}.
+            ${kodeVerifikasi ? `<div style="margin-top:3px;letter-spacing:.06em;color:${NOTA_TEMA.inkSoft};">Kode Verifikasi: <b style="font-family:'IBM Plex Mono',monospace;color:${NOTA_TEMA.navy};">${escapeHtml(kodeVerifikasi)}</b> &middot; tercatat di sistem audit nota</div>` : ''}
+        </div>
     </div>`;
 }
 
@@ -2448,14 +2621,28 @@ async function downloadNotaPembayaran(cicilanId, btn) {
     if (!cicilan) { showToast('Data pembayaran tidak ditemukan', 'error'); return; }
 
     const namaJamaah = (cicilanJamaahInfo && cicilanJamaahInfo.nama ? cicilanJamaahInfo.nama : 'Jamaah').replace(/[^a-zA-Z0-9]+/g, '-');
+    const nomor = nomorNota(cicilan);
+
+    // Hitung & catat kode verifikasi SEBELUM nota dirender, supaya kodenya
+    // ikut tercetak di dokumen itu sendiri (bisa dicocokkan balik ke log audit).
+    const kodeVerifikasi = await logNotaAudit({
+        jenis: 'pembayaran',
+        nomorNotaValue: nomor,
+        jamaahId: cicilanJamaahId,
+        jamaahNama: cicilanJamaahInfo?.nama,
+        programNama: cicilanProgramInfo?.nama,
+        jumlah: Number(cicilan.jumlah || 0),
+        metadata: { cicilanId: cicilan.id, tanggal: cicilan.tanggal, metode: cicilan.metode }
+    });
+
     await exportNotaElementAsJpeg(
-        buildNotaHTML(cicilan),
+        buildNotaHTML(cicilan, kodeVerifikasi),
         `Nota-Pembayaran-${namaJamaah}-${cicilan.tanggal || 'tanggal'}.jpg`,
         btn
     );
 }
 
-function buildNotaRiwayatHTML() {
+function buildNotaRiwayatHTML(kodeVerifikasi) {
     const jamaah = cicilanJamaahInfo || {};
     const program = cicilanProgramInfo || {};
     const hargaProgram = cicilanHargaProgram || 0;
@@ -2468,12 +2655,13 @@ function buildNotaRiwayatHTML() {
     const rows = riwayat.length ? riwayat.map((c, i) => `
         <tr style="background:${i % 2 === 0 ? '#fff' : NOTA_TEMA.tint};">
             <td style="padding:8px 6px;border-bottom:1px solid ${NOTA_TEMA.line};text-align:center;color:${NOTA_TEMA.inkSoft};font-size:11px;">${i + 1}</td>
+            <td style="padding:8px 6px;border-bottom:1px solid ${NOTA_TEMA.line};font-size:9.5px;font-family:'IBM Plex Mono',monospace;color:${NOTA_TEMA.inkSoft};white-space:nowrap;">${escapeHtml(nomorNota(c))}</td>
             <td style="padding:8px 6px;border-bottom:1px solid ${NOTA_TEMA.line};font-size:11px;">${escapeHtml(tanggalIndonesia(c.tanggal))}</td>
             <td style="padding:8px 6px;border-bottom:1px solid ${NOTA_TEMA.line};font-size:11px;">${escapeHtml(c.metode || '-')}</td>
             <td style="padding:8px 6px;border-bottom:1px solid ${NOTA_TEMA.line};font-size:11px;">${escapeHtml(c.keterangan || '-')}</td>
             <td style="padding:8px 6px;border-bottom:1px solid ${NOTA_TEMA.line};text-align:right;font-weight:700;font-size:11px;white-space:nowrap;">${formatRupiah(Number(c.jumlah || 0))}</td>
         </tr>`).join('') : `
-        <tr><td colspan="5" style="padding:18px 6px;text-align:center;color:#999;font-size:11px;">Belum ada pembayaran tercatat.</td></tr>`;
+        <tr><td colspan="6" style="padding:18px 6px;text-align:center;color:#999;font-size:11px;">Belum ada pembayaran tercatat.</td></tr>`;
 
     const baris = (label, value, opts = {}) => `
         <tr>
@@ -2498,6 +2686,7 @@ function buildNotaRiwayatHTML() {
             <thead>
                 <tr style="background:${NOTA_TEMA.navy};">
                     <th style="padding:9px 6px;text-align:center;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">No</th>
+                    <th style="padding:9px 6px;text-align:left;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">No. Nota</th>
                     <th style="padding:9px 6px;text-align:left;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">Tanggal</th>
                     <th style="padding:9px 6px;text-align:left;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">Metode</th>
                     <th style="padding:9px 6px;text-align:left;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">Keterangan</th>
@@ -2522,7 +2711,10 @@ function buildNotaRiwayatHTML() {
             </tr>
         </table>
 
-        <div style="position:relative;z-index:1;text-align:center;font-size:8.5px;color:#a0a8b3;margin-top:18px;padding-top:10px;border-top:1px solid ${NOTA_TEMA.line};">Dokumen ini dicetak otomatis oleh sistem sebagai rekap riwayat pembayaran resmi ${escapeHtml(NOTA_PERUSAHAAN.brand)}.</div>
+        <div style="position:relative;z-index:1;text-align:center;font-size:8.5px;color:#a0a8b3;margin-top:18px;padding-top:10px;border-top:1px solid ${NOTA_TEMA.line};">
+            Dokumen ini dicetak otomatis oleh sistem sebagai rekap riwayat pembayaran resmi ${escapeHtml(NOTA_PERUSAHAAN.brand)}.
+            ${kodeVerifikasi ? `<div style="margin-top:3px;letter-spacing:.06em;color:${NOTA_TEMA.inkSoft};">Kode Verifikasi: <b style="font-family:'IBM Plex Mono',monospace;color:${NOTA_TEMA.navy};">${escapeHtml(kodeVerifikasi)}</b> &middot; tercatat di sistem audit nota</div>` : ''}
+        </div>
     </div>`;
 }
 
@@ -2532,8 +2724,21 @@ async function downloadNotaRiwayatLengkap(btn) {
 
     const namaJamaah = (cicilanJamaahInfo && cicilanJamaahInfo.nama ? cicilanJamaahInfo.nama : 'Jamaah').replace(/[^a-zA-Z0-9]+/g, '-');
     const tanggalFile = new Date().toISOString().slice(0, 10);
+    const totalDibayar = cicilanList.reduce((sum, c) => sum + Number(c.jumlah || 0), 0);
+    const daftarNomorNota = cicilanList.map(c => nomorNota(c));
+
+    const kodeVerifikasi = await logNotaAudit({
+        jenis: 'riwayat',
+        nomorNotaValue: `REKAP/${daftarNomorNota.length}-NOTA/${tanggalFile}`,
+        jamaahId: cicilanJamaahId,
+        jamaahNama: cicilanJamaahInfo?.nama,
+        programNama: cicilanProgramInfo?.nama,
+        jumlah: totalDibayar,
+        metadata: { daftarNomorNota, jumlahTransaksi: cicilanList.length }
+    });
+
     await exportNotaElementAsJpeg(
-        buildNotaRiwayatHTML(),
+        buildNotaRiwayatHTML(kodeVerifikasi),
         `Nota-Riwayat-Pembayaran-${namaJamaah}-${tanggalFile}.jpg`,
         btn
     );
