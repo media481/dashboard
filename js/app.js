@@ -36,12 +36,19 @@ let pendaftaranList = [], editingPendaftaranId = null;
 let kbJamaahList = [], kbSelectedProgram = null, editingKbId = null;
 let cicilanList = [], cicilanJamaahId = null;
 let dokSelectedProgram = null;
+// type 'copy'   -> dua checkbox terpisah: Fotocopy & Asli (disimpan sbg {key}_fc / {key}_asli)
+// type 'single' -> satu checkbox "Sudah" (disimpan sbg {key})
+// Struktur ini mengikuti form fisik "Tanda Terima Dokumen" PT Amiru Haramain Indonesia.
 const DOKUMEN_JENIS = [
-    { key: 'ktp', label: 'KTP' },
-    { key: 'kk', label: 'Kartu Keluarga' },
-    { key: 'paspor', label: 'Paspor' },
-    { key: 'foto', label: 'Pas Foto' },
-    { key: 'vaksin', label: 'Buku Vaksin Meningitis' }
+    { key: 'ktp', label: 'KTP', type: 'copy' },
+    { key: 'kk', label: 'KK', type: 'copy' },
+    { key: 'paspor', label: 'Paspor', type: 'copy' },
+    { key: 'buku_nikah', label: 'Buku Nikah', type: 'copy' },
+    { key: 'akta_lahir', label: 'Akta Lahir', type: 'copy' },
+    { key: 'ijazah', label: 'Ijazah', type: 'copy' },
+    { key: 'kartu_vaksin', label: 'Kartu Vaksin', type: 'copy' },
+    { key: 'pas_photo', label: 'Pas Photo 4x6', type: 'single' },
+    { key: 'form_pendaftaran', label: 'Form Pendaftaran', type: 'single' }
 ];
 let deleteTarget = { table: null, id: null, name: '' };
 let adminSubTab = 'program';
@@ -2364,9 +2371,18 @@ async function loadDokumenForProgram(programId) {
                 <table style="width:100%;border-collapse:collapse;font-size:13px;">
                     <thead style="background:var(--bg);">
                         <tr>
-                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Nama</th>
-                            ${DOKUMEN_JENIS.map(d => `<th style="padding:10px 14px;text-align:center;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">${escapeHtml(d.label)}</th>`).join('')}
-                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Status</th>
+                            <th rowspan="2" style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);vertical-align:bottom;">Nama</th>
+                            ${DOKUMEN_JENIS.map(d => d.type === 'copy'
+                                ? `<th colspan="2" style="padding:8px 10px 4px;text-align:center;font-size:11px;text-transform:uppercase;color:var(--ink-soft);border-left:1px solid var(--line);">${escapeHtml(d.label)}</th>`
+                                : `<th rowspan="2" style="padding:10px 8px;text-align:center;font-size:11px;text-transform:uppercase;color:var(--ink-soft);vertical-align:bottom;border-left:1px solid var(--line);">${escapeHtml(d.label)}</th>`
+                            ).join('')}
+                            <th rowspan="2" style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);vertical-align:bottom;border-left:1px solid var(--line);">Status</th>
+                        </tr>
+                        <tr>
+                            ${DOKUMEN_JENIS.filter(d => d.type === 'copy').map(() => `
+                                <th style="padding:2px 8px 8px;text-align:center;font-size:10px;font-weight:500;color:var(--ink-soft);">FC</th>
+                                <th style="padding:2px 8px 8px;text-align:center;font-size:10px;font-weight:500;color:var(--ink-soft);">Asli</th>
+                            `).join('')}
                         </tr>
                     </thead>
                     <tbody>
@@ -2376,13 +2392,23 @@ async function loadDokumenForProgram(programId) {
                             return `
                             <tr style="border-bottom:1px solid var(--line);">
                                 <td style="padding:10px 14px;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
-                                ${DOKUMEN_JENIS.map(d => `
-                                    <td style="padding:10px 14px;text-align:center;">
+                                ${DOKUMEN_JENIS.map(d => d.type === 'copy' ? `
+                                    <td style="padding:10px 6px;text-align:center;border-left:1px solid var(--line);">
+                                        <input type="checkbox" ${dok[d.key + '_fc'] ? 'checked' : ''} ${canEdit ? '' : 'disabled'}
+                                            onchange="toggleDokumenJamaah('${j.id}','${d.key}_fc',this.checked)"
+                                            style="width:16px;height:16px;cursor:${canEdit ? 'pointer' : 'default'};">
+                                    </td>
+                                    <td style="padding:10px 6px;text-align:center;">
+                                        <input type="checkbox" ${dok[d.key + '_asli'] ? 'checked' : ''} ${canEdit ? '' : 'disabled'}
+                                            onchange="toggleDokumenJamaah('${j.id}','${d.key}_asli',this.checked)"
+                                            style="width:16px;height:16px;cursor:${canEdit ? 'pointer' : 'default'};">
+                                    </td>` : `
+                                    <td style="padding:10px 14px;text-align:center;border-left:1px solid var(--line);">
                                         <input type="checkbox" ${dok[d.key] ? 'checked' : ''} ${canEdit ? '' : 'disabled'}
                                             onchange="toggleDokumenJamaah('${j.id}','${d.key}',this.checked)"
                                             style="width:16px;height:16px;cursor:${canEdit ? 'pointer' : 'default'};">
                                     </td>`).join('')}
-                                <td style="padding:10px 14px;">
+                                <td style="padding:10px 14px;border-left:1px solid var(--line);">
                                     <span class="status-badge ${lengkap ? 'available' : 'full'}">${lengkap ? '✅ Lengkap' : '⏳ Belum Lengkap'}</span>
                                 </td>
                             </tr>`;
@@ -2390,7 +2416,7 @@ async function loadDokumenForProgram(programId) {
                     </tbody>
                 </table>
             </div>
-            <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;">${totalDok} jenis dokumen dicek: ${DOKUMEN_JENIS.map(d => d.label).join(', ')}.</p>
+            <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;">${totalDok} jenis dokumen dicek (mengikuti form Tanda Terima Dokumen): ${DOKUMEN_JENIS.map(d => d.label).join(', ')}. Untuk KTP–Kartu Vaksin, centang Fotocopy dan/atau Asli sesuai yang diserahkan jamaah.</p>
         `;
 
     } catch (err) {
@@ -2404,7 +2430,9 @@ async function loadDokumenForProgram(programId) {
 
 function isDokumenLengkap(dok) {
     if (!dok) return false;
-    return DOKUMEN_JENIS.every(d => !!dok[d.key]);
+    return DOKUMEN_JENIS.every(d => d.type === 'copy'
+        ? !!(dok[d.key + '_fc'] || dok[d.key + '_asli'])
+        : !!dok[d.key]);
 }
 
 async function toggleDokumenJamaah(jamaahId, key, checked) {
