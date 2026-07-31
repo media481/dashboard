@@ -3,7 +3,7 @@
 // fallback ke cache saat offline. Request ke domain luar (Supabase, CDN, Google Fonts)
 // tidak di-cache, dibiarkan langsung ke jaringan.
 
-const CACHE_NAME = 'amiru-repo-cache-v24';
+const CACHE_NAME = 'amiru-repo-cache-v25';
 
 const APP_SHELL = [
   './',
@@ -19,7 +19,8 @@ const APP_SHELL = [
   './icons/icon-192.png',
   './icons/icon-384.png',
   './icons/icon-512.png',
-  './icons/icon-maskable-512.png'
+  './icons/icon-maskable-512.png',
+  './assets/logo-amirutour.png'
 ];
 
 // ===== INSTALL =====

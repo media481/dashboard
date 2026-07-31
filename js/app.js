@@ -2241,6 +2241,7 @@ function renderCicilanHistory() {
 // ============================================================
 const NOTA_PERUSAHAAN = {
     brand: 'AMIRU TOUR',
+    logo: 'assets/logo-amirutour.png',
     nama: 'PT AMIRU HARAMAIN INDONESIA',
     alamat: 'Jl. Taman Kenari No A3 Kledokan, Caturtunggal, Kec. Depok, Kabupaten Sleman, DIY',
     telp: '0851-2233-6300',
@@ -2280,6 +2281,15 @@ function tanggalIndonesia(isoDate) {
     return `${d.getDate()} ${bulan[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+function buildNotaHeaderHTML() {
+    return `
+        <div style="text-align:center;border-bottom:3px solid #1a6fa8;padding-bottom:14px;margin-bottom:16px;">
+            <img src="${NOTA_PERUSAHAAN.logo}" alt="${escapeHtml(NOTA_PERUSAHAAN.brand)}" style="height:64px;width:auto;display:inline-block;margin-bottom:6px;">
+            <div style="font-size:11px;font-weight:700;color:#333;margin-top:2px;">${escapeHtml(NOTA_PERUSAHAAN.nama)}</div>
+            <div style="font-size:9.5px;color:#777;margin-top:4px;line-height:1.5;">${escapeHtml(NOTA_PERUSAHAAN.alamat)}<br>Telp. ${escapeHtml(NOTA_PERUSAHAAN.telp)} &middot; ${escapeHtml(NOTA_PERUSAHAAN.email)}</div>
+        </div>`;
+}
+
 function buildNotaHTML(cicilan) {
     const jamaah = cicilanJamaahInfo || {};
     const program = cicilanProgramInfo || {};
@@ -2292,11 +2302,7 @@ function buildNotaHTML(cicilan) {
 
     return `
     <div style="width:480px;background:#fff;font-family:'Inter',Arial,sans-serif;color:#1a1a1a;padding:28px;box-sizing:border-box;border:1px solid #e1e8f0;">
-        <div style="text-align:center;border-bottom:3px solid #1a6fa8;padding-bottom:14px;margin-bottom:16px;">
-            <div style="font-size:22px;font-weight:800;color:#1a6fa8;letter-spacing:.5px;">${escapeHtml(NOTA_PERUSAHAAN.brand)}</div>
-            <div style="font-size:11px;font-weight:700;color:#333;margin-top:2px;">${escapeHtml(NOTA_PERUSAHAAN.nama)}</div>
-            <div style="font-size:9.5px;color:#777;margin-top:4px;line-height:1.5;">${escapeHtml(NOTA_PERUSAHAAN.alamat)}<br>Telp. ${escapeHtml(NOTA_PERUSAHAAN.telp)} &middot; ${escapeHtml(NOTA_PERUSAHAAN.email)}</div>
-        </div>
+        ${buildNotaHeaderHTML()}
 
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
             <div style="font-size:16px;font-weight:800;letter-spacing:.5px;">NOTA PEMBAYARAN</div>
@@ -2354,7 +2360,13 @@ async function exportNotaElementAsJpeg(htmlString, filename, btn) {
     renderArea.innerHTML = htmlString;
 
     try {
-        // beri waktu sebentar supaya font & layout selesai dirender sebelum di-snapshot
+        // Tunggu gambar (logo) selesai dimuat, baru beri jeda singkat untuk layout settle,
+        // supaya html2canvas tidak menyalin kanvas saat logo belum tampil.
+        const imgs = Array.from(renderArea.querySelectorAll('img'));
+        await Promise.all(imgs.map(img => (img.complete && img.naturalWidth > 0)
+            ? Promise.resolve()
+            : new Promise(resolve => { img.onload = resolve; img.onerror = resolve; })
+        ));
         await new Promise(resolve => setTimeout(resolve, 60));
         const target = renderArea.firstElementChild;
         const canvas = await html2canvas(target, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
@@ -2414,11 +2426,7 @@ function buildNotaRiwayatHTML() {
 
     return `
     <div style="width:560px;background:#fff;font-family:'Inter',Arial,sans-serif;color:#1a1a1a;padding:28px;box-sizing:border-box;border:1px solid #e1e8f0;">
-        <div style="text-align:center;border-bottom:3px solid #1a6fa8;padding-bottom:14px;margin-bottom:16px;">
-            <div style="font-size:22px;font-weight:800;color:#1a6fa8;letter-spacing:.5px;">${escapeHtml(NOTA_PERUSAHAAN.brand)}</div>
-            <div style="font-size:11px;font-weight:700;color:#333;margin-top:2px;">${escapeHtml(NOTA_PERUSAHAAN.nama)}</div>
-            <div style="font-size:9.5px;color:#777;margin-top:4px;line-height:1.5;">${escapeHtml(NOTA_PERUSAHAAN.alamat)}<br>Telp. ${escapeHtml(NOTA_PERUSAHAAN.telp)} &middot; ${escapeHtml(NOTA_PERUSAHAAN.email)}</div>
-        </div>
+        ${buildNotaHeaderHTML()}
 
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
             <div style="font-size:16px;font-weight:800;letter-spacing:.5px;">NOTA RIWAYAT PEMBAYARAN</div>
