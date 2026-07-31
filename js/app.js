@@ -35,6 +35,8 @@ let jadwalList = [], editingJadwalId = null;
 let pendaftaranList = [], editingPendaftaranId = null;
 let kbJamaahList = [], kbSelectedProgram = null, editingKbId = null;
 let cicilanList = [], cicilanJamaahId = null;
+let cicilanJamaahInfo = null, cicilanProgramInfo = null, cicilanHargaProgram = 0;
+let notaGenerating = false;
 let dokSelectedProgram = null;
 // type 'copy'   -> dua checkbox terpisah: Fotocopy & Asli (disimpan sbg {key}_fc / {key}_asli)
 // type 'single' -> satu checkbox "Sudah" (disimpan sbg {key})
@@ -2156,6 +2158,9 @@ async function openCicilanModal(jamaahId) {
 function closeCicilanModal() {
     document.getElementById('cicilanModal').classList.remove('open');
     cicilanJamaahId = null;
+    cicilanJamaahInfo = null;
+    cicilanProgramInfo = null;
+    cicilanHargaProgram = 0;
 }
 
 async function loadCicilanHistory(jamaahId) {
@@ -2168,6 +2173,9 @@ async function loadCicilanHistory(jamaahId) {
 
         const program = dataUmroh.find(p => String(p.id) === String(jamaahRow.program_id));
         const hargaProgram = parseRupiahToNumber(program ? program.harga_quint : 0);
+        cicilanJamaahInfo = jamaahRow;
+        cicilanProgramInfo = program || null;
+        cicilanHargaProgram = hargaProgram;
 
         const { data, error } = await withRetry(
             () => supabaseClient.from('pembayaran_jamaah').select('*').eq('jamaah_id', jamaahId).order('tanggal', { ascending: false }),
@@ -2215,10 +2223,162 @@ function renderCicilanHistory() {
                 ${c.metode ? `<span class="cicilan-history-badge">${escapeHtml(c.metode)}</span>` : ''}
                 <div class="cicilan-history-meta">${escapeHtml(c.tanggal || '-')}${c.keterangan ? ' · ' + escapeHtml(c.keterangan) : ''}</div>
             </div>
-            <button type="button" class="cicilan-delete-btn" onclick="deleteCicilan('${c.id}')" title="Hapus pembayaran ini">
-                <i class="fa-solid fa-trash"></i>
-            </button>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                <button type="button" class="cicilan-nota-btn" onclick="downloadNotaPembayaran('${c.id}', this)" title="Unduh nota bukti pembayaran (JPEG)">
+                    <i class="fa-solid fa-file-image"></i>
+                </button>
+                <button type="button" class="cicilan-delete-btn" onclick="deleteCicilan('${c.id}')" title="Hapus pembayaran ini">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </div>
         </div>`).join('');
+}
+
+// ============================================================
+// 19C. NOTA PEMBAYARAN (bukti bayar per cicilan, unduh sebagai JPEG)
+// Dirender di kontainer tersembunyi #notaRenderArea lalu di-snapshot
+// pakai html2canvas jadi gambar JPEG yang bisa diunduh/dikirim ke jamaah.
+// ============================================================
+const NOTA_PERUSAHAAN = {
+    brand: 'AMIRU TOUR',
+    nama: 'PT AMIRU HARAMAIN INDONESIA',
+    alamat: 'Jl. Taman Kenari No A3 Kledokan, Caturtunggal, Kec. Depok, Kabupaten Sleman, DIY',
+    telp: '0851-2233-6300',
+    email: 'salam@amirutour.com'
+};
+
+const TERBILANG_SATUAN = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan', 'Sepuluh', 'Sebelas'];
+function angkaKeTerbilang(n) {
+    n = Math.floor(Math.abs(Number(n) || 0));
+    if (n < 12) return TERBILANG_SATUAN[n];
+    if (n < 20) return angkaKeTerbilang(n - 10) + ' Belas';
+    if (n < 100) return angkaKeTerbilang(Math.floor(n / 10)) + ' Puluh' + (n % 10 ? ' ' + angkaKeTerbilang(n % 10) : '');
+    if (n < 200) return 'Seratus' + (n % 100 ? ' ' + angkaKeTerbilang(n % 100) : '');
+    if (n < 1000) return angkaKeTerbilang(Math.floor(n / 100)) + ' Ratus' + (n % 100 ? ' ' + angkaKeTerbilang(n % 100) : '');
+    if (n < 2000) return 'Seribu' + (n % 1000 ? ' ' + angkaKeTerbilang(n % 1000) : '');
+    if (n < 1000000) return angkaKeTerbilang(Math.floor(n / 1000)) + ' Ribu' + (n % 1000 ? ' ' + angkaKeTerbilang(n % 1000) : '');
+    if (n < 1000000000) return angkaKeTerbilang(Math.floor(n / 1000000)) + ' Juta' + (n % 1000000 ? ' ' + angkaKeTerbilang(n % 1000000) : '');
+    return angkaKeTerbilang(Math.floor(n / 1000000000)) + ' Miliar' + (n % 1000000000 ? ' ' + angkaKeTerbilang(n % 1000000000) : '');
+}
+function rupiahTerbilang(n) {
+    const val = Math.floor(Math.abs(Number(n) || 0));
+    if (!val) return 'Nol Rupiah';
+    return (angkaKeTerbilang(val) + ' Rupiah').replace(/\s+/g, ' ').trim();
+}
+
+function nomorNota(cicilan) {
+    const tgl = (cicilan.tanggal || '').replace(/-/g, '');
+    const idPart = String(cicilan.id || '').replace(/[^a-zA-Z0-9]/g, '').slice(-5).toUpperCase();
+    return `AHI/NOTA/${tgl || '000000'}/${idPart || '00000'}`;
+}
+
+function tanggalIndonesia(isoDate) {
+    if (!isoDate) return '-';
+    const bulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    const d = new Date(isoDate + 'T00:00:00');
+    if (isNaN(d.getTime())) return isoDate;
+    return `${d.getDate()} ${bulan[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function buildNotaHTML(cicilan) {
+    const jamaah = cicilanJamaahInfo || {};
+    const program = cicilanProgramInfo || {};
+    const hargaProgram = cicilanHargaProgram || 0;
+
+    const totalDibayarSemua = cicilanList.reduce((sum, c) => sum + Number(c.jumlah || 0), 0);
+    const sisaTagihan = Math.max(hargaProgram - totalDibayarSemua, 0);
+    const jumlah = Number(cicilan.jumlah || 0);
+    const statusLunas = hargaProgram > 0 && totalDibayarSemua >= hargaProgram;
+
+    return `
+    <div style="width:480px;background:#fff;font-family:'Inter',Arial,sans-serif;color:#1a1a1a;padding:28px;box-sizing:border-box;border:1px solid #e1e8f0;">
+        <div style="text-align:center;border-bottom:3px solid #1a6fa8;padding-bottom:14px;margin-bottom:16px;">
+            <div style="font-size:22px;font-weight:800;color:#1a6fa8;letter-spacing:.5px;">${escapeHtml(NOTA_PERUSAHAAN.brand)}</div>
+            <div style="font-size:11px;font-weight:700;color:#333;margin-top:2px;">${escapeHtml(NOTA_PERUSAHAAN.nama)}</div>
+            <div style="font-size:9.5px;color:#777;margin-top:4px;line-height:1.5;">${escapeHtml(NOTA_PERUSAHAAN.alamat)}<br>Telp. ${escapeHtml(NOTA_PERUSAHAAN.telp)} &middot; ${escapeHtml(NOTA_PERUSAHAAN.email)}</div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div style="font-size:16px;font-weight:800;letter-spacing:.5px;">NOTA PEMBAYARAN</div>
+            <div style="text-align:right;font-size:10.5px;color:#555;">
+                <div>No. ${escapeHtml(nomorNota(cicilan))}</div>
+                <div>${escapeHtml(tanggalIndonesia(cicilan.tanggal))}</div>
+            </div>
+        </div>
+
+        <div style="font-size:12px;line-height:2;margin-bottom:14px;">
+            <div style="display:grid;grid-template-columns:130px 1fr;">
+                <span style="color:#777;">Diterima Dari</span><span style="font-weight:700;">: ${escapeHtml(jamaah.nama || '-')}</span>
+                <span style="color:#777;">Program Umroh</span><span>: ${escapeHtml(program.nama || '-')}${program.tgl ? ' (' + escapeHtml(program.tgl) + ')' : ''}</span>
+                <span style="color:#777;">Metode Bayar</span><span>: ${escapeHtml(cicilan.metode || '-')}</span>
+                ${cicilan.keterangan ? `<span style="color:#777;">Keterangan</span><span>: ${escapeHtml(cicilan.keterangan)}</span>` : ''}
+            </div>
+        </div>
+
+        <div style="background:#f4f7fb;border-radius:8px;padding:14px 16px;margin-bottom:14px;">
+            <div style="font-size:10.5px;color:#777;text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px;">Jumlah Diterima</div>
+            <div style="font-size:22px;font-weight:800;color:#1a6fa8;">${formatRupiah(jumlah)}</div>
+            <div style="font-size:11px;color:#555;font-style:italic;margin-top:4px;">Terbilang: ${rupiahTerbilang(jumlah)}</div>
+        </div>
+
+        <div style="font-size:11.5px;line-height:1.9;border-top:1px dashed #ccc;padding-top:10px;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;"><span style="color:#777;">Harga Program</span><span>${formatRupiah(hargaProgram)}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#777;">Total Dibayar (s.d. hari ini)</span><span style="color:#279E70;font-weight:700;">${formatRupiah(totalDibayarSemua)}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#777;">Sisa Tagihan</span><span style="color:${sisaTagihan > 0 ? '#C0392B' : '#279E70'};font-weight:700;">${statusLunas ? 'LUNAS' : formatRupiah(sisaTagihan)}</span></div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;font-size:11px;text-align:center;margin-top:24px;">
+            <div>
+                <div style="height:40px;"></div>
+                <div style="border-top:1px solid #999;padding-top:4px;width:130px;">Jamaah / Penyerah</div>
+            </div>
+            <div>
+                <div style="height:40px;"></div>
+                <div style="border-top:1px solid #999;padding-top:4px;width:130px;">${escapeHtml(NOTA_PERUSAHAAN.brand)}</div>
+            </div>
+        </div>
+
+        <div style="text-align:center;font-size:9px;color:#aaa;margin-top:20px;">Nota ini dibuat otomatis oleh sistem sebagai bukti pembayaran yang sah.</div>
+    </div>`;
+}
+
+async function downloadNotaPembayaran(cicilanId, btn) {
+    if (notaGenerating) return;
+    const cicilan = cicilanList.find(c => String(c.id) === String(cicilanId));
+    if (!cicilan) { showToast('Data pembayaran tidak ditemukan', 'error'); return; }
+    if (typeof html2canvas === 'undefined') { showToast('Modul export gambar belum termuat, coba refresh halaman', 'error'); return; }
+
+    notaGenerating = true;
+    const originalIcon = btn ? btn.innerHTML : null;
+    if (btn) { btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; btn.disabled = true; }
+
+    const renderArea = document.getElementById('notaRenderArea');
+    renderArea.innerHTML = buildNotaHTML(cicilan);
+
+    try {
+        // beri waktu sebentar supaya font & layout selesai dirender sebelum di-snapshot
+        await new Promise(resolve => setTimeout(resolve, 60));
+        const target = renderArea.firstElementChild;
+        const canvas = await html2canvas(target, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+
+        const namaJamaah = (cicilanJamaahInfo && cicilanJamaahInfo.nama ? cicilanJamaahInfo.nama : 'Jamaah').replace(/[^a-zA-Z0-9]+/g, '-');
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `Nota-Pembayaran-${namaJamaah}-${cicilan.tanggal || 'tanggal'}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        showToast('Nota pembayaran berhasil diunduh (JPEG)');
+    } catch (err) {
+        console.error('Generate nota error:', err);
+        showToast('Gagal membuat nota: ' + err.message, 'error');
+    } finally {
+        renderArea.innerHTML = '';
+        notaGenerating = false;
+        if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
+    }
 }
 
 async function saveCicilan(e) {

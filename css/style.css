@@ -947,6 +947,22 @@
             transition: background .15s, color .15s;
         }
         .cicilan-delete-btn:hover { background: var(--danger); color: #fff; }
+        .cicilan-nota-btn {
+            background: var(--brand-tint);
+            color: var(--brand);
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background .15s, color .15s;
+        }
+        .cicilan-nota-btn:hover { background: var(--brand); color: #fff; }
+        .cicilan-nota-btn:disabled { opacity: .6; cursor: default; }
         @media (max-width: 560px) {
             .cicilan-stats { grid-template-columns: 1fr; }
         }

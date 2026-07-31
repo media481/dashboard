@@ -27,6 +27,9 @@
     <!-- jsPDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
+    <!-- html2canvas (untuk export Nota Pembayaran ke JPEG) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -663,6 +666,9 @@
         <div id="posterPopupName" class="poster-popup-name">Poster Program</div>
     </div>
 </div>
+
+<!-- Kontainer tersembunyi untuk render Nota Pembayaran sebelum diekspor ke JPEG -->
+<div id="notaRenderArea" style="position:fixed;left:-99999px;top:0;pointer-events:none;"></div>
 
 <script src="js/app.js"></script>
 
