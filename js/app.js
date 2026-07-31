@@ -2342,10 +2342,8 @@ function buildNotaHTML(cicilan) {
     </div>`;
 }
 
-async function downloadNotaPembayaran(cicilanId, btn) {
+async function exportNotaElementAsJpeg(htmlString, filename, btn) {
     if (notaGenerating) return;
-    const cicilan = cicilanList.find(c => String(c.id) === String(cicilanId));
-    if (!cicilan) { showToast('Data pembayaran tidak ditemukan', 'error'); return; }
     if (typeof html2canvas === 'undefined') { showToast('Modul export gambar belum termuat, coba refresh halaman', 'error'); return; }
 
     notaGenerating = true;
@@ -2353,7 +2351,7 @@ async function downloadNotaPembayaran(cicilanId, btn) {
     if (btn) { btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; btn.disabled = true; }
 
     const renderArea = document.getElementById('notaRenderArea');
-    renderArea.innerHTML = buildNotaHTML(cicilan);
+    renderArea.innerHTML = htmlString;
 
     try {
         // beri waktu sebentar supaya font & layout selesai dirender sebelum di-snapshot
@@ -2362,23 +2360,114 @@ async function downloadNotaPembayaran(cicilanId, btn) {
         const canvas = await html2canvas(target, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
         const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
 
-        const namaJamaah = (cicilanJamaahInfo && cicilanJamaahInfo.nama ? cicilanJamaahInfo.nama : 'Jamaah').replace(/[^a-zA-Z0-9]+/g, '-');
         const link = document.createElement('a');
         link.href = dataUrl;
-        link.download = `Nota-Pembayaran-${namaJamaah}-${cicilan.tanggal || 'tanggal'}.jpg`;
+        link.download = filename;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
 
-        showToast('Nota pembayaran berhasil diunduh (JPEG)');
+        showToast('Nota berhasil diunduh (JPEG)');
+        return true;
     } catch (err) {
         console.error('Generate nota error:', err);
         showToast('Gagal membuat nota: ' + err.message, 'error');
+        return false;
     } finally {
         renderArea.innerHTML = '';
         notaGenerating = false;
         if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
     }
+}
+
+async function downloadNotaPembayaran(cicilanId, btn) {
+    const cicilan = cicilanList.find(c => String(c.id) === String(cicilanId));
+    if (!cicilan) { showToast('Data pembayaran tidak ditemukan', 'error'); return; }
+
+    const namaJamaah = (cicilanJamaahInfo && cicilanJamaahInfo.nama ? cicilanJamaahInfo.nama : 'Jamaah').replace(/[^a-zA-Z0-9]+/g, '-');
+    await exportNotaElementAsJpeg(
+        buildNotaHTML(cicilan),
+        `Nota-Pembayaran-${namaJamaah}-${cicilan.tanggal || 'tanggal'}.jpg`,
+        btn
+    );
+}
+
+function buildNotaRiwayatHTML() {
+    const jamaah = cicilanJamaahInfo || {};
+    const program = cicilanProgramInfo || {};
+    const hargaProgram = cicilanHargaProgram || 0;
+
+    const riwayat = [...cicilanList].sort((a, b) => String(a.tanggal || '').localeCompare(String(b.tanggal || '')));
+    const totalDibayar = riwayat.reduce((sum, c) => sum + Number(c.jumlah || 0), 0);
+    const sisaTagihan = Math.max(hargaProgram - totalDibayar, 0);
+    const statusLunas = hargaProgram > 0 && totalDibayar >= hargaProgram;
+
+    const rows = riwayat.length ? riwayat.map((c, i) => `
+        <tr>
+            <td style="padding:7px 6px;border-bottom:1px solid #eee;text-align:center;color:#888;">${i + 1}</td>
+            <td style="padding:7px 6px;border-bottom:1px solid #eee;">${escapeHtml(tanggalIndonesia(c.tanggal))}</td>
+            <td style="padding:7px 6px;border-bottom:1px solid #eee;">${escapeHtml(c.metode || '-')}</td>
+            <td style="padding:7px 6px;border-bottom:1px solid #eee;">${escapeHtml(c.keterangan || '-')}</td>
+            <td style="padding:7px 6px;border-bottom:1px solid #eee;text-align:right;font-weight:700;white-space:nowrap;">${formatRupiah(Number(c.jumlah || 0))}</td>
+        </tr>`).join('') : `
+        <tr><td colspan="5" style="padding:16px 6px;text-align:center;color:#999;">Belum ada pembayaran tercatat.</td></tr>`;
+
+    return `
+    <div style="width:560px;background:#fff;font-family:'Inter',Arial,sans-serif;color:#1a1a1a;padding:28px;box-sizing:border-box;border:1px solid #e1e8f0;">
+        <div style="text-align:center;border-bottom:3px solid #1a6fa8;padding-bottom:14px;margin-bottom:16px;">
+            <div style="font-size:22px;font-weight:800;color:#1a6fa8;letter-spacing:.5px;">${escapeHtml(NOTA_PERUSAHAAN.brand)}</div>
+            <div style="font-size:11px;font-weight:700;color:#333;margin-top:2px;">${escapeHtml(NOTA_PERUSAHAAN.nama)}</div>
+            <div style="font-size:9.5px;color:#777;margin-top:4px;line-height:1.5;">${escapeHtml(NOTA_PERUSAHAAN.alamat)}<br>Telp. ${escapeHtml(NOTA_PERUSAHAAN.telp)} &middot; ${escapeHtml(NOTA_PERUSAHAAN.email)}</div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div style="font-size:16px;font-weight:800;letter-spacing:.5px;">NOTA RIWAYAT PEMBAYARAN</div>
+            <div style="text-align:right;font-size:10.5px;color:#555;">
+                <div>Dicetak: ${escapeHtml(tanggalIndonesia(new Date().toISOString().slice(0, 10)))}</div>
+            </div>
+        </div>
+
+        <div style="font-size:12px;line-height:2;margin-bottom:14px;">
+            <div style="display:grid;grid-template-columns:130px 1fr;">
+                <span style="color:#777;">Nama Jamaah</span><span style="font-weight:700;">: ${escapeHtml(jamaah.nama || '-')}</span>
+                <span style="color:#777;">Program Umroh</span><span>: ${escapeHtml(program.nama || '-')}${program.tgl ? ' (' + escapeHtml(program.tgl) + ')' : ''}</span>
+            </div>
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:16px;">
+            <thead>
+                <tr style="background:#f4f7fb;">
+                    <th style="padding:8px 6px;text-align:center;font-size:10px;text-transform:uppercase;color:#777;">No</th>
+                    <th style="padding:8px 6px;text-align:left;font-size:10px;text-transform:uppercase;color:#777;">Tanggal</th>
+                    <th style="padding:8px 6px;text-align:left;font-size:10px;text-transform:uppercase;color:#777;">Metode</th>
+                    <th style="padding:8px 6px;text-align:left;font-size:10px;text-transform:uppercase;color:#777;">Keterangan</th>
+                    <th style="padding:8px 6px;text-align:right;font-size:10px;text-transform:uppercase;color:#777;">Jumlah</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+
+        <div style="font-size:11.5px;line-height:1.9;border-top:1px dashed #ccc;padding-top:10px;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;"><span style="color:#777;">Harga Program</span><span>${formatRupiah(hargaProgram)}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#777;">Total Dibayar (${riwayat.length}x transaksi)</span><span style="color:#279E70;font-weight:700;">${formatRupiah(totalDibayar)}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#777;">Sisa Tagihan</span><span style="color:${sisaTagihan > 0 ? '#C0392B' : '#279E70'};font-weight:700;">${statusLunas ? 'LUNAS' : formatRupiah(sisaTagihan)}</span></div>
+        </div>
+
+        <div style="text-align:center;font-size:9px;color:#aaa;">Nota ini dibuat otomatis oleh sistem sebagai rekap riwayat pembayaran.</div>
+    </div>`;
+}
+
+async function downloadNotaRiwayatLengkap(btn) {
+    if (!cicilanJamaahId) { showToast('Data jamaah tidak valid', 'error'); return; }
+    if (!cicilanList.length) { showToast('Belum ada riwayat pembayaran untuk diunduh', 'error'); return; }
+
+    const namaJamaah = (cicilanJamaahInfo && cicilanJamaahInfo.nama ? cicilanJamaahInfo.nama : 'Jamaah').replace(/[^a-zA-Z0-9]+/g, '-');
+    const tanggalFile = new Date().toISOString().slice(0, 10);
+    await exportNotaElementAsJpeg(
+        buildNotaRiwayatHTML(),
+        `Nota-Riwayat-Pembayaran-${namaJamaah}-${tanggalFile}.jpg`,
+        btn
+    );
 }
 
 async function saveCicilan(e) {

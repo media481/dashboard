@@ -839,6 +839,21 @@
         .form-actions .btn-submit:hover { background: var(--brand-deep); }
         .form-actions .btn-cancel { background: var(--bg); color: var(--ink-soft); }
         .form-actions .btn-cancel:hover { background: var(--line); }
+        .form-actions .btn-nota-riwayat {
+            margin-left: auto;
+            background: var(--surface);
+            color: var(--brand);
+            border: 1px solid var(--brand);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .form-actions .btn-nota-riwayat:hover { background: var(--brand-tint); }
+        .form-actions .btn-nota-riwayat:disabled { opacity: .6; cursor: default; }
+        @media (max-width: 520px) {
+            .form-actions { flex-wrap: wrap; }
+            .form-actions .btn-nota-riwayat { margin-left: 0; width: 100%; justify-content: center; }
+        }
 
         /* ===== TABLE ROW ACTIONS (Bayar + Edit/Hapus, dst) ===== */
         .row-actions {
