@@ -537,16 +537,16 @@
             <button class="modal-close" onclick="closeCicilanModal()">&times;</button>
         </div>
         <div class="modal-body">
-            <div id="cicilanRingkasan" style="background:var(--brand-tint);border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:13px;line-height:1.8;"></div>
+            <div id="cicilanRingkasan" class="cicilan-stats"></div>
 
-            <div style="margin-bottom:16px;">
-                <div style="font-weight:700;font-size:12px;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px;">Riwayat Pembayaran</div>
+            <div style="margin-bottom:20px;">
+                <div class="cicilan-section-title"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Pembayaran</div>
                 <div id="cicilanHistoryList" style="max-height:220px;overflow-y:auto;"></div>
             </div>
 
             <form id="cicilanForm" onsubmit="saveCicilan(event)">
                 <input type="hidden" id="cic_jamaahId" value="">
-                <div style="font-weight:700;font-size:12px;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px;">Tambah Pembayaran</div>
+                <div class="cicilan-section-title"><i class="fa-solid fa-circle-plus"></i> Tambah Pembayaran</div>
                 <div class="form-row">
                     <div class="form-group">
                         <label>Tanggal <span class="required">*</span></label>

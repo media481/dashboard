@@ -2005,13 +2005,16 @@ async function loadKbJamaahForProgram(programId) {
                     </td>
                     <td style="padding:10px 14px;"><span class="status-badge ${statusClass}">${statusLabel}</span></td>
                     <td style="padding:10px 14px;white-space:nowrap;">
-                        <button class="btn-primary" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${j.id}')">
-                            <i class="fa-solid fa-money-bill-wave"></i> Bayar
-                        </button>
-                        ${canEdit ? `
-                        <button type="button" onclick="openKbModal('${j.id}')" style="background:var(--brand-tint);color:var(--brand);border:none;padding:5px 8px;border-radius:6px;font-size:11px;cursor:pointer;" title="Edit data jamaah"><i class="fa-solid fa-pen"></i></button>
-                        <button type="button" onclick="openDeleteModal('kb_jamaah', '${j.id}', '${escapeHtml(j.nama || '').replace(/'/g, "\\'")}')" style="background:var(--danger-tint);color:var(--danger);border:none;padding:5px 8px;border-radius:6px;font-size:11px;cursor:pointer;" title="Hapus data jamaah"><i class="fa-solid fa-trash"></i></button>
-                        ` : ''}
+                        <div class="row-actions">
+                            <button class="btn-primary btn-pay" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${j.id}')">
+                                <i class="fa-solid fa-money-bill-wave"></i> Bayar
+                            </button>
+                            ${canEdit ? `
+                            <span class="row-actions-sep"></span>
+                            <button type="button" class="row-icon-btn" onclick="openKbModal('${j.id}')" style="background:var(--brand-tint);color:var(--brand);" title="Edit data jamaah"><i class="fa-solid fa-pen"></i></button>
+                            <button type="button" class="row-icon-btn" onclick="openDeleteModal('kb_jamaah', '${j.id}', '${escapeHtml(j.nama || '').replace(/'/g, "\\'")}')" style="background:var(--danger-tint);color:var(--danger);" title="Hapus data jamaah"><i class="fa-solid fa-trash"></i></button>
+                            ` : ''}
+                        </div>
                     </td>
                 </tr>`;
         }).join('');
@@ -2178,9 +2181,18 @@ async function loadCicilanHistory(jamaahId) {
         const totalDibayar = cicilanList.reduce((sum, c) => sum + Number(c.jumlah || 0), 0);
         const sisa = Math.max(hargaProgram - totalDibayar, 0);
         document.getElementById('cicilanRingkasan').innerHTML = `
-            <div><strong>Harga Program:</strong> ${formatRupiah(hargaProgram)}</div>
-            <div><strong>Total Dibayar:</strong> <span style="color:var(--success);">${formatRupiah(totalDibayar)}</span></div>
-            <div><strong>Sisa Tagihan:</strong> <span style="color:${sisa > 0 ? 'var(--danger)' : 'var(--success)'};">${formatRupiah(sisa)}</span></div>`;
+            <div class="cicilan-stat-card">
+                <div class="cs-label">Harga Program</div>
+                <div class="cs-value">${formatRupiah(hargaProgram)}</div>
+            </div>
+            <div class="cicilan-stat-card">
+                <div class="cs-label">Total Dibayar</div>
+                <div class="cs-value" style="color:var(--success);">${formatRupiah(totalDibayar)}</div>
+            </div>
+            <div class="cicilan-stat-card">
+                <div class="cs-label">Sisa Tagihan</div>
+                <div class="cs-value" style="color:${sisa > 0 ? 'var(--danger)' : 'var(--success)'};">${formatRupiah(sisa)}</div>
+            </div>`;
 
         renderCicilanHistory();
 
@@ -2197,13 +2209,13 @@ function renderCicilanHistory() {
         return;
     }
     listEl.innerHTML = cicilanList.map(c => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line);font-size:12.5px;">
+        <div class="cicilan-history-item">
             <div>
-                <strong>${formatRupiah(Number(c.jumlah || 0))}</strong>
-                <span style="color:var(--ink-soft);"> — ${escapeHtml(c.tanggal || '-')}${c.metode ? ' · ' + escapeHtml(c.metode) : ''}</span>
-                ${c.keterangan ? `<br><span style="color:var(--ink-soft);font-size:11px;">${escapeHtml(c.keterangan)}</span>` : ''}
+                <span class="cicilan-history-amount">${formatRupiah(Number(c.jumlah || 0))}</span>
+                ${c.metode ? `<span class="cicilan-history-badge">${escapeHtml(c.metode)}</span>` : ''}
+                <div class="cicilan-history-meta">${escapeHtml(c.tanggal || '-')}${c.keterangan ? ' · ' + escapeHtml(c.keterangan) : ''}</div>
             </div>
-            <button type="button" onclick="deleteCicilan('${c.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;" title="Hapus pembayaran ini">
+            <button type="button" class="cicilan-delete-btn" onclick="deleteCicilan('${c.id}')" title="Hapus pembayaran ini">
                 <i class="fa-solid fa-trash"></i>
             </button>
         </div>`).join('');
