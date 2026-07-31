@@ -891,6 +891,13 @@
         .row-icon-btn:hover { transform: translateY(-1px); filter: brightness(0.96); }
 
         /* ===== MODAL: KELOLA CICILAN ===== */
+        .cicilan-modal-layout { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+        .cicilan-modal-main { flex: 1 1 340px; min-width: 280px; }
+        .cicilan-modal-preview { flex: 1 1 380px; min-width: 280px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+        .cicilan-preview-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .cicilan-preview-head h4 { font-size: 14px; display: flex; align-items: center; gap: 8px; }
+        .cicilan-preview-head .modal-close { font-size: 20px; padding: 2px 6px; }
+
         .cicilan-stats {
             display: grid;
             grid-template-columns: repeat(3, 1fr);

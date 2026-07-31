@@ -540,71 +540,70 @@
 
 <!-- ===== MODAL: KELOLA CICILAN JAMAAH ===== -->
 <div class="modal-overlay" id="cicilanModal">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width:1080px;">
         <div class="modal-header">
             <h2><i class="fa-solid fa-money-bill-wave"></i> <span id="cicilanModalTitle">Kelola Cicilan</span></h2>
             <button class="modal-close" onclick="closeCicilanModal()">&times;</button>
         </div>
         <div class="modal-body">
-            <div id="cicilanRingkasan" class="cicilan-stats"></div>
+            <div class="cicilan-modal-layout">
+                <div class="cicilan-modal-main">
+                    <div id="cicilanRingkasan" class="cicilan-stats"></div>
 
-            <div style="margin-bottom:20px;">
-                <div class="cicilan-section-title"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Pembayaran</div>
-                <div id="cicilanHistoryList" style="max-height:220px;overflow-y:auto;"></div>
-            </div>
-
-            <form id="cicilanForm" onsubmit="saveCicilan(event)">
-                <input type="hidden" id="cic_jamaahId" value="">
-                <div class="cicilan-section-title"><i class="fa-solid fa-circle-plus"></i> Tambah Pembayaran</div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Tanggal <span class="required">*</span></label>
-                        <input type="date" id="cic_tanggal" required>
+                    <div style="margin-bottom:20px;">
+                        <div class="cicilan-section-title"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Pembayaran</div>
+                        <div id="cicilanHistoryList" style="max-height:220px;overflow-y:auto;"></div>
                     </div>
-                    <div class="form-group">
-                        <label>Jumlah (Rp) <span class="required">*</span></label>
-                        <input type="number" id="cic_jumlah" placeholder="5000000" min="1" required>
+
+                    <form id="cicilanForm" onsubmit="saveCicilan(event)">
+                        <input type="hidden" id="cic_jamaahId" value="">
+                        <div class="cicilan-section-title"><i class="fa-solid fa-circle-plus"></i> Tambah Pembayaran</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Tanggal <span class="required">*</span></label>
+                                <input type="date" id="cic_tanggal" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Jumlah (Rp) <span class="required">*</span></label>
+                                <input type="number" id="cic_jumlah" placeholder="5000000" min="1" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Metode</label>
+                                <select id="cic_metode">
+                                    <option value="Transfer">Transfer</option>
+                                    <option value="Cash">Cash / Tunai</option>
+                                    <option value="Lainnya">Lainnya</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Keterangan</label>
+                                <input type="text" id="cic_keterangan" placeholder="Cicilan ke-2, dsb (opsional)">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-submit"><i class="fa-solid fa-plus"></i> Tambah Pembayaran</button>
+                            <button type="button" class="btn-cancel" onclick="closeCicilanModal()">Tutup</button>
+                            <button type="button" class="btn-nota-riwayat" onclick="previewNotaRiwayatLengkap(this)" title="Preview lalu unduh nota berisi seluruh riwayat pembayaran (JPEG)">
+                                <i class="fa-solid fa-file-image"></i> Unduh Nota Riwayat
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="cicilan-modal-preview" id="cicilanPreviewPanel" style="display:none;">
+                    <div class="cicilan-preview-head">
+                        <h4><i class="fa-solid fa-file-invoice"></i> Preview Nota</h4>
+                        <button type="button" class="modal-close" onclick="hideNotaPreviewPanel()" title="Tutup preview">&times;</button>
+                    </div>
+                    <div id="notaPreviewContent" style="overflow-x:auto;display:flex;justify-content:center;"></div>
+                    <p style="text-align:center;color:var(--ink-soft);font-size:11px;margin-top:10px;">Kode Verifikasi dibuat &amp; dicatat ke sistem audit saat Anda menekan "Unduh JPEG".</p>
+                    <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end;flex-wrap:wrap;">
+                        <button type="button" class="btn-cancel" onclick="hideNotaPreviewPanel()">Batal</button>
+                        <button type="button" class="btn-submit" id="notaPreviewDownloadBtn" onclick="confirmDownloadNotaPreview()"><i class="fa-solid fa-download"></i> Unduh JPEG</button>
                     </div>
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Metode</label>
-                        <select id="cic_metode">
-                            <option value="Transfer">Transfer</option>
-                            <option value="Cash">Cash / Tunai</option>
-                            <option value="Lainnya">Lainnya</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Keterangan</label>
-                        <input type="text" id="cic_keterangan" placeholder="Cicilan ke-2, dsb (opsional)">
-                    </div>
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn-submit"><i class="fa-solid fa-plus"></i> Tambah Pembayaran</button>
-                    <button type="button" class="btn-cancel" onclick="closeCicilanModal()">Tutup</button>
-                    <button type="button" class="btn-nota-riwayat" onclick="previewNotaRiwayatLengkap(this)" title="Preview lalu unduh nota berisi seluruh riwayat pembayaran (JPEG)">
-                        <i class="fa-solid fa-file-image"></i> Unduh Nota Riwayat
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- ===== MODAL: PREVIEW NOTA (sebelum diunduh JPEG) ===== -->
-<div class="modal-overlay" id="notaPreviewModal">
-    <div class="modal-content" style="max-width:660px;">
-        <div class="modal-header">
-            <h2><i class="fa-solid fa-file-invoice"></i> Preview Nota</h2>
-            <button class="modal-close" onclick="closeNotaPreviewModal()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <div id="notaPreviewContent" style="display:flex;justify-content:center;overflow-x:auto;padding-bottom:6px;"></div>
-            <p style="text-align:center;color:var(--ink-soft);font-size:11.5px;margin-top:10px;">Periksa dulu data di atas. Kode Verifikasi baru dibuat & dicatat ke sistem audit saat Anda menekan "Unduh JPEG".</p>
-            <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;justify-content:flex-end;">
-                <button type="button" class="btn-cancel" onclick="closeNotaPreviewModal()">Batal</button>
-                <button type="button" class="btn-submit" id="notaPreviewDownloadBtn" onclick="confirmDownloadNotaPreview()"><i class="fa-solid fa-download"></i> Unduh JPEG</button>
             </div>
         </div>
     </div>

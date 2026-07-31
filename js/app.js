@@ -2194,6 +2194,7 @@ async function saveKbJamaah(e) {
 async function openCicilanModal(jamaahId) {
     if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengelola pembayaran', 'error'); return; }
     cicilanJamaahId = jamaahId;
+    hideNotaPreviewPanel();
     const modal = document.getElementById('cicilanModal');
     document.getElementById('cicilanForm').reset();
     document.getElementById('cic_jamaahId').value = jamaahId;
@@ -2206,6 +2207,7 @@ async function openCicilanModal(jamaahId) {
 
 function closeCicilanModal() {
     document.getElementById('cicilanModal').classList.remove('open');
+    hideNotaPreviewPanel();
     cicilanJamaahId = null;
     cicilanJamaahInfo = null;
     cicilanProgramInfo = null;
@@ -2633,16 +2635,16 @@ async function exportNotaElementAsJpeg(htmlString, filename, btn) {
 // batal preview tidak meninggalkan baris log audit yang "nyasar". ----
 let notaPreviewPending = null;
 
-function openNotaPreviewModal(html) {
+function showNotaPreviewPanel(html) {
     document.getElementById('notaPreviewContent').innerHTML = html;
-    document.getElementById('notaPreviewModal').classList.add('open');
+    document.getElementById('cicilanPreviewPanel').style.display = 'block';
 }
 
-function closeNotaPreviewModal() {
-    document.getElementById('notaPreviewModal').classList.remove('open');
-    document.getElementById('notaPreviewContent').innerHTML = '';
-    const downloadBtn = document.getElementById('notaPreviewDownloadBtn');
-    if (downloadBtn) { downloadBtn.disabled = false; downloadBtn.innerHTML = '<i class="fa-solid fa-download"></i> Unduh JPEG'; }
+function hideNotaPreviewPanel() {
+    const panel = document.getElementById('cicilanPreviewPanel');
+    if (panel) panel.style.display = 'none';
+    const content = document.getElementById('notaPreviewContent');
+    if (content) content.innerHTML = '';
     notaPreviewPending = null;
 }
 
@@ -2650,20 +2652,20 @@ function previewNotaPembayaran(cicilanId, btn) {
     const cicilan = cicilanList.find(c => String(c.id) === String(cicilanId));
     if (!cicilan) { showToast('Data pembayaran tidak ditemukan', 'error'); return; }
     notaPreviewPending = { type: 'pembayaran', cicilanId, btn };
-    openNotaPreviewModal(buildNotaHTML(cicilan, NOTA_KODE_PREVIEW));
+    showNotaPreviewPanel(buildNotaHTML(cicilan, NOTA_KODE_PREVIEW));
 }
 
 function previewNotaRiwayatLengkap(btn) {
     if (!cicilanJamaahId) { showToast('Data jamaah tidak valid', 'error'); return; }
     if (!cicilanList.length) { showToast('Belum ada riwayat pembayaran untuk diunduh', 'error'); return; }
     notaPreviewPending = { type: 'riwayat', btn };
-    openNotaPreviewModal(buildNotaRiwayatHTML(NOTA_KODE_PREVIEW));
+    showNotaPreviewPanel(buildNotaRiwayatHTML(NOTA_KODE_PREVIEW));
 }
 
 async function confirmDownloadNotaPreview() {
     if (!notaPreviewPending) return;
     const { type, cicilanId, btn } = notaPreviewPending;
-    closeNotaPreviewModal();
+    hideNotaPreviewPanel();
     if (type === 'pembayaran') {
         await downloadNotaPembayaran(cicilanId, btn);
     } else if (type === 'riwayat') {
