@@ -2273,7 +2273,7 @@ function renderCicilanHistory() {
                 <div class="cicilan-history-meta">${escapeHtml(c.tanggal || '-')}${c.keterangan ? ' · ' + escapeHtml(c.keterangan) : ''}</div>
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-                <button type="button" class="cicilan-nota-btn" onclick="downloadNotaPembayaran('${c.id}', this)" title="Unduh nota bukti pembayaran (JPEG)">
+                <button type="button" class="cicilan-nota-btn" onclick="previewNotaPembayaran('${c.id}', this)" title="Preview lalu unduh nota bukti pembayaran (JPEG)">
                     <i class="fa-solid fa-file-image"></i>
                 </button>
                 <button type="button" class="cicilan-delete-btn" onclick="deleteCicilan('${c.id}')" title="Hapus pembayaran ini">
@@ -2462,6 +2462,17 @@ const NOTA_TEMA = {
     inkSoft: '#64758A'
 };
 
+const NOTA_KODE_PREVIEW = '__PREVIEW__';
+function notaKodeVerifikasiFooterHTML(kodeVerifikasi) {
+    if (kodeVerifikasi === NOTA_KODE_PREVIEW) {
+        return `<div style="margin-top:3px;letter-spacing:.02em;color:${NOTA_TEMA.inkSoft};font-style:italic;">Kode Verifikasi akan dibuat &amp; dicatat ke sistem audit saat nota ini diunduh</div>`;
+    }
+    if (kodeVerifikasi) {
+        return `<div style="margin-top:3px;letter-spacing:.06em;color:${NOTA_TEMA.inkSoft};">Kode Verifikasi: <b style="font-family:'IBM Plex Mono',monospace;color:${NOTA_TEMA.navy};">${escapeHtml(kodeVerifikasi)}</b> &middot; tercatat di sistem audit nota</div>`;
+    }
+    return '';
+}
+
 function buildNotaWatermarkHTML() {
     return `
         <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none;z-index:0;">
@@ -2567,7 +2578,7 @@ function buildNotaHTML(cicilan, kodeVerifikasi) {
 
         <div style="position:relative;z-index:1;text-align:center;font-size:8.5px;color:#a0a8b3;margin-top:22px;padding-top:10px;border-top:1px solid ${NOTA_TEMA.line};">
             Dokumen ini dicetak otomatis oleh sistem dan sah sebagai bukti pembayaran resmi ${escapeHtml(NOTA_PERUSAHAAN.brand)}.
-            ${kodeVerifikasi ? `<div style="margin-top:3px;letter-spacing:.06em;color:${NOTA_TEMA.inkSoft};">Kode Verifikasi: <b style="font-family:'IBM Plex Mono',monospace;color:${NOTA_TEMA.navy};">${escapeHtml(kodeVerifikasi)}</b> &middot; tercatat di sistem audit nota</div>` : ''}
+            ${notaKodeVerifikasiFooterHTML(kodeVerifikasi)}
         </div>
     </div>`;
 }
@@ -2613,6 +2624,50 @@ async function exportNotaElementAsJpeg(htmlString, filename, btn) {
         renderArea.innerHTML = '';
         notaGenerating = false;
         if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
+    }
+}
+
+// ---- Preview Nota: tampilkan dulu sebelum diunduh sebagai JPEG. Kode
+// Verifikasi & pencatatan ke audit log baru terjadi saat tombol "Unduh
+// JPEG" di modal preview ditekan, bukan saat preview dibuka — supaya
+// batal preview tidak meninggalkan baris log audit yang "nyasar". ----
+let notaPreviewPending = null;
+
+function openNotaPreviewModal(html) {
+    document.getElementById('notaPreviewContent').innerHTML = html;
+    document.getElementById('notaPreviewModal').classList.add('open');
+}
+
+function closeNotaPreviewModal() {
+    document.getElementById('notaPreviewModal').classList.remove('open');
+    document.getElementById('notaPreviewContent').innerHTML = '';
+    const downloadBtn = document.getElementById('notaPreviewDownloadBtn');
+    if (downloadBtn) { downloadBtn.disabled = false; downloadBtn.innerHTML = '<i class="fa-solid fa-download"></i> Unduh JPEG'; }
+    notaPreviewPending = null;
+}
+
+function previewNotaPembayaran(cicilanId, btn) {
+    const cicilan = cicilanList.find(c => String(c.id) === String(cicilanId));
+    if (!cicilan) { showToast('Data pembayaran tidak ditemukan', 'error'); return; }
+    notaPreviewPending = { type: 'pembayaran', cicilanId, btn };
+    openNotaPreviewModal(buildNotaHTML(cicilan, NOTA_KODE_PREVIEW));
+}
+
+function previewNotaRiwayatLengkap(btn) {
+    if (!cicilanJamaahId) { showToast('Data jamaah tidak valid', 'error'); return; }
+    if (!cicilanList.length) { showToast('Belum ada riwayat pembayaran untuk diunduh', 'error'); return; }
+    notaPreviewPending = { type: 'riwayat', btn };
+    openNotaPreviewModal(buildNotaRiwayatHTML(NOTA_KODE_PREVIEW));
+}
+
+async function confirmDownloadNotaPreview() {
+    if (!notaPreviewPending) return;
+    const { type, cicilanId, btn } = notaPreviewPending;
+    closeNotaPreviewModal();
+    if (type === 'pembayaran') {
+        await downloadNotaPembayaran(cicilanId, btn);
+    } else if (type === 'riwayat') {
+        await downloadNotaRiwayatLengkap(btn);
     }
 }
 
@@ -2713,7 +2768,7 @@ function buildNotaRiwayatHTML(kodeVerifikasi) {
 
         <div style="position:relative;z-index:1;text-align:center;font-size:8.5px;color:#a0a8b3;margin-top:18px;padding-top:10px;border-top:1px solid ${NOTA_TEMA.line};">
             Dokumen ini dicetak otomatis oleh sistem sebagai rekap riwayat pembayaran resmi ${escapeHtml(NOTA_PERUSAHAAN.brand)}.
-            ${kodeVerifikasi ? `<div style="margin-top:3px;letter-spacing:.06em;color:${NOTA_TEMA.inkSoft};">Kode Verifikasi: <b style="font-family:'IBM Plex Mono',monospace;color:${NOTA_TEMA.navy};">${escapeHtml(kodeVerifikasi)}</b> &middot; tercatat di sistem audit nota</div>` : ''}
+            ${notaKodeVerifikasiFooterHTML(kodeVerifikasi)}
         </div>
     </div>`;
 }

@@ -583,11 +583,29 @@
                 <div class="form-actions">
                     <button type="submit" class="btn-submit"><i class="fa-solid fa-plus"></i> Tambah Pembayaran</button>
                     <button type="button" class="btn-cancel" onclick="closeCicilanModal()">Tutup</button>
-                    <button type="button" class="btn-nota-riwayat" onclick="downloadNotaRiwayatLengkap(this)" title="Unduh nota berisi seluruh riwayat pembayaran (JPEG)">
+                    <button type="button" class="btn-nota-riwayat" onclick="previewNotaRiwayatLengkap(this)" title="Preview lalu unduh nota berisi seluruh riwayat pembayaran (JPEG)">
                         <i class="fa-solid fa-file-image"></i> Unduh Nota Riwayat
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL: PREVIEW NOTA (sebelum diunduh JPEG) ===== -->
+<div class="modal-overlay" id="notaPreviewModal">
+    <div class="modal-content" style="max-width:660px;">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-file-invoice"></i> Preview Nota</h2>
+            <button class="modal-close" onclick="closeNotaPreviewModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="notaPreviewContent" style="display:flex;justify-content:center;overflow-x:auto;padding-bottom:6px;"></div>
+            <p style="text-align:center;color:var(--ink-soft);font-size:11.5px;margin-top:10px;">Periksa dulu data di atas. Kode Verifikasi baru dibuat & dicatat ke sistem audit saat Anda menekan "Unduh JPEG".</p>
+            <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;justify-content:flex-end;">
+                <button type="button" class="btn-cancel" onclick="closeNotaPreviewModal()">Batal</button>
+                <button type="button" class="btn-submit" id="notaPreviewDownloadBtn" onclick="confirmDownloadNotaPreview()"><i class="fa-solid fa-download"></i> Unduh JPEG</button>
+            </div>
         </div>
     </div>
 </div>
