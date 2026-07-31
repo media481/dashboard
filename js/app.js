@@ -2325,6 +2325,7 @@ function nomorNota(cicilan) {
     // migrasi SQL itu belum dijalankan di project Supabase — diberi label
     // "(sementara)" secara eksplisit supaya tidak disalahartikan sebagai nomor resmi.
     if (cicilan && cicilan.nomor_nota) return cicilan.nomor_nota;
+    if (cicilan && cicilan.id === 'draft') return 'DRAFT — belum tersimpan';
     const tgl = (cicilan.tanggal || '').replace(/-/g, '');
     const idPart = String(cicilan.id || '').replace(/[^a-zA-Z0-9]/g, '').slice(-5).toUpperCase();
     return `AHI/NOTA/${tgl || '000000'}/${idPart || '00000'} (sementara)`;
@@ -2634,6 +2635,14 @@ async function exportNotaElementAsJpeg(htmlString, filename, btn) {
 // JPEG" di modal preview ditekan, bukan saat preview dibuka — supaya
 // batal preview tidak meninggalkan baris log audit yang "nyasar". ----
 let notaPreviewPending = null;
+let notaLiveDraftDebounce = null;
+
+function setNotaPreviewPanelChrome(title, showActions) {
+    const titleEl = document.getElementById('cicilanPreviewTitle');
+    const actionsEl = document.getElementById('notaPreviewActions');
+    if (titleEl) titleEl.textContent = title;
+    if (actionsEl) actionsEl.style.display = showActions ? '' : 'none';
+}
 
 function showNotaPreviewPanel(html) {
     document.getElementById('notaPreviewContent').innerHTML = html;
@@ -2652,6 +2661,7 @@ function previewNotaPembayaran(cicilanId, btn) {
     const cicilan = cicilanList.find(c => String(c.id) === String(cicilanId));
     if (!cicilan) { showToast('Data pembayaran tidak ditemukan', 'error'); return; }
     notaPreviewPending = { type: 'pembayaran', cicilanId, btn };
+    setNotaPreviewPanelChrome('Preview Nota', true);
     showNotaPreviewPanel(buildNotaHTML(cicilan, NOTA_KODE_PREVIEW));
 }
 
@@ -2659,7 +2669,35 @@ function previewNotaRiwayatLengkap(btn) {
     if (!cicilanJamaahId) { showToast('Data jamaah tidak valid', 'error'); return; }
     if (!cicilanList.length) { showToast('Belum ada riwayat pembayaran untuk diunduh', 'error'); return; }
     notaPreviewPending = { type: 'riwayat', btn };
+    setNotaPreviewPanelChrome('Preview Nota', true);
     showNotaPreviewPanel(buildNotaRiwayatHTML(NOTA_KODE_PREVIEW));
+}
+
+// ---- Preview LIVE: nota di kanan otomatis ikut berubah selagi field
+// "Tambah Pembayaran" diisi — jadi bisa dicek dulu tampilannya sebelum data
+// itu benar-benar disimpan. Ini murni pratinjau di browser (tidak menyentuh
+// DB / audit log sama sekali), makanya tombol Unduh disembunyikan di mode ini
+// — nota resminya baru bisa diunduh setelah pembayarannya disimpan. ----
+function handleCicilanFormLiveInput() {
+    clearTimeout(notaLiveDraftDebounce);
+    notaLiveDraftDebounce = setTimeout(updateLiveNotaDraft, 200);
+}
+
+function updateLiveNotaDraft() {
+    // Jangan timpa preview nota yang sudah tersimpan & sedang menunggu diunduh
+    if (notaPreviewPending && notaPreviewPending.type !== 'draft') return;
+
+    const tanggal = document.getElementById('cic_tanggal')?.value || '';
+    const jumlah = parseInt(document.getElementById('cic_jumlah')?.value, 10) || 0;
+    const metode = document.getElementById('cic_metode')?.value || '';
+    const keterangan = document.getElementById('cic_keterangan')?.value.trim() || '';
+
+    if (!tanggal && !jumlah) { hideNotaPreviewPanel(); return; }
+
+    const draftCicilan = { id: 'draft', tanggal, jumlah, metode, keterangan };
+    notaPreviewPending = { type: 'draft' };
+    setNotaPreviewPanelChrome('Preview Nota — Live (belum disimpan)', false);
+    showNotaPreviewPanel(buildNotaHTML(draftCicilan, NOTA_KODE_PREVIEW));
 }
 
 async function confirmDownloadNotaPreview() {
@@ -2822,6 +2860,7 @@ async function saveCicilan(e) {
         document.getElementById('cicilanForm').reset();
         document.getElementById('cic_jamaahId').value = jamaahId;
         document.getElementById('cic_tanggal').value = new Date().toISOString().slice(0, 10);
+        if (notaPreviewPending && notaPreviewPending.type === 'draft') hideNotaPreviewPanel();
 
         await syncJamaahStatus(jamaahId);
         await loadCicilanHistory(jamaahId);

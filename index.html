@@ -561,17 +561,17 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Tanggal <span class="required">*</span></label>
-                                <input type="date" id="cic_tanggal" required>
+                                <input type="date" id="cic_tanggal" required oninput="handleCicilanFormLiveInput()">
                             </div>
                             <div class="form-group">
                                 <label>Jumlah (Rp) <span class="required">*</span></label>
-                                <input type="number" id="cic_jumlah" placeholder="5000000" min="1" required>
+                                <input type="number" id="cic_jumlah" placeholder="5000000" min="1" required oninput="handleCicilanFormLiveInput()">
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Metode</label>
-                                <select id="cic_metode">
+                                <select id="cic_metode" onchange="handleCicilanFormLiveInput()">
                                     <option value="Transfer">Transfer</option>
                                     <option value="Cash">Cash / Tunai</option>
                                     <option value="Lainnya">Lainnya</option>
@@ -579,7 +579,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Keterangan</label>
-                                <input type="text" id="cic_keterangan" placeholder="Cicilan ke-2, dsb (opsional)">
+                                <input type="text" id="cic_keterangan" placeholder="Cicilan ke-2, dsb (opsional)" oninput="handleCicilanFormLiveInput()">
                             </div>
                         </div>
                         <div class="form-actions">
@@ -594,14 +594,16 @@
 
                 <div class="cicilan-modal-preview" id="cicilanPreviewPanel" style="display:none;">
                     <div class="cicilan-preview-head">
-                        <h4><i class="fa-solid fa-file-invoice"></i> Preview Nota</h4>
+                        <h4><i class="fa-solid fa-file-invoice"></i> <span id="cicilanPreviewTitle">Preview Nota</span></h4>
                         <button type="button" class="modal-close" onclick="hideNotaPreviewPanel()" title="Tutup preview">&times;</button>
                     </div>
                     <div id="notaPreviewContent" style="overflow-x:auto;display:flex;justify-content:center;"></div>
-                    <p style="text-align:center;color:var(--ink-soft);font-size:11px;margin-top:10px;">Kode Verifikasi dibuat &amp; dicatat ke sistem audit saat Anda menekan "Unduh JPEG".</p>
-                    <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end;flex-wrap:wrap;">
-                        <button type="button" class="btn-cancel" onclick="hideNotaPreviewPanel()">Batal</button>
-                        <button type="button" class="btn-submit" id="notaPreviewDownloadBtn" onclick="confirmDownloadNotaPreview()"><i class="fa-solid fa-download"></i> Unduh JPEG</button>
+                    <div id="notaPreviewActions">
+                        <p style="text-align:center;color:var(--ink-soft);font-size:11px;margin-top:10px;">Kode Verifikasi dibuat &amp; dicatat ke sistem audit saat Anda menekan "Unduh JPEG".</p>
+                        <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end;flex-wrap:wrap;">
+                            <button type="button" class="btn-cancel" onclick="hideNotaPreviewPanel()">Batal</button>
+                            <button type="button" class="btn-submit" id="notaPreviewDownloadBtn" onclick="confirmDownloadNotaPreview()"><i class="fa-solid fa-download"></i> Unduh JPEG</button>
+                        </div>
                     </div>
                 </div>
             </div>
