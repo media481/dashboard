@@ -1843,7 +1843,9 @@ function renderPendaftaranSection() {
             <div class="jc-title">${escapeHtml(p.nama || '-')}</div>
             <div class="jc-meta">
                 <span><i class="fa-solid fa-kaaba"></i> ${escapeHtml(program ? program.nama : 'Belum ditentukan')}</span>
+                ${p.jenis_kelamin ? `<span><i class="fa-solid fa-${p.jenis_kelamin === 'Perempuan' ? 'venus' : 'mars'}"></i> ${escapeHtml(p.jenis_kelamin)}</span>` : ''}
                 ${p.asal ? `<span><i class="fa-solid fa-location-dot"></i> ${escapeHtml(p.asal)}</span>` : ''}
+                ${p.wa ? `<span><i class="fa-solid fa-phone"></i> ${escapeHtml(p.wa)}</span>` : ''}
             </div>
             <div class="jc-meta" style="margin-top:4px;">
                 <span class="status-badge ${st.badge}">${st.label}</span>
@@ -1874,14 +1876,25 @@ function openPendaftaranModal(id = null) {
         if (!p) { showToast('Data tidak ditemukan', 'error'); return; }
         document.getElementById('pendaftaranModalTitle').textContent = 'Edit Pendaftaran';
         document.getElementById('p_editId').value = p.id;
+        document.getElementById('pf_tanggal').value = p.tanggal_daftar || '';
         document.getElementById('pf_nama').value = p.nama || '';
         document.getElementById('pf_program').value = p.program_id || '';
-        document.getElementById('pf_wa').value = p.wa || '';
+        document.getElementById('pf_ktp').value = p.ktp || '';
+        document.getElementById('pf_gender').value = p.jenis_kelamin || '';
+        document.getElementById('pf_tempat_lahir').value = p.tempat_lahir || '';
+        document.getElementById('pf_tgl_lahir').value = p.tgl_lahir || '';
+        document.getElementById('pf_alamat').value = p.alamat || '';
         document.getElementById('pf_asal').value = p.asal || '';
+        document.getElementById('pf_kodepos').value = p.kode_pos || '';
+        document.getElementById('pf_wa').value = p.wa || '';
+        document.getElementById('pf_telp_rumah').value = p.telp_rumah || '';
+        document.getElementById('pf_ahli_waris_nama').value = p.ahli_waris_nama || '';
+        document.getElementById('pf_ahli_waris_hubungan').value = p.ahli_waris_hubungan || '';
         document.getElementById('pf_status').value = p.status || 'baru';
         document.getElementById('pf_catatan').value = p.catatan || '';
     } else {
         document.getElementById('pendaftaranModalTitle').textContent = 'Tambah Pendaftaran';
+        document.getElementById('pf_tanggal').value = new Date().toISOString().slice(0, 10);
         document.getElementById('pf_status').value = 'baru';
     }
 
@@ -1897,10 +1910,20 @@ async function savePendaftaran(e) {
     if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menyimpan pendaftaran', 'error'); return; }
     const id = document.getElementById('p_editId').value;
     const data = {
+        tanggal_daftar: document.getElementById('pf_tanggal').value || null,
         program_id: document.getElementById('pf_program').value || null,
         nama: document.getElementById('pf_nama').value.trim(),
+        ktp: document.getElementById('pf_ktp').value.trim(),
+        jenis_kelamin: document.getElementById('pf_gender').value,
+        tempat_lahir: document.getElementById('pf_tempat_lahir').value.trim(),
+        tgl_lahir: document.getElementById('pf_tgl_lahir').value || null,
+        alamat: document.getElementById('pf_alamat').value.trim(),
         wa: document.getElementById('pf_wa').value.trim(),
+        telp_rumah: document.getElementById('pf_telp_rumah').value.trim(),
         asal: document.getElementById('pf_asal').value.trim(),
+        kode_pos: document.getElementById('pf_kodepos').value.trim(),
+        ahli_waris_nama: document.getElementById('pf_ahli_waris_nama').value.trim(),
+        ahli_waris_hubungan: document.getElementById('pf_ahli_waris_hubungan').value,
         status: document.getElementById('pf_status').value,
         catatan: document.getElementById('pf_catatan').value.trim()
     };

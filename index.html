@@ -433,27 +433,87 @@
         <div class="modal-body">
             <form id="pendaftaranForm" onsubmit="savePendaftaran(event)">
                 <input type="hidden" id="p_editId" value="">
-                <div class="form-group">
-                    <label>Nama Calon Jamaah <span class="required">*</span></label>
-                    <input type="text" id="pf_nama" placeholder="Contoh: Ahmad Fauzi" required maxlength="150">
-                </div>
                 <div class="form-row">
+                    <div class="form-group">
+                        <label>Tanggal Pendaftaran</label>
+                        <input type="date" id="pf_tanggal">
+                    </div>
                     <div class="form-group">
                         <label>Program Diminati</label>
                         <select id="pf_program" class="searchable-select" data-placeholder="-- Belum Ditentukan --" data-search-placeholder="Cari paket umroh...">
                             <option value="">-- Belum Ditentukan --</option>
                         </select>
                     </div>
+                </div>
+                <div class="form-group">
+                    <label>Nama Lengkap Calon Jamaah <span class="required">*</span></label>
+                    <input type="text" id="pf_nama" placeholder="Sesuai identitas, HURUF KAPITAL" required maxlength="150">
+                </div>
+                <div class="form-row">
                     <div class="form-group">
-                        <label>No. WhatsApp</label>
-                        <input type="tel" id="pf_wa" placeholder="628xxxxxxxxxx">
+                        <label>No. KTP / SIM</label>
+                        <input type="text" id="pf_ktp" placeholder="16 digit NIK atau No. SIM" maxlength="20">
+                    </div>
+                    <div class="form-group">
+                        <label>Jenis Kelamin</label>
+                        <select id="pf_gender">
+                            <option value="">-- Pilih --</option>
+                            <option value="Laki-laki">Laki-laki</option>
+                            <option value="Perempuan">Perempuan</option>
+                        </select>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Asal Daerah</label>
+                        <label>Tempat Lahir</label>
+                        <input type="text" id="pf_tempat_lahir" placeholder="Kota kelahiran">
+                    </div>
+                    <div class="form-group">
+                        <label>Tanggal Lahir</label>
+                        <input type="date" id="pf_tgl_lahir">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Alamat</label>
+                    <textarea id="pf_alamat" placeholder="Alamat lengkap sesuai identitas"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Kabupaten / Kota</label>
                         <input type="text" id="pf_asal" placeholder="Contoh: Magetan, Jawa Timur">
                     </div>
+                    <div class="form-group">
+                        <label>Kode Pos</label>
+                        <input type="text" id="pf_kodepos" placeholder="Kode pos" maxlength="10">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>No. Handphone</label>
+                        <input type="tel" id="pf_wa" placeholder="628xxxxxxxxxx">
+                    </div>
+                    <div class="form-group">
+                        <label>Telp Rumah</label>
+                        <input type="tel" id="pf_telp_rumah" placeholder="Contoh: 0351xxxxxx">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Ahli Waris</label>
+                        <input type="text" id="pf_ahli_waris_nama" placeholder="Nama ahli waris">
+                    </div>
+                    <div class="form-group">
+                        <label>Hubungan Ahli Waris</label>
+                        <select id="pf_ahli_waris_hubungan">
+                            <option value="">-- Pilih --</option>
+                            <option value="Suami">Suami</option>
+                            <option value="Istri">Istri</option>
+                            <option value="Anak">Anak</option>
+                            <option value="Orang Tua">Orang Tua</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label>Status</label>
                         <select id="pf_status">
@@ -463,10 +523,10 @@
                             <option value="batal">Batal</option>
                         </select>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label>Catatan</label>
-                    <input type="text" id="pf_catatan" placeholder="Catatan tambahan...">
+                    <div class="form-group">
+                        <label>Catatan</label>
+                        <input type="text" id="pf_catatan" placeholder="Catatan tambahan...">
+                    </div>
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn-submit"><i class="fa-solid fa-save"></i> Simpan</button>
