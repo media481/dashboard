@@ -2826,66 +2826,89 @@ function buildNotaRiwayatHTML(kodeVerifikasi) {
 
     const rows = riwayat.length ? riwayat.map((c, i) => `
         <tr style="background:${i % 2 === 0 ? '#fff' : NOTA_TEMA.tint};">
-            <td style="padding:8px 6px;border-bottom:1px solid ${NOTA_TEMA.line};text-align:center;color:${NOTA_TEMA.inkSoft};font-size:11px;">${i + 1}</td>
-            <td style="padding:8px 6px;border-bottom:1px solid ${NOTA_TEMA.line};font-size:9.5px;font-family:'IBM Plex Mono',monospace;color:${NOTA_TEMA.inkSoft};white-space:nowrap;">${escapeHtml(nomorNota(c))}</td>
-            <td style="padding:8px 6px;border-bottom:1px solid ${NOTA_TEMA.line};font-size:11px;">${escapeHtml(tanggalIndonesia(c.tanggal))}</td>
-            <td style="padding:8px 6px;border-bottom:1px solid ${NOTA_TEMA.line};font-size:11px;">${escapeHtml(c.metode || '-')}</td>
-            <td style="padding:8px 6px;border-bottom:1px solid ${NOTA_TEMA.line};font-size:11px;">${escapeHtml(c.keterangan || '-')}</td>
-            <td style="padding:8px 6px;border-bottom:1px solid ${NOTA_TEMA.line};text-align:right;font-weight:700;font-size:11px;white-space:nowrap;">${formatRupiah(Number(c.jumlah || 0))}</td>
+            <td style="padding:7px 6px;border-bottom:1px solid ${NOTA_TEMA.line};text-align:center;color:${NOTA_TEMA.inkSoft};font-size:10px;">${i + 1}</td>
+            <td style="padding:7px 6px;border-bottom:1px solid ${NOTA_TEMA.line};font-size:9px;font-family:'IBM Plex Mono',monospace;color:${NOTA_TEMA.inkSoft};white-space:nowrap;">${escapeHtml(nomorNota(c))}</td>
+            <td style="padding:7px 6px;border-bottom:1px solid ${NOTA_TEMA.line};font-size:10px;">${escapeHtml(tanggalIndonesia(c.tanggal))}</td>
+            <td style="padding:7px 6px;border-bottom:1px solid ${NOTA_TEMA.line};font-size:10px;">${escapeHtml(c.metode || '-')}</td>
+            <td style="padding:7px 6px;border-bottom:1px solid ${NOTA_TEMA.line};font-size:10px;">${escapeHtml(c.keterangan || '-')}</td>
+            <td style="padding:7px 6px;border-bottom:1px solid ${NOTA_TEMA.line};text-align:right;font-weight:700;font-size:10px;white-space:nowrap;">${formatRupiah(Number(c.jumlah || 0))}</td>
         </tr>`).join('') : `
-        <tr><td colspan="6" style="padding:18px 6px;text-align:center;color:#999;font-size:11px;">Belum ada pembayaran tercatat.</td></tr>`;
+        <tr><td colspan="6" style="padding:18px 6px;text-align:center;color:#999;font-size:10px;">Belum ada pembayaran tercatat.</td></tr>`;
 
+    // baris & rekapItem sengaja diduplikasi persis dari buildNotaHTML (bukan
+    // di-share) supaya kedua fungsi nota tetap independen dipanggil terpisah,
+    // sama seperti pola kode nota lain di file ini — tapi nilainya disamakan
+    // 1:1 (ukuran font, warna, spacing) supaya kedua jenis nota terasa satu
+    // identitas visual yang sama persis.
     const baris = (label, value, opts = {}) => `
         <tr>
-            <td style="padding:5px 0;font-size:11px;color:${NOTA_TEMA.inkSoft};width:118px;vertical-align:top;">${label}</td>
-            <td style="padding:5px 0;font-size:11px;color:#1a1a1a;vertical-align:top;${opts.bold ? 'font-weight:700;' : ''}">: ${value}</td>
+            <td style="padding:2.5px 0;font-size:10px;color:${NOTA_TEMA.inkSoft};width:110px;vertical-align:top;">${label}</td>
+            <td style="padding:2.5px 0;font-size:10px;color:#1a1a1a;vertical-align:top;${opts.bold ? 'font-weight:700;' : ''}">: ${value}</td>
         </tr>`;
 
+    const rekapItem = (label, value, opts = {}) => `
+        <div style="flex:1;">
+            <div style="font-size:8.5px;color:${NOTA_TEMA.inkSoft};text-transform:uppercase;letter-spacing:.04em;">${label}</div>
+            <div style="font-size:12px;font-weight:700;margin-top:2px;${opts.color ? 'color:' + opts.color + ';' : ''}">${value}</div>
+        </div>`;
+
+    // Lebar & bahasa visual disamakan persis dengan Nota Pembayaran (buildNotaHTML):
+    // kop+judul sebaris dipisah garis navy, info jamaah pakai tabel "baris" yang
+    // sama, rekap total bergaya kartu (rekapItem), tanda tangan, dan footer
+    // rekening yang identik. Bedanya cuma tinggi menyesuaikan jumlah baris
+    // riwayat (tidak dikunci 416px seperti nota pembayaran, karena isinya bisa
+    // jauh lebih panjang tergantung banyaknya transaksi).
     return `
-    <div style="position:relative;width:580px;background:#fff;font-family:'Inter',Arial,sans-serif;color:#1a1a1a;padding:30px 32px;box-sizing:border-box;border:1px solid ${NOTA_TEMA.line};overflow:hidden;">
+    <div style="position:relative;width:794px;background:#fff;font-family:'Inter',Arial,sans-serif;color:#1a1a1a;padding:22px 28px;box-sizing:border-box;border:1px solid ${NOTA_TEMA.line};overflow:hidden;">
         ${buildNotaWatermarkHTML()}
-        ${buildNotaHeaderHTML()}
-        ${buildNotaTitleBarHTML('NOTA RIWAYAT PEMBAYARAN', [
-            `Dicetak: ${escapeHtml(tanggalIndonesia(new Date().toISOString().slice(0, 10)))}`
-        ])}
 
-        <table style="position:relative;z-index:1;width:100%;border-collapse:collapse;margin-bottom:16px;">
-            ${baris('Nama Jamaah', escapeHtml(jamaah.nama || '-'), { bold: true })}
-            ${baris('Program Umroh', `${escapeHtml(program.nama || '-')}${program.tgl ? ' (' + escapeHtml(program.tgl) + ')' : ''}`)}
-        </table>
+        <div style="position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border-bottom:1.5px solid ${NOTA_TEMA.navy};padding-bottom:9px;margin-bottom:12px;">
+            ${buildNotaHeaderHTML()}
+            ${buildNotaTitleBarHTML('NOTA RIWAYAT PEMBAYARAN', [
+                `Dicetak: ${escapeHtml(tanggalIndonesia(new Date().toISOString().slice(0, 10)))}`
+            ])}
+        </div>
 
-        <table style="position:relative;z-index:1;width:100%;border-collapse:collapse;margin-bottom:16px;border:1px solid ${NOTA_TEMA.line};">
-            <thead>
-                <tr style="background:${NOTA_TEMA.navy};">
-                    <th style="padding:9px 6px;text-align:center;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">No</th>
-                    <th style="padding:9px 6px;text-align:left;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">No. Nota</th>
-                    <th style="padding:9px 6px;text-align:left;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">Tanggal</th>
-                    <th style="padding:9px 6px;text-align:left;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">Metode</th>
-                    <th style="padding:9px 6px;text-align:left;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">Keterangan</th>
-                    <th style="padding:9px 6px;text-align:right;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">Jumlah</th>
-                </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-        </table>
+        <div style="position:relative;z-index:1;">
+            <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
+                ${baris('Nama Jamaah', escapeHtml(jamaah.nama || '-'), { bold: true })}
+                ${baris('Program Umroh', `${escapeHtml(program.nama || '-')}${program.tgl ? ' (' + escapeHtml(program.tgl) + ')' : ''}`)}
+            </table>
 
-        <table style="position:relative;z-index:1;width:100%;border-collapse:collapse;font-size:11px;border-top:1px solid ${NOTA_TEMA.line};margin-bottom:6px;">
-            <tr>
-                <td style="padding:6px 0;color:${NOTA_TEMA.inkSoft};">Harga Program</td>
-                <td style="padding:6px 0;text-align:right;">${formatRupiah(hargaProgram)}</td>
-            </tr>
-            <tr>
-                <td style="padding:6px 0;color:${NOTA_TEMA.inkSoft};border-top:1px dashed ${NOTA_TEMA.line};">Total Dibayar (${riwayat.length}x transaksi)</td>
-                <td style="padding:6px 0;text-align:right;color:#1a1a1a;font-weight:700;border-top:1px dashed ${NOTA_TEMA.line};">${formatRupiah(totalDibayar)}</td>
-            </tr>
-            <tr>
-                <td style="padding:6px 0;color:${NOTA_TEMA.inkSoft};border-top:1px dashed ${NOTA_TEMA.line};">Sisa Tagihan</td>
-                <td style="padding:6px 0;text-align:right;color:#1a1a1a;font-weight:700;border-top:1px dashed ${NOTA_TEMA.line};">${statusLunas ? 'LUNAS' : formatRupiah(sisaTagihan)}</td>
-            </tr>
-        </table>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:12px;border:1px solid ${NOTA_TEMA.line};">
+                <thead>
+                    <tr style="background:${NOTA_TEMA.navy};">
+                        <th style="padding:8px 6px;text-align:center;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">No</th>
+                        <th style="padding:8px 6px;text-align:left;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">No. Nota</th>
+                        <th style="padding:8px 6px;text-align:left;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">Tanggal</th>
+                        <th style="padding:8px 6px;text-align:left;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">Metode</th>
+                        <th style="padding:8px 6px;text-align:left;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">Keterangan</th>
+                        <th style="padding:8px 6px;text-align:right;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">Jumlah</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
 
-        <div style="position:relative;z-index:1;text-align:center;font-size:8.5px;color:#a0a8b3;margin-top:18px;padding-top:10px;border-top:1px solid ${NOTA_TEMA.line};">
-            Dokumen ini dicetak otomatis oleh sistem sebagai rekap riwayat pembayaran resmi ${escapeHtml(NOTA_PERUSAHAAN.brand)}.
-            ${notaKodeVerifikasiFooterHTML(kodeVerifikasi)}
+            <div style="display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-top:1px solid ${NOTA_TEMA.line};border-bottom:1px solid ${NOTA_TEMA.line};margin-bottom:12px;">
+                ${rekapItem('Harga Program', formatRupiah(hargaProgram))}
+                ${rekapItem(`Total Dibayar (${riwayat.length}x transaksi)`, formatRupiah(totalDibayar))}
+                ${rekapItem('Sisa Tagihan', statusLunas ? 'LUNAS' : formatRupiah(sisaTagihan))}
+            </div>
+
+            ${buildNotaSignatureHTML(jamaah.nama || 'Jamaah / Penyerah', 'Ali Santoso')}
+        </div>
+
+        <div style="position:relative;z-index:1;text-align:left;font-size:8px;color:${NOTA_TEMA.inkSoft};margin-top:8px;padding-top:6px;border-top:1px solid ${NOTA_TEMA.line};">
+            <div style="margin-bottom:3px;">
+                <b>Rekening Pembayaran:</b>
+                Bank Syariah Indonesia 2026 64 2027 a.n. Amiru Tour
+                &nbsp;&middot;&nbsp;
+                Bank Nasional Indonesia 2026 64 2026 a.n. Amiru Haramain Indonesia
+            </div>
+            <div style="color:#a0a8b3;">
+                Dokumen ini dicetak otomatis oleh sistem sebagai rekap riwayat pembayaran resmi ${escapeHtml(NOTA_PERUSAHAAN.brand)}.
+                ${notaKodeVerifikasiFooterHTML(kodeVerifikasi)}
+            </div>
         </div>
     </div>`;
 }
