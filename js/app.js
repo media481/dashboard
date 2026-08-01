@@ -2565,8 +2565,7 @@ function buildNotaHTML(cicilan, kodeVerifikasi) {
         baris('Program Umroh', `${escapeHtml(program.nama || '-')}${program.tgl ? ' (' + escapeHtml(program.tgl) + ')' : ''}`)
     ].join('');
     const kolomKanan = [
-        baris('Metode Bayar', escapeHtml(cicilan.metode || '-')),
-        cicilan.keterangan ? baris('Keterangan', escapeHtml(cicilan.keterangan)) : ''
+        baris('Metode Bayar', escapeHtml(cicilan.metode || '-'))
     ].join('');
 
     const rekapItem = (label, value, opts = {}) => `
@@ -2592,10 +2591,10 @@ function buildNotaHTML(cicilan, kodeVerifikasi) {
 
         <div style="position:relative;z-index:1;flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;">
             <div style="display:flex;gap:20px;">
-                <table style="width:50%;border-collapse:collapse;">
+                <table style="width:64%;border-collapse:collapse;">
                     ${kolomKiri}
                 </table>
-                <table style="width:50%;border-collapse:collapse;">
+                <table style="width:36%;border-collapse:collapse;">
                     ${kolomKanan}
                 </table>
             </div>
@@ -2604,6 +2603,7 @@ function buildNotaHTML(cicilan, kodeVerifikasi) {
                 <div style="font-size:8.5px;color:${NOTA_TEMA.inkSoft};text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Jumlah Diterima</div>
                 <div style="font-size:23px;font-weight:800;color:${NOTA_TEMA.navy};line-height:1.15;">${formatRupiah(jumlah)}</div>
                 <div style="font-size:9.5px;color:#555;font-style:italic;margin-top:3px;">Terbilang: ${rupiahTerbilang(jumlah)}</div>
+                ${cicilan.keterangan ? `<div style="font-size:9.5px;color:${NOTA_TEMA.inkSoft};margin-top:5px;padding-top:5px;border-top:1px dashed ${NOTA_TEMA.line};">Untuk Pembayaran: <span style="color:#1a1a1a;font-weight:600;">${escapeHtml(cicilan.keterangan)}</span></div>` : ''}
             </div>
 
             <div style="display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-top:1px solid ${NOTA_TEMA.line};border-bottom:1px solid ${NOTA_TEMA.line};">
