@@ -2685,9 +2685,42 @@ function setNotaPreviewPanelChrome(title, showActions) {
 }
 
 function showNotaPreviewPanel(html) {
-    document.getElementById('notaPreviewContent').innerHTML = html;
+    // Nota dirender pada ukuran aslinya (500-1123px, sesuai jenis nota) supaya
+    // hasilnya identik dengan file yang diunduh — panel preview jauh lebih
+    // sempit dari itu, jadi di sini kita bungkus dengan wrapper yang di-scale
+    // proporsional (bukan overflow/scroll) agar yang terlihat = keseluruhan
+    // nota, cuma diperkecil. Ukuran final tetap dihitung dari nota versi asli.
+    const content = document.getElementById('notaPreviewContent');
+    content.innerHTML = `<div class="nota-preview-scale-wrap"><div class="nota-preview-scale-inner">${html}</div></div>`;
     document.getElementById('cicilanPreviewPanel').style.display = 'block';
+    requestAnimationFrame(fitNotaPreviewScale);
 }
+
+function fitNotaPreviewScale() {
+    const content = document.getElementById('notaPreviewContent');
+    if (!content) return;
+    const wrap = content.querySelector('.nota-preview-scale-wrap');
+    const inner = content.querySelector('.nota-preview-scale-inner');
+    const nota = inner ? inner.firstElementChild : null;
+    if (!wrap || !inner || !nota) return;
+
+    inner.style.transform = 'none';
+    const naturalWidth = nota.offsetWidth;
+    const naturalHeight = nota.offsetHeight;
+    if (!naturalWidth || !naturalHeight) return;
+
+    const available = content.clientWidth || naturalWidth;
+    const scale = Math.min(1, available / naturalWidth);
+    inner.style.transformOrigin = 'top left';
+    inner.style.transform = `scale(${scale})`;
+    wrap.style.width = (naturalWidth * scale) + 'px';
+    wrap.style.height = (naturalHeight * scale) + 'px';
+}
+
+window.addEventListener('resize', () => {
+    const panel = document.getElementById('cicilanPreviewPanel');
+    if (panel && panel.style.display !== 'none') fitNotaPreviewScale();
+});
 
 function hideNotaPreviewPanel() {
     const panel = document.getElementById('cicilanPreviewPanel');
