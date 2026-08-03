@@ -1614,26 +1614,49 @@ async function confirmDeleteAction() {
     }
 
     try {
-        const result = await supabaseClient.from(deleteTarget.table).delete().eq('id', deleteTarget.id);
+        const finishedTable = deleteTarget.table;
+        const finishedId = deleteTarget.id;
+        const result = await supabaseClient.from(finishedTable).delete().eq('id', finishedId);
         if (result.error) throw result.error;
 
         showToast('Data berhasil dihapus');
         closeDeleteConfirmModal();
 
-        if (deleteTarget.table === 'programs') {
+        if (finishedTable === 'programs') {
             await loadDataFromSupabase(true);
             await renderAdminPanel();
-        } else if (deleteTarget.table === 'jadwal_tamu') {
+        } else if (finishedTable === 'jadwal_tamu') {
             await loadJadwal();
             renderJadwalSection();
-        } else if (deleteTarget.table === 'pendaftaran') {
+        } else if (finishedTable === 'pendaftaran') {
             await loadPendaftaran();
             renderPendaftaranSection();
-        } else if (deleteTarget.table === 'kb_jamaah') {
+        } else if (finishedTable === 'kb_jamaah') {
             await loadKbJamaah();
             renderKbProgramSelector();
             renderDokProgramSelector();
             updateMetrics();
+        } else if (finishedTable === 'pembayaran_jamaah') {
+            // Ambil data cicilan dari DB langsung (bukan cuma cache) supaya nilai
+            // yang dicatat ke audit akurat, lalu catat jejak penghapusan.
+            try {
+                const { data: cicRow } = await supabaseClient
+                    .from('pembayaran_jamaah').select('jumlah, tanggal, metode').eq('id', finishedId).single();
+                if (cicRow) {
+                    await logNotaAudit({
+                        jenis: 'hapus',
+                        nomorNotaValue: `HAPUS/${nomorNota(cicRow)}`,
+                        jamaahId: cicilanJamaahId,
+                        jamaahNama: cicilanJamaahInfo?.nama,
+                        programNama: cicilanProgramInfo?.nama,
+                        jumlah: Number(cicRow.jumlah || 0),
+                        metadata: { cicilanId: finishedId, tanggal: cicRow.tanggal, metode: cicRow.metode }
+                    });
+                }
+            } catch (auditErr) {
+                console.warn('Gagal mencatat audit hapus pembayaran (non-fatal):', auditErr);
+            }
+            await afterDeleteCicilan(cicilanJamaahId);
         }
 
     } catch (err) {
@@ -2553,6 +2576,7 @@ function buildNotaHTML(cicilan, kodeVerifikasi) {
     const sisaTagihan = Math.max(hargaProgram - totalDibayarSemua, 0);
     const jumlah = Number(cicilan.jumlah || 0);
     const statusLunas = hargaProgram > 0 && totalDibayarSemua >= hargaProgram;
+    const lebihBayar = Math.max(totalDibayarSemua - hargaProgram, 0);
 
     const baris = (label, value, opts = {}) => `
         <tr>
@@ -2603,13 +2627,14 @@ function buildNotaHTML(cicilan, kodeVerifikasi) {
                 <div style="font-size:8.5px;color:${NOTA_TEMA.inkSoft};text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Jumlah Diterima</div>
                 <div style="font-size:23px;font-weight:800;color:${NOTA_TEMA.navy};line-height:1.15;">${formatRupiah(jumlah)}</div>
                 <div style="font-size:9.5px;color:#555;font-style:italic;margin-top:3px;">Terbilang: ${rupiahTerbilang(jumlah)}</div>
+                <div style="font-size:9px;color:${NOTA_TEMA.inkSoft};margin-top:5px;padding-top:5px;border-top:1px dashed ${NOTA_TEMA.line};">Total dibayar s.d. nota ini: <b style="color:${NOTA_TEMA.navy};font-size:10px;">${formatRupiah(totalDibayarSemua)}</b></div>
                 ${cicilan.keterangan ? `<div style="font-size:9.5px;color:${NOTA_TEMA.inkSoft};margin-top:5px;padding-top:5px;border-top:1px dashed ${NOTA_TEMA.line};">Untuk Pembayaran: <span style="color:#1a1a1a;font-weight:600;">${escapeHtml(cicilan.keterangan)}</span></div>` : ''}
             </div>
 
             <div style="display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-top:1px solid ${NOTA_TEMA.line};border-bottom:1px solid ${NOTA_TEMA.line};">
                 ${rekapItem('Harga Program', formatRupiah(hargaProgram))}
                 ${rekapItem('Total Dibayar (s.d. hari ini)', formatRupiah(totalDibayarSemua))}
-                ${rekapItem('Sisa Tagihan', statusLunas ? 'LUNAS' : formatRupiah(sisaTagihan))}
+                ${rekapItem('Sisa Tagihan', statusLunas ? (lebihBayar > 0 ? `LUNAS · Lebih Bayar ${formatRupiah(lebihBayar)}` : 'LUNAS') : formatRupiah(sisaTagihan), { color: lebihBayar > 0 ? NOTA_TEMA.gold : '' })}
             </div>
 
             ${buildNotaSignatureHTML(jamaah.nama || 'Jamaah / Penyerah', 'Ali Santoso')}
@@ -2823,6 +2848,7 @@ function buildNotaRiwayatHTML(kodeVerifikasi) {
     const totalDibayar = riwayat.reduce((sum, c) => sum + Number(c.jumlah || 0), 0);
     const sisaTagihan = Math.max(hargaProgram - totalDibayar, 0);
     const statusLunas = hargaProgram > 0 && totalDibayar >= hargaProgram;
+    const lebihBayar = Math.max(totalDibayar - hargaProgram, 0);
 
     const rows = riwayat.length ? riwayat.map((c, i) => `
         <tr style="background:${i % 2 === 0 ? '#fff' : NOTA_TEMA.tint};">
@@ -2892,7 +2918,7 @@ function buildNotaRiwayatHTML(kodeVerifikasi) {
             <div style="display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-top:1px solid ${NOTA_TEMA.line};border-bottom:1px solid ${NOTA_TEMA.line};margin-bottom:12px;">
                 ${rekapItem('Harga Program', formatRupiah(hargaProgram))}
                 ${rekapItem(`Total Dibayar (${riwayat.length}x transaksi)`, formatRupiah(totalDibayar))}
-                ${rekapItem('Sisa Tagihan', statusLunas ? 'LUNAS' : formatRupiah(sisaTagihan))}
+                ${rekapItem('Sisa Tagihan', statusLunas ? (lebihBayar > 0 ? `LUNAS · Lebih Bayar ${formatRupiah(lebihBayar)}` : 'LUNAS') : formatRupiah(sisaTagihan), { color: lebihBayar > 0 ? NOTA_TEMA.gold : '' })}
             </div>
 
             ${buildNotaSignatureHTML(jamaah.nama || 'Jamaah / Penyerah', 'Ali Santoso')}
@@ -2944,12 +2970,16 @@ async function saveCicilan(e) {
     if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengelola pembayaran', 'error'); return; }
     const jamaahId = document.getElementById('cic_jamaahId').value;
     const tanggal = document.getElementById('cic_tanggal').value;
-    const jumlah = parseInt(document.getElementById('cic_jumlah').value, 10);
+    // Terima angka desimal (mis. 2.5 juta) — parseInt() akan memotong ke 2 juta.
+    // Dibulatkan ke bawah ke rupiah utuh supaya tidak ada sen yang menggantung.
+    const jumlahRaw = document.getElementById('cic_jumlah').value;
+    const jumlah = Math.floor(Number(jumlahRaw));
     const metode = document.getElementById('cic_metode').value;
     const keterangan = document.getElementById('cic_keterangan').value.trim();
 
     if (!jamaahId) { showToast('Data jamaah tidak valid', 'error'); return; }
     if (!tanggal) { showToast('Tanggal wajib diisi', 'error'); return; }
+    if (jumlahRaw === '' || isNaN(Number(jumlahRaw))) { showToast('Jumlah pembayaran harus berupa angka', 'error'); return; }
     if (!jumlah || jumlah <= 0) { showToast('Jumlah pembayaran wajib diisi', 'error'); return; }
 
     try {
@@ -2974,22 +3004,19 @@ async function saveCicilan(e) {
 
 async function deleteCicilan(id) {
     if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menghapus pembayaran', 'error'); return; }
-    if (!confirm('Hapus catatan pembayaran ini?')) return;
+    const cic = cicilanList.find(c => String(c.id) === String(id));
+    if (!cic) { showToast('Data pembayaran tidak ditemukan', 'error'); return; }
+    // Gunakan modal konfirmasi kustom (bukan confirm() bawaan browser) supaya
+    // konsisten dengan app, dan hapus dicatat ke log audit nota.
+    openDeleteModal('pembayaran_jamaah', id,
+        `pembayaran ${formatRupiah(Number(cic.jumlah || 0))}${cic.tanggal ? ' (' + cic.tanggal + ')' : ''}`);
+}
 
-    try {
-        const { error } = await supabaseClient.from('pembayaran_jamaah').delete().eq('id', id);
-        if (error) throw error;
-
-        showToast('Pembayaran berhasil dihapus');
-        const jamaahId = cicilanJamaahId;
-        await syncJamaahStatus(jamaahId);
-        await loadCicilanHistory(jamaahId);
-        if (kbSelectedProgram) await loadKbJamaahForProgram(kbSelectedProgram);
-
-    } catch (err) {
-        console.error('Delete cicilan error:', err);
-        showToast('Gagal menghapus: ' + err.message, 'error');
-    }
+// Dipanggil dari confirmDeleteAction() setelah hapus pembayaran_jamaah berhasil.
+async function afterDeleteCicilan(jamaahId) {
+    await syncJamaahStatus(jamaahId);
+    await loadCicilanHistory(jamaahId);
+    if (kbSelectedProgram) await loadKbJamaahForProgram(kbSelectedProgram);
 }
 
 // Sinkronkan kolom status di kb_jamaah (lunas/dp/pending) berdasarkan total
