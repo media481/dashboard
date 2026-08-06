@@ -386,10 +386,6 @@ function renderTable(data) {
             <td>
                 <div class="action-btns">
                     <button onclick="openDetailModal('${item.id}')" title="Detail"><i class="fa-solid fa-eye"></i></button>
-                    ${canEdit ? `
-                    <button onclick="editAdminProgram('${item.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
-                    <button class="danger" onclick="openDeleteModal('programs','${item.id}','${escapeJsAttr(item.nama)}')" title="Hapus"><i class="fa-solid fa-trash"></i></button>
-                    ` : ''}
                 </div>
             </td>
             <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
