@@ -645,17 +645,18 @@ function renderMaskapaiOptions(selected = '') {
 function getAdminLoginBoxHtml() {
     return `
     <div class="admin-login-box">
-        <div class="admin-login-top">
+        <div class="admin-login-head">
             <div class="admin-login-icon"><i class="fa-solid fa-shield-halved"></i></div>
-            <h3>Admin Panel</h3>
-            <p>Masukkan password untuk masuk</p>
+            <div>
+                <h3>Masuk</h3>
+                <p>Admin &middot; User &middot; Guest</p>
+            </div>
         </div>
         <div class="admin-login-body">
-            <div class="admin-role-chip"><i class="fa-solid fa-user-shield"></i> <span><b>Admin</b> — akses penuh</span></div>
-            <div class="admin-role-chip"><i class="fa-solid fa-user-pen"></i> <span><b>User</b> — kelola data program</span></div>
-            <div class="admin-role-chip"><i class="fa-solid fa-eye"></i> <span><b>Guest</b> — lihat data saja</span></div>
-            <input type="text" id="adminPetugasInput" placeholder="Nama Petugas (opsional, untuk log audit)" maxlength="100" onkeydown="if(event.key==='Enter')checkAdminLogin()">
-            <input type="password" id="adminPasswordInput" placeholder="Password" onkeydown="if(event.key==='Enter')checkAdminLogin()">
+            <label class="admin-login-label" for="adminPetugasInput">Nama Petugas <span>(opsional)</span></label>
+            <input type="text" id="adminPetugasInput" placeholder="Untuk log audit" maxlength="100" onkeydown="if(event.key==='Enter')checkAdminLogin()">
+            <label class="admin-login-label" for="adminPasswordInput">Password</label>
+            <input type="password" id="adminPasswordInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')checkAdminLogin()">
             <button onclick="checkAdminLogin()" class="btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Masuk</button>
             <div id="adminLoginError" class="admin-login-error"></div>
         </div>
