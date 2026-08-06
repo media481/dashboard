@@ -644,35 +644,73 @@
         /* ===== JADWAL TAMU ===== */
         .jadwal-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            gap: 14px;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 12px;
+        }
+        .jadwal-today-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--brand);
+            background: var(--brand-tint);
+            padding: 4px 11px;
+            border-radius: 20px;
         }
         .jadwal-card {
-            background: var(--bg);
+            background: var(--surface);
             border-radius: 10px;
-            padding: 14px 16px;
+            padding: 14px 15px;
             border: 1px solid var(--line);
-            border-left: 4px solid var(--brand);
         }
-        .jadwal-card .jc-title { font-weight: 600; font-size: 14px; }
-        .jadwal-card .jc-meta {
-            font-size: 12.5px;
-            color: var(--ink-soft);
-            margin-top: 4px;
+        .jadwal-card.today-card { border-color: var(--brand); }
+        .jadwal-card.past-card { opacity: .6; }
+        .jadwal-card-head {
             display: flex;
-            flex-wrap: wrap;
+            align-items: flex-start;
+            justify-content: space-between;
             gap: 8px;
+            margin-bottom: 8px;
         }
-        .jadwal-card .jc-meta i { width: 16px; }
-        .jadwal-card .jc-badge {
-            font-size: 11px;
-            background: var(--brand-tint);
-            color: var(--brand);
-            padding: 2px 10px;
-            border-radius: 12px;
+        .jadwal-card-name { font-weight: 600; font-size: 13.5px; color: var(--ink); }
+        .jadwal-status-pill {
+            flex: none;
+            font-size: 10.5px;
             font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 20px;
+            color: var(--ink-soft);
+            background: var(--bg);
+            white-space: nowrap;
         }
-        .jadwal-card.today { border-left-color: var(--success); background: var(--success-tint); }
+        .jadwal-status-pill.today { color: var(--brand); background: var(--brand-tint); }
+        .jadwal-status-pill.upcoming { color: var(--ink-soft); background: var(--bg); }
+        .jadwal-status-pill.past { color: var(--success); background: var(--success-tint); }
+        .jadwal-meta { display: flex; flex-direction: column; gap: 4px; }
+        .jadwal-meta-row {
+            font-size: 12px;
+            color: var(--ink-soft);
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .jadwal-meta-row i { width: 13px; text-align: center; color: var(--ink-soft); opacity: .8; }
+        .jadwal-card-footer:empty { display: none; }
+        .jadwal-card-footer { margin-top: 10px; }
+        .jadwal-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11.5px;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 7px;
+            border: none;
+            cursor: pointer;
+        }
+        .jadwal-btn-wa { background: #dcfce7; color: #16a34a; }
+        .jadwal-btn-wa:hover { background: #bbf7d0; }
         .jadwal-empty {
             padding: 40px 20px;
             text-align: center;
@@ -684,28 +722,27 @@
         /* ===== FORM PENDAFTARAN ===== */
         .pendaftaran-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            gap: 14px;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 12px;
         }
         .pendaftaran-card {
-            background: var(--bg);
+            background: var(--surface);
             border-radius: 10px;
-            padding: 14px 16px;
+            padding: 14px 15px;
             border: 1px solid var(--line);
-            border-left: 4px solid var(--brand);
         }
-        .pendaftaran-card .jc-title { font-weight: 600; font-size: 14px; }
+        .pendaftaran-card .jc-title { font-weight: 600; font-size: 13.5px; color: var(--ink); margin-bottom: 6px; }
         .pendaftaran-card .jc-meta {
-            font-size: 12.5px;
+            font-size: 12px;
             color: var(--ink-soft);
-            margin-top: 4px;
             display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
         }
-        .pendaftaran-card .jc-meta i { width: 16px; }
-        .pendaftaran-card.status-deal { border-left-color: var(--success); background: var(--success-tint); }
-        .pendaftaran-card.status-batal { border-left-color: var(--danger); opacity: .7; }
+        .pendaftaran-card .jc-meta i { width: 13px; text-align: center; opacity: .8; }
+        .pendaftaran-card.status-deal { border-color: var(--success); }
+        .pendaftaran-card.status-batal { opacity: .55; }
         .pendaftaran-empty {
             padding: 40px 20px;
             text-align: center;
