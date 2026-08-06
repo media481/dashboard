@@ -1498,6 +1498,47 @@ async function exportAdminData() {
     }
 }
 
+function isValidUUID(str) {
+    return typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
+// Import satu batch program, kembalikan {ok, failed:[{nama,reason}]}
+async function importProgramList(list) {
+    let ok = 0;
+    const failed = [];
+    for (const progRaw of list) {
+        const prog = { ...progRaw };
+        const nama = prog.nama || '(tanpa nama)';
+        if (!prog.nama || !isValidProgramName(prog.nama)) {
+            failed.push({ nama, reason: 'Nama program kosong atau mengandung karakter tidak valid' });
+            continue;
+        }
+        // ID lama non-UUID (mis. "prog_xxx") tidak kompatibel dengan kolom uuid di Supabase.
+        // Buang id-nya supaya Supabase generate UUID baru otomatis (insert sebagai program baru).
+        if (prog.id && !isValidUUID(prog.id)) {
+            delete prog.id;
+        }
+        try {
+            const { error } = await supabaseClient.from('programs').upsert([prog], { onConflict: 'id' });
+            if (!error) ok++;
+            else failed.push({ nama, reason: error.message || 'Error tidak diketahui dari Supabase' });
+        } catch (err) {
+            failed.push({ nama, reason: err.message || 'Error tidak diketahui' });
+        }
+    }
+    return { ok, failed };
+}
+
+function showImportResult(ok, failed) {
+    if (!failed.length) {
+        showToast(`✅ Import selesai — ${ok} program`);
+        return;
+    }
+    const list = failed.map(f => `• ${f.nama} — ${f.reason}`).join('\n');
+    showToast(`⚠️ Import selesai — ${ok} berhasil, ${failed.length} gagal`, 'error');
+    alert(`Berikut program yang GAGAL diimport (${failed.length}):\n\n${list}`);
+}
+
 function importAdminData() {
     if (currentRole !== 'admin') { showToast('Hanya Admin yang boleh import data', 'error'); return; }
     const input = document.createElement('input');
@@ -1514,32 +1555,16 @@ function importAdminData() {
                 if (imported && imported._meta && imported.programs) {
                     if (!confirm(`Restore backup dari ${new Date(imported._meta.exported_at).toLocaleString('id-ID')}?\n\n• ${imported.programs.length} program\n\nData yang ada TIDAK akan dihapus, hanya ditambah/diperbarui.`)) return;
                     showToast('⏳ Mengimport data...');
-                    let ok = 0;
-                    for (const prog of imported.programs) {
-                        if (prog.nama && isValidProgramName(prog.nama)) {
-                            try {
-                                const { error } = await supabaseClient.from('programs').upsert([prog], { onConflict: 'id' });
-                                if (!error) ok++;
-                            } catch {}
-                        }
-                    }
+                    const { ok, failed } = await importProgramList(imported.programs);
                     await loadDataFromSupabase(true);
                     await renderAdminPanel();
-                    showToast(`✅ Import selesai — ${ok} program`);
+                    showImportResult(ok, failed);
                 } else if (Array.isArray(imported)) {
                     if (!confirm(`Import ${imported.length} program?`)) return;
-                    let ok = 0;
-                    for (const prog of imported) {
-                        if (prog.nama && isValidProgramName(prog.nama)) {
-                            try {
-                                const { error } = await supabaseClient.from('programs').upsert([prog], { onConflict: 'id' });
-                                if (!error) ok++;
-                            } catch {}
-                        }
-                    }
+                    const { ok, failed } = await importProgramList(imported);
                     await loadDataFromSupabase(true);
                     await renderAdminPanel();
-                    showToast(`✅ Import selesai — ${ok} program`);
+                    showImportResult(ok, failed);
                 } else {
                     showToast('❌ Format file tidak dikenali', 'error');
                 }
