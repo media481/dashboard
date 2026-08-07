@@ -40,9 +40,13 @@
         <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" onclick="toggleSidebarCollapse()" title="Ciutkan sidebar">
             <i class="fa-solid fa-angles-left"></i>
         </button>
-        <div class="brand">
-            <div class="brand-icon">𝞚</div>
-            <div class="brand-text">Dashboard Amiru<span>Sistem Manajemen</span></div>
+
+        <div class="sidebar-foot">
+            <div class="avatar" id="sidebarAvatar">GT</div>
+            <div class="sidebar-foot-text">
+                <div class="who" id="sidebarWho">Guest</div>
+                <div class="role">PT Amiru Haramain</div>
+            </div>
         </div>
 
         <nav>
@@ -97,14 +101,6 @@
                 </button>
             </div>
         </nav>
-
-        <div class="sidebar-foot">
-            <div class="avatar" id="sidebarAvatar">GT</div>
-            <div class="sidebar-foot-text">
-                <div class="who" id="sidebarWho">Guest</div>
-                <div class="role">PT Amiru Haramain</div>
-            </div>
-        </div>
     </aside>
 
     <!-- ===== MAIN ===== -->
@@ -362,10 +358,6 @@
 <div class="mobile-sidebar-overlay" id="mobileSidebarOverlay" onclick="if(event.target===this) toggleMobileSidebar()">
     <div class="mobile-sidebar">
         <button class="close-btn" onclick="toggleMobileSidebar()"><i class="fa-solid fa-xmark"></i></button>
-        <div class="brand" style="margin-top:8px;">
-            <div class="brand-icon">𝞚</div>
-            <div class="brand-text">Dashboard Amiru<span>Sistem Manajemen</span></div>
-        </div>
         <nav>
             <div class="nav-label">Navigasi</div>
             <button class="nav-item active" data-tab="umroh" onclick="switchTab('umroh'); toggleMobileSidebar();">
