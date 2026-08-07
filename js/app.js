@@ -1060,15 +1060,6 @@ async function renderAdminPanel() {
     }
 }
 
-// Tombol aksi link cepat (Poster/Itinerary/Meta Ads/Dokumentasi) di tabel Program Umroh.
-// Aktif & buka tab baru kalau linknya sudah diisi; abu-abu/nonaktif kalau belum.
-function renderProgramLinkBtn(url, iconClass, label) {
-    if (url) {
-        return `<button onclick="window.open('${escapeJsAttr(url)}','_blank')" title="Buka ${label}"><i class="${iconClass}"></i></button>`;
-    }
-    return `<button disabled style="opacity:.35;cursor:not-allowed;" title="${label} belum diisi"><i class="${iconClass}"></i></button>`;
-}
-
 function renderAdminTable() {
     const tbody = document.getElementById('adminTableBody');
     if (!tbody) return;
@@ -1091,10 +1082,6 @@ function renderAdminTable() {
             ${canEditData ? `
             <td style="text-align:right;">
                 <div class="action-btns" style="justify-content:flex-end;">
-                    ${renderProgramLinkBtn(p.link_poster, 'fa-solid fa-image', 'Poster')}
-                    ${renderProgramLinkBtn(p.link_itinerary, 'fa-solid fa-route', 'Itinerary')}
-                    ${renderProgramLinkBtn(p.link_metaads, 'fa-solid fa-bullhorn', 'Meta Ads')}
-                    ${renderProgramLinkBtn(p.link_dokumentasi, 'fa-solid fa-folder-open', 'Dokumentasi')}
                     <button onclick="editAdminProgram('${p.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
                     <button onclick="openDeleteModal('programs','${p.id}','${escapeJsAttr(p.nama)}')" class="danger" title="Hapus"><i class="fa-solid fa-trash"></i></button>
                 </div>
