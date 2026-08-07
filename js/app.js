@@ -1201,14 +1201,17 @@ async function renderAdminPanel() {
             </div>
 
             <div class="admin-subtab-panel" id="adminSubTab-snapshot" style="display:none;">
-                <div class="admin-section-header">
-                    <div><h4><i class="fa-solid fa-camera-retro" style="color:#0ea5e9;"></i> Snapshot / Backup Harian</h4>
-                    <p>Cadangan seluruh data Umroh (program, jamaah, jadwal, pendaftaran, pembayaran, unggulan). Maksimal 10 snapshot — untuk keamanan, snapshot tidak bisa dihapus manual dan yang tertua akan hilang otomatis saat penuh.</p></div>
-                    <div class="sec-actions">
-                        <button class="btn-primary" onclick="takeSnapshot('Manual ' + new Date().toLocaleDateString('id-ID'), 'manual').then(() => renderSnapshotAdminTable());">
-                            <i class="fa-solid fa-camera"></i> Ambil Snapshot
-                        </button>
+                <div class="snap-header">
+                    <div class="snap-header-title">
+                        <i class="fa-solid fa-camera-retro"></i>
+                        <div>
+                            <h4>Snapshot / Backup</h4>
+                            <span>Maks 10 · tertua otomatis terhapus · tidak bisa dihapus manual</span>
+                        </div>
                     </div>
+                    <button class="btn-primary btn-sm" onclick="takeSnapshot('Manual ' + new Date().toLocaleDateString('id-ID'), 'manual').then(() => renderSnapshotAdminTable());">
+                        <i class="fa-solid fa-camera"></i> Ambil
+                    </button>
                 </div>
                 <div id="snapshotTableWrap"></div>
             </div>
@@ -1954,52 +1957,36 @@ const SNAPSHOT_TRIGGER_LABEL = {
 function renderSnapshotAdminTable() {
     const wrap = document.getElementById('snapshotTableWrap');
     if (!wrap) return;
-    wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--ink-soft);"><i class="fa-solid fa-spinner fa-spin"></i> Memuat snapshot...</div>';
+    wrap.innerHTML = '<div style="text-align:center;padding:18px;color:var(--ink-soft);font-size:12px;"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</div>';
     listSnapshots().then(rows => {
         const pct = Math.min(100, Math.round((rows.length / MAX_SNAPSHOTS) * 100));
-        const progressHtml = `
-            <div class="snap-progress-wrap">
-                <div class="snap-progress-track"><div class="snap-progress-fill" style="width:${pct}%;"></div></div>
-                <span class="snap-progress-label">${rows.length}/${MAX_SNAPSHOTS} slot terpakai</span>
-            </div>`;
 
         if (!rows.length) {
-            wrap.innerHTML = progressHtml + `
-                <div class="snap-empty">
-                    <i class="fa-solid fa-camera-retro"></i>
-                    <p>Belum ada snapshot.</p>
-                    <span>Klik <b>Ambil Snapshot</b> untuk cadangan pertama, atau snapshot otomatis akan dibuat sebelum tindakan berisiko.</span>
-                </div>`;
+            wrap.innerHTML = `
+                <div class="snap-progress-wrap"><div class="snap-progress-track"><div class="snap-progress-fill" style="width:0%;"></div></div><span class="snap-progress-label">0/${MAX_SNAPSHOTS}</span></div>
+                <div class="snap-empty"><i class="fa-solid fa-camera-retro"></i><span>Belum ada snapshot. Klik <b>Ambil</b> untuk cadangan pertama.</span></div>`;
             return;
         }
 
         const itemsHtml = rows.map(r => {
             const d = new Date(r.created_at);
-            const tstr = isNaN(d) ? '-' : d.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+            const tstr = isNaN(d) ? '-' : d.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
             const total = (r.meta && r.meta.total_rows != null) ? r.meta.total_rows : '-';
             const trig = SNAPSHOT_TRIGGER_LABEL[r.trigger] || { text: r.trigger || 'manual', color: '#64758A', tint: '#F4F7FB' };
             return `
-            <div class="snap-item">
-                <div class="snap-item-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
-                <div class="snap-item-body">
-                    <div class="snap-item-top">
-                        <strong>${escapeHtml(r.label || 'Snapshot')}</strong>
-                        <span class="snap-badge" style="color:${trig.color};background:${trig.tint};">${escapeHtml(trig.text)}</span>
-                    </div>
-                    <div class="snap-item-meta">
-                        <span><i class="fa-regular fa-clock"></i> ${tstr}</span>
-                        <span><i class="fa-solid fa-database"></i> ${total} baris</span>
-                    </div>
-                </div>
-                <button class="btn-icon-ghost" title="Pulihkan snapshot ini" onclick="restoreSnapshot('${r.id}')"><i class="fa-solid fa-rotate-left"></i></button>
+            <div class="snap-row">
+                <span class="snap-dot" style="background:${trig.color};" title="${escapeHtml(trig.text)}"></span>
+                <span class="snap-row-label" title="${escapeHtml(r.label || 'Snapshot')}">${escapeHtml(r.label || 'Snapshot')}</span>
+                <span class="snap-row-meta">${tstr} · ${total} baris</span>
+                <button class="btn-icon-ghost btn-xs" title="Pulihkan snapshot ini" onclick="restoreSnapshot('${r.id}')"><i class="fa-solid fa-rotate-left"></i></button>
             </div>`;
         }).join('');
 
-        wrap.innerHTML = progressHtml + `
-            <div class="snap-list">${itemsHtml}</div>
-            <div class="snap-security-note"><i class="fa-solid fa-shield-halved"></i> Snapshot tidak bisa dihapus manual. Saat slot penuh, snapshot tertua otomatis terhapus sendiri.</div>`;
+        wrap.innerHTML = `
+            <div class="snap-progress-wrap"><div class="snap-progress-track"><div class="snap-progress-fill" style="width:${pct}%;"></div></div><span class="snap-progress-label">${rows.length}/${MAX_SNAPSHOTS}</span></div>
+            <div class="snap-list">${itemsHtml}</div>`;
     }).catch(err => {
-        wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--danger);">Gagal memuat snapshot: ' + escapeHtml(err.message || err) + '</div>';
+        wrap.innerHTML = '<div style="text-align:center;padding:18px;color:var(--danger);font-size:12px;">Gagal memuat: ' + escapeHtml(err.message || err) + '</div>';
     });
 }
 
