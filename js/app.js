@@ -2095,6 +2095,22 @@ async function loadKbJamaah() {
 
 function renderKbProgramSelector() {
     const select = document.getElementById('kbProgramSelect');
+
+    // Dropdown di modal "Tambah/Edit Jamaah" HARUS selalu menampilkan SEMUA
+    // program yang ada, termasuk yang belum punya jamaah sama sekali (karena
+    // di situlah jamaah pertama didaftarkan). Diisi lebih dulu & terpisah dari
+    // logic filter sidebar di bawah, supaya tidak ikut kena early-return.
+    const modalSelect = document.getElementById('kb_program');
+    if (modalSelect) {
+        const currentModalVal = modalSelect.value;
+        modalSelect.innerHTML = (dataUmroh && dataUmroh.length)
+            ? dataUmroh.map(p => `<option value="${p.id}">${escapeHtml(p.nama)}${p.tgl ? ' (' + escapeHtml(p.tgl) + ')' : ''}</option>`).join('')
+            : '<option value="">-- Belum ada program --</option>';
+        if (currentModalVal && dataUmroh && dataUmroh.some(p => String(p.id) === String(currentModalVal))) {
+            modalSelect.value = currentModalVal;
+        }
+    }
+
     if (!select) return;
 
     if (!dataUmroh || dataUmroh.length === 0) {
@@ -2102,8 +2118,9 @@ function renderKbProgramSelector() {
         return;
     }
 
-    // Hanya tampilkan program yang memang sudah ada jamaah yang mendaftar,
-    // supaya admin tinggal pilih tanpa perlu mencari di daftar panjang.
+    // Sidebar filter: hanya tampilkan program yang memang sudah ada jamaah
+    // yang mendaftar, supaya admin tinggal pilih tanpa perlu mencari di
+    // daftar panjang. Ini TIDAK memengaruhi isi dropdown di modal (di atas).
     const programsWithJamaah = dataUmroh.filter(p =>
         (kbJamaahList || []).some(j => String(j.program_id) === String(p.id))
     );
@@ -2119,13 +2136,6 @@ function renderKbProgramSelector() {
     select.innerHTML = '<option value="">-- Pilih Program --</option>' +
         programsWithJamaah.map(p => `<option value="${p.id}">${escapeHtml(p.nama)} (${escapeHtml(p.tgl || '-')})</option>`).join('');
     select.value = (currentVal && programsWithJamaah.some(p => String(p.id) === String(currentVal))) ? currentVal : '';
-
-    // Modal "Tambah Jamaah" tetap tampilkan SEMUA program (termasuk yang belum
-    // punya jamaah sama sekali), karena di situlah jamaah pertama didaftarkan.
-    const modalSelect = document.getElementById('kb_program');
-    if (modalSelect) {
-        modalSelect.innerHTML = dataUmroh.map(p => `<option value="${p.id}">${escapeHtml(p.nama)}</option>`).join('');
-    }
 
     // Load jamaah for selected program
     loadKbJamaahForProgram(select.value);
@@ -2263,6 +2273,10 @@ function openKbModal(id = null) {
     const form = document.getElementById('kbForm');
     form.reset();
     document.getElementById('kb_editId').value = '';
+
+    // Jaga-jaga: pastikan dropdown program di modal sudah terisi (mis. kalau
+    // modal ini dibuka sebelum data program sempat dimuat / sinkron ulang).
+    renderKbProgramSelector();
 
     // Pre-select program from selector
     const programSelect = document.getElementById('kbProgramSelect');
