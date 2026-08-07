@@ -732,6 +732,27 @@
             grid-column: 1 / -1;
         }
         .featured-empty i { font-size: 28px; display: block; margin-bottom: 10px; opacity: .4; }
+        .featured-toggle-btn {
+            border: none;
+            border-radius: 8px;
+            padding: 7px 14px;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+        .featured-toggle-btn.on {
+            background: #f59e0b;
+            color: #fff;
+        }
+        .featured-toggle-btn.on:hover { background: #d97706; }
+        .featured-toggle-btn.off {
+            background: #eef2f7;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+        }
+        .featured-toggle-btn.off:hover { background: #e2e8f0; color: #1e293b; }
 
         /* ===== JADWAL TAMU: status pill dipakai di tabel jadwal ===== */
         .jadwal-status-pill {

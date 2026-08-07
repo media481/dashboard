@@ -767,6 +767,7 @@ function getAdminLoginBoxHtml() {
 const ADMIN_SUBTAB_META = {
     program: { title: 'Edit & Tambah Program', subtitle: 'Kelola data program umroh' },
     pembayaran: { title: 'Pembayaran', subtitle: 'Kelola pembayaran biaya umroh seluruh jamaah' },
+    unggulan: { title: 'Program Unggulan', subtitle: 'Pilih maksimal 3 program untuk ditampilkan di beranda' },
     crosscheck: { title: 'Crosscheck', subtitle: 'Bandingkan poster dengan data program yang tersimpan' },
     telegram: { title: 'Telegram', subtitle: 'Atur notifikasi otomatis ke grup/chat Telegram' },
     auditnota: { title: 'Audit Nota', subtitle: 'Log audit setiap nota yang diterbitkan — append-only, tidak bisa diubah' },
@@ -795,6 +796,7 @@ function switchAdminSubTab(name) {
     if (name === 'telegram') { renderTgRecipients(); }
     if (name === 'auditnota') { loadNotaAuditLog(true); }
     if (name === 'pembayaran') { renderPembayaranPanel(); }
+    if (name === 'unggulan') { renderFeaturedAdminTable(); }
 }
 
 async function renderAdminPanel() {
@@ -1044,6 +1046,30 @@ async function renderAdminPanel() {
                                 </tr>
                             </thead>
                             <tbody id="pbTableBody"><tr><td colspan="8" style="text-align:center;padding:24px;color:var(--ink-soft);">Memuat...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-subtab-panel" id="adminSubTab-unggulan" style="display:none;">
+                <div class="admin-section-header">
+                    <div><h4><i class="fa-solid fa-star" style="color:#d97706;"></i> Program Unggulan</h4>
+                    <p>Pilih maksimal 3 program untuk ditampilkan di beranda (antara running text & tabel program)</p></div>
+                    <div class="sec-actions"><span id="featuredCounter" style="background:#f59e0b;color:#fff;font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;">0/3</span></div>
+                </div>
+                <div class="admin-table-card">
+                    <div class="admin-table-head">
+                        <h4>Daftar Program</h4>
+                        <span class="count">Klik tombol untuk menjadikan/hapus unggulan</span>
+                    </div>
+                    <div class="admin-table-wrap">
+                        <table>
+                            <thead><tr>
+                                <th>Nama Program</th>
+                                <th>Tanggal Berangkat</th>
+                                <th style="text-align:right;">Status Unggulan</th>
+                            </tr></thead>
+                            <tbody id="featuredAdminTableBody"></tbody>
                         </table>
                     </div>
                 </div>
@@ -4417,6 +4443,56 @@ function renderFeaturedSection() {
             <div class="fc-meta" style="margin-top:4px;">${escapeHtml(p.maskapai || '')} • ${escapeHtml(p.durasi || '')}</div>
         </div>
     `).join('');
+}
+
+const MAX_FEATURED = 3;
+function isFeatured(id) { return featuredIds.includes(String(id)); }
+
+async function toggleFeatured(id) {
+    id = String(id);
+    if (isFeatured(id)) {
+        const { error } = await supabaseClient.from('featured_programs').delete().eq('program_id', id);
+        if (error) { showToast('❌ Gagal menghapus: ' + error.message, 'error'); return; }
+        featuredIds = featuredIds.filter(i => i !== id);
+        showToast('⭐ Program dihapus dari unggulan');
+    } else {
+        if (featuredIds.length >= MAX_FEATURED) { showToast('⚠️ Maksimal ' + MAX_FEATURED + ' program unggulan!', 'error'); return; }
+        const { error } = await supabaseClient.from('featured_programs').insert([{ program_id: id }]);
+        if (error) { showToast('❌ Gagal menambah: ' + error.message, 'error'); return; }
+        featuredIds.push(id);
+        showToast('⭐ Program ditambahkan ke unggulan!');
+    }
+    renderFeaturedSection();
+    renderFeaturedAdminTable();
+}
+
+function renderFeaturedAdminTable() {
+    const tbody = document.getElementById('featuredAdminTableBody');
+    if (!tbody) return;
+    if (!adminPrograms.length) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--ink-soft);">Belum ada program.</td></tr>';
+        return;
+    }
+    const currentCount = featuredIds.length;
+    const isFull = currentCount >= MAX_FEATURED;
+    const counter = document.getElementById('featuredCounter');
+    if (counter) counter.textContent = currentCount + '/' + MAX_FEATURED;
+    tbody.innerHTML = adminPrograms.map(p => {
+        const featured = isFeatured(p.id);
+        const canAdd = featured || !isFull;
+        const btnLabel = featured ? '⭐ Tampil di Unggulan' : (isFull ? '🚫 Slot Penuh' : '☆ Jadikan Unggulan');
+        const btnClass = featured ? 'featured-toggle-btn on' : 'featured-toggle-btn off';
+        const disabled = !canAdd ? ' disabled style="opacity:.5;cursor:not-allowed;"' : '';
+        return `<tr>
+            <td><strong>${escapeHtml(p.nama || '-')}</strong></td>
+            <td>${escapeHtml(p.tgl || '-')}</td>
+            <td style="text-align:right;">
+                <button class="${btnClass}"${disabled} onclick="toggleFeatured('${p.id}'); renderFeaturedAdminTable();">
+                    ${btnLabel}
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
 }
 
 // ============================================================
