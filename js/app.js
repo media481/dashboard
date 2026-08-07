@@ -3191,9 +3191,12 @@ function buildNotaHTML(cicilan, kodeVerifikasi) {
     </div>`;
 }
 
-async function exportNotaElementAsJpeg(htmlString, filename, btn) {
-    if (notaGenerating) return;
-    if (typeof html2canvas === 'undefined') { showToast('Modul export gambar belum termuat, coba refresh halaman', 'error'); return; }
+// Render nota (HTML string) ke #notaRenderArea lalu tangkap jadi <canvas> lewat
+// html2canvas. Dipakai bersama oleh export JPEG maupun PDF supaya proses
+// render & pengelolaan spinner tombol tidak dobel ditulis di dua tempat.
+async function captureNotaCanvas(htmlString, btn) {
+    if (notaGenerating) return null;
+    if (typeof html2canvas === 'undefined') { showToast('Modul export gambar belum termuat, coba refresh halaman', 'error'); return null; }
 
     notaGenerating = true;
     const originalIcon = btn ? btn.innerHTML : null;
@@ -3212,26 +3215,62 @@ async function exportNotaElementAsJpeg(htmlString, filename, btn) {
         ));
         await new Promise(resolve => setTimeout(resolve, 60));
         const target = renderArea.firstElementChild;
-        const canvas = await html2canvas(target, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        showToast('Nota berhasil diunduh (JPEG)');
-        return true;
+        return await html2canvas(target, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
     } catch (err) {
         console.error('Generate nota error:', err);
         showToast('Gagal membuat nota: ' + err.message, 'error');
-        return false;
+        return null;
     } finally {
         renderArea.innerHTML = '';
         notaGenerating = false;
         if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
+    }
+}
+
+async function exportNotaElementAsJpeg(htmlString, filename, btn) {
+    const canvas = await captureNotaCanvas(htmlString, btn);
+    if (!canvas) return false;
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showToast('Nota berhasil diunduh (JPEG)');
+    return true;
+}
+
+async function exportNotaElementAsPdf(htmlString, filename, btn) {
+    if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
+        showToast('Modul export PDF belum termuat, coba refresh halaman', 'error');
+        return false;
+    }
+
+    const canvas = await captureNotaCanvas(htmlString, btn);
+    if (!canvas) return false;
+
+    try {
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+        const { jsPDF } = window.jspdf;
+        // Ukuran halaman PDF dibuat pas mengikuti dimensi nota (bukan A4),
+        // supaya nota tidak terpotong / ada margin putih aneh.
+        const pdf = new jsPDF({
+            orientation: canvas.width >= canvas.height ? 'landscape' : 'portrait',
+            unit: 'px',
+            format: [canvas.width, canvas.height]
+        });
+        pdf.addImage(dataUrl, 'JPEG', 0, 0, canvas.width, canvas.height);
+        pdf.save(filename);
+
+        showToast('Nota berhasil diunduh (PDF)');
+        return true;
+    } catch (err) {
+        console.error('Generate nota PDF error:', err);
+        showToast('Gagal membuat PDF: ' + err.message, 'error');
+        return false;
     }
 }
 
@@ -3409,18 +3448,18 @@ function updateLiveNotaDraft() {
     showNotaPreviewPanel(buildNotaHTML(draftCicilan, NOTA_KODE_PREVIEW));
 }
 
-async function confirmDownloadNotaPreview() {
+async function confirmDownloadNotaPreview(format = 'jpeg') {
     if (!notaPreviewPending) return;
     const { type, cicilanId, btn } = notaPreviewPending;
     hideNotaPreviewPanel();
     if (type === 'pembayaran') {
-        await downloadNotaPembayaran(cicilanId, btn);
+        await downloadNotaPembayaran(cicilanId, btn, format);
     } else if (type === 'riwayat') {
-        await downloadNotaRiwayatLengkap(btn);
+        await downloadNotaRiwayatLengkap(btn, format);
     }
 }
 
-async function downloadNotaPembayaran(cicilanId, btn) {
+async function downloadNotaPembayaran(cicilanId, btn, format = 'jpeg') {
     const cicilan = cicilanList.find(c => String(c.id) === String(cicilanId));
     if (!cicilan) { showToast('Data pembayaran tidak ditemukan', 'error'); return; }
 
@@ -3439,9 +3478,11 @@ async function downloadNotaPembayaran(cicilanId, btn) {
         metadata: { cicilanId: cicilan.id, tanggal: cicilan.tanggal, metode: cicilan.metode }
     });
 
-    await exportNotaElementAsJpeg(
+    const exportFn = format === 'pdf' ? exportNotaElementAsPdf : exportNotaElementAsJpeg;
+    const ext = format === 'pdf' ? 'pdf' : 'jpg';
+    await exportFn(
         buildNotaHTML(cicilan, kodeVerifikasi),
-        `Nota-Pembayaran-${namaJamaah}-${cicilan.tanggal || 'tanggal'}.jpg`,
+        `Nota-Pembayaran-${namaJamaah}-${cicilan.tanggal || 'tanggal'}.${ext}`,
         btn
     );
 }
@@ -3546,7 +3587,7 @@ function buildNotaRiwayatHTML(kodeVerifikasi) {
     </div>`;
 }
 
-async function downloadNotaRiwayatLengkap(btn) {
+async function downloadNotaRiwayatLengkap(btn, format = 'jpeg') {
     if (!cicilanJamaahId) { showToast('Data jamaah tidak valid', 'error'); return; }
     if (!cicilanList.length) { showToast('Belum ada riwayat pembayaran untuk diunduh', 'error'); return; }
 
@@ -3565,9 +3606,11 @@ async function downloadNotaRiwayatLengkap(btn) {
         metadata: { daftarNomorNota, jumlahTransaksi: cicilanList.length }
     });
 
-    await exportNotaElementAsJpeg(
+    const exportFn = format === 'pdf' ? exportNotaElementAsPdf : exportNotaElementAsJpeg;
+    const ext = format === 'pdf' ? 'pdf' : 'jpg';
+    await exportFn(
         buildNotaRiwayatHTML(kodeVerifikasi),
-        `Nota-Riwayat-Pembayaran-${namaJamaah}-${tanggalFile}.jpg`,
+        `Nota-Riwayat-Pembayaran-${namaJamaah}-${tanggalFile}.${ext}`,
         btn
     );
 }

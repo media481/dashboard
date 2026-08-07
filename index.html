@@ -726,10 +726,11 @@
                         </div>
                         <div id="notaPreviewContent" class="nota-preview-content"></div>
                         <div id="notaPreviewActions">
-                            <p class="nota-preview-note">Kode Verifikasi dibuat &amp; dicatat ke sistem audit saat Anda menekan "Unduh JPEG".</p>
+                            <p class="nota-preview-note">Kode Verifikasi dibuat &amp; dicatat ke sistem audit saat Anda menekan "Unduh JPEG" atau "Unduh PDF".</p>
                             <div class="nota-preview-actions">
                                 <button type="button" class="btn-cancel" onclick="hideNotaPreviewPanel()">Batal</button>
-                                <button type="button" class="btn-submit" id="notaPreviewDownloadBtn" onclick="confirmDownloadNotaPreview()"><i class="fa-solid fa-download"></i> Unduh JPEG</button>
+                                <button type="button" class="btn-download-jpeg" id="notaPreviewDownloadBtn" onclick="confirmDownloadNotaPreview('jpeg')"><i class="fa-solid fa-image"></i> Unduh JPEG</button>
+                                <button type="button" class="btn-download-pdf" id="notaPreviewDownloadPdfBtn" onclick="confirmDownloadNotaPreview('pdf')"><i class="fa-solid fa-file-pdf"></i> Unduh PDF</button>
                             </div>
                         </div>
                     </div>

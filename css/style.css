@@ -1165,6 +1165,47 @@
         }
         .nota-preview-note { text-align: center; color: var(--ink-soft); font-size: 11px; margin-top: 14px; }
         .nota-preview-actions { display: flex; gap: 10px; margin-top: 14px; justify-content: flex-end; flex-wrap: wrap; }
+        /* Tombol aksi di modal preview nota — dibuat custom (bukan tampilan
+           native browser) supaya konsisten dengan gaya tombol lain di dashboard. */
+        .nota-preview-actions button {
+            appearance: none;
+            -webkit-appearance: none;
+            border-radius: 9px;
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid transparent;
+            transition: background .15s, border-color .15s, color .15s, transform .1s, box-shadow .15s;
+        }
+        .nota-preview-actions button:active { transform: translateY(1px); }
+        .nota-preview-actions button:disabled { opacity: .65; cursor: not-allowed; transform: none; }
+        .nota-preview-actions .btn-cancel {
+            background: var(--surface);
+            color: var(--ink-soft);
+            border-color: var(--line);
+        }
+        .nota-preview-actions .btn-cancel:hover { background: var(--bg); color: var(--ink); border-color: #c9d4e2; }
+        .nota-preview-actions .btn-download-jpeg {
+            background: var(--brand-tint);
+            color: var(--brand-deep);
+            border-color: var(--brand-tint);
+        }
+        .nota-preview-actions .btn-download-jpeg:hover { background: #cbd9e9; border-color: #cbd9e9; }
+        .nota-preview-actions .btn-download-pdf {
+            background: var(--brand);
+            color: #fff;
+            box-shadow: 0 2px 6px rgba(26,53,91,.25);
+        }
+        .nota-preview-actions .btn-download-pdf:hover { background: var(--brand-deep); box-shadow: 0 3px 10px rgba(26,53,91,.32); }
+        @media (max-width: 480px) {
+            .nota-preview-actions { justify-content: stretch; }
+            .nota-preview-actions button { flex: 1 1 auto; justify-content: center; }
+        }
         /* Preview nota di-scale proporsional via JS (fitNotaPreviewScale). */
         .nota-preview-scale-wrap { margin: 0 auto; }
 
