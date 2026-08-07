@@ -3294,7 +3294,59 @@ function fitNotaPreviewScale() {
 window.addEventListener('resize', () => {
     const panel = document.getElementById('cicilanPreviewPanel');
     if (panel && panel.style.display !== 'none') fitNotaPreviewScale();
+    const lightbox = document.getElementById('notaLightboxOverlay');
+    if (lightbox && lightbox.classList.contains('open')) fitNotaLightboxScale();
 });
+
+// ---- "Perbesar" (lightbox layar penuh) untuk preview nota. Mengambil ulang
+// HTML nota yang sedang tampil di panel preview (bukan generate ulang) supaya
+// konsisten persis dengan yang sedang dilihat user, hanya beda skala. ----
+function openNotaLightbox() {
+    const panelInner = document.querySelector('#notaPreviewContent .nota-preview-scale-inner');
+    const stage = document.getElementById('notaLightboxStage');
+    const overlay = document.getElementById('notaLightboxOverlay');
+    if (!panelInner || !stage || !overlay || !panelInner.firstElementChild) return;
+    stage.innerHTML = `<div>${panelInner.firstElementChild.outerHTML}</div>`;
+    overlay.classList.add('open');
+    document.addEventListener('keydown', handleNotaLightboxKeydown);
+    requestAnimationFrame(fitNotaLightboxScale);
+}
+
+function closeNotaLightbox() {
+    const overlay = document.getElementById('notaLightboxOverlay');
+    const stage = document.getElementById('notaLightboxStage');
+    if (overlay) overlay.classList.remove('open');
+    if (stage) stage.innerHTML = '';
+    document.removeEventListener('keydown', handleNotaLightboxKeydown);
+}
+
+function handleNotaLightboxKeydown(e) {
+    if (e.key === 'Escape') closeNotaLightbox();
+}
+
+function fitNotaLightboxScale() {
+    const stage = document.getElementById('notaLightboxStage');
+    if (!stage) return;
+    const nota = stage.firstElementChild ? stage.firstElementChild.firstElementChild : null;
+    if (!nota) return;
+
+    nota.style.transform = 'none';
+    const naturalWidth = nota.offsetWidth;
+    const naturalHeight = nota.offsetHeight;
+    if (!naturalWidth || !naturalHeight) return;
+
+    // Layar penuh: nota boleh membesar SAMPAI ukuran aslinya (tidak di-zoom
+    // lebih besar dari itu supaya tidak pecah/blur), dan mengecil seperlunya
+    // saja kalau viewport lebih kecil dari nota.
+    const availW = stage.clientWidth || naturalWidth;
+    const availH = stage.clientHeight || naturalHeight;
+    const scale = Math.min(1, availW / naturalWidth, availH / naturalHeight);
+
+    nota.style.transformOrigin = 'top left';
+    nota.style.transform = `scale(${scale})`;
+    stage.firstElementChild.style.width = (naturalWidth * scale) + 'px';
+    stage.firstElementChild.style.height = (naturalHeight * scale) + 'px';
+}
 
 function hideNotaPreviewPanel() {
     const panel = document.getElementById('cicilanPreviewPanel');
@@ -3302,6 +3354,7 @@ function hideNotaPreviewPanel() {
     const content = document.getElementById('notaPreviewContent');
     if (content) content.innerHTML = '';
     notaPreviewPending = null;
+    closeNotaLightbox();
 }
 
 function previewNotaPembayaran(cicilanId, btn) {

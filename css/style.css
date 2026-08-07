@@ -1105,13 +1105,20 @@
            di samping tanpa perlu scroll — dan tetap "nempel" (sticky) saat
            riwayat pembayaran di kolom kiri di-scroll. Di layar sempit
            otomatis balik jadi satu kolom (preview pindah ke bawah). */
-        .cicilan-modal-1col { max-width: 1140px; display: flex; flex-direction: column; overflow: hidden; }
+        .cicilan-modal-1col { max-width: 1280px; display: flex; flex-direction: column; overflow: hidden; }
         .cicilan-modal-1col .modal-header { flex-shrink: 0; }
         .cicilan-modal-1col .modal-body { overflow-y: auto; flex: 1 1 auto; min-height: 0; }
         .cicilan-modal-layout { display: flex; align-items: flex-start; gap: 24px; }
         .cicilan-modal-main { flex: 1 1 0; min-width: 0; }
-        .cicilan-modal-preview {
-            width: 440px;
+        /* [MAKSIMALKAN PREVIEW] Panel preview tidak lagi dikunci ke 440px (sisa
+   ruang di kanan terbuang & nota 794px selalu terpaksa diperkecil +
+   scroll horizontal). Sekarang panel memakai lebar penuh kolom modal
+   (sampai maksimum nyaman) supaya nota bisa tampil sedekat mungkin ke
+   ukuran aslinya (skala 100%) tanpa perlu di-scroll. */
+.cicilan-modal-preview {
+            width: 100%;
+            max-width: 880px;
+            margin: 0 auto;
             flex-shrink: 0;
             min-width: 0;
             margin-top: 0;
@@ -1121,26 +1128,98 @@
             border: 1px solid var(--line);
             border-radius: var(--radius);
             padding: 20px;
+            box-shadow: 0 2px 14px rgba(0,0,0,.05);
+            z-index: 3;
         }
         @media (max-width: 960px) {
             .cicilan-modal-layout { display: block; }
-            .cicilan-modal-preview { width: 100%; margin-top: 22px; position: static; }
+            .cicilan-modal-preview { width: 100%; max-width: none; margin-top: 22px; position: static; }
         }
-        .cicilan-preview-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .cicilan-preview-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 8px; }
         .cicilan-preview-head h4 { font-size: 14px; display: flex; align-items: center; gap: 8px; }
+        .cicilan-preview-head-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
         .cicilan-preview-head .modal-close { font-size: 20px; padding: 2px 6px; }
-        /* Preview nota besar: konten di-center, tinggi minimum nyaman, teks jelas */
+        .btn-nota-expand {
+            background: none;
+            border: 1px solid var(--line);
+            color: var(--ink-soft);
+            font-size: 13px;
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .15s, color .15s;
+        }
+        .btn-nota-expand:hover { background: var(--brand); color: #fff; border-color: var(--brand); }
+        /* Preview nota besar: konten di-center, tinggi minimum nyaman, teks jelas.
+           min-height dinaikkan supaya nota (natural height ~416px+) tidak
+           terasa kepotong sebelum JS selesai menghitung skala aslinya. */
         .nota-preview-content {
             display: flex;
             justify-content: center;
             overflow: auto;
-            min-height: 320px;
+            min-height: 420px;
             padding: 8px 0;
         }
         .nota-preview-note { text-align: center; color: var(--ink-soft); font-size: 11px; margin-top: 14px; }
         .nota-preview-actions { display: flex; gap: 10px; margin-top: 14px; justify-content: flex-end; flex-wrap: wrap; }
         /* Preview nota di-scale proporsional via JS (fitNotaPreviewScale). */
         .nota-preview-scale-wrap { margin: 0 auto; }
+
+        /* ---- Lightbox "Perbesar": tampilkan nota apa adanya di ukuran
+           semaksimal mungkin (nyaris layar penuh) untuk pengecekan detail
+           terakhir sebelum diunduh. Dipisah dari panel preview supaya tidak
+           terikat lebar kolom modal sama sekali. ---- */
+        .nota-lightbox-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 14, 20, 0.82);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 28px;
+        }
+        .nota-lightbox-overlay.open { display: flex; }
+        .nota-lightbox-close {
+            position: absolute;
+            top: 18px;
+            right: 22px;
+            background: rgba(255,255,255,.12);
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .15s;
+        }
+        .nota-lightbox-close:hover { background: rgba(255,255,255,.22); }
+        .nota-lightbox-hint {
+            position: absolute;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,.65);
+            font-size: 12px;
+            letter-spacing: .02em;
+        }
+        .nota-lightbox-stage {
+            max-width: 100%;
+            max-height: 100%;
+            overflow: auto;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+        .nota-lightbox-stage > div { box-shadow: 0 12px 48px rgba(0,0,0,.4); }
 
         /* ---- Kartu ringkasan (hero) — angka paling penting (sisa tagihan)
            ditonjolkan besar + progress bar visual, supaya status "sudah bayar

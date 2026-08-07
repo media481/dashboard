@@ -719,7 +719,10 @@
                     <div class="cicilan-modal-preview" id="cicilanPreviewPanel" style="display:none;">
                         <div class="cicilan-preview-head">
                             <h4><i class="fa-solid fa-file-invoice"></i> <span id="cicilanPreviewTitle">Preview Nota</span></h4>
-                            <button type="button" class="modal-close" onclick="hideNotaPreviewPanel()" title="Tutup preview">&times;</button>
+                            <div class="cicilan-preview-head-actions">
+                                <button type="button" class="btn-nota-expand" onclick="openNotaLightbox()" title="Perbesar preview (layar penuh)"><i class="fa-solid fa-expand"></i></button>
+                                <button type="button" class="modal-close" onclick="hideNotaPreviewPanel()" title="Tutup preview">&times;</button>
+                            </div>
                         </div>
                         <div id="notaPreviewContent" class="nota-preview-content"></div>
                         <div id="notaPreviewActions">
@@ -828,6 +831,14 @@
         </div>
         <div id="posterPopupName" class="poster-popup-name">Poster Program</div>
     </div>
+</div>
+
+<!-- Lightbox "Perbesar" Preview Nota: tampilkan nota di ukuran semaksimal
+     mungkin (nyaris layar penuh) untuk pengecekan detail sebelum diunduh. -->
+<div class="nota-lightbox-overlay" id="notaLightboxOverlay" onclick="if(event.target===this) closeNotaLightbox()">
+    <button type="button" class="nota-lightbox-close" onclick="closeNotaLightbox()" title="Tutup (Esc)">&times;</button>
+    <div class="nota-lightbox-stage" id="notaLightboxStage"></div>
+    <div class="nota-lightbox-hint">Klik di luar nota atau tekan Esc untuk menutup</div>
 </div>
 
 <!-- Kontainer tersembunyi untuk render Nota Pembayaran sebelum diekspor ke JPEG -->
