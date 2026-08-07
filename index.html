@@ -665,8 +665,15 @@
 </div>
 
 <!-- ===== MODAL: KELOLA CICILAN JAMAAH ===== -->
+<!-- [REDESIGN v2] Urutan disusun berdasar prioritas tugas pengguna saat modal
+     ini dibuka: (1) langsung lihat status "sisa berapa lagi" lewat kartu
+     ringkasan bergaya progress, (2) form Tambah Pembayaran ditaruh paling
+     dekat supaya aksi utama tidak perlu discroll, (3) Riwayat di bawahnya
+     untuk referensi/cross-check, tombol "Unduh Nota Riwayat" dipindah ke
+     situ karena itu lebih relevan dengan riwayat, bukan dengan form tambah.
+     Header modal & body dipisah scroll-nya (header tetap terlihat). -->
 <div class="modal-overlay" id="cicilanModal">
-    <div class="modal-content cicilan-modal-1col" style="max-width:780px;">
+    <div class="modal-content cicilan-modal-1col" style="max-width:720px;">
         <div class="modal-header">
             <h2><i class="fa-solid fa-money-bill-wave"></i> <span id="cicilanModalTitle">Kelola Cicilan</span></h2>
             <button class="modal-close" onclick="closeCicilanModal()">&times;</button>
@@ -674,14 +681,9 @@
         <div class="modal-body">
             <div class="cicilan-modal-layout">
                 <div class="cicilan-modal-main">
-                    <div id="cicilanRingkasan" class="cicilan-stats"></div>
+                    <div id="cicilanRingkasan" class="cicilan-summary"></div>
 
-                    <div class="cicilan-section">
-                        <div class="cicilan-section-title"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Pembayaran</div>
-                        <div id="cicilanHistoryList" class="cicilan-history"></div>
-                    </div>
-
-                    <form id="cicilanForm" class="cicilan-form" onsubmit="saveCicilan(event)">
+                    <form id="cicilanForm" class="cicilan-form cicilan-add-card" onsubmit="saveCicilan(event)">
                         <input type="hidden" id="cic_jamaahId" value="">
                         <div class="cicilan-section-title"><i class="fa-solid fa-circle-plus"></i> Tambah Pembayaran</div>
                         <div class="form-row">
@@ -711,9 +713,6 @@
                         <div class="form-actions">
                             <button type="submit" class="btn-submit"><i class="fa-solid fa-plus"></i> Tambah Pembayaran</button>
                             <button type="button" class="btn-cancel" onclick="closeCicilanModal()">Tutup</button>
-                            <button type="button" class="btn-nota-riwayat" onclick="previewNotaRiwayatLengkap(this)" title="Preview lalu unduh nota berisi seluruh riwayat pembayaran (JPEG)">
-                                <i class="fa-solid fa-file-image"></i> Unduh Nota Riwayat
-                            </button>
                         </div>
                     </form>
 
@@ -730,6 +729,16 @@
                                 <button type="button" class="btn-submit" id="notaPreviewDownloadBtn" onclick="confirmDownloadNotaPreview()"><i class="fa-solid fa-download"></i> Unduh JPEG</button>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="cicilan-section cicilan-history-section">
+                        <div class="cicilan-section-head">
+                            <div class="cicilan-section-title"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Pembayaran <span class="cicilan-history-count" id="cicilanHistoryCount"></span></div>
+                            <button type="button" class="btn-nota-riwayat" id="btnNotaRiwayat" onclick="previewNotaRiwayatLengkap(this)" title="Preview lalu unduh nota berisi seluruh riwayat pembayaran (JPEG)">
+                                <i class="fa-solid fa-file-image"></i> Unduh Nota Riwayat
+                            </button>
+                        </div>
+                        <div id="cicilanHistoryList" class="cicilan-history"></div>
                     </div>
                 </div>
             </div>

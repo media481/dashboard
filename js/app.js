@@ -2681,18 +2681,24 @@ async function loadCicilanHistory(jamaahId) {
 
         const totalDibayar = cicilanList.reduce((sum, c) => sum + Number(c.jumlah || 0), 0);
         const sisa = Math.max(hargaProgram - totalDibayar, 0);
+        const isLunas = hargaProgram > 0 && sisa <= 0;
+        const pct = hargaProgram > 0 ? Math.min(100, Math.round((totalDibayar / hargaProgram) * 100)) : 0;
         document.getElementById('cicilanRingkasan').innerHTML = `
-            <div class="cicilan-stat-card">
-                <div class="cs-label">Harga Program</div>
-                <div class="cs-value">${formatRupiah(hargaProgram)}</div>
-            </div>
-            <div class="cicilan-stat-card">
-                <div class="cs-label">Total Dibayar</div>
-                <div class="cs-value" style="color:var(--success);">${formatRupiah(totalDibayar)}</div>
-            </div>
-            <div class="cicilan-stat-card">
-                <div class="cs-label">Sisa Tagihan</div>
-                <div class="cs-value" style="color:${sisa > 0 ? 'var(--danger)' : 'var(--success)'};">${formatRupiah(sisa)}</div>
+            <div class="cicilan-summary-card${isLunas ? ' is-lunas' : ''}">
+                <div class="cicilan-summary-top">
+                    <div>
+                        <div class="cicilan-summary-label">${isLunas ? 'Status Pembayaran' : 'Sisa Tagihan'}</div>
+                        <div class="cicilan-summary-sisa">${isLunas ? 'Lunas' : formatRupiah(sisa)}</div>
+                    </div>
+                    ${isLunas
+                        ? `<span class="cicilan-summary-lunas-badge"><i class="fa-solid fa-circle-check"></i> Lunas</span>`
+                        : `<span class="cicilan-summary-pct-badge">${pct}% terbayar</span>`}
+                </div>
+                <div class="cicilan-progress-track"><div class="cicilan-progress-fill" style="width:${pct}%;"></div></div>
+                <div class="cicilan-summary-foot">
+                    <span>Harga Program <b>${formatRupiah(hargaProgram)}</b></span>
+                    <span>Total Dibayar <b>${formatRupiah(totalDibayar)}</b></span>
+                </div>
             </div>`;
 
         renderCicilanHistory();
@@ -2705,15 +2711,21 @@ async function loadCicilanHistory(jamaahId) {
 
 function renderCicilanHistory() {
     const listEl = document.getElementById('cicilanHistoryList');
+    const countEl = document.getElementById('cicilanHistoryCount');
+    const btnRiwayat = document.getElementById('btnNotaRiwayat');
+    if (countEl) countEl.textContent = cicilanList.length ? `(${cicilanList.length})` : '';
+    if (btnRiwayat) btnRiwayat.disabled = !cicilanList.length;
     if (!cicilanList.length) {
-        listEl.innerHTML = `<div style="padding:12px;color:var(--ink-soft);font-size:12px;">Belum ada pembayaran tercatat.</div>`;
+        listEl.innerHTML = `<div class="cicilan-history-empty"><i class="fa-solid fa-receipt"></i><p>Belum ada pembayaran tercatat.</p></div>`;
         return;
     }
-    listEl.innerHTML = cicilanList.map(c => `
+    listEl.innerHTML = cicilanList.map(c => {
+        const metodeClass = c.metode === 'Cash' ? 'cash' : (c.metode === 'Transfer' ? '' : 'lainnya');
+        return `
         <div class="cicilan-history-item">
             <div>
                 <span class="cicilan-history-amount">${formatRupiah(Number(c.jumlah || 0))}</span>
-                ${c.metode ? `<span class="cicilan-history-badge">${escapeHtml(c.metode)}</span>` : ''}
+                ${c.metode ? `<span class="cicilan-history-badge ${metodeClass}">${escapeHtml(c.metode)}</span>` : ''}
                 <div class="cicilan-history-meta">${escapeHtml(c.tanggal || '-')}${c.keterangan ? ' · ' + escapeHtml(c.keterangan) : ''}</div>
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
@@ -2724,7 +2736,8 @@ function renderCicilanHistory() {
                     <i class="fa-solid fa-trash"></i>
                 </button>
             </div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
 }
 
 // ============================================================
