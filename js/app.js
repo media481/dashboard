@@ -3236,8 +3236,17 @@ function fitNotaPreviewScale() {
     const naturalHeight = nota.offsetHeight;
     if (!naturalWidth || !naturalHeight) return;
 
+    // Skala minimum supaya teks nota (yang sudah kecil, 7-10px) tetap nyaman
+    // dibaca di panel preview. Kalau ruang yang tersedia lebih sempit dari itu,
+    // nota tetap ditampilkan di skala minimum ini dan kelebihannya di-scroll
+    // horizontal (bukan dipaksa mengecil terus sampai tidak terbaca).
+    const MIN_READABLE_SCALE = 0.75;
     const available = content.clientWidth || naturalWidth;
-    const scale = Math.min(1, available / naturalWidth);
+    const fitScale = available / naturalWidth;
+    const scale = Math.min(1, Math.max(fitScale, MIN_READABLE_SCALE));
+
+    content.style.overflowX = (fitScale < MIN_READABLE_SCALE) ? 'auto' : 'hidden';
+
     inner.style.transformOrigin = 'top left';
     inner.style.transform = `scale(${scale})`;
     wrap.style.width = (naturalWidth * scale) + 'px';

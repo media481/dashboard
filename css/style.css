@@ -1008,11 +1008,31 @@
 
         /* ===== MODAL: KELOLA CICILAN ===== */
         .cicilan-modal-layout { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
-        .cicilan-modal-main { flex: 1 1 380px; min-width: 320px; max-width: 420px; }
-        .cicilan-modal-preview { flex: 2 1 620px; min-width: 320px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+        /* Kolom form dibuat lebar TETAP (tidak ikut menyusut) supaya sisa ruang
+           sebanyak mungkin diberikan ke kolom preview nota — preview yang terlalu
+           sempit membuat nota di-scale kecil dan teksnya susah dibaca. */
+        .cicilan-modal-main { flex: 0 0 340px; width: 340px; }
+        .cicilan-modal-preview {
+            flex: 1 1 460px;
+            min-width: 460px;
+            background: var(--bg);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 16px;
+        }
         .cicilan-preview-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .cicilan-preview-head h4 { font-size: 14px; display: flex; align-items: center; gap: 8px; }
         .cicilan-preview-head .modal-close { font-size: 20px; padding: 2px 6px; }
+        /* Kalau layar terlalu sempit untuk kedua kolom (mis. tablet/HP), tumpuk
+           full-width alih-alih dipepetkan sempit berdampingan. */
+        @media (max-width: 900px) {
+            .cicilan-modal-main { flex: 1 1 100%; width: 100%; }
+            .cicilan-modal-preview { flex: 1 1 100%; min-width: 0; width: 100%; }
+        }
+        /* Preview nota di-scale proporsional via JS (fitNotaPreviewScale), tapi
+           dijaga tidak turun di bawah skala minimum supaya teks tetap terbaca —
+           kalau ruang masih kurang dari itu, JS mengaktifkan scroll horizontal. */
+        .nota-preview-scale-wrap { margin: 0 auto; }
 
         .cicilan-stats {
             display: grid;
