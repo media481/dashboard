@@ -108,7 +108,13 @@ async function withRetry(fn, { retries = 2, delayMs = 1000, label = '' } = {}) {
 // (escapeHtml saja tidak cukup karena tidak meng-escape tanda kutip tunggal)
 function escapeJsAttr(str) {
     if (!str) return '';
-    return escapeHtml(str).replace(/\\/g, '\\\\').replace(/'/g, '\\\'');
+    // [FIX bug #4/#5] escape juga " dan ` supaya nilai user tidak bisa
+    // keluar dari atribut onclick="..." / window.open('...').
+    return escapeHtml(str)
+        .replace(/"/g, '&quot;')
+        .replace(/`/g, '&#96;')
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'");
 }
 
 function showToast(msg, type = 'success') {
@@ -492,17 +498,18 @@ function openDetailModal(programId) {
 // ============================================================
 // 12. ADMIN LOGIN
 // ============================================================
+// [FIX bug #6] Password TIDAK lagi di-SELECT ke browser. Role ditentukan oleh
+// KEY-nya (deterministik), bukan nilai password. Verifikasi password dilakukan di
+// server lewat RPC verify_dashboard_password() (SECURITY DEFINER) — lihat
+// sql/fix_bug6_auth_rpc.sql. USER_ROLES hanya menyimpan role/label untuk UI.
 async function loadUserRoles() {
-    try {
-        const { data, error } = await supabaseClient.from('app_config').select('key, value');
-        if (error || !data) return;
-        data.forEach(row => {
-            // 'pass_administrator' tetap didukung sebagai alias lama untuk role 'admin'
-            if (row.key === 'pass_admin' || row.key === 'pass_administrator') USER_ROLES[row.value] = { role: 'admin', label: 'Admin' };
-            if (row.key === 'pass_user') USER_ROLES[row.value] = { role: 'user', label: 'User' };
-            if (row.key === 'pass_guest') USER_ROLES[row.value] = { role: 'guest', label: 'Guest' };
-        });
-    } catch (_) {}
+    USER_ROLES = {
+        pass_administrator: { role: 'admin', label: 'Admin' },
+        pass_admin:         { role: 'admin', label: 'Admin' },
+        pass_cs:            { role: 'user',  label: 'CS / Customer Service' },
+        pass_user:          { role: 'user',  label: 'User' },
+        pass_guest:         { role: 'guest', label: 'Guest' }
+    };
 }
 
 function setAdminSession(role) {
@@ -544,14 +551,16 @@ function checkSession() {
     }
 }
 
-function checkAdminLogin() {
+// [FIX bug #6] Verifikasi password di server lewat RPC SECURITY DEFINER.
+// Password tidak pernah dibandingkan di browser & tidak dikembalikan oleh DB.
+async function checkAdminLogin() {
     const pwd = document.getElementById('adminPasswordInput')?.value;
     const errorDiv = document.getElementById('adminLoginError');
     if (!errorDiv) return;
 
     if (Date.now() < loginLockTime) {
         const waitSeconds = Math.ceil((loginLockTime - Date.now()) / 1000);
-        errorDiv.innerHTML = `<i class="fa-solid fa-hourglass-half"></i> Terlalu banyak percobaan. Coba lagi ${waitSeconds} detik.`;
+        errorDiv.innerHTML = '<i class="fa-solid fa-hourglass-half"></i> Terlalu banyak percobaan. Coba lagi ' + waitSeconds + ' detik.';
         return;
     }
     if (loginLockTime && Date.now() >= loginLockTime) {
@@ -559,28 +568,41 @@ function checkAdminLogin() {
         loginLockTime = 0;
     }
 
-    const matchedUser = USER_ROLES[pwd];
-    if (matchedUser) {
+    if (!pwd) {
+        errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Password kosong!';
+        return;
+    }
+
+    let result;
+    try {
+        const { data, error } = await supabaseClient.rpc('verify_dashboard_password', { p_pass: pwd });
+        if (error) throw error;
+        result = data; // { ok:true, role, label } atau { ok:false }
+    } catch (err) {
+        console.error('checkAdminLogin RPC error:', err);
+        errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Gagal menghubungi server. Periksa koneksi.';
+        return;
+    }
+
+    if (result && result.ok) {
         loginAttempts = 0;
-        setAdminSession(matchedUser.role);
-        // Password login masih dibagi bersama per role (bukan akun individual),
-        // jadi nama petugas dicatat terpisah supaya log audit nota bisa
-        // menunjukkan siapa orangnya, bukan cuma role Admin/User/Guest.
+        setAdminSession(result.role);
         const petugasNama = document.getElementById('adminPetugasInput')?.value.trim() || '';
         try { sessionStorage.setItem('admin_petugas_nama', petugasNama); } catch (_) {}
         closeAdminPanel();
         renderSidebarNav();
-        showToast(`Berhasil login sebagai ${matchedUser.label}`);
+        showToast('Berhasil login sebagai ' + result.label);
     } else {
         loginAttempts++;
         if (loginAttempts >= 5) {
             loginLockTime = Date.now() + 60000;
             errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Terlalu banyak percobaan. Coba lagi 1 menit.';
         } else {
-            errorDiv.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Password salah! Sisa percobaan: ${5 - loginAttempts}`;
+            errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Password salah! Sisa percobaan: ' + (5 - loginAttempts);
         }
     }
 }
+
 
 // ============================================================
 // 12b. PENGATURAN USER (kelola password per role, admin only)
@@ -596,7 +618,10 @@ async function saveUserSettings() {
     const rows = Object.entries(vals).filter(([, v]) => v).map(([key, value]) => ({ key, value }));
     if (!rows.length) { if (statusEl) statusEl.innerHTML = '<span style="color:var(--ink-soft);font-size:12.5px;">Tidak ada perubahan — isi kolom yang ingin diubah.</span>'; return; }
     try {
-        const { error } = await supabaseClient.from('app_config').upsert(rows, { onConflict: 'key' });
+        for (const row of rows) {
+            const { error } = await supabaseClient.rpc('set_admin_password', { p_key: row.key, p_val: row.value });
+            if (error) throw error;
+        }
         if (error) throw error;
         USER_ROLES = {};
         await loadUserRoles();
@@ -1944,7 +1969,7 @@ function renderJadwalSection() {
                     <div class="pf-actions">
                         ${j.wa ? `<a href="https://wa.me/${j.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(j.nama||'')}%20kami%20dari%20PT%20Amiru%20Haramain%20Indonesia" target="_blank" class="pf-btn-wa" title="Hubungi via WhatsApp"><i class="fab fa-whatsapp"></i></a>` : ''}
                         <button type="button" class="pf-btn-edit" onclick="openJadwalModal('${j.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
-                        <button type="button" class="pf-btn-delete" onclick="openDeleteModal('jadwal_tamu', '${j.id}', '${escapeHtml(j.nama || '').replace(/'/g, "\\'")}')" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+                        <button type="button" class="pf-btn-delete" onclick="openDeleteModal('jadwal_tamu', '${j.id}', '${escapeJsAttr(j.nama)}')" title="Hapus"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </td>
             </tr>`;
@@ -2166,7 +2191,7 @@ function renderPendaftaranSection() {
                 <div class="pf-actions">
                     ${p.wa ? `<a href="https://wa.me/${p.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(p.nama||'')}%20kami%20dari%20PT%20Amiru%20Haramain%20Indonesia" target="_blank" class="pf-btn-wa" title="Hubungi via WhatsApp"><i class="fab fa-whatsapp"></i></a>` : ''}
                     <button type="button" class="pf-btn-edit" onclick="openPendaftaranModal('${p.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
-                    <button type="button" class="pf-btn-delete" onclick="openDeleteModal('pendaftaran', '${p.id}', '${escapeHtml(p.nama || '').replace(/'/g, "\\'")}')" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+                    <button type="button" class="pf-btn-delete" onclick="openDeleteModal('pendaftaran', '${p.id}', '${escapeJsAttr(p.nama)}')" title="Hapus"><i class="fa-solid fa-trash"></i></button>
                 </div>
             </td>
         </tr>`;
@@ -2411,7 +2436,7 @@ async function loadKbJamaahForProgram(programId) {
                             ${canEdit ? `
                             <span class="row-actions-sep"></span>
                             <button type="button" class="row-icon-btn" onclick="openKbModal('${j.id}')" style="background:var(--brand-tint);color:var(--brand);" title="Edit data jamaah"><i class="fa-solid fa-pen"></i></button>
-                            <button type="button" class="row-icon-btn" onclick="openDeleteModal('kb_jamaah', '${j.id}', '${escapeHtml(j.nama || '').replace(/'/g, "\\'")}')" style="background:var(--danger-tint);color:var(--danger);" title="Hapus data jamaah"><i class="fa-solid fa-trash"></i></button>
+                            <button type="button" class="row-icon-btn" onclick="openDeleteModal('kb_jamaah', '${j.id}', '${escapeJsAttr(j.nama)}')" style="background:var(--danger-tint);color:var(--danger);" title="Hapus data jamaah"><i class="fa-solid fa-trash"></i></button>
                             ` : ''}
                         </div>
                     </td>
@@ -3998,7 +4023,7 @@ function renderCxPanel(progId) {
             ${mismatchCount > 0 ? `<span class="cx-mismatch-count"><i class="fa-solid fa-triangle-exclamation"></i> ${mismatchCount} tidak cocok</span>` : ''}
             <button class="cx-parse-btn" onclick="openCxEditModal('${prog.id}')"><i class="fa-solid fa-edit"></i> Input Manual</button>
             ${hasPoster ? `<button class="cx-parse-btn" onclick="autoScanPosterForProgram('${prog.id}')" ${isScanning?'disabled':''}><i class="fa-solid fa-${isScanning?'spinner fa-spin':'arrows-rotate'}"></i> ${isScanning?'Memindai...':'Scan Ulang Poster'}</button>` : ''}
-            ${hasPoster ? `<button class="cx-parse-btn" onclick="window.open('${escapeHtml(prog.link_poster)}','_blank')"><i class="fa-solid fa-image"></i> Lihat Poster</button>` : ''}
+            ${hasPoster ? `<button class="cx-parse-btn" onclick="window.open('${escapeJsAttr(prog.link_poster)}','_blank')"><i class="fa-solid fa-image"></i> Lihat Poster</button>` : ''}
         </div>
     </div>
     ${isScanning ? `

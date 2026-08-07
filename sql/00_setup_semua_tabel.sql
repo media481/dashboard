@@ -154,9 +154,11 @@ create table if not exists app_config (
 
 alter table app_config enable row level security;
 
-create policy "Allow read app_config" on app_config for select using (true);
-create policy "Allow upsert app_config" on app_config for insert with check (true);
-create policy "Allow update app_config" on app_config for update using (true);
+-- [FIX bug #6] Password TIDAK boleh bisa dibaca publik. Anon tidak boleh SELECT/WRITE
+-- app_config sama sekali; semua akses password lewat RPC SECURITY DEFINER
+-- (verify_dashboard_password / set_admin_password) di sql/fix_bug6_auth_rpc.sql.
+create policy "No anon read app_config"  on app_config for select using (false);
+create policy "No anon write app_config" on app_config for all    using (false) with check (false);
 
 -- Isi password awal (WAJIB diganti setelah setup!):
 insert into app_config (key, value) values
