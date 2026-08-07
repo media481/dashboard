@@ -3278,10 +3278,19 @@ function fitNotaPreviewScale() {
     // dibaca di panel preview. Kalau ruang yang tersedia lebih sempit dari itu,
     // nota tetap ditampilkan di skala minimum ini dan kelebihannya di-scroll
     // horizontal (bukan dipaksa mengecil terus sampai tidak terbaca).
+    // [MAKSIMALKAN] Skala TIDAK lagi dikunci maksimum 100% — panel preview
+    // sengaja dibuat lebar (lihat CSS .cicilan-modal-preview), jadi nota di-
+    // zoom mengikuti ruang yang tersedia supaya tidak ada sisa area kosong
+    // kanan-kiri yang percuma. Zoom dibatasi MAX_SCALE supaya teks tidak
+    // membesar berlebihan di layar sangat lebar. Ini murni tampilan preview
+    // (di-transform via CSS) — file JPEG yang diunduh tetap dirender terpisah
+    // di ukuran & resolusi aslinya lewat #notaRenderArea, jadi kualitas unduhan
+    // tidak terpengaruh sama sekali oleh skala preview ini.
     const MIN_READABLE_SCALE = 0.75;
+    const MAX_SCALE = 1.35;
     const available = content.clientWidth || naturalWidth;
     const fitScale = available / naturalWidth;
-    const scale = Math.min(1, Math.max(fitScale, MIN_READABLE_SCALE));
+    const scale = Math.min(MAX_SCALE, Math.max(fitScale, MIN_READABLE_SCALE));
 
     content.style.overflowX = (fitScale < MIN_READABLE_SCALE) ? 'auto' : 'hidden';
 
@@ -3335,12 +3344,14 @@ function fitNotaLightboxScale() {
     const naturalHeight = nota.offsetHeight;
     if (!naturalWidth || !naturalHeight) return;
 
-    // Layar penuh: nota boleh membesar SAMPAI ukuran aslinya (tidak di-zoom
-    // lebih besar dari itu supaya tidak pecah/blur), dan mengecil seperlunya
-    // saja kalau viewport lebih kecil dari nota.
+    // Layar penuh: nota di-zoom mengisi ruang stage semaksimal mungkin (boleh
+    // lebih besar dari ukuran aslinya di layar lebar/monitor besar — ini cuma
+    // preview via CSS transform, bukan sumber file unduhan, jadi aman), dan
+    // mengecil seperlunya saja kalau viewport lebih kecil dari nota.
+    const LIGHTBOX_MAX_SCALE = 1.8;
     const availW = stage.clientWidth || naturalWidth;
     const availH = stage.clientHeight || naturalHeight;
-    const scale = Math.min(1, availW / naturalWidth, availH / naturalHeight);
+    const scale = Math.min(LIGHTBOX_MAX_SCALE, availW / naturalWidth, availH / naturalHeight);
 
     nota.style.transformOrigin = 'top left';
     nota.style.transform = `scale(${scale})`;
