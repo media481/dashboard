@@ -9,8 +9,11 @@ const CACHE_TIME_KEY = 'amiru_cache_time';
 const CACHE_DURATION = 60000;
 const SESSION_DURATION = 30 * 60 * 1000;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
+// Edge Function login (mengembalikan JWT Supabase agar client bisa WRITE ke tabel
+// yang RLS-nya butuh auth.role()='authenticated'). Deploy: supabase functions deploy login-dashboard
+const LOGIN_FUNCTION_URL = SUPABASE_URL + '/functions/v1/login-dashboard';
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
         storageKey: 'amiru_supabase_auth',
         storage: window.sessionStorage,
@@ -30,6 +33,25 @@ let dataUmroh = [], currentData = [], currentSort = { column: null, asc: true };
 let adminLoggedIn = false, currentRole = null, editingProgramId = null, adminSortColumn = null, adminSortAsc = true, adminPrograms = [];
 let debounceTimer = null, sessionTimeout = null;
 let loginAttempts = 0, loginLockTime = 0;
+// Token JWT dari Edge Function login (dibutuhkan agar RLS write mengizinkan operasi).
+let authAccessToken = null, authExpiresAt = 0;
+
+// Set/refresh Supabase client agar membawa JWT (role authenticated) untuk operasi WRITE.
+function applyAuthToken(token) {
+    authAccessToken = token;
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+            storageKey: 'amiru_supabase_auth',
+            storage: window.sessionStorage,
+            autoRefreshToken: false,
+            persistSession: false,
+            detectSessionInUrl: false,
+            accessToken: token || undefined
+        },
+        realtime: { enabled: false },
+        global: { fetch: (...args) => fetch(...args) }
+    });
+}
 let featuredIds = [];
 let jadwalList = [], editingJadwalId = null;
 let pendaftaranList = [], editingPendaftaranId = null;
@@ -740,8 +762,9 @@ function checkSession() {
     }
 }
 
-// [FIX bug #6] Verifikasi password di server lewat RPC SECURITY DEFINER.
-// Password tidak pernah dibandingkan di browser & tidak dikembalikan oleh DB.
+// [HARDENING] Login via Edge Function login-dashboard (mengembalikan JWT Supabase).
+// Password tidak dibandingkan di browser; function memverifikasi di server lalu
+// mengembalikan JWT (role authenticated) agar RLS write mengizinkan operasi.
 async function checkAdminLogin() {
     const pwd = document.getElementById('adminPasswordInput')?.value;
     const errorDiv = document.getElementById('adminLoginError');
@@ -762,19 +785,40 @@ async function checkAdminLogin() {
         return;
     }
 
+    // Rate-limit server-side: cek apakah identitas ini diblokir (maks 5/1 menit).
+    const ident = (navigator.userAgent || 'web') + '|' + (location.hostname || 'host');
+    try {
+        const { data: allow } = await supabaseClient.rpc('check_login_rate_limit', { p_ident: ident });
+        if (allow === false) {
+            errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Terlalu banyak percobaan. Coba lagi beberapa menit.';
+            return;
+        }
+    } catch (_) { /* rpc optional, lanjut */ }
+
     let result;
     try {
-        const { data, error } = await supabaseClient.rpc('verify_dashboard_password', { p_pass: pwd });
-        if (error) throw error;
-        result = data; // { ok:true, role, label } atau { ok:false }
+        const resp = await fetch(LOGIN_FUNCTION_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+            body: JSON.stringify({ password: pwd })
+        });
+        result = await resp.json();
+        if (!resp.ok || !result || !result.ok) throw new Error(result && result.description ? result.description : 'Login gagal');
     } catch (err) {
-        console.error('checkAdminLogin RPC error:', err);
-        errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Gagal menghubungi server. Periksa koneksi.';
+        // catat kegagalan ke rate-limit server
+        try { await supabaseClient.rpc('bump_login_failure', { p_ident: ident }); } catch (_) {}
+        console.error('checkAdminLogin error:', err);
+        errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> ' + (err.message || 'Gagal menghubungi server. Periksa koneksi.');
         return;
     }
 
     if (result && result.ok) {
         loginAttempts = 0;
+        // Pasang JWT ke Supabase client agar write diizinkan RLS
+        if (result.access_token) {
+            applyAuthToken(result.access_token);
+            authExpiresAt = result.expires_at || (Date.now() + 60 * 60 * 1000);
+        }
         setAdminSession(result.role);
         const petugasNama = document.getElementById('adminPetugasInput')?.value.trim() || '';
         try { sessionStorage.setItem('admin_petugas_nama', petugasNama); } catch (_) {}
@@ -827,6 +871,10 @@ async function saveUserSettings() {
 function logoutAdmin() {
     adminLoggedIn = false;
     currentRole = null;
+    authAccessToken = null;
+    authExpiresAt = 0;
+    // kembalikan client ke anon (tanpa JWT) agar write tidak lagi diizinkan
+    applyAuthToken(null);
     sessionStorage.removeItem('admin_logged_in');
     sessionStorage.removeItem('admin_role');
     sessionStorage.removeItem('admin_login_time');

@@ -9,9 +9,13 @@
 //
 // Deploy:
 //   supabase functions deploy send-telegram --no-verify-jwt
+//
+// [HARDENING] CORS dibatasi ke origin yang diizinkan (env ALLOWED_ORIGIN, fallback
+// ke SUPABASE_URL project) agar tidak bisa dipanggil dari domain sembarang.
 
+const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") || (Deno.env.get("SUPABASE_URL") || "").replace(/\/$/, "");
 const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": ALLOWED_ORIGIN || "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
@@ -19,6 +23,15 @@ const CORS_HEADERS = {
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: CORS_HEADERS });
+  }
+
+  // Blokir origin tidak diizinkan (defense tambahan di luar CORS browser)
+  const origin = req.headers.get("origin");
+  if (ALLOWED_ORIGIN && origin && origin !== ALLOWED_ORIGIN) {
+    return new Response(JSON.stringify({ ok: false, description: "Origin tidak diizinkan" }), {
+      status: 403,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    });
   }
 
   if (req.method !== "POST") {

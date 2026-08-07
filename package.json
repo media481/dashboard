@@ -1,0 +1,14 @@
+{
+  "name": "dashboard-amiru",
+  "version": "1.0.0",
+  "description": "Dashboard Amiru — PWA manajemen program Umroh (vanilla JS + Supabase).",
+  "private": true,
+  "scripts": {
+    "test": "node tests/test-core.js",
+    "test:ci": "node tests/test-core.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED"
+}
