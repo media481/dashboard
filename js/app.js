@@ -1777,61 +1777,131 @@ async function loadJadwal() {
     }
 }
 
+// ========== JADWAL TAMU: state untuk search/filter/pagination ==========
+let jfSearchTerm = '';
+let jfStatusFilterVal = '';
+let jfCurrentPage = 1;
+const JF_PAGE_SIZE = 25;
+
+function handleJfSearchInput(val) {
+    jfSearchTerm = val;
+    jfCurrentPage = 1;
+    renderJadwalSection();
+}
+
+function handleJfStatusFilter(val) {
+    jfStatusFilterVal = val;
+    jfCurrentPage = 1;
+    renderJadwalSection();
+}
+
+function goToJfPage(page) {
+    jfCurrentPage = page;
+    renderJadwalSection();
+}
+
+function getJadwalStatusKey(j, today) {
+    const d = new Date(j.tgl);
+    d.setHours(0, 0, 0, 0);
+    if (d.getTime() === today.getTime()) return 'today';
+    return d < today ? 'past' : 'upcoming';
+}
+
+function getFilteredJadwal() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const term = jfSearchTerm.trim().toLowerCase();
+    return jadwalList.filter(j => {
+        if (jfStatusFilterVal && getJadwalStatusKey(j, today) !== jfStatusFilterVal) return false;
+        if (!term) return true;
+        const haystack = [j.nama, j.asal, j.keperluan, j.wa].join(' ').toLowerCase();
+        return haystack.includes(term);
+    });
+}
+
+function renderJfPagination(totalItems) {
+    const el = document.getElementById('jfPagination');
+    if (!el) return;
+    const totalPages = Math.max(1, Math.ceil(totalItems / JF_PAGE_SIZE));
+    if (totalPages <= 1) { el.innerHTML = ''; return; }
+    if (jfCurrentPage > totalPages) jfCurrentPage = totalPages;
+
+    let html = `<button ${jfCurrentPage === 1 ? 'disabled' : ''} onclick="goToJfPage(${jfCurrentPage - 1})" title="Sebelumnya"><i class="fa-solid fa-chevron-left"></i></button>`;
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || Math.abs(i - jfCurrentPage) <= 1) pages.push(i);
+        else if (pages[pages.length - 1] !== '...') pages.push('...');
+    }
+    pages.forEach(p => {
+        if (p === '...') html += `<span class="pf-page-ellipsis">…</span>`;
+        else html += `<button class="${p === jfCurrentPage ? 'active' : ''}" onclick="goToJfPage(${p})">${p}</button>`;
+    });
+    html += `<button ${jfCurrentPage === totalPages ? 'disabled' : ''} onclick="goToJfPage(${jfCurrentPage + 1})" title="Berikutnya"><i class="fa-solid fa-chevron-right"></i></button>`;
+    el.innerHTML = html;
+}
+
 function renderJadwalSection() {
-    const grid = document.getElementById('jadwalGrid');
-    if (!grid) return;
+    const tbody = document.getElementById('jadwalTableBody');
+    const countEl = document.getElementById('jfCount');
+    if (!tbody) return;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const filtered = getFilteredJadwal();
+    if (countEl) countEl.textContent = `${filtered.length} dari ${jadwalList.length} jadwal`;
+
     if (!jadwalList.length) {
-        grid.innerHTML = `<div class="jadwal-empty"><i class="fa-solid fa-calendar-xmark"></i>Belum ada jadwal tamu. Klik "Tambah Jadwal" untuk menambahkan.</div>`;
-        return;
+        tbody.innerHTML = `<tr><td colspan="8"><div class="pf-empty"><i class="fa-solid fa-calendar-xmark"></i>Belum ada jadwal tamu. Klik "Tambah Jadwal" untuk menambahkan.</div></td></tr>`;
+        renderJfPagination(0);
+    } else if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="8"><div class="pf-empty"><i class="fa-solid fa-magnifying-glass"></i>Tidak ada jadwal yang cocok dengan pencarian/filter.</div></td></tr>`;
+        renderJfPagination(0);
+    } else {
+        const sorted = [...filtered].sort((a, b) => new Date(a.tgl) - new Date(b.tgl));
+        const totalPages = Math.max(1, Math.ceil(sorted.length / JF_PAGE_SIZE));
+        if (jfCurrentPage > totalPages) jfCurrentPage = totalPages;
+        const start = (jfCurrentPage - 1) * JF_PAGE_SIZE;
+        const pageItems = sorted.slice(start, start + JF_PAGE_SIZE);
+
+        const statusLabelMap = { today: 'Hari Ini', upcoming: 'Akan Datang', past: 'Selesai' };
+
+        tbody.innerHTML = pageItems.map(j => {
+            const stKey = getJadwalStatusKey(j, today);
+            const tglFormatted = j.tgl ? new Date(j.tgl).toLocaleDateString('id-ID', {
+                day: 'numeric', month: 'short', year: 'numeric'
+            }) : '-';
+            return `<tr>
+                <td><span class="pf-name">${escapeHtml(j.nama || 'Tamu')}</span></td>
+                <td>${escapeHtml(tglFormatted)}</td>
+                <td>${j.jam ? escapeHtml(j.jam) : '-'}</td>
+                <td>${escapeHtml(j.asal || '-')}</td>
+                <td>${j.jumlah ? escapeHtml(String(j.jumlah)) + ' orang' : '-'}</td>
+                <td>${j.keperluan ? escapeHtml(j.keperluan) : '-'}</td>
+                <td><span class="jadwal-status-pill ${stKey}">${statusLabelMap[stKey]}</span></td>
+                <td>
+                    <div class="pf-actions">
+                        ${j.wa ? `<a href="https://wa.me/${j.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(j.nama||'')}%20kami%20dari%20PT%20Amiru%20Haramain%20Indonesia" target="_blank" class="pf-btn-wa" title="Hubungi via WhatsApp"><i class="fab fa-whatsapp"></i></a>` : ''}
+                        <button type="button" class="pf-btn-edit" onclick="openJadwalModal('${j.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+                        <button type="button" class="pf-btn-delete" onclick="openDeleteModal('jadwal_tamu', '${j.id}', '${escapeHtml(j.nama || '').replace(/'/g, "\\'")}')" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+
+        renderJfPagination(sorted.length);
     }
 
-    const sorted = [...jadwalList].sort((a, b) => new Date(a.tgl) - new Date(b.tgl));
-    grid.innerHTML = sorted.map(j => {
-        const d = new Date(j.tgl);
-        d.setHours(0, 0, 0, 0);
-        const isToday = d.getTime() === today.getTime();
-        const isPast = d < today;
-        const tglFormatted = j.tgl ? new Date(j.tgl).toLocaleDateString('id-ID', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric'
-        }) : '-';
-
-        return `<div class="jadwal-card ${isToday ? 'today' : ''}">
-            <div class="jc-title">${escapeHtml(j.nama || 'Tamu')}</div>
-            <div class="jc-meta">
-                <span><i class="fa-solid fa-calendar-day"></i> ${escapeHtml(tglFormatted)}</span>
-                ${j.jam ? `<span><i class="fa-regular fa-clock"></i> ${escapeHtml(j.jam)}</span>` : ''}
-                ${j.jumlah ? `<span><i class="fa-solid fa-users"></i> ${escapeHtml(String(j.jumlah))} orang</span>` : ''}
-            </div>
-            <div class="jc-meta" style="margin-top:4px;">
-                ${j.keperluan ? `<span class="jc-badge">${escapeHtml(j.keperluan)}</span>` : ''}
-                ${j.asal ? `<span><i class="fa-solid fa-location-dot"></i> ${escapeHtml(j.asal)}</span>` : ''}
-                ${isPast ? '<span style="color:var(--ink-soft);font-size:11px;"><i class="fa-solid fa-circle-check"></i> Selesai</span>' : ''}
-            </div>
-            <div class="jc-actions" style="margin-top:8px;display:flex;gap:4px;justify-content:flex-end;">
-                ${j.wa ? `<a href="https://wa.me/${j.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(j.nama||'')}%20kami%20dari%20PT%20Amiru%20Haramain%20Indonesia" target="_blank" style="background:#25D366;color:#fff;border:none;padding:2px 10px;border-radius:4px;font-size:11px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;"><i class="fab fa-whatsapp"></i></a>` : ''}
-            </div>
-        </div>`;
-    }).join('');
-
-    // Update badge
-    const todayCount = jadwalList.filter(j => {
-        const d = new Date(j.tgl);
-        d.setHours(0, 0, 0, 0);
-        return d.getTime() === today.getTime();
-    }).length;
+    // Update badge jumlah tamu hari ini di sidebar
+    const todayCount = jadwalList.filter(j => getJadwalStatusKey(j, today) === 'today').length;
     const badge = document.getElementById('jadwalBadge');
-    if (todayCount > 0) {
-        badge.textContent = todayCount;
-        badge.style.display = 'inline';
-    } else {
-        badge.style.display = 'none';
+    if (badge) {
+        if (todayCount > 0) {
+            badge.textContent = todayCount;
+            badge.style.display = 'inline';
+        } else {
+            badge.style.display = 'none';
+        }
     }
 }
 

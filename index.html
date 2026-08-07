@@ -217,15 +217,43 @@
 
                 <!-- TAB: Jadwal Tamu -->
                 <div class="tab-panel" id="tab-info">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
                         <p style="color:var(--ink-soft);font-size:13px;">Jadwal kunjungan tamu ke kantor</p>
                         <button class="btn-primary" id="btnTambahJadwal" onclick="openJadwalModal()" style="font-size:12px;padding:6px 14px;">
                             <i class="fa-solid fa-plus"></i> Tambah Jadwal
                         </button>
                     </div>
-                    <div class="jadwal-grid" id="jadwalGrid">
-                        <div class="jadwal-empty"><i class="fa-solid fa-calendar-xmark"></i>Belum ada jadwal tamu.</div>
+                    <div class="pf-toolbar">
+                        <div class="pf-search-wrap">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="jfSearchInput" placeholder="Cari nama tamu, asal, atau keperluan..." oninput="handleJfSearchInput(this.value)">
+                        </div>
+                        <select id="jfStatusFilter" onchange="handleJfStatusFilter(this.value)">
+                            <option value="">Semua Jadwal</option>
+                            <option value="today">Hari Ini</option>
+                            <option value="upcoming">Akan Datang</option>
+                            <option value="past">Selesai</option>
+                        </select>
+                        <span class="pf-count" id="jfCount">0 jadwal</span>
                     </div>
+                    <div class="pf-table-wrap">
+                        <table class="pf-table">
+                            <thead>
+                                <tr>
+                                    <th>Nama Tamu</th>
+                                    <th>Tanggal</th>
+                                    <th>Jam</th>
+                                    <th>Asal</th>
+                                    <th>Jumlah</th>
+                                    <th>Keperluan</th>
+                                    <th>Status</th>
+                                    <th style="text-align:right;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="jadwalTableBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="pf-pagination" id="jfPagination"></div>
                 </div>
 
                 <!-- TAB: Form Pendaftaran -->

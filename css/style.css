@@ -660,44 +660,15 @@
         }
         .featured-empty i { font-size: 28px; display: block; margin-bottom: 10px; opacity: .4; }
 
-        /* ===== JADWAL TAMU ===== */
-        .jadwal-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-            gap: 12px;
-        }
-        .jadwal-today-badge {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--brand);
-            background: var(--brand-tint);
-            padding: 4px 11px;
-            border-radius: 20px;
-        }
-        .jadwal-card {
-            background: var(--surface);
-            border-radius: 10px;
-            padding: 14px 15px;
-            border: 1px solid var(--line);
-        }
-        .jadwal-card.today-card { border-color: var(--brand); }
-        .jadwal-card.past-card { opacity: .6; }
-        .jadwal-card-head {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 8px;
-            margin-bottom: 8px;
-        }
-        .jadwal-card-name { font-weight: 600; font-size: 13.5px; color: var(--ink); }
+        /* ===== JADWAL TAMU: status pill dipakai di tabel jadwal ===== */
         .jadwal-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
             flex: none;
-            font-size: 10.5px;
+            font-size: 11px;
             font-weight: 600;
-            padding: 2px 8px;
+            padding: 2px 9px;
             border-radius: 20px;
             color: var(--ink-soft);
             background: var(--bg);
@@ -706,37 +677,6 @@
         .jadwal-status-pill.today { color: var(--brand); background: var(--brand-tint); }
         .jadwal-status-pill.upcoming { color: var(--ink-soft); background: var(--bg); }
         .jadwal-status-pill.past { color: var(--success); background: var(--success-tint); }
-        .jadwal-meta { display: flex; flex-direction: column; gap: 4px; }
-        .jadwal-meta-row {
-            font-size: 12px;
-            color: var(--ink-soft);
-            display: flex;
-            align-items: center;
-            gap: 7px;
-        }
-        .jadwal-meta-row i { width: 13px; text-align: center; color: var(--ink-soft); opacity: .8; }
-        .jadwal-card-footer:empty { display: none; }
-        .jadwal-card-footer { margin-top: 10px; }
-        .jadwal-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 11.5px;
-            font-weight: 600;
-            padding: 5px 12px;
-            border-radius: 7px;
-            border: none;
-            cursor: pointer;
-        }
-        .jadwal-btn-wa { background: #dcfce7; color: #16a34a; }
-        .jadwal-btn-wa:hover { background: #bbf7d0; }
-        .jadwal-empty {
-            padding: 40px 20px;
-            text-align: center;
-            color: var(--ink-soft);
-            grid-column: 1 / -1;
-        }
-        .jadwal-empty i { font-size: 28px; display: block; margin-bottom: 10px; opacity: .4; }
 
         /* ===== FORM PENDAFTARAN (tabel, dioptimalkan untuk ratusan baris) ===== */
         .pf-toolbar {
