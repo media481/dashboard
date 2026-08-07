@@ -8,7 +8,7 @@
             if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < CACHE_DURATION)) {
                 dataUmroh = JSON.parse(cached);
                 dataUmroh.forEach(p => { if (p.tgl && !p.dateObj) p.dateObj = parseDateFromString(p.tgl); p.isAvailable = p.dateObj >= new Date(); });
-                currentData = dataUmroh.filter(p => p.is_active !== false).sort((a,b) => (a.dateObj||0) - (b.dateObj||0));
+                currentData = sortProgramsDefault(dataUmroh.filter(p => p.is_active !== false));
                 renderTable(currentData); renderStats(); initTicker(); renderFeaturedSection();
                 loadingEl.style.display = 'none'; tableEl.style.display = 'table';
                 return;
@@ -30,7 +30,7 @@
             sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
             dataUmroh = plainData;
             dataUmroh.forEach(p => { p.dateObj = parseDateFromString(p.tgl); p.isAvailable = p.dateObj >= new Date(); });
-            currentData = dataUmroh.filter(p => p.is_active !== false).sort((a,b) => (a.dateObj||0) - (b.dateObj||0));
+            currentData = sortProgramsDefault(dataUmroh.filter(p => p.is_active !== false));
             renderTable(currentData); renderStats(); initTicker(); renderFeaturedSection();
             loadingEl.style.display = 'none'; tableEl.style.display = 'table';
         } catch (err) {
@@ -55,7 +55,7 @@
                         sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
                         dataUmroh = plainData;
                         dataUmroh.forEach(p => { p.dateObj = parseDateFromString(p.tgl); p.isAvailable = p.dateObj >= new Date(); });
-                        currentData = dataUmroh.filter(p => p.is_active !== false).sort((a,b) => (a.dateObj||0) - (b.dateObj||0));
+                        currentData = sortProgramsDefault(dataUmroh.filter(p => p.is_active !== false));
                         renderTable(currentData); renderStats(); initTicker(); renderFeaturedSection();
                         loadingEl.style.display = 'none'; tableEl.style.display = 'table';
                         return;

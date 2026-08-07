@@ -17,7 +17,7 @@
     function filterData(term) {
         const t = term.toLowerCase().trim(), now = new Date();
         const visiblePrograms = dataUmroh.filter(p => p.is_active !== false);
-        if (!t) { currentData = [...visiblePrograms].sort((a,b) => (a.dateObj||0) - (b.dateObj||0)); }
+        if (!t) { currentData = sortProgramsDefault(visiblePrograms); }
         else {
             currentData = visiblePrograms.filter(item => {
                 const status = item.dateObj >= now ? 'tersedia' : 'expired';
@@ -39,7 +39,7 @@
         else renderTable(currentData);
     }
 
-    function resetSearch() { document.getElementById('searchInput').value = ''; document.getElementById('searchInputMobile').value = ''; currentData = dataUmroh.filter(p => p.is_active !== false).sort((a,b) => (a.dateObj||0) - (b.dateObj||0)); renderTable(currentData); }
+    function resetSearch() { document.getElementById('searchInput').value = ''; document.getElementById('searchInputMobile').value = ''; currentData = sortProgramsDefault(dataUmroh.filter(p => p.is_active !== false)); renderTable(currentData); }
 
     // Debounce untuk search
     function handleSearchInput(e) { clearTimeout(debounceTimer); debounceTimer = setTimeout(() => filterData(e.target.value), 300); }

@@ -33,6 +33,16 @@ let loginAttempts = 0, loginLockTime = 0;
 let featuredIds = [];
 let jadwalList = [], editingJadwalId = null;
 let pendaftaranList = [], editingPendaftaranId = null;
+
+// Urutkan program: yang masih tersedia dulu (tanggal terdekat), yang sudah expired selalu di baris paling bawah
+function sortProgramsDefault(list) {
+    const now = new Date();
+    return [...list].sort((a, b) => {
+        const aExpired = (a.dateObj || 0) < now, bExpired = (b.dateObj || 0) < now;
+        if (aExpired !== bExpired) return aExpired ? 1 : -1;
+        return (a.dateObj || 0) - (b.dateObj || 0);
+    });
+}
 let kbJamaahList = [], kbSelectedProgram = null, editingKbId = null;
 let cicilanList = [], cicilanJamaahId = null;
 let cicilanJamaahInfo = null, cicilanProgramInfo = null, cicilanHargaProgram = 0;
@@ -290,7 +300,7 @@ async function loadDataFromSupabase(forceRefresh = false) {
                 if (p.tgl && !p.dateObj) p.dateObj = parseDateFromString(p.tgl);
                 p.isAvailable = p.dateObj >= new Date();
             });
-            currentData = dataUmroh.filter(p => p.is_active !== false).sort((a,b) => (a.dateObj||0) - (b.dateObj||0));
+            currentData = sortProgramsDefault(dataUmroh.filter(p => p.is_active !== false));
             renderTable(currentData);
             updateMetrics();
             renderFeaturedSection();
@@ -323,7 +333,7 @@ async function loadDataFromSupabase(forceRefresh = false) {
             if (p.tgl && !p.dateObj) p.dateObj = parseDateFromString(p.tgl);
             p.isAvailable = p.dateObj >= new Date();
         });
-        currentData = dataUmroh.filter(p => p.is_active !== false).sort((a,b) => (a.dateObj||0) - (b.dateObj||0));
+        currentData = sortProgramsDefault(dataUmroh.filter(p => p.is_active !== false));
         renderTable(currentData);
         updateMetrics();
         renderFeaturedSection();
@@ -431,7 +441,7 @@ function filterData(term) {
     const t = term.toLowerCase().trim();
     const visiblePrograms = dataUmroh.filter(p => p.is_active !== false);
     if (!t) {
-        currentData = [...visiblePrograms].sort((a,b) => (a.dateObj||0) - (b.dateObj||0));
+        currentData = sortProgramsDefault(visiblePrograms);
     } else {
         const keywords = t.split(/\s+/).filter(Boolean);
         currentData = visiblePrograms.filter(item => {

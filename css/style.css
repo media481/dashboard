@@ -44,7 +44,7 @@
 
         /* ===== SIDEBAR ===== */
         .sidebar {
-            background: var(--brand-deep);
+            background: var(--brand);
             color: #C9D6E3;
             padding: 26px 16px;
             display: flex;
@@ -1077,7 +1077,7 @@
             left: 0;
             bottom: 0;
             width: 272px;
-            background: var(--brand-deep);
+            background: var(--brand);
             padding: 20px 16px;
             overflow-y: auto;
             transform: translateX(-100%);
