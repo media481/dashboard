@@ -2260,6 +2260,7 @@ function openKbModal(id = null) {
     const form = document.getElementById('kbForm');
     form.reset();
     document.getElementById('kb_editId').value = '';
+    document.getElementById('kb_pendaftaran_source').value = '';
 
     // Jaga-jaga: pastikan dropdown program di modal sudah terisi (mis. kalau
     // modal ini dibuka sebelum data program sempat dimuat / sinkron ulang).
@@ -2272,9 +2273,12 @@ function openKbModal(id = null) {
         modalProgramSelect.value = programSelect.value;
     }
 
+    const fromPendaftaranBox = document.getElementById('kbFromPendaftaranBox');
+
     if (id) {
         const j = kbJamaahList.find(item => item.id === id);
         if (!j) { showToast('Data tidak ditemukan', 'error'); return; }
+        fromPendaftaranBox.style.display = 'none';
         document.getElementById('kbModalTitle').textContent = 'Edit Data Jamaah';
         document.getElementById('kb_editId').value = j.id;
         document.getElementById('kb_program').value = j.program_id || '';
@@ -2288,9 +2292,53 @@ function openKbModal(id = null) {
     } else {
         document.getElementById('kbModalTitle').textContent = 'Tambah Data Jamaah';
         document.getElementById('kb_status').value = 'pending';
+        renderKbPendaftaranOptions();
+        fromPendaftaranBox.style.display = '';
     }
 
     modal.classList.add('open');
+}
+
+// Isi dropdown "Ambil dari Form Pendaftaran" dengan daftar calon jamaah yang
+// sudah masuk lewat menu Form Pendaftaran, supaya tidak perlu ketik ulang.
+function renderKbPendaftaranOptions() {
+    const sel = document.getElementById('kb_from_pendaftaran');
+    if (!sel) return;
+    sel.value = '';
+    if (!pendaftaranList || !pendaftaranList.length) {
+        sel.innerHTML = '<option value="">-- Belum ada data pendaftaran --</option>';
+        return;
+    }
+    const statusLabel = { baru: 'Baru', dihubungi: 'Dihubungi', deal: 'Deal', batal: 'Batal' };
+    const sorted = [...pendaftaranList].sort((a, b) => {
+        // Prioritaskan yang sudah "deal" supaya lebih cepat ditemukan
+        if ((a.status === 'deal') !== (b.status === 'deal')) return a.status === 'deal' ? -1 : 1;
+        return (a.nama || '').localeCompare(b.nama || '');
+    });
+    sel.innerHTML = '<option value="">-- Pilih calon jamaah dari Pendaftaran --</option>' +
+        sorted.map(p => {
+            const program = dataUmroh.find(x => String(x.id) === String(p.program_id));
+            const progName = program ? program.nama : 'Belum ditentukan program';
+            const st = statusLabel[p.status] || 'Baru';
+            return `<option value="${escapeHtml(String(p.id))}">${escapeHtml(p.nama || '-')} — ${escapeHtml(progName)} (${st})</option>`;
+        }).join('');
+}
+
+// Salin data dari record Pendaftaran terpilih ke form Tambah Data Jamaah.
+function fillKbFromPendaftaran(pendaftaranId) {
+    if (!pendaftaranId) return;
+    const p = pendaftaranList.find(item => String(item.id) === String(pendaftaranId));
+    if (!p) { showToast('Data pendaftaran tidak ditemukan', 'error'); return; }
+
+    if (p.program_id) document.getElementById('kb_program').value = p.program_id;
+    document.getElementById('kb_nama').value = p.nama || '';
+    document.getElementById('kb_nik').value = p.ktp || '';
+    document.getElementById('kb_wa').value = p.wa || '';
+    document.getElementById('kb_asal').value = p.asal || '';
+    if (p.catatan) document.getElementById('kb_catatan').value = p.catatan;
+    document.getElementById('kb_pendaftaran_source').value = p.id;
+
+    showToast('Data diisi dari pendaftaran "' + (p.nama || '') + '" — lengkapi No. Paspor & status pembayaran lalu Simpan');
 }
 
 function closeKbModal() {
@@ -2315,6 +2363,8 @@ async function saveKbJamaah(e) {
     if (!data.program_id) { showToast('Silakan pilih program terlebih dahulu', 'error'); return; }
     if (!data.nama) { showToast('Nama jamaah wajib diisi', 'error'); return; }
 
+    const pendaftaranSourceId = document.getElementById('kb_pendaftaran_source').value;
+
     try {
         let result;
         if (id) {
@@ -2323,6 +2373,21 @@ async function saveKbJamaah(e) {
             result = await supabaseClient.from('kb_jamaah').insert([data]);
         }
         if (result.error) throw result.error;
+
+        // Kalau jamaah ini dibuat dari data Pendaftaran, tandai pendaftarannya
+        // sebagai "Deal" supaya tidak diinput dobel dari menu Form Pendaftaran.
+        if (!id && pendaftaranSourceId) {
+            try {
+                const { error: pErr } = await supabaseClient.from('pendaftaran').update({ status: 'deal' }).eq('id', pendaftaranSourceId);
+                if (!pErr) {
+                    const idx = pendaftaranList.findIndex(p => String(p.id) === String(pendaftaranSourceId));
+                    if (idx !== -1) pendaftaranList[idx].status = 'deal';
+                    renderPendaftaranSection();
+                }
+            } catch (pErr) {
+                console.error('Update status pendaftaran error:', pErr);
+            }
+        }
 
         showToast(id ? 'Data jamaah berhasil diperbarui' : 'Data jamaah berhasil ditambahkan');
         closeKbModal();

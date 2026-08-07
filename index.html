@@ -70,6 +70,8 @@
             <button class="nav-item nav-admin-only" data-subtab="program" style="display:none;" onclick="openAdminPanel('program')" title="Edit &amp; Tambah Program">
                 <i class="fa-solid fa-kaaba"></i> <span class="nav-text">Edit &amp; Tambah Program</span>
             </button>
+
+            <div class="nav-label nav-admin-only" style="display:none;">System</div>
             <button class="nav-item nav-admin-only" data-subtab="crosscheck" style="display:none;" onclick="openAdminPanel('crosscheck')" title="Crosscheck">
                 <i class="fa-solid fa-magnifying-glass-chart"></i> <span class="nav-text">Crosscheck</span>
             </button>
@@ -330,6 +332,8 @@
             <button class="nav-item nav-admin-only" data-subtab="program" style="display:none;" onclick="openAdminPanel('program'); toggleMobileSidebar();">
                 <i class="fa-solid fa-kaaba"></i> Edit &amp; Tambah Program
             </button>
+
+            <div class="nav-label nav-admin-only" style="display:none;">System</div>
             <button class="nav-item nav-admin-only" data-subtab="crosscheck" style="display:none;" onclick="openAdminPanel('crosscheck'); toggleMobileSidebar();">
                 <i class="fa-solid fa-magnifying-glass-chart"></i> Crosscheck
             </button>
@@ -547,6 +551,13 @@
         <div class="modal-body">
             <form id="kbForm" onsubmit="saveKbJamaah(event)">
                 <input type="hidden" id="kb_editId" value="">
+                <input type="hidden" id="kb_pendaftaran_source" value="">
+                <div id="kbFromPendaftaranBox" style="display:none;background:var(--success-tint);padding:14px;border-radius:12px;margin-bottom:18px;border:1px solid #bbf7d0;">
+                    <label style="font-size:12px;font-weight:700;color:var(--success);margin-bottom:0;display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-clipboard-list"></i> Ambil dari Form Pendaftaran <span style="font-weight:500;color:var(--ink-soft);font-size:11px;">(opsional)</span></label>
+                    <select id="kb_from_pendaftaran" onchange="fillKbFromPendaftaran(this.value)" style="width:100%;padding:9px 12px;border:1px solid #86efac;border-radius:8px;font-size:12.5px;font-family:inherit;background:#fff;margin-top:10px;">
+                        <option value="">-- Pilih calon jamaah dari Pendaftaran --</option>
+                    </select>
+                </div>
                 <div class="form-group">
                     <label>Program Keberangkatan <span class="required">*</span></label>
                     <select id="kb_program" class="searchable-select" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." required></select>
