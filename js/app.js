@@ -771,7 +771,8 @@ const ADMIN_SUBTAB_META = {
     crosscheck: { title: 'Crosscheck', subtitle: 'Bandingkan poster dengan data program yang tersimpan' },
     telegram: { title: 'Telegram', subtitle: 'Atur notifikasi otomatis ke grup/chat Telegram' },
     auditnota: { title: 'Audit Nota', subtitle: 'Log audit setiap nota yang diterbitkan — append-only, tidak bisa diubah' },
-    usersettings: { title: 'Pengaturan User', subtitle: 'Atur password untuk masing-masing role' }
+    usersettings: { title: 'Pengaturan User', subtitle: 'Atur password untuk masing-masing role' },
+    snapshot: { title: 'Snapshot / Backup', subtitle: 'Cadangan harian semua data Umroh (maksimal 10)' }
 };
 
 function switchAdminSubTab(name) {
@@ -797,6 +798,7 @@ function switchAdminSubTab(name) {
     if (name === 'auditnota') { loadNotaAuditLog(true); }
     if (name === 'pembayaran') { renderPembayaranPanel(); }
     if (name === 'unggulan') { renderFeaturedAdminTable(); }
+    if (name === 'snapshot') { renderSnapshotAdminTable(); }
 }
 
 async function renderAdminPanel() {
@@ -1193,6 +1195,19 @@ async function renderAdminPanel() {
                 </div>
                 <div id="usSettingsStatus" style="margin-top:12px;"></div>
             </div>
+
+            <div class="admin-subtab-panel" id="adminSubTab-snapshot" style="display:none;">
+                <div class="admin-section-header">
+                    <div><h4><i class="fa-solid fa-camera-retro" style="color:#0ea5e9;"></i> Snapshot / Backup Harian</h4>
+                    <p>Cadangan seluruh data Umroh (program, jamaah, jadwal, pendaftaran, pembayaran, unggulan). Maksimal 10 snapshot tersimpan — yang tertua otomatis diganti.</p></div>
+                    <div class="sec-actions">
+                        <button class="btn-primary" onclick="takeSnapshot('Manual ' + new Date().toLocaleDateString('id-ID'), 'manual').then(() => renderSnapshotAdminTable());">
+                            <i class="fa-solid fa-camera"></i> Ambil Snapshot
+                        </button>
+                    </div>
+                </div>
+                <div id="snapshotTableWrap"></div>
+            </div>
             ` : ''}
         `;
 
@@ -1540,8 +1555,9 @@ async function updateProgramById(id, patch) {
 }
 
 async function clearAllAdminData() {
-    if (currentRole !== 'admin') { showToast('Hanya Admin yang boleh menghapus semua data', 'error'); return; }
+    if (currentRole !== 'admin') { showToast('Halaman Admin hanya untuk Administrator', 'error'); return; }
     if (!confirm('PERINGATAN: Hapus SEMUA program?')) return;
+    await ensureAutoSnapshot('auto-pre-clear', 'Auto sebelum Hapus Semua');
     try {
         const { data } = await supabaseClient.from('programs').select('id');
         for (const prog of data) await deleteProgramById(prog.id);
@@ -1786,6 +1802,7 @@ function importAdminData() {
                 const imported = JSON.parse(event.target.result);
                 if (imported && imported._meta && imported.programs) {
                     if (!confirm(`Restore backup dari ${new Date(imported._meta.exported_at).toLocaleString('id-ID')}?\n\n• ${imported.programs.length} program\n\nData yang ada TIDAK akan dihapus, hanya ditambah/diperbarui.`)) return;
+                    await ensureAutoSnapshot('auto-pre-import', 'Auto sebelum Import');
                     showToast('Mengimport data...');
                     const { ok, failed } = await importProgramList(imported.programs);
                     await loadDataFromSupabase(true);
@@ -1807,6 +1824,167 @@ function importAdminData() {
         reader.readAsText(file);
     };
     input.click();
+}
+
+// ============================================================
+// 16B. SNAPSHOT BACKUP (cadangan harian semua data Umroh)
+// ============================================================
+// Menyimpan snapshot lengkap seluruh data Umroh ke tabel Supabase
+// `snapshot_backup` (jsonb). Maksimal MAX_SNAPSHOTS snapshot terbaru
+// (FIFO) — snapshot tertua otomatis dihapus saat batas tercapai.
+// Snapshot otomatis diambil SEBELUM tindakan berisiko (hapus semua /
+// import) supaya ada cadangan berjaga-jaga.
+const MAX_SNAPSHOTS = 10;
+const SNAPSHOT_TABLES = ['programs', 'kb_jamaah', 'jadwal_tamu', 'pendaftaran', 'pembayaran_jamaah', 'featured_programs'];
+
+// Ambil seluruh baris dari semua tabel terkait dalam satu objek.
+async function collectAllUmrohData() {
+    const data = {};
+    for (const tbl of SNAPSHOT_TABLES) {
+        try {
+            const { data: rows, error } = await withRetry(
+                () => supabaseClient.from(tbl).select('*'),
+                { label: 'Snapshot: muat ' + tbl }
+            );
+            data[tbl] = error ? [] : (rows || []);
+        } catch (err) {
+            console.error('collectAllUmrohData error on', tbl, err);
+            data[tbl] = [];
+        }
+    }
+    return data;
+}
+
+async function takeSnapshot(label = 'Snapshot', trigger = 'manual') {
+    try {
+        showToast('Membuat snapshot...', 'info');
+        const payload = await collectAllUmrohData();
+        const totalRows = SNAPSHOT_TABLES.reduce((s, t) => s + (payload[t] ? payload[t].length : 0), 0);
+        const { error } = await supabaseClient.from('snapshot_backup').insert([{
+            label: String(label).slice(0, 80),
+            trigger: String(trigger).slice(0, 40),
+            data: payload,
+            meta: { total_rows: totalRows, tables: SNAPSHOT_TABLES }
+        }]);
+        if (error) throw error;
+
+        // Trim FIFO: simpan hanya MAX_SNAPSHOTS terbaru
+        const { data: all, error: listErr } = await supabaseClient
+            .from('snapshot_backup').select('id, created_at').order('created_at', { ascending: true });
+        if (!listErr && all && all.length > MAX_SNAPSHOTS) {
+            const excess = all.slice(0, all.length - MAX_SNAPSHOTS);
+            for (const row of excess) {
+                await supabaseClient.from('snapshot_backup').delete().eq('id', row.id);
+            }
+        }
+        showToast('✅ Snapshot tersimpan (' + totalRows + ' baris)');
+        return true;
+    } catch (err) {
+        console.error('takeSnapshot error:', err);
+        showToast('❌ Gagal membuat snapshot: ' + (err.message || err), 'error');
+        return false;
+    }
+}
+
+// Ambil snapshot otomatis sebelum tindakan berisiko. Best-effort: gagal pun tindakan tetap lanjut.
+async function ensureAutoSnapshot(trigger, label) {
+    const ok = await takeSnapshot(label || ('Auto: ' + trigger), trigger);
+    if (!ok) console.warn('Auto-snapshot gagal, tindakan berisiko tetap dilanjutkan.');
+    return ok;
+}
+
+async function listSnapshots() {
+    const { data, error } = await supabaseClient
+        .from('snapshot_backup').select('id, created_at, label, trigger, meta').order('created_at', { ascending: false });
+    if (error) { console.error('listSnapshots error:', error); return []; }
+    return data || [];
+}
+
+async function deleteSnapshot(id) {
+    if (!confirm('Hapus snapshot ini secara permanen?')) return;
+    const { error } = await supabaseClient.from('snapshot_backup').delete().eq('id', id);
+    if (error) { showToast('❌ Gagal hapus: ' + error.message, 'error'); return; }
+    showToast('Snapshot dihapus');
+    if (adminSubTab === 'snapshot') renderSnapshotAdminTable();
+}
+
+// Pulihkan seluruh data dari satu snapshot ke semua tabel (upsert by id).
+async function restoreSnapshot(id) {
+    if (!confirm('Pulihkan data dari snapshot ini?\n\nSemua tabel (program, jamaah, jadwal, pendaftaran, pembayaran, unggulan) akan di-update/insert dari snapshot. Baris yang ada di DB tapi tidak ada di snapshot TIDAK dihapus.\n\nLanjutkan?')) return;
+    try {
+        showToast('Memulihkan snapshot...', 'info');
+        const { data: snap, error } = await supabaseClient
+            .from('snapshot_backup').select('*').eq('id', id).single();
+        if (error) throw error;
+        const payload = (snap && snap.data) || {};
+        for (const tbl of SNAPSHOT_TABLES) {
+            const rows = payload[tbl] || [];
+            if (!rows.length) continue;
+            const clean = rows.filter(r => r && r.id).map(r => {
+                const c = { ...r };
+                if (c.id && !isValidUUID(c.id)) delete c.id;
+                return c;
+            });
+            if (!clean.length) continue;
+            const { error: upErr } = await supabaseClient.from(tbl).upsert(clean, { onConflict: 'id' });
+            if (upErr) console.error('restoreSnapshot upsert', tbl, upErr);
+        }
+        await loadDataFromSupabase(true);
+        if (typeof loadKbJamaah === 'function') { try { await loadKbJamaah(); } catch (e) {} }
+        if (typeof loadJadwal === 'function') { try { await loadJadwal(); } catch (e) {} }
+        if (typeof loadPendaftaran === 'function') { try { await loadPendaftaran(); } catch (e) {} }
+        if (typeof loadFeaturedIds === 'function') { try { await loadFeaturedIds(); } catch (e) {} }
+        await renderAdminPanel();
+        showToast('✅ Data dipulihkan dari snapshot');
+        if (adminSubTab === 'snapshot') renderSnapshotAdminTable();
+    } catch (err) {
+        console.error('restoreSnapshot error:', err);
+        showToast('❌ Gagal pulihkan: ' + (err.message || err), 'error');
+    }
+}
+
+function renderSnapshotAdminTable() {
+    const wrap = document.getElementById('snapshotTableWrap');
+    if (!wrap) return;
+    wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--ink-soft);">Memuat snapshot...</div>';
+    listSnapshots().then(rows => {
+        if (!rows.length) {
+            wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--ink-soft);">Belum ada snapshot. Klik <b>Ambil Snapshot</b> untuk cadangan pertama, atau snapshot otomatis akan dibuat sebelum tindakan berisiko.</div>';
+            return;
+        }
+        const rowsHtml = rows.map(r => {
+            const d = new Date(r.created_at);
+            const tstr = isNaN(d) ? '-' : d.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+            const total = (r.meta && r.meta.total_rows != null) ? r.meta.total_rows : '-';
+            const badge = (r.trigger && r.trigger !== 'manual')
+                ? `<span style="font-size:10px;background:#fde68a;color:#92400e;padding:2px 7px;border-radius:10px;margin-left:6px;">${escapeHtml(r.trigger)}</span>`
+                : '';
+            return `<tr>
+                <td><strong>${escapeHtml(r.label || 'Snapshot')}</strong>${badge}</td>
+                <td>${tstr}</td>
+                <td style="text-align:center;">${total} baris</td>
+                <td style="text-align:right;white-space:nowrap;">
+                    <button class="btn-icon-ghost" title="Pulihkan" onclick="restoreSnapshot('${r.id}')"><i class="fa-solid fa-rotate-left"></i></button>
+                    <button class="btn-icon-ghost danger" title="Hapus" onclick="deleteSnapshot('${r.id}')"><i class="fa-solid fa-trash"></i></button>
+                </td>
+            </tr>`;
+        }).join('');
+        wrap.innerHTML = `
+            <div class="admin-table-head">
+                <h4>Daftar Snapshot</h4>
+                <span class="count">${rows.length}/${MAX_SNAPSHOTS} tersimpan</span>
+            </div>
+            <div class="admin-table-wrap">
+                <table>
+                    <thead><tr>
+                        <th>Label</th><th>Waktu</th><th style="text-align:center;">Isi</th><th style="text-align:right;">Aksi</th>
+                    </tr></thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            </div>`;
+    }).catch(err => {
+        wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--danger);">Gagal memuat snapshot: ' + escapeHtml(err.message || err) + '</div>';
+    });
 }
 
 // ============================================================
