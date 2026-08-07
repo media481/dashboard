@@ -394,13 +394,40 @@ function getNearestDepartureIds(count = 3) {
     );
 }
 
+// Hitung estimasi waktu menuju tanggal keberangkatan dalam Bahasa Indonesia.
+// Hasil contoh: "hari ini", "1 hari lagi", "1 bulan 3 hari lagi", "2 tahun 1 bulan lagi".
+// Menggunakan perhitungan kalender (bulan = panjang bulan asli) biar akurat.
+function hitungEstimasi(dateObj, now) {
+    if (!dateObj) return '-';
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const target = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+    const diffMs = target - today;
+    if (diffMs < 0) return 'sudah berangkat';
+    if (diffMs === 0) return 'hari ini';
+    let years = target.getFullYear() - today.getFullYear();
+    let months = target.getMonth() - today.getMonth();
+    let days = target.getDate() - today.getDate();
+    if (days < 0) {
+        months -= 1;
+        const prevMonth = new Date(target.getFullYear(), target.getMonth(), 0);
+        days += prevMonth.getDate();
+    }
+    if (months < 0) { years -= 1; months += 12; }
+    const parts = [];
+    if (years) parts.push(`${years} tahun`);
+    if (months) parts.push(`${months} bulan`);
+    if (days) parts.push(`${days} hari`);
+    if (!parts.length) parts.push('hari ini');
+    return parts.join(' ') + ' lagi';
+}
+
 function renderTable(data) {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
     const now = new Date();
     const canEdit = canManageProgramData(); // admin & user boleh edit/hapus, guest & publik hanya lihat
     if (!data || !data.length) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--ink-soft);">
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--ink-soft);">
             <i class="fa-solid fa-inbox" style="font-size:24px;display:block;margin-bottom:10px;"></i>
             Belum ada program umroh.${canEdit ? ' Klik "Tambah" untuk menambahkan.' : ''}
         </td></tr>`;
@@ -429,6 +456,7 @@ function renderTable(data) {
 
         return `<tr class="${isNearest ? 'row-nearest-departure' : ''}">
             <td><strong>${escapeHtml(item.nama||'')}</strong></td>
+            <td>${escapeHtml(hitungEstimasi(item.dateObj, now))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_quint))}</td>
             <td>${escapeHtml(item.tgl||'-')}${isNearest ? ` <span class="nearest-badge" title="Salah satu dari 3 keberangkatan terdekat"><i class="fa-solid fa-bolt"></i> Terdekat</span>` : ''}</td>
             <td>${escapeHtml(item.durasi||'-')}</td>
