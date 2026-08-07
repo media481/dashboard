@@ -702,6 +702,10 @@ let previousActiveTab = null;
 // Dipanggil dari menu sidebar "Manajemen" (admin) atau tombol "Login"/"Tambah" (tanpa param).
 async function openAdminPanel(subtab) {
     checkSession();
+    // Snapshot otomatis harian (1x/hari) — hanya untuk admin yang benar-benar login
+    if (adminLoggedIn && currentRole === 'admin') {
+        maybeDailySnapshot();
+    }
 
     // Remember which dashboard tab was active so we can restore it on close
     const activeTabBtn = document.querySelector('.sidebar .nav-item[data-tab].active');
@@ -1985,6 +1989,22 @@ function renderSnapshotAdminTable() {
     }).catch(err => {
         wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--danger);">Gagal memuat snapshot: ' + escapeHtml(err.message || err) + '</div>';
     });
+}
+
+// Snapshot otomatis harian: throttle 1x per hari (berdasar tanggal lokal),
+// sehingga tiap hari admin pertama yang buka panel otomatis menyimpan cadangan.
+// Menyimpan penanda hari terakhir di localStorage agar tidak dobel dalam sehari.
+const SNAP_DAILY_KEY = 'amiru_last_daily_snapshot';
+async function maybeDailySnapshot() {
+    try {
+        const today = new Date().toISOString().slice(0, 10);
+        const last = localStorage.getItem(SNAP_DAILY_KEY);
+        if (last === today) return; // sudah ada snapshot hari ini
+        localStorage.setItem(SNAP_DAILY_KEY, today);
+        await takeSnapshot('Harian ' + new Date().toLocaleDateString('id-ID'), 'auto-daily');
+    } catch (err) {
+        console.warn('maybeDailySnapshot gagal:', err);
+    }
 }
 
 // ============================================================
