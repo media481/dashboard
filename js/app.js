@@ -359,6 +359,18 @@ async function loadDataFromSupabase(forceRefresh = false) {
     }
 }
 
+// Tombol kecil di kolom Aksi tabel Program Umroh untuk buka salah satu dari 4
+// link aset program (Poster/Itinerary/Meta Ads/Dokumentasi) di tab baru.
+// Kalau link belum diisi, tombol tetap tampil tapi non-aktif (abu-abu) supaya
+// urutan/posisi 4 tombolnya konsisten di setiap baris.
+function renderProgramLinkBtn(url, label, iconClass) {
+    const safeUrl = (url || '').trim();
+    if (!safeUrl) {
+        return `<button type="button" disabled title="${escapeHtml(label)} (belum diisi)" style="opacity:.35;cursor:not-allowed;"><i class="fa-solid ${iconClass}"></i></button>`;
+    }
+    return `<button type="button" onclick="window.open('${escapeJsAttr(safeUrl)}', '_blank', 'noopener')" title="${escapeHtml(label)}"><i class="fa-solid ${iconClass}"></i></button>`;
+}
+
 // ============================================================
 // 9. RENDER TABLE
 // ============================================================
@@ -401,6 +413,10 @@ function renderTable(data) {
             <td>
                 <div class="action-btns">
                     <button onclick="openDetailModal('${item.id}')" title="Detail"><i class="fa-solid fa-eye"></i></button>
+                    ${renderProgramLinkBtn(item.link_poster, 'Link Poster', 'fa-image')}
+                    ${renderProgramLinkBtn(item.link_itinerary, 'Link Itinerary', 'fa-route')}
+                    ${renderProgramLinkBtn(item.link_metaads, 'Link Meta Ads', 'fa-bullhorn')}
+                    ${renderProgramLinkBtn(item.link_dokumentasi, 'Link Dokumentasi', 'fa-images')}
                 </div>
             </td>
             <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
