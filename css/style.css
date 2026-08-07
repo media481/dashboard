@@ -1211,14 +1211,23 @@
             letter-spacing: .02em;
         }
         .nota-lightbox-stage {
+            /* [FIX] Sebelumnya width/height stage mengikuti ukuran nota di
+               dalamnya (intrinsic sizing) — jadi saat dihitung, "ruang
+               tersedia" seolah = ukuran nota itu sendiri (lingkaran setan)
+               dan hasilnya skala terkunci di ~1 atau malah lebih kecil dari
+               panel preview. Sekarang stage diberi ukuran TETAP mengikuti
+               viewport (independen dari kontennya) supaya perhitungan skala
+               di fitNotaLightboxScale() punya acuan ruang yang benar. */
+            width: calc(100vw - 120px);
+            height: calc(100vh - 120px);
             max-width: 100%;
             max-height: 100%;
             overflow: auto;
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             justify-content: center;
         }
-        .nota-lightbox-stage > div { box-shadow: 0 12px 48px rgba(0,0,0,.4); }
+        .nota-lightbox-stage > div { box-shadow: 0 12px 48px rgba(0,0,0,.4); flex-shrink: 0; }
 
         /* ---- Kartu ringkasan (hero) — angka paling penting (sisa tagihan)
            ditonjolkan besar + progress bar visual, supaya status "sudah bayar
