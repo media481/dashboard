@@ -1203,7 +1203,7 @@ async function renderAdminPanel() {
             <div class="admin-subtab-panel" id="adminSubTab-snapshot" style="display:none;">
                 <div class="admin-section-header">
                     <div><h4><i class="fa-solid fa-camera-retro" style="color:#0ea5e9;"></i> Snapshot / Backup Harian</h4>
-                    <p>Cadangan seluruh data Umroh (program, jamaah, jadwal, pendaftaran, pembayaran, unggulan). Maksimal 10 snapshot tersimpan — yang tertua otomatis diganti.</p></div>
+                    <p>Cadangan seluruh data Umroh (program, jamaah, jadwal, pendaftaran, pembayaran, unggulan). Maksimal 10 snapshot — untuk keamanan, snapshot tidak bisa dihapus manual dan yang tertua akan hilang otomatis saat penuh.</p></div>
                     <div class="sec-actions">
                         <button class="btn-primary" onclick="takeSnapshot('Manual ' + new Date().toLocaleDateString('id-ID'), 'manual').then(() => renderSnapshotAdminTable());">
                             <i class="fa-solid fa-camera"></i> Ambil Snapshot
@@ -1904,13 +1904,10 @@ async function listSnapshots() {
     return data || [];
 }
 
-async function deleteSnapshot(id) {
-    if (!confirm('Hapus snapshot ini secara permanen?')) return;
-    const { error } = await supabaseClient.from('snapshot_backup').delete().eq('id', id);
-    if (error) { showToast('❌ Gagal hapus: ' + error.message, 'error'); return; }
-    showToast('Snapshot dihapus');
-    if (adminSubTab === 'snapshot') renderSnapshotAdminTable();
-}
+// Catatan keamanan: TIDAK ada fungsi hapus snapshot manual.
+// Snapshot hanya boleh hilang secara otomatis (FIFO, lihat takeSnapshot())
+// begitu jumlahnya melebihi MAX_SNAPSHOTS — supaya cadangan data tidak
+// bisa dihapus sembarangan oleh admin maupun pihak lain yang menyusup.
 
 // Pulihkan seluruh data dari satu snapshot ke semua tabel (upsert by id).
 async function restoreSnapshot(id) {
@@ -1947,45 +1944,60 @@ async function restoreSnapshot(id) {
     }
 }
 
+const SNAPSHOT_TRIGGER_LABEL = {
+    'manual': { text: 'Manual', color: '#1a355b', tint: '#dbe4ee' },
+    'auto-daily': { text: 'Harian', color: '#279E70', tint: '#E1F5EC' },
+    'auto-pre-clear': { text: 'Auto · sebelum hapus', color: '#C0392B', tint: '#FBE3E0' },
+    'auto-pre-import': { text: 'Auto · sebelum import', color: '#E07B2E', tint: '#FBEBD9' }
+};
+
 function renderSnapshotAdminTable() {
     const wrap = document.getElementById('snapshotTableWrap');
     if (!wrap) return;
-    wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--ink-soft);">Memuat snapshot...</div>';
+    wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--ink-soft);"><i class="fa-solid fa-spinner fa-spin"></i> Memuat snapshot...</div>';
     listSnapshots().then(rows => {
+        const pct = Math.min(100, Math.round((rows.length / MAX_SNAPSHOTS) * 100));
+        const progressHtml = `
+            <div class="snap-progress-wrap">
+                <div class="snap-progress-track"><div class="snap-progress-fill" style="width:${pct}%;"></div></div>
+                <span class="snap-progress-label">${rows.length}/${MAX_SNAPSHOTS} slot terpakai</span>
+            </div>`;
+
         if (!rows.length) {
-            wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--ink-soft);">Belum ada snapshot. Klik <b>Ambil Snapshot</b> untuk cadangan pertama, atau snapshot otomatis akan dibuat sebelum tindakan berisiko.</div>';
+            wrap.innerHTML = progressHtml + `
+                <div class="snap-empty">
+                    <i class="fa-solid fa-camera-retro"></i>
+                    <p>Belum ada snapshot.</p>
+                    <span>Klik <b>Ambil Snapshot</b> untuk cadangan pertama, atau snapshot otomatis akan dibuat sebelum tindakan berisiko.</span>
+                </div>`;
             return;
         }
-        const rowsHtml = rows.map(r => {
+
+        const itemsHtml = rows.map(r => {
             const d = new Date(r.created_at);
             const tstr = isNaN(d) ? '-' : d.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
             const total = (r.meta && r.meta.total_rows != null) ? r.meta.total_rows : '-';
-            const badge = (r.trigger && r.trigger !== 'manual')
-                ? `<span style="font-size:10px;background:#fde68a;color:#92400e;padding:2px 7px;border-radius:10px;margin-left:6px;">${escapeHtml(r.trigger)}</span>`
-                : '';
-            return `<tr>
-                <td><strong>${escapeHtml(r.label || 'Snapshot')}</strong>${badge}</td>
-                <td>${tstr}</td>
-                <td style="text-align:center;">${total} baris</td>
-                <td style="text-align:right;white-space:nowrap;">
-                    <button class="btn-icon-ghost" title="Pulihkan" onclick="restoreSnapshot('${r.id}')"><i class="fa-solid fa-rotate-left"></i></button>
-                    <button class="btn-icon-ghost danger" title="Hapus" onclick="deleteSnapshot('${r.id}')"><i class="fa-solid fa-trash"></i></button>
-                </td>
-            </tr>`;
-        }).join('');
-        wrap.innerHTML = `
-            <div class="admin-table-head">
-                <h4>Daftar Snapshot</h4>
-                <span class="count">${rows.length}/${MAX_SNAPSHOTS} tersimpan</span>
-            </div>
-            <div class="admin-table-wrap">
-                <table>
-                    <thead><tr>
-                        <th>Label</th><th>Waktu</th><th style="text-align:center;">Isi</th><th style="text-align:right;">Aksi</th>
-                    </tr></thead>
-                    <tbody>${rowsHtml}</tbody>
-                </table>
+            const trig = SNAPSHOT_TRIGGER_LABEL[r.trigger] || { text: r.trigger || 'manual', color: '#64758A', tint: '#F4F7FB' };
+            return `
+            <div class="snap-item">
+                <div class="snap-item-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                <div class="snap-item-body">
+                    <div class="snap-item-top">
+                        <strong>${escapeHtml(r.label || 'Snapshot')}</strong>
+                        <span class="snap-badge" style="color:${trig.color};background:${trig.tint};">${escapeHtml(trig.text)}</span>
+                    </div>
+                    <div class="snap-item-meta">
+                        <span><i class="fa-regular fa-clock"></i> ${tstr}</span>
+                        <span><i class="fa-solid fa-database"></i> ${total} baris</span>
+                    </div>
+                </div>
+                <button class="btn-icon-ghost" title="Pulihkan snapshot ini" onclick="restoreSnapshot('${r.id}')"><i class="fa-solid fa-rotate-left"></i></button>
             </div>`;
+        }).join('');
+
+        wrap.innerHTML = progressHtml + `
+            <div class="snap-list">${itemsHtml}</div>
+            <div class="snap-security-note"><i class="fa-solid fa-shield-halved"></i> Snapshot tidak bisa dihapus manual. Saat slot penuh, snapshot tertua otomatis terhapus sendiri.</div>`;
     }).catch(err => {
         wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--danger);">Gagal memuat snapshot: ' + escapeHtml(err.message || err) + '</div>';
     });
