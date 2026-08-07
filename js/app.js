@@ -975,6 +975,14 @@ async function renderAdminPanel() {
                     <div><h4><i class="fa-solid fa-money-bill-wave"></i> Pembayaran Biaya Umroh</h4>
                     <p>Pantau & kelola cicilan/pelunasan biaya umroh seluruh jamaah dari semua program</p></div>
                 </div>
+                <div class="pb-income-hero" id="pbIncomeHero"></div>
+                <div class="pb-income-breakdown-wrap">
+                    <div class="pb-income-breakdown-head">
+                        <h4><i class="fa-solid fa-chart-column"></i> Rincian Pemasukan per Program</h4>
+                        <span class="count" id="pbBreakdownCount">0 program</span>
+                    </div>
+                    <div class="pb-income-breakdown-grid" id="pbIncomeBreakdown"></div>
+                </div>
                 <div class="cx-stats-bar" id="pbStatsBar"></div>
                 <div class="admin-toolbar">
                     <input type="text" id="pbSearchInput" placeholder="Cari nama jamaah / NIK / paspor..." style="flex:1;min-width:220px;" oninput="renderPembayaranPanel()">
@@ -2762,6 +2770,87 @@ function renderCicilanHistory() {
 // semua program dalam satu tabel, terpisah dari tab Keberangkatan yang
 // per-program. Pakai ulang modal Kelola Cicilan (openCicilanModal) yang sama.
 // ============================================================
+// Card detail total pemasukan (hero) + rincian pemasukan per program umroh.
+// `jamaahAll` = seluruh jamaah (semua program), `totalPerJamaah` = map jamaah_id -> total dibayar.
+function renderPembayaranIncomeSummary(jamaahAll, totalPerJamaah) {
+    const heroEl = document.getElementById('pbIncomeHero');
+    const gridEl = document.getElementById('pbIncomeBreakdown');
+    const countEl = document.getElementById('pbBreakdownCount');
+    if (!heroEl || !gridEl) return;
+
+    // Kelompokkan per program
+    const byProgram = {};
+    jamaahAll.forEach(j => {
+        const pid = j.program_id != null ? String(j.program_id) : '_tanpa_program';
+        if (!byProgram[pid]) {
+            const program = dataUmroh.find(p => String(p.id) === pid);
+            byProgram[pid] = {
+                nama: program ? program.nama : 'Tanpa Program',
+                tanggal: program ? program.tanggal_berangkat : null,
+                harga: parseRupiahToNumber(program ? program.harga_quint : 0),
+                jamaahCount: 0,
+                tagihan: 0,
+                dibayar: 0
+            };
+        }
+        const g = byProgram[pid];
+        g.jamaahCount += 1;
+        g.tagihan += g.harga;
+        g.dibayar += totalPerJamaah[j.id] || 0;
+    });
+
+    const programRows = Object.values(byProgram).map(g => {
+        g.sisa = Math.max(g.tagihan - g.dibayar, 0);
+        g.pct = g.tagihan > 0 ? Math.min(100, Math.round((g.dibayar / g.tagihan) * 100)) : 0;
+        return g;
+    }).sort((a, b) => b.dibayar - a.dibayar); // program dengan pemasukan terbesar di atas
+
+    const grandTagihan = programRows.reduce((s, g) => s + g.tagihan, 0);
+    const grandDibayar = programRows.reduce((s, g) => s + g.dibayar, 0);
+    const grandSisa = Math.max(grandTagihan - grandDibayar, 0);
+    const grandPct = grandTagihan > 0 ? Math.min(100, Math.round((grandDibayar / grandTagihan) * 100)) : 0;
+    const totalJamaah = programRows.reduce((s, g) => s + g.jamaahCount, 0);
+
+    // ---- Kartu hero: total pemasukan ----
+    heroEl.innerHTML = `
+        <div class="pb-hero-top">
+            <div>
+                <div class="pb-hero-label"><i class="fa-solid fa-sack-dollar"></i> Total Pemasukan Terkumpul</div>
+                <div class="pb-hero-amount">${formatRupiah(grandDibayar)}</div>
+            </div>
+            <div class="pb-hero-pct-badge">${grandPct}% dari target</div>
+        </div>
+        <div class="pb-hero-progress-track"><div class="pb-hero-progress-fill" style="width:${grandPct}%;"></div></div>
+        <div class="pb-hero-foot">
+            <span><b>${formatRupiah(grandTagihan)}</b>Total Tagihan</span>
+            <span><b>${formatRupiah(grandSisa)}</b>Sisa Belum Terbayar</span>
+            <span><b>${totalJamaah}</b>Jamaah</span>
+            <span><b>${programRows.length}</b>Program Berjalan</span>
+        </div>
+    `;
+
+    // ---- Rincian per program ----
+    if (countEl) countEl.textContent = `${programRows.length} program`;
+    if (!programRows.length) {
+        gridEl.innerHTML = `<div class="pb-income-empty">Belum ada data pemasukan.</div>`;
+        return;
+    }
+    gridEl.innerHTML = programRows.map(g => `
+        <div class="pb-income-card">
+            <div class="pb-income-card-head">
+                <span class="pb-income-card-name" title="${escapeHtml(g.nama)}">${escapeHtml(g.nama)}</span>
+                <span class="pb-income-card-jamaah"><i class="fa-solid fa-user-group"></i> ${g.jamaahCount}</span>
+            </div>
+            <div class="pb-income-card-amount">${formatRupiah(g.dibayar)}</div>
+            <div class="pb-income-card-track"><div class="pb-income-card-fill" style="width:${g.pct}%;"></div></div>
+            <div class="pb-income-card-foot">
+                <span>Tagihan <b>${formatRupiah(g.tagihan)}</b></span>
+                <span>Sisa <b style="color:${g.sisa > 0 ? 'var(--danger)' : 'var(--ink-soft)'};">${formatRupiah(g.sisa)}</b></span>
+            </div>
+        </div>
+    `).join('');
+}
+
 async function renderPembayaranPanel() {
     const tbody = document.getElementById('pbTableBody');
     if (!tbody) return; // panel belum/tidak sedang dibuka
@@ -2784,6 +2873,9 @@ async function renderPembayaranPanel() {
             tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--ink-soft);">Belum ada data jamaah.</td></tr>`;
             document.getElementById('pbStatsBar').innerHTML = '';
             document.getElementById('pbCount').textContent = '0 jamaah';
+            document.getElementById('pbIncomeHero').innerHTML = '';
+            document.getElementById('pbIncomeBreakdown').innerHTML = '';
+            document.getElementById('pbBreakdownCount').textContent = '0 program';
             return;
         }
 
@@ -2798,6 +2890,11 @@ async function renderPembayaranPanel() {
         (bayarData || []).forEach(b => {
             totalPerJamaah[b.jamaah_id] = (totalPerJamaah[b.jamaah_id] || 0) + Number(b.jumlah || 0);
         });
+
+        // ---- Card detail pemasukan (hero) + rincian pemasukan per program ----
+        // Dihitung dari SELURUH data jamaah (tidak terpengaruh search/filter tabel di
+        // bawah) supaya angka total pemasukan selalu mencerminkan kondisi sebenarnya.
+        renderPembayaranIncomeSummary(jamaahAll, totalPerJamaah);
 
         const search = (document.getElementById('pbSearchInput')?.value || '').trim().toLowerCase();
         const filterProgram = document.getElementById('pbFilterProgram')?.value || '';

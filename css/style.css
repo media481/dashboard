@@ -1562,6 +1562,47 @@
         .admin-section-header h4 { font-family: 'Space Grotesk'; font-size: 16px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 8px; }
         .admin-section-header p { font-size: 12.5px; color: var(--ink-soft); margin-top: 3px; }
 
+        /* ===== MENU PEMBAYARAN: card detail pemasukan + rincian per program ===== */
+        .pb-income-hero {
+            background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%);
+            border-radius: var(--radius);
+            padding: 20px 22px;
+            color: #fff;
+            margin-bottom: 16px;
+        }
+        .pb-hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+        .pb-hero-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; opacity: .8; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+        .pb-hero-amount { font-size: 27px; font-weight: 800; font-family: 'Space Grotesk'; line-height: 1.2; }
+        .pb-hero-pct-badge { flex-shrink: 0; background: rgba(255,255,255,.18); border-radius: 20px; padding: 6px 13px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+        .pb-hero-progress-track { height: 8px; border-radius: 20px; background: rgba(255,255,255,.22); overflow: hidden; margin-bottom: 16px; }
+        .pb-hero-progress-fill { height: 100%; border-radius: 20px; background: #fff; transition: width .3s ease; }
+        .pb-hero-foot { display: flex; gap: 24px; flex-wrap: wrap; }
+        .pb-hero-foot span { display: flex; flex-direction: column-reverse; gap: 3px; font-size: 11.5px; opacity: .85; }
+        .pb-hero-foot b { font-size: 14.5px; font-weight: 700; opacity: 1; font-family: 'Space Grotesk'; }
+        @media (max-width: 480px) {
+            .pb-hero-amount { font-size: 22px; }
+            .pb-hero-foot { gap: 16px; }
+        }
+
+        .pb-income-breakdown-wrap { margin-bottom: 18px; }
+        .pb-income-breakdown-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .pb-income-breakdown-head h4 { font-size: 13.5px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 7px; }
+        .pb-income-breakdown-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        .pb-income-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+        .pb-income-card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .pb-income-card-name { font-size: 12.5px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pb-income-card-jamaah { flex-shrink: 0; font-size: 11px; font-weight: 700; color: var(--ink-soft); background: var(--bg); border-radius: 20px; padding: 3px 9px; display: inline-flex; align-items: center; gap: 4px; }
+        .pb-income-card-amount { font-size: 18px; font-weight: 800; font-family: 'Space Grotesk'; color: var(--success); margin-bottom: 8px; }
+        .pb-income-card-track { height: 6px; border-radius: 20px; background: var(--line); overflow: hidden; margin-bottom: 10px; }
+        .pb-income-card-fill { height: 100%; border-radius: 20px; background: var(--brand); }
+        .pb-income-card-foot { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--ink-soft); }
+        .pb-income-card-foot b { color: var(--ink); font-weight: 700; }
+        .pb-income-empty { grid-column: 1 / -1; text-align: center; padding: 20px; color: var(--ink-soft); font-size: 12.5px; background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; }
+
         /* ===== CROSSCHECK ===== */
         .cx-label-sm { font-size: 11.5px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
         .cx-stats-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
