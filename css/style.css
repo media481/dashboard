@@ -1117,7 +1117,6 @@
    ukuran aslinya (skala 100%) tanpa perlu di-scroll. */
 .cicilan-modal-preview {
             width: 100%;
-            max-width: 880px;
             margin: 0 auto;
             flex-shrink: 0;
             min-width: 0;
