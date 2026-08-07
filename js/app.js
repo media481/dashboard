@@ -697,7 +697,14 @@ function switchAdminSubTab(name) {
     if (titleEl) titleEl.textContent = meta.title;
     if (subtitleEl) subtitleEl.textContent = meta.subtitle;
 
-    if (name === 'crosscheck') { renderCxProgramSelector(); if (cxSelectedProgram) renderCxPanel(cxSelectedProgram); }
+    if (name === 'crosscheck') {
+        if (!cxSelectedProgram && adminPrograms && adminPrograms.length) {
+            const prioritized = [...adminPrograms].sort((a, b) => cxGetProgramStatus(a).priority - cxGetProgramStatus(b).priority);
+            cxSelectedProgram = prioritized[0].id;
+        }
+        renderCxProgramSelector();
+        if (cxSelectedProgram) renderCxPanel(cxSelectedProgram);
+    }
     if (name === 'telegram') { renderTgRecipients(); }
     if (name === 'auditnota') { loadNotaAuditLog(true); }
 }
@@ -908,7 +915,11 @@ async function renderAdminPanel() {
                     <div><h4><i class="fa-solid fa-magnifying-glass-chart"></i> Crosscheck Data Program</h4>
                     <p>Poster dibaca otomatis (OCR) & dibandingkan dengan data teks program saat disimpan</p></div>
                 </div>
-                <div class="cx-label-sm">Pilih Program:</div>
+                <div class="cx-stats-bar" id="cxStatsBar"></div>
+                <div class="cx-selector-head">
+                    <div class="cx-label-sm" style="margin-bottom:0;">Pilih Program:</div>
+                    <input type="text" id="cxSearchInput" class="cx-search-input" placeholder="Cari nama program..." oninput="renderCxProgramSelector()">
+                </div>
                 <div class="cx-program-selector" id="cxProgramSelector"></div>
                 <div id="cxPanelContent">
                     <div class="cx-empty"><i class="fa-solid fa-magnifying-glass-chart"></i><p>Pilih program di atas untuk melihat data crosscheck.</p></div>
@@ -3457,19 +3468,55 @@ function cxCountMismatch(progId) {
     return pairs.filter(([field, a, b]) => a && b && !cxValuesMatch(field, a, b)).length;
 }
 
+// Hitung status crosscheck 1 program: dipakai bareng oleh stats bar & pill selector
+function cxGetProgramStatus(p) {
+    const adl = (() => { try { return p.admin_data_lengkap ? (typeof p.admin_data_lengkap === 'string' ? JSON.parse(p.admin_data_lengkap) : p.admin_data_lengkap) : null; } catch(e) { return null; } })();
+    const hasData = !!(adl && Object.keys(adl).length > 0);
+    const mismatchCount = adl && adl.poster_data ? cxCountMismatch(p.id) : 0;
+    // priority: 0 = ada yang tidak cocok (paling urgent), 1 = belum ada data lengkap, 2 = aman
+    const priority = mismatchCount > 0 ? 0 : (!hasData ? 1 : 2);
+    return { adl, hasData, mismatchCount, priority };
+}
+
+function renderCxStatsBar() {
+    const bar = document.getElementById('cxStatsBar');
+    if (!bar) return;
+    if (!adminPrograms || !adminPrograms.length) { bar.innerHTML = ''; return; }
+    let mismatch = 0, missing = 0, ok = 0;
+    adminPrograms.forEach(p => {
+        const { priority } = cxGetProgramStatus(p);
+        if (priority === 0) mismatch++; else if (priority === 1) missing++; else ok++;
+    });
+    bar.innerHTML = `
+        <div class="cx-stat-chip ok"><i class="fa-solid fa-circle-check"></i> ${ok} cocok</div>
+        <div class="cx-stat-chip warn"><i class="fa-solid fa-triangle-exclamation"></i> ${mismatch} tidak cocok</div>
+        <div class="cx-stat-chip missing"><i class="fa-solid fa-circle-info"></i> ${missing} belum ada data</div>
+    `;
+}
+
 function renderCxProgramSelector() {
     const sel = document.getElementById('cxProgramSelector');
     if (!sel) return;
+    renderCxStatsBar();
     if (!adminPrograms || !adminPrograms.length) {
         sel.innerHTML = '<div style="font-size:13px;color:var(--ink-soft);font-style:italic;">Belum ada program.</div>';
         return;
     }
-    sel.innerHTML = adminPrograms.map(p => {
-        const adl = (() => { try { return p.admin_data_lengkap ? (typeof p.admin_data_lengkap === 'string' ? JSON.parse(p.admin_data_lengkap) : p.admin_data_lengkap) : null; } catch(e) { return null; } })();
-        const hasData = adl && Object.keys(adl).length > 0;
+    const query = (document.getElementById('cxSearchInput')?.value || '').trim().toLowerCase();
+    let list = adminPrograms.map(p => ({ p, status: cxGetProgramStatus(p) }));
+    if (query) list = list.filter(({ p }) => (p.nama || '').toLowerCase().includes(query));
+    // Urutkan: yang bermasalah (tidak cocok) dulu, lalu belum ada data, lalu yang sudah aman
+    list.sort((a, b) => a.status.priority - b.status.priority);
+
+    if (!list.length) {
+        sel.innerHTML = '<div style="font-size:13px;color:var(--ink-soft);font-style:italic;">Tidak ada program yang cocok dengan pencarian.</div>';
+        return;
+    }
+
+    sel.innerHTML = list.map(({ p, status }) => {
+        const { hasData, mismatchCount } = status;
         const isActive = String(cxSelectedProgram) === String(p.id);
         const isScanning = cxScanningIds.has(String(p.id));
-        const mismatchCount = adl && adl.poster_data ? cxCountMismatch(p.id) : 0;
         return `<button class="cx-program-pill${isActive?' active':''}${mismatchCount>0?' has-warning':''}" onclick="selectCxProgram('${p.id}')">
             ${escapeHtml(p.nama||'Program')}
             ${isScanning ? '<i class="fa-solid fa-spinner fa-spin" style="color:var(--brand);font-size:9px;margin-left:2px;" title="Sedang scan poster..."></i>' : ''}
@@ -3510,17 +3557,24 @@ function renderCxPanel(progId) {
         ];
         const pd = (() => { try { return adl.poster_data ? (typeof adl.poster_data === 'string' ? JSON.parse(adl.poster_data) : adl.poster_data) : {}; } catch(e) { return {}; } })();
         rows.forEach(r => { if (pd[r.field]) r.poster = pd[r.field]; });
-        return rows.map(r => {
+        // Sembunyikan baris yang dua-duanya kosong (tidak ada info untuk dibandingkan)
+        // Urutkan: yang beda (mismatch) paling atas supaya langsung kelihatan yang perlu dibenerin
+        const visibleRows = rows.filter(r => r.plain || r.poster);
+        visibleRows.sort((a, b) => {
+            const rank = r => { const hasBoth = r.plain && r.poster; if (hasBoth && !cxValuesMatch(r.field, r.plain, r.poster)) return 0; if (!hasBoth) return 1; return 2; };
+            return rank(a) - rank(b);
+        });
+        if (!visibleRows.length) return '<div class="cx-empty" style="padding:20px;"><p>Belum ada data untuk dibandingkan.</p></div>';
+        return visibleRows.map(r => {
             const hasBoth = r.plain && r.poster;
             const isMatch = hasBoth && cxValuesMatch(r.field, r.plain, r.poster);
             const rowClass = hasBoth ? (isMatch ? 'cx-match' : 'cx-mismatch') : '';
             const pill = hasBoth ? `<span class="cx-match-pill ${isMatch?'ok':'no'}">${isMatch?'<i class="fa-solid fa-check"></i> Cocok':'<i class="fa-solid fa-xmark"></i> Beda'}</span>` : `<span class="cx-match-pill skip">—</span>`;
             return `<div class="cx-compare-row ${rowClass}">
+                <div class="cx-compare-field"><div class="cx-compare-label">${escapeHtml(r.label)}</div>${pill}</div>
                 <div class="cx-compare-col"><div class="cx-compare-label"><i class="fa-solid fa-file-lines"></i> Teks</div><div class="cx-compare-val ${r.plain?'':'empty'}">${r.plain ? escapeHtml(r.plain) : '—'}</div></div>
                 <div class="cx-divider"></div>
                 <div class="cx-compare-col"><div class="cx-compare-label"><i class="fa-solid fa-image"></i> Poster</div><div class="cx-compare-val ${r.poster?'':'empty'}">${r.poster ? escapeHtml(r.poster) : '—'}</div></div>
-                <div style="display:flex;align-items:center;padding-left:8px;"><div class="cx-compare-label" style="min-width:60px;">${escapeHtml(r.label)}</div></div>
-                ${pill}
             </div>`;
         }).join('');
     };
