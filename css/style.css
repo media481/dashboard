@@ -39,7 +39,7 @@
             transition: grid-template-columns .2s ease;
         }
         @media (min-width: 769px) {
-            .app.sidebar-collapsed { grid-template-columns: 76px 1fr; }
+            .app.sidebar-collapsed { grid-template-columns: 46px 1fr; }
         }
 
         /* ===== SIDEBAR ===== */
@@ -93,6 +93,7 @@
         .sidebar.collapsed .sidebar-collapse-btn { transform: rotate(180deg); }
 
         .sidebar.collapsed .brand { justify-content: center; }
+        .sidebar.collapsed { padding-left: 4px; padding-right: 4px; }
         .sidebar.collapsed .brand-text,
         .sidebar.collapsed .nav-label,
         .sidebar.collapsed .nav-item .nav-text,
