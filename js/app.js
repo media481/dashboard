@@ -114,6 +114,11 @@ function escapeJsAttr(str) {
 function showToast(msg, type = 'success') {
     const toast = document.getElementById('toast');
     const msgEl = document.getElementById('toastMessage');
+    const iconEl = toast.querySelector('i');
+    if (iconEl) {
+        const iconMap = { success: 'fa-circle-check', error: 'fa-circle-exclamation', info: 'fa-circle-info' };
+        iconEl.className = 'fa-solid ' + (iconMap[type] || iconMap.success);
+    }
     msgEl.textContent = msg;
     toast.className = 'toast ' + type;
     toast.classList.add('show');
@@ -465,7 +470,7 @@ function openDetailModal(programId) {
     const program = dataUmroh.find(p => String(p.id) === String(programId));
     if (!program) { showToast('Program tidak ditemukan', 'error'); return; }
     const waText = program.teks_wa || generateAutoWAText(program);
-    alert(`📋 Detail Program\n\nNama: ${program.nama}\nTanggal: ${program.tgl}\nDurasi: ${program.durasi}\nMaskapai: ${program.maskapai}\nHarga: ${formatRupiah(program.harga_quint)}\n\n📱 Teks WA:\n${waText}`);
+    alert(`Detail Program\n\nNama: ${program.nama}\nTanggal: ${program.tgl}\nDurasi: ${program.durasi}\nMaskapai: ${program.maskapai}\nHarga: ${formatRupiah(program.harga_quint)}\n\nTeks WA:\n${waText}`);
 }
 
 // ============================================================
@@ -501,7 +506,7 @@ function setAdminSession(role) {
             const adminView = document.getElementById('adminPageView');
             if (adminView.style.display !== 'none') closeAdminPanel();
             renderSidebarNav();
-            showToast('⏰ Sesi berakhir, silakan login ulang.', 'error');
+            showToast('Sesi berakhir, silakan login ulang.', 'error');
         }
     }, SESSION_DURATION);
 }
@@ -530,7 +535,7 @@ function checkAdminLogin() {
 
     if (Date.now() < loginLockTime) {
         const waitSeconds = Math.ceil((loginLockTime - Date.now()) / 1000);
-        errorDiv.innerText = `⏳ Terlalu banyak percobaan. Coba lagi ${waitSeconds} detik.`;
+        errorDiv.innerHTML = `<i class="fa-solid fa-hourglass-half"></i> Terlalu banyak percobaan. Coba lagi ${waitSeconds} detik.`;
         return;
     }
     if (loginLockTime && Date.now() >= loginLockTime) {
@@ -549,14 +554,14 @@ function checkAdminLogin() {
         try { sessionStorage.setItem('admin_petugas_nama', petugasNama); } catch (_) {}
         closeAdminPanel();
         renderSidebarNav();
-        showToast(`✅ Berhasil login sebagai ${matchedUser.label}`);
+        showToast(`Berhasil login sebagai ${matchedUser.label}`);
     } else {
         loginAttempts++;
         if (loginAttempts >= 5) {
             loginLockTime = Date.now() + 60000;
-            errorDiv.innerText = '❌ Terlalu banyak percobaan. Coba lagi 1 menit.';
+            errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Terlalu banyak percobaan. Coba lagi 1 menit.';
         } else {
-            errorDiv.innerText = `❌ Password salah! Sisa percobaan: ${5 - loginAttempts}`;
+            errorDiv.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Password salah! Sisa percobaan: ${5 - loginAttempts}`;
         }
     }
 }
@@ -580,11 +585,11 @@ async function saveUserSettings() {
         USER_ROLES = {};
         await loadUserRoles();
         ['us_pass_admin','us_pass_user','us_pass_guest'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-        if (statusEl) statusEl.innerHTML = '<span style="color:var(--success);font-size:12.5px;">✅ Password berhasil disimpan.</span>';
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--success);font-size:12.5px;"><i class="fa-solid fa-circle-check"></i> Password berhasil disimpan.</span>';
         showToast('Pengaturan user berhasil disimpan');
     } catch (err) {
         console.error('saveUserSettings error:', err);
-        if (statusEl) statusEl.innerHTML = `<span style="color:var(--danger);font-size:12.5px;">❌ Gagal menyimpan: ${escapeHtml(err.message)}</span>`;
+        if (statusEl) statusEl.innerHTML = `<span style="color:var(--danger);font-size:12.5px;"><i class="fa-solid fa-circle-exclamation"></i> Gagal menyimpan: ${escapeHtml(err.message)}</span>`;
         showToast('Gagal menyimpan pengaturan user', 'error');
     }
 }
@@ -915,7 +920,7 @@ async function renderAdminPanel() {
                     <p>Kirim notifikasi otomatis ke grup/chat Telegram saat ada program/jadwal baru</p></div>
                 </div>
                 <div class="tg-info-box">
-                    <b>📌 Cara Setup:</b><br>
+                    <b><i class="fa-solid fa-list-check"></i> Cara Setup:</b><br>
                     1. Buat bot via <b>@BotFather</b> di Telegram → dapatkan <b>Bot Token</b><br>
                     2. Tambahkan bot ke grup/chat yang diinginkan, jadikan <b>Admin</b><br>
                     3. Dapatkan <b>Chat ID</b> via <code>@userinfobot</code> atau <code>https://api.telegram.org/bot[TOKEN]/getUpdates</code><br>
@@ -942,7 +947,7 @@ async function renderAdminPanel() {
                 </div>
                 <div id="tgStatusMsg" style="margin-top:12px;"></div>
                 <div class="tg-notif-log" id="tgNotifLog" style="display:none;">
-                    <p style="color:var(--ink-soft);font-size:11px;margin-bottom:6px;">▶ LOG PENGIRIMAN TELEGRAM:</p>
+                    <p style="color:var(--ink-soft);font-size:11px;margin-bottom:6px;"><i class="fa-solid fa-list"></i> LOG PENGIRIMAN TELEGRAM:</p>
                 </div>
             </div>
 
@@ -1320,7 +1325,7 @@ async function updateProgramById(id, patch) {
 
 async function clearAllAdminData() {
     if (currentRole !== 'admin') { showToast('Hanya Admin yang boleh menghapus semua data', 'error'); return; }
-    if (!confirm('⚠️ PERINGATAN: Hapus SEMUA program?')) return;
+    if (!confirm('PERINGATAN: Hapus SEMUA program?')) return;
     try {
         const { data } = await supabaseClient.from('programs').select('id');
         for (const prog of data) await deleteProgramById(prog.id);
@@ -1489,7 +1494,7 @@ function parseBroadcastText() {
 // 16. EXPORT / IMPORT
 // ============================================================
 async function exportAdminData() {
-    showToast('⏳ Menyiapkan backup...');
+    showToast('Menyiapkan backup...');
     try {
         const headers = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY };
         const res = await fetch(`${SUPABASE_URL}/rest/v1/programs?select=*&order=created_at.asc`, { headers });
@@ -1503,9 +1508,9 @@ async function exportAdminData() {
         a.download = `amiru_backup_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.json`;
         a.click();
         URL.revokeObjectURL(a.href);
-        showToast(`✅ Backup berhasil — ${backup.programs.length} program`);
+        showToast(`Backup berhasil — ${backup.programs.length} program`);
     } catch (err) {
-        showToast('❌ Gagal backup: ' + err.message, 'error');
+        showToast('Gagal backup: ' + err.message, 'error');
     }
 }
 
@@ -1542,11 +1547,11 @@ async function importProgramList(list) {
 
 function showImportResult(ok, failed) {
     if (!failed.length) {
-        showToast(`✅ Import selesai — ${ok} program`);
+        showToast(`Import selesai — ${ok} program`);
         return;
     }
     const list = failed.map(f => `• ${f.nama} — ${f.reason}`).join('\n');
-    showToast(`⚠️ Import selesai — ${ok} berhasil, ${failed.length} gagal`, 'error');
+    showToast(`Import selesai — ${ok} berhasil, ${failed.length} gagal`, 'error');
     alert(`Berikut program yang GAGAL diimport (${failed.length}):\n\n${list}`);
 }
 
@@ -1558,14 +1563,14 @@ function importAdminData() {
     input.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        if (file.size > MAX_FILE_SIZE) { showToast('❌ File terlalu besar! Maksimal 5MB.', 'error'); return; }
+        if (file.size > MAX_FILE_SIZE) { showToast('File terlalu besar! Maksimal 5MB.', 'error'); return; }
         const reader = new FileReader();
         reader.onload = async (event) => {
             try {
                 const imported = JSON.parse(event.target.result);
                 if (imported && imported._meta && imported.programs) {
                     if (!confirm(`Restore backup dari ${new Date(imported._meta.exported_at).toLocaleString('id-ID')}?\n\n• ${imported.programs.length} program\n\nData yang ada TIDAK akan dihapus, hanya ditambah/diperbarui.`)) return;
-                    showToast('⏳ Mengimport data...');
+                    showToast('Mengimport data...');
                     const { ok, failed } = await importProgramList(imported.programs);
                     await loadDataFromSupabase(true);
                     await renderAdminPanel();
@@ -1577,10 +1582,10 @@ function importAdminData() {
                     await renderAdminPanel();
                     showImportResult(ok, failed);
                 } else {
-                    showToast('❌ Format file tidak dikenali', 'error');
+                    showToast('Format file tidak dikenali', 'error');
                 }
             } catch (err) {
-                showToast('❌ Gagal: ' + err.message, 'error');
+                showToast('Gagal: ' + err.message, 'error');
             }
         };
         reader.readAsText(file);
@@ -1756,7 +1761,7 @@ function renderJadwalSection() {
             <div class="jc-meta" style="margin-top:4px;">
                 ${j.keperluan ? `<span class="jc-badge">${escapeHtml(j.keperluan)}</span>` : ''}
                 ${j.asal ? `<span><i class="fa-solid fa-location-dot"></i> ${escapeHtml(j.asal)}</span>` : ''}
-                ${isPast ? '<span style="color:var(--ink-soft);font-size:11px;">✅ Selesai</span>' : ''}
+                ${isPast ? '<span style="color:var(--ink-soft);font-size:11px;"><i class="fa-solid fa-circle-check"></i> Selesai</span>' : ''}
             </div>
             <div class="jc-actions" style="margin-top:8px;display:flex;gap:4px;justify-content:flex-end;">
                 ${j.wa ? `<a href="https://wa.me/${j.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(j.nama||'')}%20kami%20dari%20PT%20Amiru%20Haramain%20Indonesia" target="_blank" style="background:#25D366;color:#fff;border:none;padding:2px 10px;border-radius:4px;font-size:11px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;"><i class="fab fa-whatsapp"></i></a>` : ''}
@@ -1885,10 +1890,10 @@ function renderPendaftaranSection() {
     }
 
     const statusMap = {
-        baru: { label: '🆕 Baru', badge: 'limited' },
-        dihubungi: { label: '🔄 Dihubungi', badge: 'limited' },
-        deal: { label: '✅ Deal', badge: 'available' },
-        batal: { label: '❌ Batal', badge: 'full' }
+        baru: { label: '<i class="fa-solid fa-circle-plus"></i> Baru', badge: 'limited' },
+        dihubungi: { label: '<i class="fa-solid fa-arrows-rotate"></i> Dihubungi', badge: 'limited' },
+        deal: { label: '<i class="fa-solid fa-circle-check"></i> Deal', badge: 'available' },
+        batal: { label: '<i class="fa-solid fa-circle-xmark"></i> Batal', badge: 'full' }
     };
 
     grid.innerHTML = pendaftaranList.map(p => {
@@ -2114,9 +2119,9 @@ async function loadKbJamaahForProgram(programId) {
             grandTotalDibayar += dibayar;
 
             let statusLabel, statusClass;
-            if (hargaProgram > 0 && dibayar >= hargaProgram) { statusLabel = '✅ Lunas'; statusClass = 'available'; }
-            else if (dibayar > 0) { statusLabel = '🔄 Cicilan'; statusClass = 'limited'; }
-            else { statusLabel = '⏳ Belum Bayar'; statusClass = 'full'; }
+            if (hargaProgram > 0 && dibayar >= hargaProgram) { statusLabel = '<i class="fa-solid fa-circle-check"></i> Lunas'; statusClass = 'available'; }
+            else if (dibayar > 0) { statusLabel = '<i class="fa-solid fa-arrows-rotate"></i> Cicilan'; statusClass = 'limited'; }
+            else { statusLabel = '<i class="fa-solid fa-hourglass-half"></i> Belum Bayar'; statusClass = 'full'; }
 
             return `
                 <tr style="border-bottom:1px solid var(--line);">
@@ -3199,7 +3204,7 @@ async function loadDokumenForProgram(programId) {
                                             style="width:16px;height:16px;cursor:${canEdit ? 'pointer' : 'default'};">
                                     </td>`).join('')}
                                 <td style="padding:10px 14px;border-left:1px solid var(--line);">
-                                    <span class="status-badge ${lengkap ? 'available' : 'full'}">${lengkap ? '✅ Lengkap' : '⏳ Belum Lengkap'}</span>
+                                    <span class="status-badge ${lengkap ? 'available' : 'full'}">${lengkap ? '<i class="fa-solid fa-circle-check"></i> Lengkap' : '<i class="fa-solid fa-hourglass-half"></i> Belum Lengkap'}</span>
                                 </td>
                             </tr>`;
                         }).join('')}
@@ -3351,12 +3356,12 @@ async function autoScanPosterForProgram(progId) {
 
         const mismatchCount = cxCountMismatch(progId);
         if (mismatchCount > 0) {
-            showToast(`⚠️ Crosscheck "${prog.nama}": ${mismatchCount} data tidak cocok dengan poster!`, 'error');
+            showToast(`Crosscheck "${prog.nama}": ${mismatchCount} data tidak cocok dengan poster!`, 'error');
         } else {
-            showToast(`✅ Crosscheck "${prog.nama}": semua data cocok dengan poster.`);
+            showToast(`Crosscheck "${prog.nama}": semua data cocok dengan poster.`);
         }
     } catch (err) {
-        showToast('❌ Pembacaan poster gagal: ' + err.message, 'error');
+        showToast('Pembacaan poster gagal: ' + err.message, 'error');
     } finally {
         cxScanningIds.delete(String(progId));
         delete cxOcrProgress[progId];
@@ -3456,7 +3461,7 @@ function renderCxPanel(progId) {
             const hasBoth = r.plain && r.poster;
             const isMatch = hasBoth && cxValuesMatch(r.field, r.plain, r.poster);
             const rowClass = hasBoth ? (isMatch ? 'cx-match' : 'cx-mismatch') : '';
-            const pill = hasBoth ? `<span class="cx-match-pill ${isMatch?'ok':'no'}">${isMatch?'✓ Cocok':'✗ Beda'}</span>` : `<span class="cx-match-pill skip">—</span>`;
+            const pill = hasBoth ? `<span class="cx-match-pill ${isMatch?'ok':'no'}">${isMatch?'<i class="fa-solid fa-check"></i> Cocok':'<i class="fa-solid fa-xmark"></i> Beda'}</span>` : `<span class="cx-match-pill skip">—</span>`;
             return `<div class="cx-compare-row ${rowClass}">
                 <div class="cx-compare-col"><div class="cx-compare-label"><i class="fa-solid fa-file-lines"></i> Teks</div><div class="cx-compare-val ${r.plain?'':'empty'}">${r.plain ? escapeHtml(r.plain) : '—'}</div></div>
                 <div class="cx-divider"></div>
@@ -3538,7 +3543,7 @@ function openCxEditModal(progId) {
             <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;">Ketik data yang tertera di poster untuk dibandingkan dengan data teks program.</p>
             ${adl.poster_data_source === 'ocr' && pd._raw_ocr_text ? `
             <details style="margin-bottom:16px;">
-                <summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--brand);">📄 Lihat teks mentah hasil OCR</summary>
+                <summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--brand);"><i class="fa-solid fa-file-lines"></i> Lihat teks mentah hasil OCR</summary>
                 <div style="margin-top:8px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px;font-size:11.5px;white-space:pre-wrap;max-height:140px;overflow-y:auto;">${escapeHtml(pd._raw_ocr_text)}</div>
             </details>` : ''}
             <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -3570,9 +3575,9 @@ async function saveCxPosterData(progId) {
         document.getElementById('cxEditModal').classList.remove('open');
         renderCxProgramSelector();
         renderCxPanel(progId);
-        showToast('✅ Data poster disimpan — crosscheck siap!');
+        showToast('Data poster disimpan — crosscheck siap!');
     } catch (err) {
-        showToast('❌ Gagal simpan: ' + err.message, 'error');
+        showToast('Gagal simpan: ' + err.message, 'error');
     }
 }
 
@@ -3607,7 +3612,7 @@ function renderFeaturedSection() {
 
     grid.innerHTML = featuredPrograms.map(p => `
         <div class="featured-card">
-            <div class="fc-title">⭐ ${escapeHtml(p.nama)}</div>
+            <div class="fc-title"><i class="fa-solid fa-star"></i> ${escapeHtml(p.nama)}</div>
             <div class="fc-meta">${escapeHtml(formatRupiah(p.harga_quint))} • ${escapeHtml(p.tgl)}</div>
             <div class="fc-meta" style="margin-top:4px;">${escapeHtml(p.maskapai || '')} • ${escapeHtml(p.durasi || '')}</div>
         </div>
@@ -3635,11 +3640,11 @@ async function getTgConfig() {
 async function saveTgConfig() {
     const botToken = document.getElementById('tg_bot_token')?.value.trim();
     const edgeUrl  = document.getElementById('tg_edge_url')?.value.trim();
-    if (!botToken) { showTgStatus('❌ Bot Token wajib diisi', 'err'); return; }
-    if (!edgeUrl)  { showTgStatus('❌ Edge Function URL wajib diisi', 'err'); return; }
+    if (!botToken) { showTgStatus('Bot Token wajib diisi', 'err'); return; }
+    if (!edgeUrl)  { showTgStatus('Edge Function URL wajib diisi', 'err'); return; }
     const recipients = collectTgRecipients();
-    if (!recipients.length) { showTgStatus('❌ Tambahkan minimal 1 penerima', 'err'); return; }
-    showTgStatus('⏳ Menyimpan...', 'ok');
+    if (!recipients.length) { showTgStatus('Tambahkan minimal 1 penerima', 'err'); return; }
+    showTgStatus('Menyimpan...', 'ok');
     try {
         const rows = [
             { key: 'botToken', value: botToken },
@@ -3649,9 +3654,9 @@ async function saveTgConfig() {
         const { error } = await supabaseClient.from('tg_config').upsert(rows, { onConflict: 'key' });
         if (error) throw error;
         _tgConfigCache = null;
-        showTgStatus('✅ Konfigurasi tersimpan!', 'ok');
+        showTgStatus('Konfigurasi tersimpan!', 'ok');
     } catch (err) {
-        showTgStatus('❌ Gagal simpan: ' + err.message, 'err');
+        showTgStatus('Gagal simpan: ' + err.message, 'err');
     }
 }
 
@@ -3670,7 +3675,7 @@ function collectTgRecipients() {
 async function renderTgRecipients() {
     const list = document.getElementById('tgRecipientsList');
     if (!list) return;
-    list.innerHTML = '<p style="color:var(--ink-soft);font-size:12px;">⏳ Memuat konfigurasi...</p>';
+    list.innerHTML = '<p style="color:var(--ink-soft);font-size:12px;"><i class="fa-solid fa-hourglass-half"></i> Memuat konfigurasi...</p>';
     const cfg = await getTgConfig();
     const tokenInput = document.getElementById('tg_bot_token');
     const edgeInput  = document.getElementById('tg_edge_url');
@@ -3692,9 +3697,9 @@ function addTgRecipientRow(r) {
     const row = document.createElement('div');
     row.className = 'tg-recipient-row';
     const typeOpts = [
-        { val: 'program', label: '📦 Program Baru' },
-        { val: 'jadwal', label: '📅 Jadwal Tamu' },
-        { val: 'reminder', label: '🔔 Pengingat 1 Bulan' },
+        { val: 'program', label: '<i class="fa-solid fa-box"></i> Program Baru' },
+        { val: 'jadwal', label: '<i class="fa-solid fa-calendar-days"></i> Jadwal Tamu' },
+        { val: 'reminder', label: '<i class="fa-solid fa-bell"></i> Pengingat 1 Bulan' },
     ];
     row.innerHTML = `
         <input class="tg-chat-id" placeholder="Chat ID (mis: -1001234567890)" value="${escapeHtml(r.chatId||'')}">
@@ -3709,7 +3714,9 @@ function addTgRecipientRow(r) {
 function showTgStatus(msg, type) {
     const el = document.getElementById('tgStatusMsg');
     if (!el) return;
-    el.innerHTML = `<span class="tg-status ${type}">${escapeHtml(msg)}</span>`;
+    const iconMap = { ok: 'fa-circle-check', err: 'fa-circle-exclamation' };
+    const icon = iconMap[type] || 'fa-circle-info';
+    el.innerHTML = `<span class="tg-status ${type}"><i class="fa-solid ${icon}"></i> ${escapeHtml(msg)}</span>`;
     setTimeout(() => { if (el) el.innerHTML = ''; }, 4000);
 }
 
@@ -3738,10 +3745,10 @@ async function sendTelegramNotif(message, eventType = 'program') {
                 body: JSON.stringify({ bot_token: cfg.botToken, chat_id: target.chatId, message, parse_mode: 'HTML' })
             });
             const result = await res.json().catch(() => ({}));
-            if (res.ok && result.ok !== false) logTg('✅ Terkirim ke ' + target.label, true);
-            else logTg('❌ Gagal ke ' + target.label + ': ' + (result.description || res.status), false);
+            if (res.ok && result.ok !== false) logTg('Terkirim ke ' + target.label, true);
+            else logTg('Gagal ke ' + target.label + ': ' + (result.description || res.status), false);
         } catch (err) {
-            logTg('❌ Error ke ' + target.label + ': ' + err.message, false);
+            logTg('Error ke ' + target.label + ': ' + err.message, false);
         }
     }
 }
@@ -3842,11 +3849,11 @@ async function testTgNotif() {
     const msgJadwal = `🧪 <b>TEST — Jadwal Tamu Baru</b>\n\n👤 <b>H. Budi Santoso</b>\n🏠 Asal: Ponorogo\n📅 Tanggal: Senin, 27 Januari 2027\n🕐 Jam: 09:00\n👥 Jumlah: 3 orang\n💼 Keperluan: Konsultasi Paket Umroh\n\n📌 <i>PT Amiru Haramain Indonesia</i>`;
     const msgReminder = `🔔 <b>TEST — Pengingat Program</b>\n\n🕌 <b>Umroh Spesial Akbar</b>\n📅 Tanggal Berangkat: 15 Februari 2027\n⏰ <b>Sisa 20 hari lagi!</b>\n\n📌 <i>PT Amiru Haramain Indonesia</i>\n🕐 ${waktu}`;
 
-    showTgStatus('⏳ Mengirim test...', 'ok');
+    showTgStatus('Mengirim test...', 'ok');
     await sendTelegramNotif(msgProgram, 'program');
     await sendTelegramNotif(msgJadwal, 'jadwal');
     await sendTelegramNotif(msgReminder, 'reminder');
-    showTgStatus('✅ Test selesai! Cek log di bawah.', 'ok');
+    showTgStatus('Test selesai! Cek log di bawah.', 'ok');
 }
 
 // ============================================================
