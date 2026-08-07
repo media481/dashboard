@@ -666,7 +666,7 @@
 
 <!-- ===== MODAL: KELOLA CICILAN JAMAAH ===== -->
 <div class="modal-overlay" id="cicilanModal">
-    <div class="modal-content" style="max-width:1600px;">
+    <div class="modal-content cicilan-modal-1col" style="max-width:780px;">
         <div class="modal-header">
             <h2><i class="fa-solid fa-money-bill-wave"></i> <span id="cicilanModalTitle">Kelola Cicilan</span></h2>
             <button class="modal-close" onclick="closeCicilanModal()">&times;</button>
@@ -676,12 +676,12 @@
                 <div class="cicilan-modal-main">
                     <div id="cicilanRingkasan" class="cicilan-stats"></div>
 
-                    <div style="margin-bottom:20px;">
+                    <div class="cicilan-section">
                         <div class="cicilan-section-title"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Pembayaran</div>
-                        <div id="cicilanHistoryList" style="max-height:220px;overflow-y:auto;"></div>
+                        <div id="cicilanHistoryList" class="cicilan-history"></div>
                     </div>
 
-                    <form id="cicilanForm" onsubmit="saveCicilan(event)">
+                    <form id="cicilanForm" class="cicilan-form" onsubmit="saveCicilan(event)">
                         <input type="hidden" id="cic_jamaahId" value="">
                         <div class="cicilan-section-title"><i class="fa-solid fa-circle-plus"></i> Tambah Pembayaran</div>
                         <div class="form-row">
@@ -716,19 +716,19 @@
                             </button>
                         </div>
                     </form>
-                </div>
 
-                <div class="cicilan-modal-preview" id="cicilanPreviewPanel" style="display:none;">
-                    <div class="cicilan-preview-head">
-                        <h4><i class="fa-solid fa-file-invoice"></i> <span id="cicilanPreviewTitle">Preview Nota</span></h4>
-                        <button type="button" class="modal-close" onclick="hideNotaPreviewPanel()" title="Tutup preview">&times;</button>
-                    </div>
-                    <div id="notaPreviewContent" style="display:flex;justify-content:center;overflow:hidden;"></div>
-                    <div id="notaPreviewActions">
-                        <p style="text-align:center;color:var(--ink-soft);font-size:11px;margin-top:10px;">Kode Verifikasi dibuat &amp; dicatat ke sistem audit saat Anda menekan "Unduh JPEG".</p>
-                        <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end;flex-wrap:wrap;">
-                            <button type="button" class="btn-cancel" onclick="hideNotaPreviewPanel()">Batal</button>
-                            <button type="button" class="btn-submit" id="notaPreviewDownloadBtn" onclick="confirmDownloadNotaPreview()"><i class="fa-solid fa-download"></i> Unduh JPEG</button>
+                    <div class="cicilan-modal-preview" id="cicilanPreviewPanel" style="display:none;">
+                        <div class="cicilan-preview-head">
+                            <h4><i class="fa-solid fa-file-invoice"></i> <span id="cicilanPreviewTitle">Preview Nota</span></h4>
+                            <button type="button" class="modal-close" onclick="hideNotaPreviewPanel()" title="Tutup preview">&times;</button>
+                        </div>
+                        <div id="notaPreviewContent" class="nota-preview-content"></div>
+                        <div id="notaPreviewActions">
+                            <p class="nota-preview-note">Kode Verifikasi dibuat &amp; dicatat ke sistem audit saat Anda menekan "Unduh JPEG".</p>
+                            <div class="nota-preview-actions">
+                                <button type="button" class="btn-cancel" onclick="hideNotaPreviewPanel()">Batal</button>
+                                <button type="button" class="btn-submit" id="notaPreviewDownloadBtn" onclick="confirmDownloadNotaPreview()"><i class="fa-solid fa-download"></i> Unduh JPEG</button>
+                            </div>
                         </div>
                     </div>
                 </div>
