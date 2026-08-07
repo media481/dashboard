@@ -740,17 +740,20 @@ async function renderAdminPanel() {
             <div id="adminFormContainer" class="admin-form-card" style="display:none;">
                 <div class="admin-form-head">
                     <h3><i class="fa-solid fa-file-pen"></i> <span id="adminFormTitle">Tambah Program Baru</span></h3>
-                    <button class="admin-form-close" onclick="hideAdminForm()">&times;</button>
+                    <div class="admin-form-head-actions">
+                        <button class="btn-submit-sm" onclick="saveAdminProgram()" title="Simpan (Ctrl+Enter)"><i class="fa-solid fa-save"></i> <span>Simpan</span></button>
+                        <button class="admin-form-close" onclick="hideAdminForm()" title="Batal (Esc)">&times;</button>
+                    </div>
                 </div>
                 <div class="admin-form-body">
-                    <div id="parseBroadcastBox" class="admin-broadcast-box">
-                        <div class="label"><i class="fa-solid fa-wand-magic-sparkles"></i> Auto-isi dari Teks Broadcast</div>
+                    <details id="parseBroadcastBox" class="admin-broadcast-box">
+                        <summary class="label"><i class="fa-solid fa-wand-magic-sparkles"></i> Auto-isi dari Teks Broadcast <span class="bc-hint">(opsional — klik untuk buka)</span></summary>
                         <textarea id="parseBroadcastInput" rows="3" placeholder="Paste teks broadcast program umroh di sini..."></textarea>
                         <div class="bc-actions">
                             <button onclick="parseBroadcastText()"><i class="fa-solid fa-wand-magic-sparkles"></i> Isi Otomatis</button>
                             <span id="parseStatus" style="font-size:12px;color:var(--success);font-weight:600;display:none;"></span>
                         </div>
-                    </div>
+                    </details>
 
                     <div class="admin-fieldset">
                         <div class="admin-fieldset-title"><i class="fa-solid fa-circle-info"></i> Informasi Program</div>
@@ -779,20 +782,18 @@ async function renderAdminPanel() {
 
                     <div class="admin-fieldset">
                         <div class="admin-fieldset-title"><i class="fa-solid fa-tags"></i> Harga per Kamar</div>
-                        <div class="form-row">
+                        <div class="form-row form-row-4">
                             <div class="form-group">
                                 <label>Harga Quad</label>
                                 <input type="text" id="admin_harga_quad" placeholder="Rp 35.000.000" maxlength="50">
                             </div>
                             <div class="form-group">
-                                <label>Harga Double</label>
-                                <input type="text" id="admin_harga_double" placeholder="Rp 42.000.000" maxlength="50">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
                                 <label>Harga Triple</label>
                                 <input type="text" id="admin_harga_triple" placeholder="Rp 37.500.000" maxlength="50">
+                            </div>
+                            <div class="form-group">
+                                <label>Harga Double</label>
+                                <input type="text" id="admin_harga_double" placeholder="Rp 42.000.000" maxlength="50">
                             </div>
                             <div class="form-group">
                                 <label>Harga Quint</label>
@@ -1108,14 +1109,41 @@ async function showAdminForm() {
     if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menambah program', 'error'); return; }
     await ensureAdminProgramPageReady();
     editingProgramId = null;
+    setAdminFormData({}); // bersihkan sisa data dari sesi edit sebelumnya
     document.getElementById('adminFormTitle').innerText = 'Tambah Program Baru';
     document.getElementById('adminFormContainer').style.display = 'block';
     document.getElementById('adminFormContainer').scrollIntoView({ behavior: 'smooth' });
+    focusAdminFormAndSnapshot();
 }
 
-function hideAdminForm() {
+// Simpan "snapshot" nilai form saat dibuka, untuk deteksi perubahan belum tersimpan
+let _adminFormSnapshot = '';
+function focusAdminFormAndSnapshot() {
+    setTimeout(() => {
+        document.getElementById('admin_nama')?.focus();
+        _adminFormSnapshot = JSON.stringify(getAdminFormData());
+    }, 50);
+}
+function isAdminFormDirty() {
+    const container = document.getElementById('adminFormContainer');
+    if (!container || container.style.display === 'none') return false;
+    return JSON.stringify(getAdminFormData()) !== _adminFormSnapshot;
+}
+
+function hideAdminForm(skipConfirm) {
+    if (!skipConfirm && isAdminFormDirty()) {
+        if (!confirm('Ada perubahan yang belum disimpan. Tutup form dan buang perubahan?')) return;
+    }
     document.getElementById('adminFormContainer').style.display = 'none';
 }
+
+// Shortcut keyboard saat form Tambah/Edit Program terbuka: Esc = batal, Ctrl/Cmd+Enter = simpan
+document.addEventListener('keydown', function(e) {
+    const container = document.getElementById('adminFormContainer');
+    if (!container || container.style.display === 'none') return;
+    if (e.key === 'Escape') { hideAdminForm(); }
+    else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); saveAdminProgram(); }
+});
 
 function getAdminFormData() {
     return {
@@ -1145,6 +1173,17 @@ function getAdminFormData() {
 function setAdminFormData(data) {
     document.getElementById('admin_nama').value = data.nama || '';
     document.getElementById('admin_tgl').value = data.tgl || '';
+    const dateInput = document.getElementById('admin_tgl_date');
+    if (dateInput) {
+        if (data.tgl) {
+            const parsed = parseDateFromString(data.tgl);
+            dateInput.value = (parsed && !isNaN(parsed.getTime()))
+                ? `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`
+                : '';
+        } else {
+            dateInput.value = '';
+        }
+    }
     document.getElementById('admin_durasi').value = data.durasi || '';
     if (data.maskapai) document.getElementById('admin_maskapai').value = data.maskapai;
     document.getElementById('admin_harga_quint').value = data.harga_quint || '';
@@ -1274,7 +1313,7 @@ async function saveAdminProgram() {
         const savedRow = (result.data && result.data[0]) || (isEdit ? { id: editingProgramId } : null);
 
         showToast(editingProgramId ? 'Program berhasil diperbarui' : 'Program berhasil ditambahkan');
-        hideAdminForm();
+        hideAdminForm(true);
         await loadDataFromSupabase(true);
         await renderAdminPanel();
 
@@ -1307,6 +1346,7 @@ async function editAdminProgram(id) {
     document.getElementById('adminFormTitle').innerText = 'Edit Program';
     document.getElementById('adminFormContainer').style.display = 'block';
     document.getElementById('adminFormContainer').scrollIntoView({ behavior: 'smooth' });
+    focusAdminFormAndSnapshot();
 }
 
 async function deleteProgramById(id) {

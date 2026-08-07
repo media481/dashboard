@@ -507,14 +507,23 @@
         .btn-logout:hover { background: var(--danger); color: #fff; }
 
         .admin-form-card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; margin-bottom: 20px; overflow: hidden; animation: fadeIn .2s ease; }
-        .admin-form-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--line); background: var(--bg); }
+        .admin-form-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--line); background: var(--bg); position: sticky; top: 0; z-index: 5; }
         .admin-form-head h3 { font-family: 'Space Grotesk'; font-size: 15.5px; display: flex; align-items: center; gap: 8px; }
+        .admin-form-head-actions { display: flex; align-items: center; gap: 8px; }
+        .btn-submit-sm { background: var(--brand); color: #fff; border: none; padding: 7px 14px; border-radius: 8px; font-weight: 600; font-size: 12.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background .15s; }
+        .btn-submit-sm:hover { background: var(--brand-deep); }
+        .btn-submit-sm span { display: inline; }
+        @media (max-width: 480px) { .btn-submit-sm span { display: none; } .btn-submit-sm { padding: 8px 10px; } }
         .admin-form-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--ink-soft); width: 28px; height: 28px; border-radius: 8px; transition: all .15s; line-height: 1; }
         .admin-form-close:hover { background: var(--line); color: var(--ink); }
         .admin-form-body { padding: 20px; }
         .admin-broadcast-box { background: var(--success-tint); padding: 14px; border-radius: 12px; margin-bottom: 22px; border: 1px solid #bbf7d0; }
-        .admin-broadcast-box .label { font-size: 12px; font-weight: 700; color: var(--success); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-        .admin-broadcast-box textarea { width: 100%; padding: 9px 12px; border: 1px solid #86efac; border-radius: 8px; font-size: 12.5px; resize: vertical; font-family: inherit; background: #fff; }
+        .admin-broadcast-box .label { font-size: 12px; font-weight: 700; color: var(--success); margin-bottom: 0; display: flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; user-select: none; }
+        .admin-broadcast-box .label::-webkit-details-marker { display: none; }
+        .admin-broadcast-box .label::after { content: '\f078'; font-family: 'Font Awesome 6 Free'; font-weight: 900; font-size: 10px; margin-left: auto; opacity: .7; transition: transform .15s; }
+        .admin-broadcast-box[open] .label::after { transform: rotate(180deg); }
+        .admin-broadcast-box .bc-hint { font-weight: 500; color: var(--ink-soft); text-transform: none; letter-spacing: 0; font-size: 11px; }
+        .admin-broadcast-box textarea { width: 100%; padding: 9px 12px; border: 1px solid #86efac; border-radius: 8px; font-size: 12.5px; resize: vertical; font-family: inherit; background: #fff; margin-top: 10px; }
         .admin-broadcast-box .bc-actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
         .admin-broadcast-box .bc-actions button { background: var(--success); color: #fff; border: none; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 
@@ -865,6 +874,9 @@
         }
         .form-group textarea { resize: vertical; min-height: 60px; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-row-4 { grid-template-columns: repeat(4, 1fr); }
+        @media (max-width: 700px) { .form-row-4 { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 560px) { .form-row, .form-row-4 { grid-template-columns: 1fr; gap: 12px; } }
         .form-actions {
             display: flex;
             gap: 12px;
