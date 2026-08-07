@@ -3278,7 +3278,7 @@ function buildNotaHTML(cicilan, kodeVerifikasi) {
 
     const totalDibayarSemua = cicilanList.reduce((sum, c) => sum + Number(c.jumlah || 0), 0);
     const sisaTagihan = Math.max(hargaProgram - totalDibayarSemua, 0);
-    const jumlah = Number(cicilan.jumlah || 0);
+    const jumlah = parseRupiahToNumber(cicilan.jumlah);
     const statusLunas = hargaProgram > 0 && totalDibayarSemua >= hargaProgram;
     const lebihBayar = Math.max(totalDibayarSemua - hargaProgram, 0);
 
@@ -3604,7 +3604,7 @@ function updateLiveNotaDraft() {
     if (notaPreviewPending && notaPreviewPending.type !== 'draft') return;
 
     const tanggal = document.getElementById('cic_tanggal')?.value || '';
-    const jumlah = parseInt(document.getElementById('cic_jumlah')?.value, 10) || 0;
+    const jumlah = parseRupiahToNumber(document.getElementById('cic_jumlah')?.value);
     const metode = document.getElementById('cic_metode')?.value || '';
     const keterangan = document.getElementById('cic_keterangan')?.value.trim() || '';
 
