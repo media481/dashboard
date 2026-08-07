@@ -1099,20 +1099,32 @@
         /* ===== MODAL: KELOLA CICILAN ===== */
         /* [REDESIGN v2] Header modal dibuat tetap terlihat (tidak ikut scroll)
            supaya total/sisa tagihan & tombol Tutup selalu terjangkau meski
-           riwayat pembayarannya panjang. Hanya .modal-body yang scroll. */
-        .cicilan-modal-1col { max-width: 780px; display: flex; flex-direction: column; overflow: hidden; }
+           riwayat pembayarannya panjang. Hanya .modal-body yang scroll.
+           [REDESIGN v3] Preview nota dipindah jadi kolom kanan (bukan di
+           bawah form) supaya waktu ngisi form, notanya langsung kelihatan
+           di samping tanpa perlu scroll — dan tetap "nempel" (sticky) saat
+           riwayat pembayaran di kolom kiri di-scroll. Di layar sempit
+           otomatis balik jadi satu kolom (preview pindah ke bawah). */
+        .cicilan-modal-1col { max-width: 1140px; display: flex; flex-direction: column; overflow: hidden; }
         .cicilan-modal-1col .modal-header { flex-shrink: 0; }
         .cicilan-modal-1col .modal-body { overflow-y: auto; flex: 1 1 auto; min-height: 0; }
-        .cicilan-modal-layout { display: block; }
-        .cicilan-modal-main { width: 100%; flex: 1 1 100%; }
+        .cicilan-modal-layout { display: flex; align-items: flex-start; gap: 24px; }
+        .cicilan-modal-main { flex: 1 1 0; min-width: 0; }
         .cicilan-modal-preview {
-            width: 100%;
+            width: 440px;
+            flex-shrink: 0;
             min-width: 0;
-            margin-top: 22px;
+            margin-top: 0;
+            position: sticky;
+            top: 0;
             background: var(--bg);
             border: 1px solid var(--line);
             border-radius: var(--radius);
             padding: 20px;
+        }
+        @media (max-width: 960px) {
+            .cicilan-modal-layout { display: block; }
+            .cicilan-modal-preview { width: 100%; margin-top: 22px; position: static; }
         }
         .cicilan-preview-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
         .cicilan-preview-head h4 { font-size: 14px; display: flex; align-items: center; gap: 8px; }
