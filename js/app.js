@@ -1931,44 +1931,117 @@ async function loadPendaftaran() {
     }
 }
 
+// ========== FORM PENDAFTARAN: state untuk search/filter/pagination ==========
+// Data tetap sepenuhnya di pendaftaranList (dimuat sekali dari server);
+// pencarian, filter status, dan pagination semuanya dikerjakan di sisi
+// klien supaya tetap ringan walau datanya sampai ratusan baris.
+let pfSearchTerm = '';
+let pfStatusFilterVal = '';
+let pfCurrentPage = 1;
+const PF_PAGE_SIZE = 25;
+
+function handlePfSearchInput(val) {
+    pfSearchTerm = val;
+    pfCurrentPage = 1;
+    renderPendaftaranSection();
+}
+
+function handlePfStatusFilter(val) {
+    pfStatusFilterVal = val;
+    pfCurrentPage = 1;
+    renderPendaftaranSection();
+}
+
+function goToPfPage(page) {
+    pfCurrentPage = page;
+    renderPendaftaranSection();
+}
+
+function getFilteredPendaftaran() {
+    const term = pfSearchTerm.trim().toLowerCase();
+    return pendaftaranList.filter(p => {
+        if (pfStatusFilterVal && (p.status || 'baru') !== pfStatusFilterVal) return false;
+        if (!term) return true;
+        const program = dataUmroh.find(x => String(x.id) === String(p.program_id));
+        const haystack = [p.nama, program ? program.nama : '', p.asal, p.wa].join(' ').toLowerCase();
+        return haystack.includes(term);
+    });
+}
+
+function renderPfPagination(totalItems) {
+    const el = document.getElementById('pfPagination');
+    if (!el) return;
+    const totalPages = Math.max(1, Math.ceil(totalItems / PF_PAGE_SIZE));
+    if (totalPages <= 1) { el.innerHTML = ''; return; }
+    if (pfCurrentPage > totalPages) pfCurrentPage = totalPages;
+
+    let html = `<button ${pfCurrentPage === 1 ? 'disabled' : ''} onclick="goToPfPage(${pfCurrentPage - 1})" title="Sebelumnya"><i class="fa-solid fa-chevron-left"></i></button>`;
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || Math.abs(i - pfCurrentPage) <= 1) pages.push(i);
+        else if (pages[pages.length - 1] !== '...') pages.push('...');
+    }
+    pages.forEach(p => {
+        if (p === '...') html += `<span class="pf-page-ellipsis">…</span>`;
+        else html += `<button class="${p === pfCurrentPage ? 'active' : ''}" onclick="goToPfPage(${p})">${p}</button>`;
+    });
+    html += `<button ${pfCurrentPage === totalPages ? 'disabled' : ''} onclick="goToPfPage(${pfCurrentPage + 1})" title="Berikutnya"><i class="fa-solid fa-chevron-right"></i></button>`;
+    el.innerHTML = html;
+}
+
 function renderPendaftaranSection() {
-    const grid = document.getElementById('pendaftaranGrid');
-    if (!grid) return;
+    const tbody = document.getElementById('pendaftaranTableBody');
+    const countEl = document.getElementById('pfCount');
+    if (!tbody) return;
+
+    const filtered = getFilteredPendaftaran();
+    if (countEl) countEl.textContent = `${filtered.length} dari ${pendaftaranList.length} pendaftaran`;
 
     if (!pendaftaranList.length) {
-        grid.innerHTML = `<div class="pendaftaran-empty"><i class="fa-solid fa-clipboard-list"></i>Belum ada pendaftaran. Klik "Tambah Pendaftaran" untuk menambahkan.</div>`;
+        tbody.innerHTML = `<tr><td colspan="7"><div class="pf-empty"><i class="fa-solid fa-clipboard-list"></i>Belum ada pendaftaran. Klik "Tambah Pendaftaran" untuk menambahkan.</div></td></tr>`;
+        renderPfPagination(0);
+        return;
+    }
+    if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="7"><div class="pf-empty"><i class="fa-solid fa-magnifying-glass"></i>Tidak ada pendaftaran yang cocok dengan pencarian/filter.</div></td></tr>`;
+        renderPfPagination(0);
         return;
     }
 
     const statusMap = {
-        baru: { label: '<i class="fa-solid fa-circle-plus"></i> Baru', badge: 'limited' },
-        dihubungi: { label: '<i class="fa-solid fa-arrows-rotate"></i> Dihubungi', badge: 'limited' },
-        deal: { label: '<i class="fa-solid fa-circle-check"></i> Deal', badge: 'available' },
-        batal: { label: '<i class="fa-solid fa-circle-xmark"></i> Batal', badge: 'full' }
+        baru: { label: 'Baru', icon: 'fa-circle-plus' },
+        dihubungi: { label: 'Dihubungi', icon: 'fa-arrows-rotate' },
+        deal: { label: 'Deal', icon: 'fa-circle-check' },
+        batal: { label: 'Batal', icon: 'fa-circle-xmark' }
     };
 
-    grid.innerHTML = pendaftaranList.map(p => {
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PF_PAGE_SIZE));
+    if (pfCurrentPage > totalPages) pfCurrentPage = totalPages;
+    const start = (pfCurrentPage - 1) * PF_PAGE_SIZE;
+    const pageItems = filtered.slice(start, start + PF_PAGE_SIZE);
+
+    tbody.innerHTML = pageItems.map(p => {
         const program = dataUmroh.find(x => String(x.id) === String(p.program_id));
-        const st = statusMap[p.status] || statusMap.baru;
-        return `<div class="pendaftaran-card status-${p.status || 'baru'}">
-            <div class="jc-title">${escapeHtml(p.nama || '-')}</div>
-            <div class="jc-meta">
-                <span><i class="fa-solid fa-kaaba"></i> ${escapeHtml(program ? program.nama : 'Belum ditentukan')}</span>
-                ${p.jenis_kelamin ? `<span><i class="fa-solid fa-${p.jenis_kelamin === 'Perempuan' ? 'venus' : 'mars'}"></i> ${escapeHtml(p.jenis_kelamin)}</span>` : ''}
-                ${p.asal ? `<span><i class="fa-solid fa-location-dot"></i> ${escapeHtml(p.asal)}</span>` : ''}
-                ${p.wa ? `<span><i class="fa-solid fa-phone"></i> ${escapeHtml(p.wa)}</span>` : ''}
-            </div>
-            <div class="jc-meta" style="margin-top:4px;">
-                <span class="status-badge ${st.badge}">${st.label}</span>
-                ${p.catatan ? `<span style="color:var(--ink-soft);">${escapeHtml(p.catatan)}</span>` : ''}
-            </div>
-            <div class="jc-actions" style="margin-top:8px;display:flex;gap:6px;justify-content:flex-end;">
-                ${p.wa ? `<a href="https://wa.me/${p.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(p.nama||'')}%20kami%20dari%20PT%20Amiru%20Haramain%20Indonesia" target="_blank" style="background:#25D366;color:#fff;border:none;padding:2px 10px;border-radius:4px;font-size:11px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;"><i class="fab fa-whatsapp"></i></a>` : ''}
-                <button type="button" onclick="openPendaftaranModal('${p.id}')" style="background:var(--brand-tint);color:var(--brand);border:none;padding:2px 10px;border-radius:4px;font-size:11px;cursor:pointer;"><i class="fa-solid fa-pen"></i></button>
-                <button type="button" onclick="openDeleteModal('pendaftaran', '${p.id}', '${escapeHtml(p.nama || '').replace(/'/g, "\\'")}')" style="background:var(--danger-tint);color:var(--danger);border:none;padding:2px 10px;border-radius:4px;font-size:11px;cursor:pointer;"><i class="fa-solid fa-trash"></i></button>
-            </div>
-        </div>`;
+        const stKey = p.status || 'baru';
+        const st = statusMap[stKey] || statusMap.baru;
+        return `<tr class="status-${stKey}">
+            <td><span class="pf-name">${escapeHtml(p.nama || '-')}</span></td>
+            <td>${escapeHtml(program ? program.nama : 'Belum ditentukan')}</td>
+            <td>${p.tanggal_daftar ? escapeHtml(p.tanggal_daftar) : (p.created_at ? escapeHtml(String(p.created_at).slice(0, 10)) : '-')}</td>
+            <td>${escapeHtml(p.asal || '-')}</td>
+            <td>${p.wa ? escapeHtml(p.wa) : '-'}</td>
+            <td><span class="pf-status-pill ${stKey}"><i class="fa-solid ${st.icon}"></i> ${st.label}</span></td>
+            <td>
+                <div class="pf-actions">
+                    ${p.wa ? `<a href="https://wa.me/${p.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(p.nama||'')}%20kami%20dari%20PT%20Amiru%20Haramain%20Indonesia" target="_blank" class="pf-btn-wa" title="Hubungi via WhatsApp"><i class="fab fa-whatsapp"></i></a>` : ''}
+                    <button type="button" class="pf-btn-edit" onclick="openPendaftaranModal('${p.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+                    <button type="button" class="pf-btn-delete" onclick="openDeleteModal('pendaftaran', '${p.id}', '${escapeHtml(p.nama || '').replace(/'/g, "\\'")}')" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </td>
+        </tr>`;
     }).join('');
+
+    renderPfPagination(filtered.length);
 }
 
 function openPendaftaranModal(id = null) {

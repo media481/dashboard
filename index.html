@@ -230,15 +230,43 @@
 
                 <!-- TAB: Form Pendaftaran -->
                 <div class="tab-panel" id="tab-pendaftaran">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
                         <p style="color:var(--ink-soft);font-size:13px;">Daftar minat calon jamaah sebelum resmi masuk data Keberangkatan</p>
                         <button class="btn-primary" id="btnTambahPendaftaran" onclick="openPendaftaranModal()" style="font-size:12px;padding:6px 14px;">
                             <i class="fa-solid fa-plus"></i> Tambah Pendaftaran
                         </button>
                     </div>
-                    <div class="pendaftaran-grid" id="pendaftaranGrid">
-                        <div class="pendaftaran-empty"><i class="fa-solid fa-clipboard-list"></i>Belum ada pendaftaran.</div>
+                    <div class="pf-toolbar">
+                        <div class="pf-search-wrap">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="pfSearchInput" placeholder="Cari nama, program, asal, atau WhatsApp..." oninput="handlePfSearchInput(this.value)">
+                        </div>
+                        <select id="pfStatusFilter" onchange="handlePfStatusFilter(this.value)">
+                            <option value="">Semua Status</option>
+                            <option value="baru">Baru</option>
+                            <option value="dihubungi">Dihubungi</option>
+                            <option value="deal">Deal</option>
+                            <option value="batal">Batal</option>
+                        </select>
+                        <span class="pf-count" id="pfCount">0 pendaftaran</span>
                     </div>
+                    <div class="pf-table-wrap">
+                        <table class="pf-table">
+                            <thead>
+                                <tr>
+                                    <th>Nama</th>
+                                    <th>Program</th>
+                                    <th>Tgl Daftar</th>
+                                    <th>Asal</th>
+                                    <th>WhatsApp</th>
+                                    <th>Status</th>
+                                    <th style="text-align:right;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pendaftaranTableBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="pf-pagination" id="pfPagination"></div>
                 </div>
 
                 <!-- TAB: Keberangkatan (jamaah + pembayaran & cicilan digabung) -->

@@ -738,37 +738,142 @@
         }
         .jadwal-empty i { font-size: 28px; display: block; margin-bottom: 10px; opacity: .4; }
 
-        /* ===== FORM PENDAFTARAN ===== */
-        .pendaftaran-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-            gap: 12px;
+        /* ===== FORM PENDAFTARAN (tabel, dioptimalkan untuk ratusan baris) ===== */
+        .pf-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
         }
-        .pendaftaran-card {
-            background: var(--surface);
-            border-radius: 10px;
-            padding: 14px 15px;
+        .pf-search-wrap {
+            position: relative;
+            flex: 1 1 260px;
+            min-width: 200px;
+        }
+        .pf-search-wrap i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--ink-soft);
+            font-size: 12px;
+        }
+        .pf-search-wrap input {
+            width: 100%;
+            padding: 8px 12px 8px 32px;
             border: 1px solid var(--line);
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-family: inherit;
+            background: var(--surface);
+            outline: none;
         }
-        .pendaftaran-card .jc-title { font-weight: 600; font-size: 13.5px; color: var(--ink); margin-bottom: 6px; }
-        .pendaftaran-card .jc-meta {
+        .pf-search-wrap input:focus { border-color: var(--brand); }
+        #pfStatusFilter {
+            padding: 8px 12px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-family: inherit;
+            background: var(--surface);
+            color: var(--ink);
+            outline: none;
+        }
+        .pf-count {
             font-size: 12px;
             color: var(--ink-soft);
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 4px;
+            white-space: nowrap;
+            margin-left: auto;
         }
-        .pendaftaran-card .jc-meta i { width: 13px; text-align: center; opacity: .8; }
-        .pendaftaran-card.status-deal { border-color: var(--success); }
-        .pendaftaran-card.status-batal { opacity: .55; }
-        .pendaftaran-empty {
+        .pf-table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: var(--surface);
+        }
+        .pf-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+        .pf-table th {
+            text-align: left;
+            padding: 10px 14px;
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: .3px;
+            color: var(--ink-soft);
+            background: var(--bg);
+            white-space: nowrap;
+            border-bottom: 1px solid var(--line);
+        }
+        .pf-table td {
+            padding: 9px 14px;
+            border-bottom: 1px solid var(--line);
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        .pf-table tbody tr:last-child td { border-bottom: none; }
+        .pf-table tbody tr:hover { background: var(--bg); }
+        .pf-table tbody tr.status-batal { opacity: .5; }
+        .pf-name { font-weight: 600; color: var(--ink); }
+        .pf-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 9px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .pf-status-pill.baru { color: var(--brand); background: var(--brand-tint); }
+        .pf-status-pill.dihubungi { color: #b45309; background: #fef3c7; }
+        .pf-status-pill.deal { color: var(--success); background: var(--success-tint); }
+        .pf-status-pill.batal { color: var(--danger); background: var(--danger-tint); }
+        .pf-actions { display: flex; gap: 6px; justify-content: flex-end; }
+        .pf-actions button, .pf-actions a {
+            width: 26px;
+            height: 26px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11.5px;
+            text-decoration: none;
+        }
+        .pf-btn-wa { background: #dcfce7; color: #16a34a; }
+        .pf-btn-edit { background: var(--brand-tint); color: var(--brand); }
+        .pf-btn-delete { background: var(--danger-tint); color: var(--danger); }
+        .pf-empty {
             padding: 40px 20px;
             text-align: center;
             color: var(--ink-soft);
-            grid-column: 1 / -1;
         }
-        .pendaftaran-empty i { font-size: 28px; display: block; margin-bottom: 10px; opacity: .4; }
+        .pf-empty i { font-size: 28px; display: block; margin-bottom: 10px; opacity: .4; }
+        .pf-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+        .pf-pagination button {
+            min-width: 30px;
+            height: 30px;
+            padding: 0 8px;
+            border: 1px solid var(--line);
+            background: var(--surface);
+            border-radius: 7px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ink-soft);
+            cursor: pointer;
+        }
+        .pf-pagination button:hover { border-color: var(--brand); color: var(--brand); }
+        .pf-pagination button.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+        .pf-pagination button:disabled { opacity: .4; cursor: not-allowed; }
+        .pf-pagination .pf-page-ellipsis { color: var(--ink-soft); font-size: 12px; padding: 0 4px; }
 
         /* ===== KEBERANGKATAN ===== */
         .kb-program-selector {
