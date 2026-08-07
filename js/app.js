@@ -229,6 +229,150 @@ function generateAutoWAText(data) {
     return teks;
 }
 
+// --- Generate Caption WA pakai AI (Claude API) — diadaptasi dari tool "Generator Caption Umroh" ---
+const WA_CAPTION_LIMIT = 1024; // batas umum WA sebelum caption gambar berisiko terpotong tampilannya
+const WA_CAPTION_CONTACTS = 'wa.me/6285122336300\nwa.me/6285196241819';
+const WA_CAPTION_SYSTEM_PROMPT = `Kamu adalah copywriter marketing untuk biro umroh "Amiru Tour". Tugasmu mengubah catatan kasar/konsep program dari direktur menjadi SATU caption WhatsApp siap kirim dalam Bahasa Indonesia, mengikuti pola format berikut secara konsisten (struktur section, gaya bullet/emoji), dengan isi yang disesuaikan sepenuhnya dari konsep yang diberikan user:
+
+CONTOH POLA YANG HARUS DIIKUTI STRUKTURNYA:
+🕋 [JUDUL PROGRAM DENGAN EMOJI RELEVAN] 🕋
+📅 [Durasi] Hari: [Tanggal mulai] – [Tanggal selesai]
+[1-2 kalimat pembuka yang menarik, spesifik ke keunikan program ini — bukan kalimat generik]
+
+✈️ Fasilitas:
+✅ [Maskapai]
+✅ [Transportasi/kereta jika ada]
+✅ Hotel Madinah: [nama hotel] [bintang] ([durasi malam])
+✅ Hotel Makkah: [nama hotel] [bintang] ([durasi malam])
+✅ [fasilitas unik lain jika ada di konsep, misal city tour, tabligh akbar, dst]
+
+💰 Biaya Program:
+[Tulis tiap kategori/paket harga sesuai input, dengan format rapi per kategori kamar: Quad/Quint, Triple, Double, dst. Jika ada beberapa paket (misal upgrade hotel), buat sub-section terpisah]
+
+✅ Termasuk:
+- [list sesuai input]
+
+❌ Tidak Termasuk:
+- [list sesuai input]
+
+📞 Info & Itinerary:
+[nomor WA yang diberikan, masing-masing di baris sendiri]
+
+ATURAN KETAT:
+1. JANGAN mengubah, membulatkan, atau mengarang ulang angka harga maupun tanggal — salin persis dari input.
+2. JANGAN menambahkan section atau fasilitas yang tidak disebutkan di konsep (misal jangan mengada-adakan upgrade hotel kalau tidak ada di input).
+3. Pilih emoji header dan emoji fasilitas yang relevan dengan tema spesifik program ini (city tour, tabligh akbar, Al Ula, dst), jangan asal tempel emoji.
+4. Kalimat pembuka harus terasa ditulis khusus untuk program ini, bukan template kosong seperti "kesempatan langka beribadah di tanah suci" jika tidak relevan dengan isi konsep.
+5. Jika konsep tidak menyebutkan info tertentu (misal tidak ada kereta cepat), jangan ditulis sama sekali.
+6. Output HANYA berupa teks caption final. JANGAN ada kalimat pembuka/penutup dari kamu, JANGAN ada markdown code fence, JANGAN ada penjelasan tambahan.
+
+ATURAN PANJANG TEKS (PALING PENTING):
+WhatsApp memotong tampilan caption gambar di sekitar 1024 karakter. Target panjang caption final HARUS di bawah 900 karakter total, TANPA menghilangkan satu pun poin penting (tanggal, harga per kategori kamar, hotel, termasuk/tidak termasuk, kontak). Caranya memadatkan, bukan memotong info:
+- Kalimat pembuka maksimal 1 kalimat pendek (bukan 2), langsung ke poin unik program — atau dihilangkan total jika konsep tidak punya elemen unik untuk dipromosikan.
+- Setiap baris fasilitas/hotel/termasuk/tidak termasuk: 1 baris singkat, hindari kata sambung dan keterangan berulang (misal jarak hotel cukup "350m dari Masjid Nabawi", tidak perlu ditambah "menit jalan kaki" kalau sudah jelas).
+- Gabungkan info yang searah jadi satu baris kalau memungkinkan, tanpa membuat baris jadi terlalu panjang.
+- List "Termasuk"/"Tidak Termasuk": gunakan kata kunci singkat per poin (3-6 kata), bukan kalimat lengkap.
+- Jangan ulangi info yang sudah disebut di bagian lain (misal nama program tidak perlu disebut ulang di body).
+- Spasi/baris kosong antar section tetap dipertahankan secukupnya untuk keterbacaan, tapi jangan ada baris kosong ganda.
+- Setelah menyusun draft di kepalamu, cek ulang: kalau masih di atas 900 karakter, padatkan lagi kalimat pembuka dan baris fasilitas terlebih dahulu sebelum menyentuh data harga/tanggal/kontak (data ini tidak boleh disingkat atau dihapus).`;
+
+function waCaptionGaugeColor(pct) {
+    if (pct < 60) return 'var(--success)';
+    if (pct < 90) return 'var(--warn)';
+    return 'var(--danger)';
+}
+
+// Update indikator panjang teks di bawah textarea Teks WA (dipanggil live saat admin ngetik manual juga)
+function updateWaCaptionGauge(text) {
+    const el = document.getElementById('waCaptionGauge');
+    if (!el) return;
+    const len = (text || '').length;
+    if (!len) { el.innerHTML = ''; return; }
+    const pct = Math.min(100, (len / WA_CAPTION_LIMIT) * 100);
+    const color = waCaptionGaugeColor(pct);
+    let msg = 'Aman, jauh dari batas potong.';
+    if (len >= WA_CAPTION_LIMIT * 0.9) msg = 'Berisiko tinggi terpotong tampilan di WA.';
+    else if (len >= WA_CAPTION_LIMIT * 0.6) msg = 'Mendekati batas umum WA.';
+    el.innerHTML = `<span style="color:${color};font-weight:700;">${len} karakter</span> <span style="color:var(--ink-soft);">/ ${WA_CAPTION_LIMIT} — ${msg}</span>`;
+}
+
+// Rangkai konsep mentah dari isian form (dipakai kalau kotak "Teks Broadcast" kosong)
+function buildRawConceptFromAdminForm() {
+    const g = id => (document.getElementById(id)?.value || '').trim();
+    const nama = g('admin_nama');
+    if (!nama) return '';
+    const durasi = g('admin_durasi');
+    const tgl = g('admin_tgl') || g('admin_tgl_date');
+    const maskapai = document.getElementById('admin_maskapai')?.value || '';
+    const hotelMadinah = g('admin_hotel_madinah');
+    const hotelMakkah = g('admin_hotel_makkah');
+    const hargaQuint = g('admin_harga_quint');
+    const hargaQuad = g('admin_harga_quad');
+    const hargaTriple = g('admin_harga_triple');
+    const hargaDouble = g('admin_harga_double');
+    const termasuk = g('admin_termasuk');
+    const tidakTermasuk = g('admin_tidak_termasuk');
+
+    const lines = [`*${nama.toUpperCase()}*`];
+    if (durasi) lines.push(`Program ${durasi}`);
+    if (tgl) lines.push(`Tanggal Berangkat: ${tgl}`);
+    if (maskapai) lines.push(`*PESAWAT*\n${maskapai}`);
+    if (hotelMadinah) lines.push(`*HOTEL MADINAH*\n${hotelMadinah}`);
+    if (hotelMakkah) lines.push(`*HOTEL MEKAH*\n${hotelMakkah}`);
+    const hargaLines = [];
+    if (hargaQuint) hargaLines.push(`${hargaQuint} Quint`);
+    if (hargaQuad) hargaLines.push(`${hargaQuad} Quad`);
+    if (hargaTriple) hargaLines.push(`${hargaTriple} Triple`);
+    if (hargaDouble) hargaLines.push(`${hargaDouble} Double`);
+    if (hargaLines.length) lines.push(`*BIAYA PROGRAM*\n${hargaLines.join('\n')}`);
+    if (termasuk) lines.push(`*Termasuk*\n${termasuk}`);
+    if (tidakTermasuk) lines.push(`*Tidak Termasuk*\n${tidakTermasuk}`);
+    return lines.join('\n');
+}
+
+// Generate caption WA pakai Claude API — sumber: kotak "Teks Broadcast" kalau diisi, kalau tidak dirangkai dari field form
+async function generateCaptionAI() {
+    const btn = document.getElementById('btnGenCaptionAI');
+    const btnText = document.getElementById('btnGenCaptionAIText');
+    const teksWaEl = document.getElementById('admin_teks_wa');
+    if (!teksWaEl) return;
+
+    let raw = (document.getElementById('parseBroadcastInput')?.value || '').trim();
+    if (!raw) raw = buildRawConceptFromAdminForm();
+    if (!raw) { showToast('Isi dulu Nama Program, atau paste Teks Broadcast', 'error'); return; }
+
+    if (btn) btn.disabled = true;
+    if (btnText) btnText.textContent = 'Menyusun...';
+
+    try {
+        const userMsg = `KONSEP PROGRAM:\n${raw}\n\nNOMOR WA KONTAK YANG DIPAKAI DI BAGIAN PENUTUP:\n${WA_CAPTION_CONTACTS}`;
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                model: "claude-sonnet-4-6",
+                max_tokens: 1000,
+                system: WA_CAPTION_SYSTEM_PROMPT,
+                messages: [{ role: "user", content: userMsg }]
+            })
+        });
+        if (!response.ok) throw new Error('Gagal memanggil API (status ' + response.status + ')');
+        const data = await response.json();
+        const result = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+        if (!result) throw new Error('Tidak ada hasil teks dari model.');
+
+        teksWaEl.value = result;
+        updateWaCaptionGauge(result);
+        showToast('Caption WA berhasil dibuat dengan AI');
+    } catch (err) {
+        console.error(err);
+        showToast('Gagal generate caption: ' + err.message, 'error');
+    } finally {
+        if (btn) btn.disabled = false;
+        if (btnText) btnText.textContent = 'Generate dengan AI';
+    }
+}
+
 // ============================================================
 // 5. TAB SWITCHING
 // ============================================================
@@ -968,8 +1112,14 @@ async function renderAdminPanel() {
                             <textarea id="admin_catatan_cx" rows="2" placeholder="Catatan internal..." maxlength="500"></textarea>
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
-                            <label>Teks WA</label>
-                            <textarea id="admin_teks_wa" rows="4" placeholder="Kosongkan untuk generate otomatis" maxlength="5000"></textarea>
+                            <div class="teks-wa-label-row">
+                                <label style="margin-bottom:0;">Teks WA</label>
+                                <button type="button" class="btn-ai-caption" id="btnGenCaptionAI" onclick="generateCaptionAI()">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i> <span id="btnGenCaptionAIText">Generate dengan AI</span>
+                                </button>
+                            </div>
+                            <textarea id="admin_teks_wa" rows="4" placeholder="Kosongkan untuk generate otomatis, atau klik Generate dengan AI" maxlength="5000" oninput="updateWaCaptionGauge(this.value)"></textarea>
+                            <div id="waCaptionGauge" class="wa-caption-gauge"></div>
                         </div>
                     </div>
                 </div>
@@ -1400,6 +1550,7 @@ function setAdminFormData(data) {
     document.getElementById('admin_tidak_termasuk').value = data.tidak_termasuk || '';
     document.getElementById('admin_catatan_cx').value = data.catatan_cx || '';
     document.getElementById('admin_teks_wa').value = data.teks_wa || '';
+    updateWaCaptionGauge(data.teks_wa || '');
 }
 
 // Guard: hanya role 'admin' & 'user' yang boleh tambah/edit/hapus data program
@@ -1708,6 +1859,7 @@ function parseBroadcastText() {
         tidak_termasuk: tidak_termasuk.join('\n')
     };
     document.getElementById('admin_teks_wa').value = generateAutoWAText(parsedData);
+    updateWaCaptionGauge(document.getElementById('admin_teks_wa').value);
 
     const parts = [];
     if (nama) parts.push('Nama');
