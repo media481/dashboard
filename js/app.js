@@ -680,6 +680,7 @@ function getAdminLoginBoxHtml() {
 
 const ADMIN_SUBTAB_META = {
     program: { title: 'Edit & Tambah Program', subtitle: 'Kelola data program umroh' },
+    pembayaran: { title: 'Pembayaran', subtitle: 'Kelola pembayaran biaya umroh seluruh jamaah' },
     crosscheck: { title: 'Crosscheck', subtitle: 'Bandingkan poster dengan data program yang tersimpan' },
     telegram: { title: 'Telegram', subtitle: 'Atur notifikasi otomatis ke grup/chat Telegram' },
     auditnota: { title: 'Audit Nota', subtitle: 'Log audit setiap nota yang diterbitkan — append-only, tidak bisa diubah' },
@@ -707,6 +708,7 @@ function switchAdminSubTab(name) {
     }
     if (name === 'telegram') { renderTgRecipients(); }
     if (name === 'auditnota') { loadNotaAuditLog(true); }
+    if (name === 'pembayaran') { renderPembayaranPanel(); }
 }
 
 async function renderAdminPanel() {
@@ -910,6 +912,49 @@ async function renderAdminPanel() {
             </div>
 
             ${isAdmin ? `
+            <div class="admin-subtab-panel" id="adminSubTab-pembayaran" style="display:none;">
+                <div class="admin-section-header">
+                    <div><h4><i class="fa-solid fa-money-bill-wave"></i> Pembayaran Biaya Umroh</h4>
+                    <p>Pantau & kelola cicilan/pelunasan biaya umroh seluruh jamaah dari semua program</p></div>
+                </div>
+                <div class="cx-stats-bar" id="pbStatsBar"></div>
+                <div class="admin-toolbar">
+                    <input type="text" id="pbSearchInput" placeholder="Cari nama jamaah / NIK / paspor..." style="flex:1;min-width:220px;" oninput="renderPembayaranPanel()">
+                    <select id="pbFilterProgram" onchange="renderPembayaranPanel()" style="min-width:180px;">
+                        <option value="">Semua Program</option>
+                    </select>
+                    <select id="pbFilterStatus" onchange="renderPembayaranPanel()" style="min-width:160px;">
+                        <option value="">Semua Status</option>
+                        <option value="lunas">Lunas</option>
+                        <option value="cicilan">Cicilan</option>
+                        <option value="belum">Belum Bayar</option>
+                    </select>
+                </div>
+                <div class="admin-table-card">
+                    <div class="admin-table-head">
+                        <h4>Daftar Pembayaran Jamaah</h4>
+                        <span class="count" id="pbCount">0 jamaah</span>
+                    </div>
+                    <div class="admin-table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nama Jamaah</th>
+                                    <th>Program</th>
+                                    <th>Total Tagihan</th>
+                                    <th>Dibayar</th>
+                                    <th>Sisa</th>
+                                    <th>Progres</th>
+                                    <th>Status</th>
+                                    <th style="text-align:right;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pbTableBody"><tr><td colspan="8" style="text-align:center;padding:24px;color:var(--ink-soft);">Memuat...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <div class="admin-subtab-panel" id="adminSubTab-crosscheck" style="display:none;">
                 <div class="admin-section-header">
                     <div><h4><i class="fa-solid fa-magnifying-glass-chart"></i> Crosscheck Data Program</h4>
@@ -2642,6 +2687,133 @@ function renderCicilanHistory() {
 }
 
 // ============================================================
+// 19B2. MENU "PEMBAYARAN" (admin) — daftar pembayaran seluruh jamaah dari
+// semua program dalam satu tabel, terpisah dari tab Keberangkatan yang
+// per-program. Pakai ulang modal Kelola Cicilan (openCicilanModal) yang sama.
+// ============================================================
+async function renderPembayaranPanel() {
+    const tbody = document.getElementById('pbTableBody');
+    if (!tbody) return; // panel belum/tidak sedang dibuka
+
+    // Isi dropdown filter program (sekali saja, pertahankan pilihan yang sedang aktif)
+    const progSelect = document.getElementById('pbFilterProgram');
+    if (progSelect && progSelect.options.length <= 1) {
+        progSelect.innerHTML = '<option value="">Semua Program</option>' +
+            (dataUmroh || []).map(p => `<option value="${p.id}">${escapeHtml(p.nama)}</option>`).join('');
+    }
+
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--ink-soft);">Memuat...</td></tr>`;
+
+    try {
+        // Selalu ambil data jamaah terbaru supaya sinkron dengan perubahan di tab Keberangkatan
+        await loadKbJamaah();
+
+        const jamaahAll = kbJamaahList || [];
+        if (!jamaahAll.length) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--ink-soft);">Belum ada data jamaah.</td></tr>`;
+            document.getElementById('pbStatsBar').innerHTML = '';
+            document.getElementById('pbCount').textContent = '0 jamaah';
+            return;
+        }
+
+        const jamaahIds = jamaahAll.map(j => j.id);
+        const { data: bayarData, error: bErr } = await withRetry(
+            () => supabaseClient.from('pembayaran_jamaah').select('jamaah_id, jumlah').in('jamaah_id', jamaahIds),
+            { label: 'Muat data pembayaran' }
+        );
+        if (bErr) throw bErr;
+
+        const totalPerJamaah = {};
+        (bayarData || []).forEach(b => {
+            totalPerJamaah[b.jamaah_id] = (totalPerJamaah[b.jamaah_id] || 0) + Number(b.jumlah || 0);
+        });
+
+        const search = (document.getElementById('pbSearchInput')?.value || '').trim().toLowerCase();
+        const filterProgram = document.getElementById('pbFilterProgram')?.value || '';
+        const filterStatus = document.getElementById('pbFilterStatus')?.value || '';
+
+        let rowsData = jamaahAll.map(j => {
+            const program = dataUmroh.find(p => String(p.id) === String(j.program_id));
+            const hargaProgram = parseRupiahToNumber(program ? program.harga_quint : 0);
+            const dibayar = totalPerJamaah[j.id] || 0;
+            const sisa = Math.max(hargaProgram - dibayar, 0);
+            const pct = hargaProgram > 0 ? Math.min(100, Math.round((dibayar / hargaProgram) * 100)) : 0;
+            let status = 'belum';
+            if (hargaProgram > 0 && dibayar >= hargaProgram) status = 'lunas';
+            else if (dibayar > 0) status = 'cicilan';
+            return { j, program, hargaProgram, dibayar, sisa, pct, status };
+        });
+
+        if (filterProgram) rowsData = rowsData.filter(r => String(r.j.program_id) === String(filterProgram));
+        if (filterStatus) rowsData = rowsData.filter(r => r.status === filterStatus);
+        if (search) {
+            rowsData = rowsData.filter(r =>
+                (r.j.nama || '').toLowerCase().includes(search) ||
+                (r.j.nik || '').toLowerCase().includes(search) ||
+                (r.j.paspor || '').toLowerCase().includes(search)
+            );
+        }
+
+        // Prioritaskan yang masih punya sisa tagihan terbesar supaya admin gampang follow-up
+        rowsData.sort((a, b) => b.sisa - a.sisa);
+
+        const grandTagihan = rowsData.reduce((s, r) => s + r.hargaProgram, 0);
+        const grandDibayar = rowsData.reduce((s, r) => s + r.dibayar, 0);
+        const grandSisa = Math.max(grandTagihan - grandDibayar, 0);
+        const totalLunas = rowsData.filter(r => r.status === 'lunas').length;
+        const totalBelum = rowsData.filter(r => r.status === 'belum').length;
+
+        document.getElementById('pbStatsBar').innerHTML = `
+            <span class="status-badge available">${rowsData.length} Jamaah</span>
+            <span class="status-badge available">${totalLunas} Lunas</span>
+            <span class="status-badge limited">${rowsData.length - totalLunas - totalBelum} Cicilan</span>
+            <span class="status-badge full">${totalBelum} Belum Bayar</span>
+            <span class="status-badge available">Dibayar: ${formatRupiah(grandDibayar)}</span>
+            <span class="status-badge full">Sisa: ${formatRupiah(grandSisa)}</span>
+        `;
+        document.getElementById('pbCount').textContent = `${rowsData.length} jamaah`;
+
+        if (!rowsData.length) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--ink-soft);">Tidak ada data yang cocok dengan filter/pencarian.</td></tr>`;
+            return;
+        }
+
+        const canEdit = canManageProgramData();
+        tbody.innerHTML = rowsData.map(r => {
+            let statusLabel, statusClass;
+            if (r.status === 'lunas') { statusLabel = '<i class="fa-solid fa-circle-check"></i> Lunas'; statusClass = 'available'; }
+            else if (r.status === 'cicilan') { statusLabel = '<i class="fa-solid fa-arrows-rotate"></i> Cicilan'; statusClass = 'limited'; }
+            else { statusLabel = '<i class="fa-solid fa-hourglass-half"></i> Belum Bayar'; statusClass = 'full'; }
+
+            return `
+                <tr>
+                    <td><strong>${escapeHtml(r.j.nama || '-')}</strong>${r.j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(r.j.asal)}</span>` : ''}</td>
+                    <td>${escapeHtml(r.program ? r.program.nama : '-')}</td>
+                    <td style="white-space:nowrap;">${formatRupiah(r.hargaProgram)}</td>
+                    <td style="white-space:nowrap;color:var(--success);font-weight:600;">${formatRupiah(r.dibayar)}</td>
+                    <td style="white-space:nowrap;color:${r.sisa > 0 ? 'var(--danger)' : 'var(--ink-soft)'};font-weight:600;">${formatRupiah(r.sisa)}</td>
+                    <td style="min-width:110px;">
+                        <div style="background:var(--line);border-radius:6px;height:8px;overflow:hidden;">
+                            <div style="background:var(--brand);height:100%;width:${r.pct}%;"></div>
+                        </div>
+                        <span style="font-size:10px;color:var(--ink-soft);">${r.pct}%</span>
+                    </td>
+                    <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                    <td style="text-align:right;white-space:nowrap;">
+                        <button class="btn-primary btn-pay" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${r.j.id}')" ${!canEdit ? 'disabled title="Tidak punya izin"' : ''}>
+                            <i class="fa-solid fa-money-bill-wave"></i> Bayar
+                        </button>
+                    </td>
+                </tr>`;
+        }).join('');
+
+    } catch (err) {
+        console.error('Render pembayaran panel error:', err);
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--danger);">Gagal memuat data: ${escapeHtml(err.message)}</td></tr>`;
+    }
+}
+
+// ============================================================
 // 19C. NOTA PEMBAYARAN (bukti bayar per cicilan, unduh sebagai JPEG)
 // Dirender di kontainer tersembunyi #notaRenderArea lalu di-snapshot
 // pakai html2canvas jadi gambar JPEG yang bisa diunduh/dikirim ke jamaah.
@@ -3305,6 +3477,7 @@ async function saveCicilan(e) {
         await syncJamaahStatus(jamaahId);
         await loadCicilanHistory(jamaahId);
         if (kbSelectedProgram) await loadKbJamaahForProgram(kbSelectedProgram);
+        if (adminSubTab === 'pembayaran') await renderPembayaranPanel();
 
     } catch (err) {
         console.error('Save cicilan error:', err);
@@ -3327,6 +3500,7 @@ async function afterDeleteCicilan(jamaahId) {
     await syncJamaahStatus(jamaahId);
     await loadCicilanHistory(jamaahId);
     if (kbSelectedProgram) await loadKbJamaahForProgram(kbSelectedProgram);
+    if (adminSubTab === 'pembayaran') await renderPembayaranPanel();
 }
 
 // Sinkronkan kolom status di kb_jamaah (lunas/dp/pending) berdasarkan total
