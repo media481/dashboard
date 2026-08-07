@@ -642,6 +642,30 @@
         .table-container tbody tr:last-child td { border-bottom: none; }
         .table-container tbody tr:hover { background: #FAFBF9; }
 
+        /* 3 program dengan keberangkatan paling dekat */
+        .table-container tbody tr.row-nearest-departure {
+            background: linear-gradient(90deg, var(--warn-tint) 0%, rgba(251,235,217,.25) 60%, transparent 100%);
+            box-shadow: inset 3px 0 0 var(--warn);
+        }
+        .table-container tbody tr.row-nearest-departure:hover {
+            background: linear-gradient(90deg, #F7E0BE 0%, #FAFBF9 100%);
+        }
+        .nearest-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .02em;
+            padding: 2px 8px;
+            border-radius: 20px;
+            background: var(--warn);
+            color: #fff;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+        .nearest-badge i { font-size: 9px; }
+
         /* Status Badge */
         .status-badge {
             display: inline-flex;

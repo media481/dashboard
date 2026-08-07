@@ -380,6 +380,20 @@ function renderProgramLinkBtn(url, label, iconClass) {
 // ============================================================
 // 9. RENDER TABLE
 // ============================================================
+// Ambil ID 3 program dengan tanggal keberangkatan paling dekat (yang belum
+// lewat / masih tersedia). Dihitung dari seluruh dataUmroh yang aktif, jadi
+// hasilnya tetap konsisten meski tabel sedang di-search/di-sort ulang oleh user.
+function getNearestDepartureIds(count = 3) {
+    const now = new Date();
+    return new Set(
+        dataUmroh
+            .filter(p => p.is_active !== false && p.dateObj && p.dateObj >= now)
+            .sort((a, b) => a.dateObj - b.dateObj)
+            .slice(0, count)
+            .map(p => String(p.id))
+    );
+}
+
 function renderTable(data) {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
@@ -392,6 +406,8 @@ function renderTable(data) {
         </td></tr>`;
         return;
     }
+
+    const nearestIds = getNearestDepartureIds(3);
 
     tbody.innerHTML = data.map(item => {
         const isAvailable = item.dateObj >= now;
@@ -409,11 +425,12 @@ function renderTable(data) {
             if (!parts.length) parts.push("hari ini!");
             cdText = parts.join(" ") + (diffDays>0?" lagi":"");
         }
+        const isNearest = nearestIds.has(String(item.id));
 
-        return `<tr>
+        return `<tr class="${isNearest ? 'row-nearest-departure' : ''}">
             <td><strong>${escapeHtml(item.nama||'')}</strong></td>
             <td>${escapeHtml(formatRupiah(item.harga_quint))}</td>
-            <td>${escapeHtml(item.tgl||'-')}</td>
+            <td>${escapeHtml(item.tgl||'-')}${isNearest ? ` <span class="nearest-badge" title="Salah satu dari 3 keberangkatan terdekat"><i class="fa-solid fa-bolt"></i> Terdekat</span>` : ''}</td>
             <td>${escapeHtml(item.durasi||'-')}</td>
             <td>${escapeHtml(item.maskapai||'-')}</td>
             <td>
