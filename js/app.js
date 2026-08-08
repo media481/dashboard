@@ -45,9 +45,11 @@ function applyAuthToken(token) {
             storage: window.sessionStorage,
             autoRefreshToken: false,
             persistSession: false,
-            detectSessionInUrl: false,
-            accessToken: token || undefined
+            detectSessionInUrl: false
         },
+        // accessToken WAJIB berupa fungsi (async) yang mengembalikan JWT, bukan string langsung,
+        // dan WAJIB di level atas (bukan di dalam `auth`) — sesuai spesifikasi supabase-js v2.
+        accessToken: async () => authAccessToken || null,
         realtime: { enabled: false },
         global: { fetch: (...args) => fetch(...args) }
     });
