@@ -461,35 +461,41 @@
         .admin-page-header {
             display: flex;
             align-items: center;
-            gap: 14px;
-            margin-bottom: 28px;
+            gap: 12px;
+            margin-bottom: 18px;
             flex-wrap: wrap;
         }
         .admin-back-btn {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
             border: 1px solid var(--line);
             background: var(--surface);
             color: var(--ink);
             cursor: pointer;
-            font-size: 15px;
+            font-size: 13px;
             transition: all .15s;
             flex-shrink: 0;
         }
         .admin-back-btn:hover { background: var(--bg); border-color: var(--brand); color: var(--brand); }
+        .admin-page-header > div {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
         .admin-page-header h1 {
             font-family: 'Space Grotesk';
-            font-size: 24px;
+            font-size: 19px;
             font-weight: 700;
         }
         .admin-page-header p {
             color: var(--ink-soft);
-            font-size: 13.5px;
-            margin-top: 4px;
+            font-size: 12.5px;
+            margin-top: 0;
         }
         .admin-page-body {
             background: var(--surface);
