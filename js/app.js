@@ -36,6 +36,12 @@ let loginAttempts = 0, loginLockTime = 0;
 // Token JWT dari Edge Function login (dibutuhkan agar RLS write mengizinkan operasi).
 let authAccessToken = null, authExpiresAt = 0;
 
+// Naikkan angka ini setiap kali format/skema JWT dari login-dashboard berubah
+// (mis. saat menambah header `kid`). JWT lama yang tersimpan di sessionStorage otomatis
+// dianggap basi & dibuang, supaya browser tidak terus memakai token rusak selamanya
+// (gejalanya: semua request, termasuk baca data publik, gagal terus dengan PGRST301).
+const AUTH_TOKEN_SCHEMA_VERSION = 'v2-kid';
+
 // Set/refresh Supabase client agar membawa JWT (role authenticated) untuk operasi WRITE.
 function applyAuthToken(token) {
     authAccessToken = token;
@@ -744,6 +750,7 @@ function setAdminSession(role) {
             sessionStorage.removeItem('admin_login_time');
             sessionStorage.removeItem('admin_jwt');
             sessionStorage.removeItem('admin_jwt_exp');
+            sessionStorage.removeItem('admin_jwt_ver');
             const adminView = document.getElementById('adminPageView');
             if (adminView.style.display !== 'none') closeAdminPanel();
             renderSidebarNav();
@@ -764,16 +771,19 @@ function checkSession() {
     const savedRole = sessionStorage.getItem('admin_role');
     const savedJwt = sessionStorage.getItem('admin_jwt');
     const savedJwtExp = parseInt(sessionStorage.getItem('admin_jwt_exp') || '0', 10);
+    const savedJwtVer = sessionStorage.getItem('admin_jwt_ver');
 
     if (loggedIn === 'true' && loginTime && (Date.now() - parseInt(loginTime) < SESSION_DURATION)) {
-        // JWT sudah tidak ada / kedaluwarsa -> paksa logout penuh, jangan biarkan UI
-        // menampilkan status "login" tanpa kemampuan menulis (bikin bingung & RLS error).
-        if (!savedJwt || !savedJwtExp || Date.now() >= savedJwtExp) {
+        // JWT sudah tidak ada / kedaluwarsa / berasal dari skema lama (sebelum ada `kid`)
+        // -> paksa logout penuh, jangan biarkan UI menampilkan status "login" tanpa
+        // kemampuan menulis/membaca (bikin bingung & error PGRST301/RLS terus-menerus).
+        if (!savedJwt || !savedJwtExp || Date.now() >= savedJwtExp || savedJwtVer !== AUTH_TOKEN_SCHEMA_VERSION) {
             sessionStorage.removeItem('admin_logged_in');
             sessionStorage.removeItem('admin_role');
             sessionStorage.removeItem('admin_login_time');
             sessionStorage.removeItem('admin_jwt');
             sessionStorage.removeItem('admin_jwt_exp');
+            sessionStorage.removeItem('admin_jwt_ver');
             adminLoggedIn = false;
             currentRole = null;
             authAccessToken = null;
@@ -792,6 +802,7 @@ function checkSession() {
         sessionStorage.removeItem('admin_login_time');
         sessionStorage.removeItem('admin_jwt');
         sessionStorage.removeItem('admin_jwt_exp');
+        sessionStorage.removeItem('admin_jwt_ver');
         adminLoggedIn = false;
         currentRole = null;
         authAccessToken = null;
@@ -861,6 +872,7 @@ async function checkAdminLogin() {
             try {
                 sessionStorage.setItem('admin_jwt', result.access_token);
                 sessionStorage.setItem('admin_jwt_exp', String(authExpiresAt));
+                sessionStorage.setItem('admin_jwt_ver', AUTH_TOKEN_SCHEMA_VERSION);
             } catch (_) {}
         }
         setAdminSession(result.role);
@@ -925,6 +937,7 @@ function logoutAdmin() {
     sessionStorage.removeItem('admin_petugas_nama');
     sessionStorage.removeItem('admin_jwt');
     sessionStorage.removeItem('admin_jwt_exp');
+    sessionStorage.removeItem('admin_jwt_ver');
     if (sessionTimeout) clearTimeout(sessionTimeout);
     closeAdminPanel();
     renderSidebarNav();
