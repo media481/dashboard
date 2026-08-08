@@ -1,8 +1,8 @@
 // ============================================================
 // 1. SUPABASE CONFIG
 // ============================================================
-const SUPABASE_URL = "https://rkdhssbyqqyheczejtix.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_YzVUaQ-f53v3JId4art8zg_AQWSSMU_";
+const SUPABASE_URL = "https://asfcqbwvxomkcqzdkshf.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_j2fIyF0P1_qLsBmjFcqOQA_fVp9b-Af";
 const MASKAPAI_LIST = ["Oman Air","Saudia Airlines","Lion Air","Garuda Indonesia","Emirates","Qatar Airways","Etihad Airways","Malindo Air","Air Asia","IndiGo"];
 const CACHE_KEY = 'amiru_cached_data';
 const CACHE_TIME_KEY = 'amiru_cache_time';
