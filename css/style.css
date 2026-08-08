@@ -224,31 +224,37 @@
 
         /* ===== MAIN ===== */
         main {
-            padding: 30px 40px 60px;
+            padding: 18px 40px 60px;
             overflow-x: hidden;
         }
 
         .topbar {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 28px;
+            align-items: center;
+            margin-bottom: 18px;
             flex-wrap: wrap;
             gap: 16px;
         }
+        .topbar-left {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
         .topbar-left h1 {
             font-family: 'Space Grotesk';
-            font-size: 24px;
+            font-size: 19px;
             font-weight: 700;
         }
         .topbar-left p {
             color: var(--ink-soft);
-            font-size: 13.5px;
-            margin-top: 4px;
+            font-size: 12.5px;
+            margin-top: 0;
         }
         .topbar-actions {
             display: flex;
-            gap: 12px;
+            gap: 10px;
             align-items: center;
             flex-wrap: wrap;
         }
@@ -258,9 +264,9 @@
             gap: 8px;
             background: var(--surface);
             border: 1px solid var(--line);
-            padding: 9px 14px;
+            padding: 7px 12px;
             border-radius: 10px;
-            min-width: 200px;
+            min-width: 180px;
         }
         .search-box i { color: var(--ink-soft); font-size: 14px; }
         .search-box input {
@@ -278,7 +284,7 @@
             background: var(--brand);
             color: #fff;
             border: none;
-            padding: 9px 18px;
+            padding: 7px 16px;
             border-radius: 10px;
             font-weight: 600;
             font-size: 13px;
@@ -1558,8 +1564,9 @@
             .app { grid-template-columns: 1fr; }
             .sidebar { display: none; }
             .sidebar-collapse-btn { display: none; }
-            main { padding: 16px; }
-            .topbar { flex-direction: column; }
+            main { padding: 14px; }
+            .topbar { flex-direction: column; align-items: flex-start; }
+            .topbar-left { flex-direction: column; gap: 2px; }
             .topbar-actions { width: 100%; }
             .search-box { flex: 1; min-width: auto; }
             .metrics { grid-template-columns: 1fr 1fr; gap: 10px; }
