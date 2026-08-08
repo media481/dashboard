@@ -736,9 +736,14 @@ function setAdminSession(role) {
         if (adminLoggedIn) {
             adminLoggedIn = false;
             currentRole = null;
+            authAccessToken = null;
+            authExpiresAt = 0;
+            applyAuthToken(null);
             sessionStorage.removeItem('admin_logged_in');
             sessionStorage.removeItem('admin_role');
             sessionStorage.removeItem('admin_login_time');
+            sessionStorage.removeItem('admin_jwt');
+            sessionStorage.removeItem('admin_jwt_exp');
             const adminView = document.getElementById('adminPageView');
             if (adminView.style.display !== 'none') closeAdminPanel();
             renderSidebarNav();
@@ -747,20 +752,51 @@ function setAdminSession(role) {
     }, SESSION_DURATION);
 }
 
+// checkSession() dipanggil ulang tiap kali admin panel dibuka (mis. setelah reload halaman).
+// Status "sudah login" disimpan di sessionStorage agar bertahan lintas reload, TAPI JWT
+// (authAccessToken) cuma variabel JS biasa yang otomatis hilang saat halaman di-refresh.
+// Kalau JWT tidak ikut dipulihkan di sini, UI akan tetap menampilkan tombol admin (karena
+// adminLoggedIn=true) padahal semua request WRITE akan ditolak RLS karena role balik ke anon.
+// Makanya JWT + waktu kedaluwarsanya juga disimpan & dipulihkan lewat sessionStorage di bawah.
 function checkSession() {
     const loggedIn = sessionStorage.getItem('admin_logged_in');
     const loginTime = sessionStorage.getItem('admin_login_time');
     const savedRole = sessionStorage.getItem('admin_role');
+    const savedJwt = sessionStorage.getItem('admin_jwt');
+    const savedJwtExp = parseInt(sessionStorage.getItem('admin_jwt_exp') || '0', 10);
+
     if (loggedIn === 'true' && loginTime && (Date.now() - parseInt(loginTime) < SESSION_DURATION)) {
+        // JWT sudah tidak ada / kedaluwarsa -> paksa logout penuh, jangan biarkan UI
+        // menampilkan status "login" tanpa kemampuan menulis (bikin bingung & RLS error).
+        if (!savedJwt || !savedJwtExp || Date.now() >= savedJwtExp) {
+            sessionStorage.removeItem('admin_logged_in');
+            sessionStorage.removeItem('admin_role');
+            sessionStorage.removeItem('admin_login_time');
+            sessionStorage.removeItem('admin_jwt');
+            sessionStorage.removeItem('admin_jwt_exp');
+            adminLoggedIn = false;
+            currentRole = null;
+            authAccessToken = null;
+            authExpiresAt = 0;
+            applyAuthToken(null);
+            return;
+        }
         adminLoggedIn = true;
         currentRole = savedRole || 'admin';
+        authExpiresAt = savedJwtExp;
+        applyAuthToken(savedJwt);
         setAdminSession(currentRole);
     } else {
         sessionStorage.removeItem('admin_logged_in');
         sessionStorage.removeItem('admin_role');
         sessionStorage.removeItem('admin_login_time');
+        sessionStorage.removeItem('admin_jwt');
+        sessionStorage.removeItem('admin_jwt_exp');
         adminLoggedIn = false;
         currentRole = null;
+        authAccessToken = null;
+        authExpiresAt = 0;
+        applyAuthToken(null);
     }
 }
 
@@ -816,10 +852,16 @@ async function checkAdminLogin() {
 
     if (result && result.ok) {
         loginAttempts = 0;
-        // Pasang JWT ke Supabase client agar write diizinkan RLS
+        // Pasang JWT ke Supabase client agar write diizinkan RLS.
+        // JWT + waktu kedaluwarsanya JUGA disimpan ke sessionStorage supaya tidak hilang
+        // saat halaman di-reload (lihat checkSession() untuk pemulihannya).
         if (result.access_token) {
             applyAuthToken(result.access_token);
             authExpiresAt = result.expires_at || (Date.now() + 60 * 60 * 1000);
+            try {
+                sessionStorage.setItem('admin_jwt', result.access_token);
+                sessionStorage.setItem('admin_jwt_exp', String(authExpiresAt));
+            } catch (_) {}
         }
         setAdminSession(result.role);
         const petugasNama = document.getElementById('adminPetugasInput')?.value.trim() || '';
@@ -881,6 +923,8 @@ function logoutAdmin() {
     sessionStorage.removeItem('admin_role');
     sessionStorage.removeItem('admin_login_time');
     sessionStorage.removeItem('admin_petugas_nama');
+    sessionStorage.removeItem('admin_jwt');
+    sessionStorage.removeItem('admin_jwt_exp');
     if (sessionTimeout) clearTimeout(sessionTimeout);
     closeAdminPanel();
     renderSidebarNav();
