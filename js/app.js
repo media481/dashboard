@@ -9,16 +9,24 @@ const CACHE_TIME_KEY = 'amiru_cache_time';
 const CACHE_DURATION = 60000;
 const SESSION_DURATION = 30 * 60 * 1000;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
-// Edge Function login (mengembalikan JWT Supabase agar client bisa WRITE ke tabel
-// yang RLS-nya butuh auth.role()='authenticated'). Deploy: supabase functions deploy login-dashboard
-const LOGIN_FUNCTION_URL = SUPABASE_URL + '/functions/v1/login-dashboard';
+// [MIGRASI SUPABASE AUTH] Login sekarang lewat supabaseClient.auth.signInWithPassword()
+// langsung -- Supabase Auth yang membuat & menandatangani JWT-nya sendiri, jadi tidak
+// pernah tersandung isu kid/JWT Signing Key custom lagi. 4 role berbagi satu password
+// masing-masing lewat 4 akun tetap (lihat scripts/setup-auth-accounts.mjs).
+const ROLE_EMAILS = [
+    { email: 'admin@amiru-dashboard.internal', role: 'admin', label: 'Admin' },
+    { email: 'cs@amiru-dashboard.internal',    role: 'user',  label: 'CS / Customer Service' },
+    { email: 'user@amiru-dashboard.internal',  role: 'user',  label: 'User' },
+    { email: 'guest@amiru-dashboard.internal', role: 'guest', label: 'Guest' }
+];
+const ADMIN_CHANGE_PASSWORD_URL = SUPABASE_URL + '/functions/v1/admin-change-password';
 
 let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
         storageKey: 'amiru_supabase_auth',
         storage: window.sessionStorage,
-        autoRefreshToken: false,
-        persistSession: false,
+        autoRefreshToken: true,
+        persistSession: true,
         detectSessionInUrl: false
     },
     realtime: { enabled: false },
@@ -33,33 +41,11 @@ let dataUmroh = [], currentData = [], currentSort = { column: null, asc: true };
 let adminLoggedIn = false, currentRole = null, editingProgramId = null, adminSortColumn = null, adminSortAsc = true, adminPrograms = [];
 let debounceTimer = null, sessionTimeout = null;
 let loginAttempts = 0, loginLockTime = 0;
-// Token JWT dari Edge Function login (dibutuhkan agar RLS write mengizinkan operasi).
-let authAccessToken = null, authExpiresAt = 0;
 
 // Naikkan angka ini setiap kali format/skema JWT dari login-dashboard berubah
-// (mis. saat menambah header `kid`). JWT lama yang tersimpan di sessionStorage otomatis
-// dianggap basi & dibuang, supaya browser tidak terus memakai token rusak selamanya
-// (gejalanya: semua request, termasuk baca data publik, gagal terus dengan PGRST301).
-const AUTH_TOKEN_SCHEMA_VERSION = 'v2-kid';
-
-// Set/refresh Supabase client agar membawa JWT (role authenticated) untuk operasi WRITE.
-function applyAuthToken(token) {
-    authAccessToken = token;
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: {
-            storageKey: 'amiru_supabase_auth',
-            storage: window.sessionStorage,
-            autoRefreshToken: false,
-            persistSession: false,
-            detectSessionInUrl: false
-        },
-        // accessToken WAJIB berupa fungsi (async) yang mengembalikan JWT, bukan string langsung,
-        // dan WAJIB di level atas (bukan di dalam `auth`) — sesuai spesifikasi supabase-js v2.
-        accessToken: async () => authAccessToken || null,
-        realtime: { enabled: false },
-        global: { fetch: (...args) => fetch(...args) }
-    });
-}
+// (Dulu di sini ada applyAuthToken()/AUTH_TOKEN_SCHEMA_VERSION untuk menyuntik JWT custom
+// secara manual. Sudah tidak diperlukan: supabaseClient sekarang mengelola sesi & JWT-nya
+// sendiri lewat signInWithPassword() + persistSession/autoRefreshToken di atas.)
 let featuredIds = [];
 let jadwalList = [], editingJadwalId = null;
 let pendaftaranList = [], editingPendaftaranId = null;
@@ -721,14 +707,18 @@ function openDetailModal(programId) {
 // KEY-nya (deterministik), bukan nilai password. Verifikasi password dilakukan di
 // server lewat RPC verify_dashboard_password() (SECURITY DEFINER) — lihat
 // sql/fix_bug6_auth_rpc.sql. USER_ROLES hanya menyimpan role/label untuk UI.
+// ============================================================
+// 12. ADMIN LOGIN  [MIGRASI: Supabase Auth asli, bukan JWT custom]
+// ============================================================
+// Password TIDAK pernah dibandingkan di browser. Kita coba signInWithPassword()
+// terhadap 4 akun tetap (lihat ROLE_EMAILS) sampai salah satu cocok -- Supabase
+// Auth sendiri yang memverifikasi password & menandatangani JWT resminya, jadi
+// tidak ada lagi custom kid/JWT Signing Key yang bisa mismatch (root cause PGRST301).
 async function loadUserRoles() {
-    USER_ROLES = {
-        pass_administrator: { role: 'admin', label: 'Admin' },
-        pass_admin:         { role: 'admin', label: 'Admin' },
-        pass_cs:            { role: 'user',  label: 'CS / Customer Service' },
-        pass_user:          { role: 'user',  label: 'User' },
-        pass_guest:         { role: 'guest', label: 'Guest' }
-    };
+    // Tidak ada lagi yang perlu dimuat: role ditentukan oleh akun mana yang berhasil
+    // login (ROLE_EMAILS), bukan dibaca dari app_config. Fungsi ini dipertahankan
+    // sebagai no-op supaya pemanggil lama (mis. setelah ganti password) tetap aman.
+    USER_ROLES = {};
 }
 
 function setAdminSession(role) {
@@ -742,15 +732,10 @@ function setAdminSession(role) {
         if (adminLoggedIn) {
             adminLoggedIn = false;
             currentRole = null;
-            authAccessToken = null;
-            authExpiresAt = 0;
-            applyAuthToken(null);
+            supabaseClient.auth.signOut();
             sessionStorage.removeItem('admin_logged_in');
             sessionStorage.removeItem('admin_role');
             sessionStorage.removeItem('admin_login_time');
-            sessionStorage.removeItem('admin_jwt');
-            sessionStorage.removeItem('admin_jwt_exp');
-            sessionStorage.removeItem('admin_jwt_ver');
             const adminView = document.getElementById('adminPageView');
             if (adminView.style.display !== 'none') closeAdminPanel();
             renderSidebarNav();
@@ -760,60 +745,41 @@ function setAdminSession(role) {
 }
 
 // checkSession() dipanggil ulang tiap kali admin panel dibuka (mis. setelah reload halaman).
-// Status "sudah login" disimpan di sessionStorage agar bertahan lintas reload, TAPI JWT
-// (authAccessToken) cuma variabel JS biasa yang otomatis hilang saat halaman di-refresh.
-// Kalau JWT tidak ikut dipulihkan di sini, UI akan tetap menampilkan tombol admin (karena
-// adminLoggedIn=true) padahal semua request WRITE akan ditolak RLS karena role balik ke anon.
-// Makanya JWT + waktu kedaluwarsanya juga disimpan & dipulihkan lewat sessionStorage di bawah.
-function checkSession() {
+// Supabase Auth sendiri yang memulihkan/menyimpan JWT (persistSession: true di client init),
+// jadi kita tinggal tanya supabaseClient.auth.getSession() -- tidak perlu lagi menyimpan &
+// memvalidasi versi skema JWT secara manual di sessionStorage seperti sebelumnya.
+async function checkSession() {
     const loggedIn = sessionStorage.getItem('admin_logged_in');
     const loginTime = sessionStorage.getItem('admin_login_time');
     const savedRole = sessionStorage.getItem('admin_role');
-    const savedJwt = sessionStorage.getItem('admin_jwt');
-    const savedJwtExp = parseInt(sessionStorage.getItem('admin_jwt_exp') || '0', 10);
-    const savedJwtVer = sessionStorage.getItem('admin_jwt_ver');
 
     if (loggedIn === 'true' && loginTime && (Date.now() - parseInt(loginTime) < SESSION_DURATION)) {
-        // JWT sudah tidak ada / kedaluwarsa / berasal dari skema lama (sebelum ada `kid`)
-        // -> paksa logout penuh, jangan biarkan UI menampilkan status "login" tanpa
-        // kemampuan menulis/membaca (bikin bingung & error PGRST301/RLS terus-menerus).
-        if (!savedJwt || !savedJwtExp || Date.now() >= savedJwtExp || savedJwtVer !== AUTH_TOKEN_SCHEMA_VERSION) {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) {
+            // Sesi Supabase Auth sudah tidak ada/kedaluwarsa -> paksa logout penuh.
             sessionStorage.removeItem('admin_logged_in');
             sessionStorage.removeItem('admin_role');
             sessionStorage.removeItem('admin_login_time');
-            sessionStorage.removeItem('admin_jwt');
-            sessionStorage.removeItem('admin_jwt_exp');
-            sessionStorage.removeItem('admin_jwt_ver');
             adminLoggedIn = false;
             currentRole = null;
-            authAccessToken = null;
-            authExpiresAt = 0;
-            applyAuthToken(null);
             return;
         }
         adminLoggedIn = true;
         currentRole = savedRole || 'admin';
-        authExpiresAt = savedJwtExp;
-        applyAuthToken(savedJwt);
         setAdminSession(currentRole);
     } else {
         sessionStorage.removeItem('admin_logged_in');
         sessionStorage.removeItem('admin_role');
         sessionStorage.removeItem('admin_login_time');
-        sessionStorage.removeItem('admin_jwt');
-        sessionStorage.removeItem('admin_jwt_exp');
-        sessionStorage.removeItem('admin_jwt_ver');
         adminLoggedIn = false;
         currentRole = null;
-        authAccessToken = null;
-        authExpiresAt = 0;
-        applyAuthToken(null);
+        await supabaseClient.auth.signOut();
     }
 }
 
-// [HARDENING] Login via Edge Function login-dashboard (mengembalikan JWT Supabase).
-// Password tidak dibandingkan di browser; function memverifikasi di server lalu
-// mengembalikan JWT (role authenticated) agar RLS write mengizinkan operasi.
+// [MIGRASI] Login dengan mencoba signInWithPassword() ke tiap akun di ROLE_EMAILS
+// sampai ada yang berhasil. Ini mempertahankan UX lama (satu kolom password, role
+// otomatis terdeteksi) tanpa perlu Edge Function/JWT custom sama sekali.
 async function checkAdminLogin() {
     const pwd = document.getElementById('adminPasswordInput')?.value;
     const errorDiv = document.getElementById('adminLoginError');
@@ -834,53 +800,20 @@ async function checkAdminLogin() {
         return;
     }
 
-    // Rate-limit server-side: cek apakah identitas ini diblokir (maks 5/1 menit).
-    const ident = (navigator.userAgent || 'web') + '|' + (location.hostname || 'host');
-    try {
-        const { data: allow } = await supabaseClient.rpc('check_login_rate_limit', { p_ident: ident });
-        if (allow === false) {
-            errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Terlalu banyak percobaan. Coba lagi beberapa menit.';
-            return;
-        }
-    } catch (_) { /* rpc optional, lanjut */ }
-
-    let result;
-    try {
-        const resp = await fetch(LOGIN_FUNCTION_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
-            body: JSON.stringify({ password: pwd })
-        });
-        result = await resp.json();
-        if (!resp.ok || !result || !result.ok) throw new Error(result && result.description ? result.description : 'Login gagal');
-    } catch (err) {
-        // catat kegagalan ke rate-limit server
-        try { await supabaseClient.rpc('bump_login_failure', { p_ident: ident }); } catch (_) {}
-        console.error('checkAdminLogin error:', err);
-        errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> ' + (err.message || 'Gagal menghubungi server. Periksa koneksi.');
-        return;
+    let matched = null;
+    for (const acc of ROLE_EMAILS) {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email: acc.email, password: pwd });
+        if (!error && data?.session) { matched = acc; break; }
     }
 
-    if (result && result.ok) {
+    if (matched) {
         loginAttempts = 0;
-        // Pasang JWT ke Supabase client agar write diizinkan RLS.
-        // JWT + waktu kedaluwarsanya JUGA disimpan ke sessionStorage supaya tidak hilang
-        // saat halaman di-reload (lihat checkSession() untuk pemulihannya).
-        if (result.access_token) {
-            applyAuthToken(result.access_token);
-            authExpiresAt = result.expires_at || (Date.now() + 60 * 60 * 1000);
-            try {
-                sessionStorage.setItem('admin_jwt', result.access_token);
-                sessionStorage.setItem('admin_jwt_exp', String(authExpiresAt));
-                sessionStorage.setItem('admin_jwt_ver', AUTH_TOKEN_SCHEMA_VERSION);
-            } catch (_) {}
-        }
-        setAdminSession(result.role);
+        setAdminSession(matched.role);
         const petugasNama = document.getElementById('adminPetugasInput')?.value.trim() || '';
         try { sessionStorage.setItem('admin_petugas_nama', petugasNama); } catch (_) {}
         closeAdminPanel();
         renderSidebarNav();
-        showToast('Berhasil login sebagai ' + result.label);
+        showToast('Berhasil login sebagai ' + matched.label);
     } else {
         loginAttempts++;
         if (loginAttempts >= 5) {
@@ -894,26 +827,36 @@ async function checkAdminLogin() {
 
 
 // ============================================================
-// 12b. PENGATURAN USER (kelola password per role, admin only)
+// 12b. PENGATURAN USER (ganti password per role, admin only)
+// [MIGRASI] Lewat Edge Function admin-change-password (pakai Supabase Auth Admin
+// API asli), menggantikan RPC set_admin_password yang menulis ke app_config.
 // ============================================================
 async function saveUserSettings() {
     if (currentRole !== 'admin') { showToast('Hanya Admin yang boleh mengubah pengaturan user', 'error'); return; }
     const statusEl = document.getElementById('usSettingsStatus');
     const vals = {
-        pass_admin: document.getElementById('us_pass_admin')?.value.trim() || '',
-        pass_user: document.getElementById('us_pass_user')?.value.trim() || '',
-        pass_guest: document.getElementById('us_pass_guest')?.value.trim() || ''
+        admin: document.getElementById('us_pass_admin')?.value.trim() || '',
+        user:  document.getElementById('us_pass_user')?.value.trim() || '',
+        guest: document.getElementById('us_pass_guest')?.value.trim() || ''
     };
-    const rows = Object.entries(vals).filter(([, v]) => v).map(([key, value]) => ({ key, value }));
+    const rows = Object.entries(vals).filter(([, v]) => v);
     if (!rows.length) { if (statusEl) statusEl.innerHTML = '<span style="color:var(--ink-soft);font-size:12.5px;">Tidak ada perubahan — isi kolom yang ingin diubah.</span>'; return; }
     try {
-        for (const row of rows) {
-            const { error } = await supabaseClient.rpc('set_admin_password', { p_key: row.key, p_val: row.value });
-            if (error) throw error;
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) throw new Error('Sesi login tidak ditemukan, silakan login ulang.');
+        for (const [role, new_password] of rows) {
+            const resp = await fetch(ADMIN_CHANGE_PASSWORD_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': 'Bearer ' + session.access_token
+                },
+                body: JSON.stringify({ role, new_password })
+            });
+            const result = await resp.json();
+            if (!resp.ok || !result.ok) throw new Error(result.description || 'Gagal mengubah password');
         }
-        if (error) throw error;
-        USER_ROLES = {};
-        await loadUserRoles();
         ['us_pass_admin','us_pass_user','us_pass_guest'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
         if (statusEl) statusEl.innerHTML = '<span style="color:var(--success);font-size:12.5px;"><i class="fa-solid fa-circle-check"></i> Password berhasil disimpan.</span>';
         showToast('Pengaturan user berhasil disimpan');
@@ -924,20 +867,14 @@ async function saveUserSettings() {
     }
 }
 
-function logoutAdmin() {
+async function logoutAdmin() {
     adminLoggedIn = false;
     currentRole = null;
-    authAccessToken = null;
-    authExpiresAt = 0;
-    // kembalikan client ke anon (tanpa JWT) agar write tidak lagi diizinkan
-    applyAuthToken(null);
+    await supabaseClient.auth.signOut();
     sessionStorage.removeItem('admin_logged_in');
     sessionStorage.removeItem('admin_role');
     sessionStorage.removeItem('admin_login_time');
     sessionStorage.removeItem('admin_petugas_nama');
-    sessionStorage.removeItem('admin_jwt');
-    sessionStorage.removeItem('admin_jwt_exp');
-    sessionStorage.removeItem('admin_jwt_ver');
     if (sessionTimeout) clearTimeout(sessionTimeout);
     closeAdminPanel();
     renderSidebarNav();
@@ -952,7 +889,7 @@ let previousActiveTab = null;
 // subtab: 'program' | 'crosscheck' | 'telegram' | 'usersettings' (opsional).
 // Dipanggil dari menu sidebar "Manajemen" (admin) atau tombol "Login"/"Tambah" (tanpa param).
 async function openAdminPanel(subtab) {
-    checkSession();
+    await checkSession();
     // Snapshot otomatis harian (1x/hari) — hanya untuk admin yang benar-benar login
     if (adminLoggedIn && currentRole === 'admin') {
         maybeDailySnapshot();
@@ -5208,7 +5145,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Load data
     await loadUserRoles();
-    checkSession(); // pulihkan status login (kalau ada) sebelum render tabel utama
+    await checkSession(); // pulihkan status login (kalau ada) sebelum render tabel utama
     applyRoleUIVisibility();
     renderSidebarNav();
     await loadFeaturedIds();

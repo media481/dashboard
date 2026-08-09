@@ -1,6 +1,6 @@
     // Admin Panel (dengan cache refresh)
-    function openAdminModal() { 
-        checkSession();
+    async function openAdminModal() { 
+        await checkSession();
         document.getElementById('adminModal').classList.add('show'); 
         const pubWrapper = document.getElementById('pubTabsWrapper');
         if (pubWrapper) pubWrapper.style.display = 'none';
