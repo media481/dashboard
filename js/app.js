@@ -6718,6 +6718,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 // 23. CLOSE MODALS ON OVERLAY CLICK
 // ============================================================
 document.querySelectorAll('.modal-overlay').forEach(el => {
+    // Modal Kuitansi dikecualikan: form-nya tidak auto-save, jadi klik di luar
+    // (termasuk area gap di layout form+preview) tidak boleh menutup modal
+    // dan menghilangkan input yang sedang diisi. Harus ditutup lewat tombol
+    // X atau "Tutup" secara eksplisit.
+    if (el.id === 'kuitansiModal') return;
     el.addEventListener('click', function(e) {
         if (e.target === this) this.classList.remove('open');
     });
