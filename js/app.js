@@ -1865,6 +1865,12 @@ async function saveAdminProgram() {
 
     const formData = getAdminFormData();
 
+    // Simpan harga_quint LAMA (sebelum ditimpa) supaya setelah save berhasil
+    // bisa dideteksi apakah harganya benar-benar berubah — dipakai untuk
+    // memicu syncJamaahStatusForProgram() di bawah (lihat komentar di sana).
+    const oldProgramForPriceCheck = editingProgramId ? dataUmroh.find(p => String(p.id) === String(editingProgramId)) : null;
+    const oldHargaQuint = oldProgramForPriceCheck ? (oldProgramForPriceCheck.harga_quint || '') : '';
+
     // Validate URLs
     const urlFields = ['link_poster', 'link_itinerary', 'link_metaads', 'link_dokumentasi'];
     for (const field of urlFields) {
@@ -1899,6 +1905,14 @@ async function saveAdminProgram() {
         hideAdminForm(true);
         await loadDataFromSupabase(true);
         await renderAdminPanel();
+
+        // Kalau ini edit program & harga Quint-nya berubah, sinkronkan ulang
+        // status bayar (lunas/dp/pending) semua jamaah di program ini —
+        // dijalankan SETELAH loadDataFromSupabase supaya dataUmroh yang
+        // dipakai syncJamaahStatusForProgram() sudah berisi harga terbaru.
+        if (isEdit && editingProgramId && formData.harga_quint !== oldHargaQuint) {
+            await syncJamaahStatusForProgram(editingProgramId);
+        }
 
         // Notifikasi Telegram otomatis (dinamis: hanya terkirim jika konfigurasi Telegram sudah diisi)
         sendTelegramNotif(formatTgProgram(formData, isEdit), 'program');
@@ -4669,6 +4683,55 @@ async function syncJamaahStatus(jamaahId) {
         }
     } catch (err) {
         console.warn('Sync status jamaah gagal (non-fatal):', err);
+    }
+}
+
+// Re-sync massal: dipanggil setelah harga sebuah program diedit, supaya
+// status bayar (lunas/dp/pending) SELURUH jamaah di program itu langsung
+// disesuaikan ulang dengan harga terbaru — sebelumnya status jamaah hanya
+// ikut ter-update kalau ADA transaksi pembayaran baru ditambah/dihapus untuk
+// jamaah itu; kalau cuma harga program yang diubah (tanpa ada
+// transaksi baru), status lama tetap "nyangkut" sampai tidak sengaja
+// ter-trigger oleh pembayaran berikutnya. Query dibuat batch (bukan
+// per-jamaah looping seperti syncJamaahStatus) supaya tetap ringan walau
+// jamaah di satu program jumlahnya banyak.
+async function syncJamaahStatusForProgram(programId) {
+    try {
+        const program = dataUmroh.find(p => String(p.id) === String(programId));
+        const hargaProgram = parseRupiahToNumber(program ? program.harga_quint : 0);
+
+        const { data: jamaahRows, error: jErr } = await supabaseClient.from('kb_jamaah').select('id, status').eq('program_id', programId);
+        if (jErr || !jamaahRows || !jamaahRows.length) return;
+
+        const jamaahIds = jamaahRows.map(j => j.id);
+        const { data: bayarData, error: bErr } = await supabaseClient.from('pembayaran_jamaah').select('jamaah_id, jumlah').in('jamaah_id', jamaahIds);
+        if (bErr) return;
+
+        const totalPerJamaah = {};
+        (bayarData || []).forEach(b => {
+            totalPerJamaah[b.jamaah_id] = (totalPerJamaah[b.jamaah_id] || 0) + Number(b.jumlah || 0);
+        });
+
+        const updates = [];
+        for (const j of jamaahRows) {
+            const totalDibayar = totalPerJamaah[j.id] || 0;
+            let statusBaru;
+            if (hargaProgram > 0 && totalDibayar >= hargaProgram) statusBaru = 'lunas';
+            else if (totalDibayar > 0) statusBaru = 'dp';
+            else statusBaru = 'pending';
+            if (statusBaru !== j.status) updates.push({ id: j.id, status: statusBaru });
+        }
+        if (!updates.length) return;
+
+        await Promise.all(updates.map(u => supabaseClient.from('kb_jamaah').update({ status: u.status }).eq('id', u.id)));
+
+        await loadKbJamaah();
+        if (String(kbSelectedProgram) === String(programId)) await loadKbJamaahForProgram(programId);
+        if (adminSubTab === 'pembayaran') await renderPembayaranPanel();
+
+        showToast(`Harga program berubah — status bayar ${updates.length} jamaah disesuaikan otomatis`);
+    } catch (err) {
+        console.warn('Sync status jamaah per-program gagal (non-fatal):', err);
     }
 }
 
