@@ -27,3 +27,21 @@ alter table kb_jamaah
 
 comment on column kb_jamaah.tipe_kamar is
     'Tipe kamar yang diambil jamaah (quad/triple/double) — menentukan harga acuan tagihan dari harga_quad/harga_triple/harga_double di tabel programs. Default quad = perilaku lama (pakai harga_quint/harga_quad).';
+
+-- ============================================================
+-- Tambah kolom harga_custom di kb_jamaah
+-- ============================================================
+-- Untuk kasus jamaah dengan harga nego/khusus yang tidak mengikuti harga
+-- standar Quad/Triple/Double program (mis. diskon keluarga, harga promo,
+-- kamar sharing custom). Kalau diisi, nilai ini dipakai sebagai acuan
+-- tagihan jamaah tsb (mengalahkan tipe_kamar). Kalau kosong/NULL, sistem
+-- tetap pakai harga tipe_kamar seperti biasa. Disimpan sebagai text (bukan
+-- numeric) supaya konsisten dengan kolom harga_quad/harga_triple/harga_double
+-- di tabel programs, yang juga text (menyimpan format "Rp x.xxx.xxx").
+-- ============================================================
+
+alter table kb_jamaah
+    add column if not exists harga_custom text;
+
+comment on column kb_jamaah.harga_custom is
+    'Harga khusus/nego per jamaah (opsional). Kalau diisi, dipakai sebagai acuan tagihan menggantikan harga tipe_kamar.';

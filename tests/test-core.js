@@ -132,18 +132,28 @@ test('takeSnapshot terdefinisi', () => assert.strictEqual(typeof T.takeSnapshot,
 
 console.log('\n=== TEST: getHargaKamarJamaah (harga per tipe kamar) ===');
 const progFull = { harga_quad: 'Rp 32.500.000', harga_triple: 'Rp 37.500.000', harga_double: 'Rp 42.000.000' };
-test('quad -> harga_quad', () => assert.strictEqual(T.getHargaKamarJamaah(progFull, 'quad'), 32500000));
-test('triple -> harga_triple', () => assert.strictEqual(T.getHargaKamarJamaah(progFull, 'triple'), 37500000));
-test('double -> harga_double', () => assert.strictEqual(T.getHargaKamarJamaah(progFull, 'double'), 42000000));
-test('tipe_kamar kosong/tidak dikenal -> fallback quad', () => assert.strictEqual(T.getHargaKamarJamaah(progFull, undefined), 32500000));
-test('program null -> 0', () => assert.strictEqual(T.getHargaKamarJamaah(null, 'triple'), 0));
+test('quad -> harga_quad', () => assert.strictEqual(T.getHargaKamarJamaah(progFull, { tipe_kamar: 'quad' }), 32500000));
+test('triple -> harga_triple', () => assert.strictEqual(T.getHargaKamarJamaah(progFull, { tipe_kamar: 'triple' }), 37500000));
+test('double -> harga_double', () => assert.strictEqual(T.getHargaKamarJamaah(progFull, { tipe_kamar: 'double' }), 42000000));
+test('tipe_kamar kosong/tidak dikenal -> fallback quad', () => assert.strictEqual(T.getHargaKamarJamaah(progFull, {}), 32500000));
+test('jamaah null -> tetap fallback quad dari program', () => assert.strictEqual(T.getHargaKamarJamaah(progFull, null), 32500000));
+test('program null, jamaah null -> 0', () => assert.strictEqual(T.getHargaKamarJamaah(null, null), 0));
 test('data lama: harga_quad kosong -> fallback harga_quint', () => {
   const prog = { harga_quint: 'Rp 30.000.000' };
-  assert.strictEqual(T.getHargaKamarJamaah(prog, 'quad'), 30000000);
+  assert.strictEqual(T.getHargaKamarJamaah(prog, { tipe_kamar: 'quad' }), 30000000);
 });
 test('triple diminta tapi harga_triple belum diisi -> fallback ke quad', () => {
   const prog = { harga_quad: 'Rp 32.500.000' };
-  assert.strictEqual(T.getHargaKamarJamaah(prog, 'triple'), 32500000);
+  assert.strictEqual(T.getHargaKamarJamaah(prog, { tipe_kamar: 'triple' }), 32500000);
+});
+test('harga_custom diisi -> override, abaikan tipe_kamar & harga program', () => {
+  assert.strictEqual(T.getHargaKamarJamaah(progFull, { tipe_kamar: 'double', harga_custom: 'Rp 25.000.000' }), 25000000);
+});
+test('harga_custom diisi tapi program null -> tetap pakai harga_custom', () => {
+  assert.strictEqual(T.getHargaKamarJamaah(null, { harga_custom: 'Rp 25.000.000' }), 25000000);
+});
+test('harga_custom kosong string -> tidak override, tetap pakai tipe_kamar', () => {
+  assert.strictEqual(T.getHargaKamarJamaah(progFull, { tipe_kamar: 'triple', harga_custom: '' }), 37500000);
 });
 
 // ============================================================

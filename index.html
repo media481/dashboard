@@ -712,6 +712,13 @@
                         <small style="display:block;margin-top:4px;font-size:11px;color:var(--ink-soft);">Menentukan harga acuan tagihan jamaah ini (ambil dari harga Quad/Triple/Double program).</small>
                     </div>
                     <div class="form-group">
+                        <label>Harga Khusus <span style="font-weight:500;color:var(--ink-soft);">(opsional)</span></label>
+                        <input type="text" id="kb_harga_custom" placeholder="Kosongkan kalau ikut harga tipe kamar">
+                        <small style="display:block;margin-top:4px;font-size:11px;color:var(--ink-soft);">Isi kalau jamaah ini punya harga nego/khusus. Kalau diisi, ini akan dipakai sebagai acuan tagihan — mengabaikan harga Tipe Kamar di atas.</small>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
                         <label>Status Pembayaran</label>
                         <select id="kb_status">
                             <option value="lunas">Lunas</option>
@@ -721,8 +728,6 @@
                         </select>
                         <small style="display:block;margin-top:4px;font-size:11px;color:var(--ink-soft);">Status "Batal" dikunci — tidak akan diubah otomatis oleh sistem walau ada pembayaran/refund baru.</small>
                     </div>
-                </div>
-                <div class="form-row">
                     <div class="form-group">
                         <label>Catatan</label>
                         <input type="text" id="kb_catatan" placeholder="Catatan tambahan...">

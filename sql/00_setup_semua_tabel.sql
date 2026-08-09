@@ -81,6 +81,7 @@ create table if not exists kb_jamaah (
     wa text,
     asal text,
     tipe_kamar text not null default 'quad' check (tipe_kamar in ('quad', 'triple', 'double')),
+    harga_custom text,
     status text,
     catatan text,
     dokumen jsonb not null default '{}'::jsonb,
