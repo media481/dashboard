@@ -692,20 +692,28 @@ function openDetailModal(programId) {
     const program = dataUmroh.find(p => String(p.id) === String(programId));
     if (!program) { showToast('Program tidak ditemukan', 'error'); return; }
     const waText = program.teks_wa || generateAutoWAText(program);
-    const hargaLines = [];
-    if (program.harga_quad || program.harga_quint) hargaLines.push(`Quad: ${formatRupiah(program.harga_quad || program.harga_quint)}`);
-    if (program.harga_double) hargaLines.push(`Double: ${formatRupiah(program.harga_double)}`);
-    if (program.harga_triple) hargaLines.push(`Triple: ${formatRupiah(program.harga_triple)}`);
-    const hargaText = hargaLines.length ? hargaLines.join('\n') : formatRupiah(program.harga_quint);
+    const hargaChips = [];
+    if (program.harga_quad || program.harga_quint) hargaChips.push(`Quad ${formatRupiah(program.harga_quad || program.harga_quint)}`);
+    if (program.harga_triple) hargaChips.push(`Triple ${formatRupiah(program.harga_triple)}`);
+    if (program.harga_double) hargaChips.push(`Double ${formatRupiah(program.harga_double)}`);
+    if (!hargaChips.length) hargaChips.push(formatRupiah(program.harga_quint));
 
     document.getElementById('pdModalTitle').textContent = program.nama || 'Detail Program';
     document.getElementById('pd_tgl').textContent = program.tgl || '-';
     document.getElementById('pd_durasi').textContent = program.durasi || '-';
     document.getElementById('pd_maskapai').textContent = program.maskapai || '-';
-    document.getElementById('pd_harga').textContent = hargaText || '-';
-    document.getElementById('pd_teks_wa').value = waText || '';
+    document.getElementById('pd_harga_row').innerHTML = hargaChips.map(h => `<span class="pd-chip pd-harga-chip"><i class="bi bi-cash-coin"></i> ${escapeHtml(h)}</span>`).join('');
 
+    const ta = document.getElementById('pd_teks_wa');
+    ta.value = waText || '';
     document.getElementById('programDetailModal').classList.add('open');
+    // Reset & auto-grow textarea supaya seluruh teks WA langsung terlihat tanpa perlu scroll
+    requestAnimationFrame(() => {
+        ta.scrollTop = 0;
+        ta.style.height = 'auto';
+        ta.style.height = ta.scrollHeight + 'px';
+        document.querySelector('#programDetailModal .modal-content').scrollTop = 0;
+    });
 }
 function closeProgramDetailModal() {
     document.getElementById('programDetailModal').classList.remove('open');

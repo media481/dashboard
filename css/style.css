@@ -1113,6 +1113,33 @@
         .modal-close:hover { background: var(--bg); }
         .modal-body { padding: 24px; }
 
+        /* ===== MODAL: Detail Program / Teks WA ===== */
+        .pd-modal { max-width: 640px; }
+        .pd-body { padding: 20px 24px 24px; }
+        .pd-chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+        .pd-chip {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: var(--bg); border: 1px solid var(--line);
+            color: var(--ink); font-size: 12.5px; font-weight: 600;
+            padding: 6px 12px; border-radius: 20px; white-space: nowrap;
+        }
+        .pd-chip i { color: var(--brand); font-size: 12px; }
+        .pd-chip.pd-harga-chip { background: var(--success-tint); border-color: transparent; color: var(--success); }
+        .pd-wa-head {
+            display: flex; align-items: center; justify-content: space-between;
+            margin: 16px 0 6px; font-weight: 600; font-size: 13px; color: var(--ink);
+        }
+        .pd-wa-head button { padding: 4px 10px; font-size: 12px; }
+        .pd-wa-textarea {
+            width: 100%; box-sizing: border-box;
+            min-height: 120px; max-height: 65vh;
+            resize: vertical; overflow-y: auto;
+            white-space: pre-wrap; line-height: 1.5;
+            font-family: inherit; font-size: 13px;
+            background: var(--bg); border: 1px solid var(--line);
+            border-radius: 10px; padding: 12px 14px;
+        }
+
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 4px; color: var(--ink); }
         .form-group label .required { color: var(--danger); margin-left: 2px; }
