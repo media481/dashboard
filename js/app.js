@@ -3880,14 +3880,23 @@ function renderCompanyRekeningRows() {
     const wrap = document.getElementById('cp_rekening_list');
     if (!wrap) return;
     if (!profileRekeningDraft.length) {
-        wrap.innerHTML = `<p style="font-size:12.5px;color:var(--ink-soft);">Belum ada rekening. Klik "Tambah Rekening" di bawah.</p>`;
+        wrap.innerHTML = `<p class="cp-rekening-empty">Belum ada rekening. Klik "Tambah Rekening" di bawah.</p>`;
         return;
     }
     wrap.innerHTML = profileRekeningDraft.map((r, i) => `
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:10px;border:1px solid var(--line);border-radius:8px;">
-            <input type="text" value="${escapeHtml(r.bank || '')}" placeholder="Nama Bank" oninput="updateCompanyRekeningField(${i}, 'bank', this.value)" style="flex:1;min-width:140px;">
-            <input type="text" value="${escapeHtml(r.nomor || '')}" placeholder="Nomor Rekening" oninput="updateCompanyRekeningField(${i}, 'nomor', this.value)" style="flex:1;min-width:140px;">
-            <input type="text" value="${escapeHtml(r.an || '')}" placeholder="Atas Nama" oninput="updateCompanyRekeningField(${i}, 'an', this.value)" style="flex:1;min-width:140px;">
+        <div class="cp-rekening-row">
+            <div class="cp-rekening-field">
+                <label>Nama Bank</label>
+                <input type="text" value="${escapeHtml(r.bank || '')}" placeholder="Contoh: Bank Syariah Indonesia" oninput="updateCompanyRekeningField(${i}, 'bank', this.value)">
+            </div>
+            <div class="cp-rekening-field">
+                <label>Nomor Rekening</label>
+                <input type="text" value="${escapeHtml(r.nomor || '')}" placeholder="Contoh: 2026 64 2027" oninput="updateCompanyRekeningField(${i}, 'nomor', this.value)">
+            </div>
+            <div class="cp-rekening-field">
+                <label>Atas Nama</label>
+                <input type="text" value="${escapeHtml(r.an || '')}" placeholder="Contoh: Amiru Tour" oninput="updateCompanyRekeningField(${i}, 'an', this.value)">
+            </div>
             <button type="button" class="btn-icon-ghost danger" title="Hapus" onclick="removeCompanyRekeningRow(${i})"><i class="bi bi-trash-fill"></i></button>
         </div>
     `).join('');
