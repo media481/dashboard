@@ -315,6 +315,19 @@ function formatNominalInput(el) {
     try { el.setSelectionRange(pos, pos); } catch (_) { /* input type tanpa dukungan selection range, abaikan */ }
 }
 
+// Sama seperti formatNominalInput(), tapi ikut menambahkan prefix "Rp "
+// secara live sambil diketik (mis. "39500000" -> "Rp 39.500.000"). Dipakai
+// untuk field harga per kamar di modal Tambah/Edit Program, supaya admin
+// tinggal ketik angka polos dan formatnya otomatis muncul rapi.
+function formatRupiahInput(el) {
+    if (!el) return;
+    const cursorFromEnd = el.value.length - (el.selectionStart ?? el.value.length);
+    const digits = el.value.replace(/[^\d]/g, '');
+    el.value = digits ? 'Rp ' + parseInt(digits, 10).toLocaleString('id-ID') : '';
+    const pos = Math.max(el.value.length - cursorFromEnd, 0);
+    try { el.setSelectionRange(pos, pos); } catch (_) { /* input type tanpa dukungan selection range, abaikan */ }
+}
+
 // Pilih harga acuan tagihan seorang jamaah: kalau jamaah punya `harga_custom`
 // (nego khusus / diskon / harga custom di luar Quad-Triple-Double program),
 // itu yang dipakai. Kalau kosong, fallback ke harga tipe_kamar-nya (lihat
@@ -1487,19 +1500,19 @@ async function renderAdminPanel() {
                         <div class="form-row form-row-4">
                             <div class="form-group">
                                 <label>Harga Quad</label>
-                                <input type="text" id="admin_harga_quad" placeholder="Rp 35.000.000" maxlength="50">
+                                <input type="text" inputmode="numeric" id="admin_harga_quad" placeholder="Rp 35.000.000" maxlength="50" oninput="formatRupiahInput(this)">
                             </div>
                             <div class="form-group">
                                 <label>Harga Triple</label>
-                                <input type="text" id="admin_harga_triple" placeholder="Rp 37.500.000" maxlength="50">
+                                <input type="text" inputmode="numeric" id="admin_harga_triple" placeholder="Rp 37.500.000" maxlength="50" oninput="formatRupiahInput(this)">
                             </div>
                             <div class="form-group">
                                 <label>Harga Double</label>
-                                <input type="text" id="admin_harga_double" placeholder="Rp 42.000.000" maxlength="50">
+                                <input type="text" inputmode="numeric" id="admin_harga_double" placeholder="Rp 42.000.000" maxlength="50" oninput="formatRupiahInput(this)">
                             </div>
                             <div class="form-group">
                                 <label>Harga Quint</label>
-                                <input type="text" id="admin_harga_quint" placeholder="Rp 32.500.000" maxlength="50">
+                                <input type="text" inputmode="numeric" id="admin_harga_quint" placeholder="Rp 32.500.000" maxlength="50" oninput="formatRupiahInput(this)">
                             </div>
                         </div>
                     </div>
@@ -2113,6 +2126,11 @@ function setAdminFormData(data) {
     document.getElementById('admin_harga_quad').value = data.harga_quad || '';
     document.getElementById('admin_harga_triple').value = data.harga_triple || '';
     document.getElementById('admin_harga_double').value = data.harga_double || '';
+    // Rapikan nilai harga lama yang tersimpan plain (mis. "42500000") jadi
+    // "Rp 42.500.000" begitu modal dibuka, biar konsisten dengan hasil ketikan baru.
+    ['admin_harga_quint', 'admin_harga_quad', 'admin_harga_triple', 'admin_harga_double'].forEach(id => {
+        formatRupiahInput(document.getElementById(id));
+    });
     document.getElementById('admin_hotel_makkah').value = data.hotel_makkah || '';
     document.getElementById('admin_hotel_madinah').value = data.hotel_madinah || '';
     document.getElementById('admin_makan_makkah').value = data.makan_makkah || '';
@@ -2539,6 +2557,9 @@ function parseBroadcastText() {
     setVal('admin_harga_quad', harga_quad);
     setVal('admin_harga_triple', harga_triple);
     setVal('admin_harga_double', harga_double);
+    ['admin_harga_quint', 'admin_harga_quad', 'admin_harga_triple', 'admin_harga_double'].forEach(id => {
+        formatRupiahInput(document.getElementById(id));
+    });
     setVal('admin_hotel_makkah', hotel_makkah);
     setVal('admin_hotel_madinah', hotel_madinah);
     if (termasuk.length) setVal('admin_termasuk', termasuk.join('\n'));
