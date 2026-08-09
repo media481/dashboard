@@ -1150,6 +1150,93 @@ async function loadUserList() {
     </tr>`).join('');
 }
 
+// ============================================================
+// 12b-3. AKSES MENU SIDEBAR PER ROLE (admin only) — matrix checkbox
+// User/Guest x daftar menu di SIDEBAR_MENU_REGISTRY, disimpan ke tabel
+// role_menu_access. Dipakai oleh renderSidebarNav() (lihat bagian 12c)
+// untuk memutuskan menu sidebar mana yang tampil utk role user/guest.
+// ============================================================
+async function renderRoleMenuAccessMatrix() {
+    const wrap = document.getElementById('roleMenuAccessWrap');
+    if (!wrap) return;
+    if (currentRole !== 'admin') {
+        wrap.innerHTML = '<div style="text-align:center;padding:20px;color:var(--ink-soft);">Hanya Admin yang bisa mengatur akses menu.</div>';
+        return;
+    }
+    wrap.innerHTML = '<div style="text-align:center;padding:20px;color:var(--ink-soft);">Memuat...</div>';
+
+    const { data, error } = await supabaseClient.from('role_menu_access').select('role, menu_key, allowed');
+    if (error) {
+        const isMissingSetup = /relation .*role_menu_access.* does not exist/i.test(error.message || '');
+        wrap.innerHTML = isMissingSetup
+            ? `<div style="padding:14px;color:var(--danger);font-size:12.5px;">Setup belum lengkap: jalankan <code>sql/tambah_akses_menu_role.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.</div>`
+            : `<div style="padding:14px;color:var(--danger);font-size:12.5px;">Gagal memuat akses menu: ${escapeHtml(error.message)}</div>`;
+        return;
+    }
+
+    const current = { user: new Set(), guest: new Set() };
+    (data || []).forEach(row => { if (row.allowed && current[row.role]) current[row.role].add(row.menu_key); });
+
+    const groups = [...new Set(SIDEBAR_MENU_REGISTRY.map(m => m.group))];
+    const rowsHtml = groups.map(group => {
+        const itemsHtml = SIDEBAR_MENU_REGISTRY.filter(m => m.group === group).map(m => `
+            <tr>
+                <td style="padding:7px 10px;font-size:12px;">${escapeHtml(m.label)}</td>
+                ${SIDEBAR_MENU_CONFIGURABLE_ROLES.map(role => `
+                <td style="padding:7px 10px;text-align:center;">
+                    <input type="checkbox" class="rma-check" data-role="${role}" data-menu-key="${m.key}" ${current[role].has(m.key) ? 'checked' : ''}>
+                </td>`).join('')}
+            </tr>`).join('');
+        return `
+            <tr><td colspan="${1 + SIDEBAR_MENU_CONFIGURABLE_ROLES.length}" style="padding:10px 10px 4px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);">${escapeHtml(group)}</td></tr>
+            ${itemsHtml}`;
+    }).join('');
+
+    const roleLabelMap = { user: 'User', guest: 'Guest' };
+    wrap.innerHTML = `
+        <div class="admin-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Menu</th>
+                        ${SIDEBAR_MENU_CONFIGURABLE_ROLES.map(role => `<th style="text-align:center;">${roleLabelMap[role] || role}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>
+        </div>`;
+}
+
+async function saveRoleMenuAccessMatrix() {
+    if (currentRole !== 'admin') { showToast('Hanya Admin yang boleh mengubah akses menu', 'error'); return; }
+    const statusEl = document.getElementById('roleMenuAccessStatus');
+    const checks = document.querySelectorAll('#roleMenuAccessWrap .rma-check');
+    if (!checks.length) return;
+
+    const rows = Array.from(checks).map(el => ({
+        role: el.dataset.role,
+        menu_key: el.dataset.menuKey,
+        allowed: el.checked,
+        updated_at: new Date().toISOString()
+    }));
+
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--ink-soft);font-size:12.5px;"><i class="bi bi-hourglass-split"></i> Menyimpan...</span>';
+    try {
+        const { error } = await supabaseClient.from('role_menu_access').upsert(rows, { onConflict: 'role,menu_key' });
+        if (error) throw error;
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--success);font-size:12.5px;"><i class="bi bi-check-circle-fill"></i> Tersimpan.</span>';
+        showToast('Akses menu sidebar berhasil disimpan');
+        // Muat ulang cache & terapkan langsung ke sidebar sesi ini juga (relevan
+        // kalau admin sedang login sambil di-impersonate/testing role lain di tab lain).
+        await loadRoleMenuAccess(true);
+        renderSidebarNav();
+    } catch (err) {
+        console.error('saveRoleMenuAccessMatrix error:', err);
+        if (statusEl) statusEl.innerHTML = `<span style="color:var(--danger);font-size:12.5px;"><i class="bi bi-exclamation-circle-fill"></i> Gagal menyimpan: ${escapeHtml(err.message)}</span>`;
+        showToast('Gagal menyimpan akses menu', 'error');
+    }
+}
+
 async function logoutAdmin() {
     adminLoggedIn = false;
     currentRole = null;
@@ -1298,7 +1385,7 @@ function switchAdminSubTab(name) {
     if (name === 'pembayaran') { renderPembayaranPanel(); }
     if (name === 'unggulan') { renderFeaturedAdminTable(); }
     if (name === 'snapshot') { renderSnapshotAdminTable(); }
-    if (name === 'usersettings') { loadUserList(); }
+    if (name === 'usersettings') { loadUserList(); renderRoleMenuAccessMatrix(); }
     if (name === 'assets') { loadAssets().then(renderAssetsAdminTable); }
 }
 
@@ -1738,6 +1825,18 @@ async function renderAdminPanel() {
                 </div>
                 <div id="usNewUserStatus" style="margin-top:12px;"></div>
 
+                <div class="admin-fieldset" style="margin-top:28px;">
+                    <div class="admin-fieldset-title"><i class="bi bi-ui-checks-grid"></i> Akses Menu Sidebar per Role</div>
+                    <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;">Atur menu sidebar apa saja yang boleh diakses oleh role <b>User</b> dan <b>Guest</b>. Role <b>Admin</b> selalu punya akses penuh ke semua menu dan tidak bisa dikunci di sini.</p>
+                    <div id="roleMenuAccessWrap">
+                        <div style="text-align:center;padding:20px;color:var(--ink-soft);">Memuat...</div>
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center;">
+                        <button class="btn-primary" id="roleMenuAccessSaveBtn" onclick="saveRoleMenuAccessMatrix()"><i class="bi bi-save-fill"></i> Simpan Akses Menu</button>
+                        <span id="roleMenuAccessStatus"></span>
+                    </div>
+                </div>
+
                 <div class="admin-table-card" style="margin-top:28px;">
                     <div class="admin-table-head">
                         <h4><i class="bi bi-people-fill"></i> Daftar User Terdaftar</h4>
@@ -2050,8 +2149,61 @@ function applyRoleUIVisibility() {
 // 12c. SIDEBAR NAV — tampilan menu sidebar menyesuaikan role
 // ============================================================
 // guest / belum login : hanya "Program Umroh" & "Unggulan"
-// user  (sudah login)  : + "Jadwal Tamu" & "Keberangkatan" (boleh edit/hapus langsung di tabel)
-// admin (sudah login)  : + menu "Manajemen" (Edit & Tambah Program, Crosscheck, Telegram, Pengaturan User)
+// user  (sudah login)  : + menu yang diizinkan lewat Userman > Akses Menu Sidebar
+// admin (sudah login)  : SELALU akses penuh ke semua menu (dihardcode, tidak
+//                         bisa dikunci lewat pengaturan supaya admin tidak
+//                         bisa mengunci akses dirinya sendiri secara tidak sengaja)
+//
+// Daftar semua menu sidebar yang bisa dikonfigurasi per role (role "admin"
+// tidak perlu diatur di sini karena selalu penuh). `key` HARUS sama persis
+// dengan atribut data-tab / data-subtab pada tombol nav di index.html.
+const SIDEBAR_MENU_REGISTRY = [
+    { key: 'info', label: 'Jadwal Tamu', group: 'Navigasi' },
+    { key: 'pendaftaran', label: 'Pendaftaran', group: 'Navigasi' },
+    { key: 'keberangkatan', label: 'Keberangkatan', group: 'Navigasi' },
+    { key: 'dokumen', label: 'Dokumen', group: 'Navigasi' },
+    { key: 'arsip', label: 'Arsip Jamaah', group: 'Navigasi' },
+    { key: 'program', label: 'Tambah Program', group: 'Manajemen' },
+    { key: 'pembayaran', label: 'Pembayaran', group: 'Manajemen' },
+    { key: 'unggulan', label: 'Unggulan (Admin)', group: 'Manajemen' },
+    { key: 'auditnota', label: 'Audit Nota', group: 'Manajemen' },
+    { key: 'assets', label: 'Assets', group: 'Manajemen' },
+    { key: 'crosscheck', label: 'Crosscheck', group: 'System' },
+    { key: 'telegram', label: 'Telegram', group: 'System' },
+    { key: 'usersettings', label: 'Userman', group: 'System' },
+    { key: 'snapshot', label: 'Snapshot', group: 'System' },
+    { key: 'profil', label: 'Perusahaan', group: 'System' }
+];
+const SIDEBAR_MENU_CONFIGURABLE_ROLES = ['user', 'guest'];
+
+// Cache hasil baca tabel role_menu_access: { user: Set(menu_key...), guest: Set(...) }.
+// null = belum pernah dimuat ATAU migrasinya belum dijalankan (tabel belum ada) --
+// dalam kondisi ini renderSidebarNav() FALLBACK ke perilaku lama (nav-loggedin-only
+// utk user/guest, nav-admin-only cuma admin) supaya dashboard yang belum di-migrasi
+// tidak rusak tampilannya.
+let roleMenuAccessMap = null;
+let roleMenuAccessLoadedOnce = false;
+
+async function loadRoleMenuAccess(forceReload = false) {
+    if (roleMenuAccessLoadedOnce && !forceReload) return roleMenuAccessMap;
+    try {
+        const { data, error } = await supabaseClient.from('role_menu_access').select('role, menu_key, allowed');
+        if (error) throw error;
+        const map = { user: new Set(), guest: new Set() };
+        (data || []).forEach(row => {
+            if (row.allowed && map[row.role]) map[row.role].add(row.menu_key);
+        });
+        roleMenuAccessMap = map;
+    } catch (err) {
+        // Tabel belum ada (migrasi sql/tambah_akses_menu_role.sql belum dijalankan)
+        // atau gagal koneksi -- diamkan saja & pakai fallback lama, jangan sampai
+        // memutus render sidebar cuma karena fitur ini belum di-setup.
+        console.warn('loadRoleMenuAccess: pakai fallback lama —', err.message);
+        roleMenuAccessMap = null;
+    }
+    roleMenuAccessLoadedOnce = true;
+    return roleMenuAccessMap;
+}
 
 // Minimize sidebar jadi ikon saja (desktop). Preferensi disimpan di localStorage
 // supaya tetap ciut/lebar yang sama tiap kali dashboard dibuka lagi.
@@ -2073,13 +2225,55 @@ function toggleSidebarCollapse() {
     if (saved === '1') applySidebarCollapse(true);
 })();
 
-function renderSidebarNav() {
+async function renderSidebarNav() {
     const loggedIn = !!adminLoggedIn;
     const isAdminRole = loggedIn && currentRole === 'admin';
     const roleLabels = { admin: 'Admin', user: 'User', guest: 'Guest' };
 
-    document.querySelectorAll('.nav-loggedin-only').forEach(el => { el.style.display = loggedIn ? '' : 'none'; });
-    document.querySelectorAll('.nav-admin-only').forEach(el => { el.style.display = isAdminRole ? '' : 'none'; });
+    // Elemen tanpa data-tab/data-subtab (mis. label section "Navigasi") tidak
+    // digating di sini secara individual dulu -- hanya tombol nav yang punya
+    // salah satu atribut itu yang diperiksa lewat konfigurasi per role.
+    let allowedSet = null; // null = fallback lama, Set = daftar menu_key yang boleh
+    if (loggedIn && !isAdminRole) {
+        const map = await loadRoleMenuAccess();
+        allowedSet = map ? (map[currentRole] || new Set()) : null;
+    }
+
+    document.querySelectorAll('.nav-loggedin-only, .nav-admin-only').forEach(el => {
+        const menuKey = el.dataset.tab || el.dataset.subtab;
+        if (!loggedIn) { el.style.display = 'none'; return; }
+        if (isAdminRole) { el.style.display = ''; return; } // admin selalu penuh
+        if (!menuKey) {
+            // Section label ("Manajemen"/"System") -- visibilitasnya disamakan
+            // lagi di bawah berdasar isi section, jangan diputuskan di sini.
+            return;
+        }
+        if (allowedSet) {
+            el.style.display = allowedSet.has(menuKey) ? '' : 'none';
+        } else {
+            // Fallback (migrasi belum dijalankan): perilaku lama persis --
+            // nav-loggedin-only tampil utk semua yg login, nav-admin-only
+            // cuma admin (jadi disembunyikan di sini karena bukan admin).
+            el.style.display = el.classList.contains('nav-loggedin-only') ? '' : 'none';
+        }
+    });
+
+    // Section label "Manajemen"/"System" ikut disembunyikan kalau SEMUA
+    // tombol nav-admin-only di bawahnya (sampai label berikutnya / akhir nav)
+    // ternyata tersembunyi juga -- supaya tidak ada judul section menggantung
+    // tanpa isi.
+    document.querySelectorAll('.nav-label.nav-admin-only').forEach(labelEl => {
+        if (!loggedIn) { labelEl.style.display = 'none'; return; }
+        if (isAdminRole) { labelEl.style.display = ''; return; }
+        let sibling = labelEl.nextElementSibling;
+        let anyVisible = false;
+        while (sibling && !sibling.classList.contains('nav-label') && !sibling.classList.contains('nav-login-area')) {
+            if (sibling.classList.contains('nav-item') && sibling.style.display !== 'none') { anyVisible = true; break; }
+            sibling = sibling.nextElementSibling;
+        }
+        labelEl.style.display = anyVisible ? '' : 'none';
+    });
+
     document.querySelectorAll('.login-btn').forEach(el => { el.style.display = loggedIn ? 'none' : ''; });
     document.querySelectorAll('.logout-btn').forEach(el => { el.style.display = loggedIn ? '' : 'none'; });
 
