@@ -14,7 +14,6 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 // menandatangani JWT-nya sendiri, jadi tidak pernah tersandung isu kid/JWT Signing
 // Key custom lagi. Role ditentukan dari tabel dashboard_profiles setelah login berhasil
 // (lihat checkAdminLogin() dan sql/migrate_supabase_auth.sql).
-const ADMIN_CHANGE_PASSWORD_URL = SUPABASE_URL + '/functions/v1/admin-change-password';
 const ADMIN_CREATE_USER_URL = SUPABASE_URL + '/functions/v1/admin-create-user';
 
 let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -833,47 +832,6 @@ async function checkAdminLogin() {
 
 
 // ============================================================
-// 12b. PENGATURAN USER (ganti password per role, admin only)
-// [MIGRASI] Lewat Edge Function admin-change-password (pakai Supabase Auth Admin
-// API asli), menggantikan RPC set_admin_password yang menulis ke app_config.
-// ============================================================
-async function saveUserSettings() {
-    if (currentRole !== 'admin') { showToast('Hanya Admin yang boleh mengubah pengaturan user', 'error'); return; }
-    const statusEl = document.getElementById('usSettingsStatus');
-    const vals = {
-        admin: document.getElementById('us_pass_admin')?.value.trim() || '',
-        user:  document.getElementById('us_pass_user')?.value.trim() || '',
-        guest: document.getElementById('us_pass_guest')?.value.trim() || ''
-    };
-    const rows = Object.entries(vals).filter(([, v]) => v);
-    if (!rows.length) { if (statusEl) statusEl.innerHTML = '<span style="color:var(--ink-soft);font-size:12.5px;">Tidak ada perubahan — isi kolom yang ingin diubah.</span>'; return; }
-    try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (!session) throw new Error('Sesi login tidak ditemukan, silakan login ulang.');
-        for (const [role, new_password] of rows) {
-            const resp = await fetch(ADMIN_CHANGE_PASSWORD_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': 'Bearer ' + session.access_token
-                },
-                body: JSON.stringify({ role, new_password })
-            });
-            const result = await resp.json();
-            if (!resp.ok || !result.ok) throw new Error(result.description || 'Gagal mengubah password');
-        }
-        ['us_pass_admin','us_pass_user','us_pass_guest'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-        if (statusEl) statusEl.innerHTML = '<span style="color:var(--success);font-size:12.5px;"><i class="fa-solid fa-circle-check"></i> Password berhasil disimpan.</span>';
-        showToast('Pengaturan user berhasil disimpan');
-    } catch (err) {
-        console.error('saveUserSettings error:', err);
-        if (statusEl) statusEl.innerHTML = `<span style="color:var(--danger);font-size:12.5px;"><i class="fa-solid fa-circle-exclamation"></i> Gagal menyimpan: ${escapeHtml(err.message)}</span>`;
-        showToast('Gagal menyimpan pengaturan user', 'error');
-    }
-}
-
-// ============================================================
 // 12b-2. TAMBAH USER BARU (admin only)
 // Lewat Edge Function admin-create-user (pakai Supabase Auth Admin API),
 // membuat akun baru per-orang dengan role 'admin' atau 'user'.
@@ -931,7 +889,11 @@ async function loadUserList() {
         .select('email, label, dashboard_role, created_at')
         .order('created_at');
     if (error) {
-        body.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--danger);">Gagal memuat daftar user: ${escapeHtml(error.message)}</td></tr>`;
+        const isMissingSetup = /column .*email.* does not exist/i.test(error.message || '');
+        body.innerHTML = isMissingSetup
+            ? `<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--danger);">Setup belum lengkap: jalankan <code>sql/tambah_kelola_user.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.</td></tr>`
+            : `<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--danger);">Gagal memuat daftar user: ${escapeHtml(error.message)}</td></tr>`;
+        if (countEl) countEl.textContent = '-';
         return;
     }
     const rows = data || [];
@@ -1065,7 +1027,7 @@ const ADMIN_SUBTAB_META = {
     crosscheck: { title: 'Crosscheck', subtitle: 'Bandingkan poster dengan data program yang tersimpan' },
     telegram: { title: 'Telegram', subtitle: 'Atur notifikasi otomatis ke grup/chat Telegram' },
     auditnota: { title: 'Audit Nota', subtitle: 'Log audit setiap nota yang diterbitkan — append-only, tidak bisa diubah' },
-    usersettings: { title: 'Pengaturan User', subtitle: 'Atur password untuk masing-masing role' },
+    usersettings: { title: 'Pengaturan User', subtitle: 'Tambah & kelola akun user' },
     snapshot: { title: 'Snapshot / Backup', subtitle: 'Cadangan harian semua data Umroh (maksimal 10)' }
 };
 
@@ -1474,27 +1436,8 @@ async function renderAdminPanel() {
             <div class="admin-subtab-panel" id="adminSubTab-usersettings" style="display:none;">
                 <div class="admin-section-header">
                     <div><h4><i class="fa-solid fa-user-gear"></i> Pengaturan User</h4>
-                    <p>Atur password untuk masing-masing role: Admin (akses penuh), User (kelola data program), Guest (lihat saja)</p></div>
+                    <p>Tambah akun baru per-orang dengan role Admin (akses penuh) atau User (kelola data program)</p></div>
                 </div>
-                <div class="admin-fieldset">
-                    <div class="admin-fieldset-title"><i class="fa-solid fa-key"></i> Password per Role</div>
-                    <div class="form-group">
-                        <label>Password Admin</label>
-                        <input type="text" id="us_pass_admin" placeholder="Kosongkan jika tidak ingin mengubah" autocomplete="off">
-                    </div>
-                    <div class="form-group">
-                        <label>Password User</label>
-                        <input type="text" id="us_pass_user" placeholder="Kosongkan jika tidak ingin mengubah" autocomplete="off">
-                    </div>
-                    <div class="form-group" style="margin-bottom:0;">
-                        <label>Password Guest</label>
-                        <input type="text" id="us_pass_guest" placeholder="Kosongkan jika tidak ingin mengubah" autocomplete="off">
-                    </div>
-                </div>
-                <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
-                    <button class="btn-primary" onclick="saveUserSettings()"><i class="fa-solid fa-save"></i> Simpan Password</button>
-                </div>
-                <div id="usSettingsStatus" style="margin-top:12px;"></div>
 
                 <div class="admin-fieldset" style="margin-top:28px;">
                     <div class="admin-fieldset-title"><i class="fa-solid fa-user-plus"></i> Tambah User Baru</div>
