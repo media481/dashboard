@@ -15,6 +15,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 // Key custom lagi. Role ditentukan dari tabel dashboard_profiles setelah login berhasil
 // (lihat checkAdminLogin() dan sql/migrate_supabase_auth.sql).
 const ADMIN_CHANGE_PASSWORD_URL = SUPABASE_URL + '/functions/v1/admin-change-password';
+const ADMIN_CREATE_USER_URL = SUPABASE_URL + '/functions/v1/admin-create-user';
 
 let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
@@ -872,6 +873,81 @@ async function saveUserSettings() {
     }
 }
 
+// ============================================================
+// 12b-2. TAMBAH USER BARU (admin only)
+// Lewat Edge Function admin-create-user (pakai Supabase Auth Admin API),
+// membuat akun baru per-orang dengan role 'admin' atau 'user'.
+// ============================================================
+async function createNewUser() {
+    if (currentRole !== 'admin') { showToast('Hanya Admin yang boleh menambah user', 'error'); return; }
+    const statusEl = document.getElementById('usNewUserStatus');
+    const label = document.getElementById('us_new_label')?.value.trim() || '';
+    const email = document.getElementById('us_new_email')?.value.trim() || '';
+    const password = document.getElementById('us_new_password')?.value || '';
+    const dashboard_role = document.getElementById('us_new_role')?.value || 'user';
+
+    if (!label || !email || !password) {
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger);font-size:12.5px;"><i class="fa-solid fa-circle-exclamation"></i> Nama, email, dan password wajib diisi.</span>';
+        return;
+    }
+    if (password.length < 6) {
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger);font-size:12.5px;"><i class="fa-solid fa-circle-exclamation"></i> Password minimal 6 karakter.</span>';
+        return;
+    }
+
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--ink-soft);font-size:12.5px;"><i class="fa-solid fa-hourglass-half"></i> Membuat user...</span>';
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) throw new Error('Sesi login tidak ditemukan, silakan login ulang.');
+        const resp = await fetch(ADMIN_CREATE_USER_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': 'Bearer ' + session.access_token
+            },
+            body: JSON.stringify({ email, password, label, dashboard_role })
+        });
+        const result = await resp.json();
+        if (!resp.ok || !result.ok) throw new Error(result.description || 'Gagal menambah user');
+
+        ['us_new_label', 'us_new_email', 'us_new_password'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--success);font-size:12.5px;"><i class="fa-solid fa-circle-check"></i> User berhasil ditambahkan.</span>';
+        showToast('User baru berhasil ditambahkan');
+        loadUserList();
+    } catch (err) {
+        console.error('createNewUser error:', err);
+        if (statusEl) statusEl.innerHTML = `<span style="color:var(--danger);font-size:12.5px;"><i class="fa-solid fa-circle-exclamation"></i> Gagal menambah user: ${escapeHtml(err.message)}</span>`;
+        showToast('Gagal menambah user', 'error');
+    }
+}
+
+async function loadUserList() {
+    const body = document.getElementById('usUserListBody');
+    const countEl = document.getElementById('usUserListCount');
+    if (!body) return;
+    const { data, error } = await supabaseClient
+        .from('dashboard_profiles')
+        .select('email, label, dashboard_role, created_at')
+        .order('created_at');
+    if (error) {
+        body.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--danger);">Gagal memuat daftar user: ${escapeHtml(error.message)}</td></tr>`;
+        return;
+    }
+    const rows = data || [];
+    if (countEl) countEl.textContent = rows.length + ' user';
+    if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--ink-soft);">Belum ada data.</td></tr>';
+        return;
+    }
+    const roleBadge = { admin: '👑 Admin', user: '🎧 User', guest: '👁️ Guest' };
+    body.innerHTML = rows.map(u => `<tr>
+        <td>${escapeHtml(u.label || '-')}</td>
+        <td>${escapeHtml(u.email || '-')}</td>
+        <td>${roleBadge[u.dashboard_role] || escapeHtml(u.dashboard_role || '-')}</td>
+    </tr>`).join('');
+}
+
 async function logoutAdmin() {
     adminLoggedIn = false;
     currentRole = null;
@@ -1017,6 +1093,7 @@ function switchAdminSubTab(name) {
     if (name === 'pembayaran') { renderPembayaranPanel(); }
     if (name === 'unggulan') { renderFeaturedAdminTable(); }
     if (name === 'snapshot') { renderSnapshotAdminTable(); }
+    if (name === 'usersettings') { loadUserList(); }
 }
 
 async function renderAdminPanel() {
@@ -1418,6 +1495,47 @@ async function renderAdminPanel() {
                     <button class="btn-primary" onclick="saveUserSettings()"><i class="fa-solid fa-save"></i> Simpan Password</button>
                 </div>
                 <div id="usSettingsStatus" style="margin-top:12px;"></div>
+
+                <div class="admin-fieldset" style="margin-top:28px;">
+                    <div class="admin-fieldset-title"><i class="fa-solid fa-user-plus"></i> Tambah User Baru</div>
+                    <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;">Buat akun login baru untuk satu orang, dengan role Admin (akses penuh) atau User (kelola data program).</p>
+                    <div class="form-group">
+                        <label>Nama / Label<span class="required">*</span></label>
+                        <input type="text" id="us_new_label" placeholder="Contoh: Budi Santoso" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label>Email<span class="required">*</span></label>
+                        <input type="email" id="us_new_email" placeholder="nama@contoh.com" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label>Password<span class="required">*</span></label>
+                        <input type="text" id="us_new_password" placeholder="Minimal 6 karakter" autocomplete="off">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>Role<span class="required">*</span></label>
+                        <select id="us_new_role">
+                            <option value="user">User biasa (kelola data program)</option>
+                            <option value="admin">Admin (akses penuh)</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+                    <button class="btn-primary" onclick="createNewUser()"><i class="fa-solid fa-user-plus"></i> Tambah User</button>
+                </div>
+                <div id="usNewUserStatus" style="margin-top:12px;"></div>
+
+                <div class="admin-table-card" style="margin-top:28px;">
+                    <div class="admin-table-head">
+                        <h4><i class="fa-solid fa-users"></i> Daftar User Terdaftar</h4>
+                        <span class="count" id="usUserListCount">-</span>
+                    </div>
+                    <div class="admin-table-wrap">
+                        <table>
+                            <thead><tr><th>Nama</th><th>Email</th><th>Role</th></tr></thead>
+                            <tbody id="usUserListBody"><tr><td colspan="3" style="text-align:center;padding:20px;color:var(--ink-soft);">Memuat...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             <div class="admin-subtab-panel" id="adminSubTab-snapshot" style="display:none;">
