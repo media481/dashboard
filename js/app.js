@@ -631,8 +631,8 @@ function buildProgramRowHTML(item, now, nearestIds) {
             <td title="${hasPosterHover?'Hover untuk preview poster — ':''}${escapeHtml(item.nama||'')}"><strong${posterHoverAttrs}>${escapeHtml(item.nama||'')}${hasPosterHover?' <i class="bi bi-image-fill" style="margin-left:5px;font-size:10px;color:var(--primary);opacity:.6;"></i>':''}</strong></td>
             <td>${escapeHtml(hitungEstimasi(item.dateObj, now))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_quad || item.harga_quint))}</td>
-            <td>${escapeHtml(formatRupiah(item.harga_double))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_triple))}</td>
+            <td>${escapeHtml(formatRupiah(item.harga_double))}</td>
             <td>${escapeHtml(item.tgl||'-')}${isNearest ? ` <span class="nearest-badge" title="Salah satu dari 3 keberangkatan terdekat"><i class="bi bi-lightning-charge-fill"></i> Terdekat</span>` : ''}</td>
             <td>${escapeHtml(item.durasi||'-')}</td>
             <td>${escapeHtml(item.maskapai||'-')}</td>
@@ -1345,8 +1345,8 @@ async function renderAdminPanel() {
                                 <th>Tanggal Berangkat</th>
                                 <th>Durasi</th>
                                 <th>Quad</th>
-                                <th>Double</th>
                                 <th>Triple</th>
+                                <th>Double</th>
                                 <th>Maskapai</th>
                                 ${canEditData ? `<th style="text-align:right;">Aksi</th>` : ''}
                             </tr>
@@ -1646,8 +1646,8 @@ function renderAdminTable() {
             <td>${escapeHtml(p.tgl||'-')}</td>
             <td>${escapeHtml(p.durasi||'-')}</td>
             <td>${escapeHtml(p.harga_quad || p.harga_quint || '-')}</td>
-            <td>${escapeHtml(p.harga_double||'-')}</td>
             <td>${escapeHtml(p.harga_triple||'-')}</td>
+            <td>${escapeHtml(p.harga_double||'-')}</td>
             <td>${escapeHtml(p.maskapai||'-')}</td>
             ${canEditData ? `
             <td style="text-align:right;">
