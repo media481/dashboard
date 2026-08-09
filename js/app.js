@@ -44,6 +44,7 @@ let loginAttempts = 0, loginLockTime = 0;
 let featuredIds = [];
 let jadwalList = [], editingJadwalId = null;
 let pendaftaranList = [], editingPendaftaranId = null;
+let assetsList = [], editingAssetId = null;
 
 // Urutkan program: yang masih tersedia dulu (tanggal terdekat), yang sudah expired selalu di baris paling bawah
 function sortProgramsDefault(list) {
@@ -1265,7 +1266,8 @@ const ADMIN_SUBTAB_META = {
     auditnota: { title: 'Audit Nota', subtitle: 'Log audit setiap nota yang diterbitkan — append-only, tidak bisa diubah' },
     usersettings: { title: 'Pengaturan User', subtitle: 'Tambah & kelola akun user' },
     snapshot: { title: 'Snapshot / Backup', subtitle: 'Cadangan harian semua data Umroh (maksimal 10)' },
-    profil: { title: 'Profil Perusahaan', subtitle: 'Logo, nama, alamat & rekening yang dipakai di nota' }
+    profil: { title: 'Profil Perusahaan', subtitle: 'Logo, nama, alamat & rekening yang dipakai di nota' },
+    assets: { title: 'Assets', subtitle: 'Kumpulan link ke dokumen penting — mirip bookmark' }
 };
 
 function switchAdminSubTab(name) {
@@ -1293,6 +1295,7 @@ function switchAdminSubTab(name) {
     if (name === 'unggulan') { renderFeaturedAdminTable(); }
     if (name === 'snapshot') { renderSnapshotAdminTable(); }
     if (name === 'usersettings') { loadUserList(); }
+    if (name === 'assets') { loadAssets().then(renderAssetsAdminTable); }
 }
 
 async function renderAdminPanel() {
@@ -1763,6 +1766,22 @@ async function renderAdminPanel() {
 
             <div class="admin-subtab-panel" id="adminSubTab-profil" style="display:none;">
                 ${renderCompanyProfileForm()}
+            </div>
+
+            <div class="admin-subtab-panel" id="adminSubTab-assets" style="display:none;">
+                <div class="snap-header">
+                    <div class="snap-header-title">
+                        <i class="bi bi-bookmark-star-fill"></i>
+                        <div>
+                            <h4>Assets</h4>
+                            <span>Link ke dokumen penting (SOP, kontrak, akun cloud, dsb) — mirip bookmark</span>
+                        </div>
+                    </div>
+                    <button class="btn-primary btn-sm" onclick="openAssetModal()">
+                        <i class="bi bi-plus-lg"></i> Tambah Link
+                    </button>
+                </div>
+                <div id="assetsListWrap"></div>
             </div>
             ` : ''}
         `;
@@ -2874,6 +2893,9 @@ async function confirmDeleteAction() {
         } else if (finishedTable === 'pendaftaran') {
             await loadPendaftaran();
             renderPendaftaranSection();
+        } else if (finishedTable === 'assets') {
+            await loadAssets();
+            renderAssetsAdminTable();
         } else if (finishedTable === 'kb_jamaah') {
             await loadKbJamaah();
             renderKbProgramSelector();
@@ -6769,6 +6791,146 @@ async function testTgNotif() {
     await sendTelegramNotif(msgJadwal, 'jadwal');
     await sendTelegramNotif(msgReminder, 'reminder');
     showTgStatus('Test selesai! Cek log di bawah.', 'ok');
+}
+
+// ============================================================
+// 21b. ASSETS (CRUD) — link/bookmark ke dokumen penting
+// ============================================================
+
+async function loadAssets() {
+    try {
+        const { data, error } = await supabaseClient.from('assets').select('*').order('kategori', { ascending: true, nullsFirst: false }).order('judul', { ascending: true });
+        if (error) throw error;
+        assetsList = data || [];
+    } catch (err) {
+        console.error('Load assets error:', err);
+        assetsList = [];
+        showToast('Gagal memuat data Assets — periksa koneksi internet', 'error');
+    }
+}
+
+function renderAssetsAdminTable() {
+    const wrap = document.getElementById('assetsListWrap');
+    if (!wrap) return;
+
+    if (!assetsList.length) {
+        wrap.innerHTML = `<div class="pf-empty"><i class="bi bi-bookmark-star"></i>Belum ada link tersimpan. Klik "Tambah Link" untuk menambahkan dokumen penting (SOP, kontrak, akun cloud, dsb).</div>`;
+        return;
+    }
+
+    // Kelompokkan per kategori supaya makin banyak link tetap rapi dicari.
+    const groups = {};
+    assetsList.forEach(a => {
+        const key = (a.kategori || '').trim() || 'Lainnya';
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(a);
+    });
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+        if (a === 'Lainnya') return 1;
+        if (b === 'Lainnya') return -1;
+        return a.localeCompare(b);
+    });
+
+    wrap.innerHTML = sortedKeys.map(key => `
+        <div class="asset-group">
+            <div class="asset-group-title">${escapeHtml(key)}</div>
+            <div class="asset-cards">
+                ${groups[key].map(a => `
+                    <div class="asset-card">
+                        <a href="${escapeHtmlAttr(ensureUrlProtocol(a.url))}" target="_blank" rel="noopener noreferrer" class="asset-card-main" title="Buka link">
+                            <div class="asset-card-icon"><i class="bi bi-link-45deg"></i></div>
+                            <div class="asset-card-body">
+                                <div class="asset-card-title">${escapeHtml(a.judul || '-')}</div>
+                                <div class="asset-card-url">${escapeHtml(a.url || '')}</div>
+                                ${a.catatan ? `<div class="asset-card-note">${escapeHtml(a.catatan)}</div>` : ''}
+                            </div>
+                        </a>
+                        <div class="asset-card-actions">
+                            <button type="button" class="pf-btn-edit" onclick="openAssetModal('${a.id}')" title="Edit"><i class="bi bi-pencil-fill"></i></button>
+                            <button type="button" class="pf-btn-delete" onclick="openDeleteModal('assets', '${a.id}', '${escapeJsAttr(a.judul)}')" title="Hapus"><i class="bi bi-trash-fill"></i></button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+}
+
+// Tambah "https://" otomatis kalau user lupa isi protokol, supaya link tetap
+// bisa diklik terbuka di tab baru alih-alih dianggap path relatif.
+function ensureUrlProtocol(url) {
+    const u = (url || '').trim();
+    if (!u) return '#';
+    if (/^https?:\/\//i.test(u)) return u;
+    return 'https://' + u;
+}
+
+// escapeHtml tapi aman dipakai di dalam atribut href="..." (escape tanda kutip ganda juga)
+function escapeHtmlAttr(str) {
+    return escapeHtml(str).replace(/"/g, '&quot;');
+}
+
+function openAssetModal(id = null) {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengelola Assets', 'error'); return; }
+    editingAssetId = id;
+    document.getElementById('asset_editId').value = '';
+    document.getElementById('assetForm').reset();
+
+    if (id) {
+        const a = assetsList.find(item => String(item.id) === String(id));
+        if (!a) { showToast('Data tidak ditemukan', 'error'); return; }
+        document.getElementById('assetModalTitle').textContent = 'Edit Link';
+        document.getElementById('asset_editId').value = a.id;
+        document.getElementById('asset_judul').value = a.judul || '';
+        document.getElementById('asset_url').value = a.url || '';
+        document.getElementById('asset_kategori').value = a.kategori || '';
+        document.getElementById('asset_catatan').value = a.catatan || '';
+    } else {
+        document.getElementById('assetModalTitle').textContent = 'Tambah Link';
+    }
+
+    document.getElementById('assetModal').classList.add('open');
+    setTimeout(() => document.getElementById('asset_judul').focus(), 50);
+}
+
+function closeAssetModal() {
+    document.getElementById('assetModal').classList.remove('open');
+    editingAssetId = null;
+}
+
+async function saveAsset(e) {
+    if (e) e.preventDefault();
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengelola Assets', 'error'); return; }
+
+    const id = document.getElementById('asset_editId').value;
+    const judul = document.getElementById('asset_judul').value.trim();
+    let url = document.getElementById('asset_url').value.trim();
+    const kategori = document.getElementById('asset_kategori').value.trim();
+    const catatan = document.getElementById('asset_catatan').value.trim();
+
+    if (!judul) { showToast('Judul link wajib diisi', 'error'); return; }
+    if (!url) { showToast('URL wajib diisi', 'error'); return; }
+    url = ensureUrlProtocol(url);
+
+    const data = { judul, url, kategori: kategori || null, catatan: catatan || null };
+
+    try {
+        let result;
+        if (id) {
+            result = await supabaseClient.from('assets').update(data).eq('id', id);
+        } else {
+            result = await supabaseClient.from('assets').insert([data]);
+        }
+        if (result.error) throw result.error;
+
+        showToast(id ? 'Link berhasil diperbarui' : 'Link berhasil ditambahkan');
+        closeAssetModal();
+        await loadAssets();
+        renderAssetsAdminTable();
+    } catch (err) {
+        console.error('Save asset error:', err);
+        showToast('Gagal menyimpan: ' + err.message, 'error');
+    }
 }
 
 // ============================================================
