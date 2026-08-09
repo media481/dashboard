@@ -1,4 +1,4 @@
-        /* ===== ROOT ===== */
+/* ===== ROOT ===== */
         :root {
             --bg: #F4F7FB;
             --surface: #FFFFFF;
@@ -766,7 +766,7 @@
                 & main-content menyempit, tabel scroll horizontal (bukan kolom
                 diperas) supaya konten tiap sel tetap sebaris / tidak wrap 2 baris */
             border-collapse: collapse;
-            font-size: 12px;
+            font-size: 13px;
         }
         .table-container thead {
             background: var(--bg);
