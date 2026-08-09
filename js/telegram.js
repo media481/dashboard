@@ -201,7 +201,7 @@
         // Ambil sentLog dari Supabase tg_config
         let sentLog = {};
         try {
-            const { data } = await supabaseClient.from('tg_config').select('value').eq('key', TG_REMINDER_KEY).single();
+            const { data } = await supabaseClient.from('tg_config').select('value').eq('key', TG_REMINDER_KEY).maybeSingle();
             if (data) sentLog = JSON.parse(data.value);
         } catch {}
 

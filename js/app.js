@@ -3772,7 +3772,11 @@ const COMPANY_PROFILE_KEY = 'company_profile';
 
 async function loadCompanyProfile() {
     try {
-        const { data, error } = await supabaseClient.from('tg_config').select('value').eq('key', COMPANY_PROFILE_KEY).single();
+        // [FIX] .single() bikin PostgREST balas 406 di console kalau baris
+        // 'company_profile' belum pernah disimpan (instalasi baru) — error
+        // tetap ditangani (fallback ke default) tapi noise-nya mengganggu.
+        // .maybeSingle() diam-diam balas data:null kalau 0 baris, tanpa 406.
+        const { data, error } = await supabaseClient.from('tg_config').select('value').eq('key', COMPANY_PROFILE_KEY).maybeSingle();
         if (error || !data || !data.value) return; // belum pernah disimpan -> pakai default
         const saved = JSON.parse(data.value);
         NOTA_PERUSAHAAN = {
@@ -5985,7 +5989,7 @@ async function checkAndSendReminders() {
 
     let sentLog = {};
     try {
-        const { data } = await supabaseClient.from('tg_config').select('value').eq('key', TG_REMINDER_KEY).single();
+        const { data } = await supabaseClient.from('tg_config').select('value').eq('key', TG_REMINDER_KEY).maybeSingle();
         if (data) sentLog = JSON.parse(data.value);
     } catch {}
 

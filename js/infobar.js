@@ -43,7 +43,7 @@
     // Status disimpan di Supabase tabel tg_config (key: 'infobar_enabled'), berlaku global untuk semua pengunjung
     async function loadInfobarSetting() {
         try {
-            const { data, error } = await supabaseClient.from('tg_config').select('value').eq('key', 'infobar_enabled').single();
+            const { data, error } = await supabaseClient.from('tg_config').select('value').eq('key', 'infobar_enabled').maybeSingle();
             infobarEnabled = (error || !data) ? true : data.value !== 'false';
         } catch (_) {
             infobarEnabled = true;
@@ -127,7 +127,7 @@
     // Status disimpan di Supabase tabel tg_config (key: 'ticker_enabled'), berlaku global untuk semua pengunjung
     async function loadTickerSetting() {
         try {
-            const { data, error } = await supabaseClient.from('tg_config').select('value').eq('key', 'ticker_enabled').single();
+            const { data, error } = await supabaseClient.from('tg_config').select('value').eq('key', 'ticker_enabled').maybeSingle();
             tickerEnabled = (error || !data) ? true : data.value !== 'false';
         } catch (_) {
             tickerEnabled = true;
