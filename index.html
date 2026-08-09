@@ -820,13 +820,24 @@
         <div class="modal-body">
             <div class="kuitansi-layout">
                 <form id="kuitansiForm" class="kuitansi-form" onsubmit="return false;">
-                    <div class="form-group"><label>Nomor Kuitansi</label><input type="text" id="kwt_nomor" placeholder="Isi manual, mis. AHI/2026/000123" oninput="updateKuitansiPreview()"></div>
+                    <div class="form-group">
+                        <label>Nomor Kuitansi</label>
+                        <input type="text" id="kwt_nomor" readonly style="background:var(--bg);color:var(--ink-soft);cursor:not-allowed;">
+                        <small style="color:var(--ink-soft);font-size:11px;">Dibuat otomatis oleh sistem, tidak bisa diubah manual.</small>
+                    </div>
                     <div class="form-group"><label>Tempat &amp; Tanggal</label><input type="text" id="kwt_tempat_tanggal" placeholder="Yogyakarta, 24 Juli 2026" oninput="updateKuitansiPreview()"></div>
                     <div class="form-group"><label>Sudah Terima Dari</label><input type="text" id="kwt_dari" placeholder="Nama jamaah" oninput="updateKuitansiPreview()"></div>
                     <div class="form-group"><label>Jumlah (Rp) *</label><input type="number" id="kwt_jumlah" placeholder="23000000" min="1" oninput="updateKuitansiPreview()"></div>
                     <div class="form-group">
                         <label>Uang Sebanyak (Terbilang)</label>
                         <div style="font-size:12px;font-style:italic;color:var(--ink-soft);padding:8px 0;" id="kwt_terbilang_display">-</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Metode Pembayaran</label>
+                        <select id="kwt_metode" onchange="updateKuitansiPreview()">
+                            <option value="Transfer">Transfer</option>
+                            <option value="Cash">Cash / Tunai</option>
+                        </select>
                     </div>
                     <div class="form-group"><label>Nama Penerima</label><input type="text" id="kwt_penerima" placeholder="Nama staf" oninput="updateKuitansiPreview()"></div>
                     <div class="form-group"><label>Untuk Pembayaran</label><textarea id="kwt_keterangan" rows="2" placeholder="DP Program Umroh..." oninput="updateKuitansiPreview()"></textarea></div>

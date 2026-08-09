@@ -4068,12 +4068,15 @@ function buildKuitansiHTML(data, kodeVerifikasi) {
             <td style="padding:2.5px 0;font-size:10px;color:#1a1a1a;vertical-align:top;${opts.bold ? 'font-weight:700;' : ''}">: ${value}</td>
         </tr>`;
 
+    // [Untuk Pembayaran dipindah ke bawah kotak "Jumlah Diterima", bukan di
+    // tabel atas — lihat blok jumlah di bawah] jadi kolom kiri di sini hanya
+    // berisi identitas penyetor.
     const kolomKiri = [
-        baris('Diterima Dari', escapeHtml(data.dari || '-'), { bold: true }),
-        baris('Untuk Pembayaran', escapeHtml(data.keterangan || '-'))
+        baris('Diterima Dari', escapeHtml(data.dari || '-'), { bold: true })
     ].join('');
     const kolomKanan = [
-        baris('Tempat / Tanggal', escapeHtml(data.tempatTanggal || '-'))
+        baris('Tempat / Tanggal', escapeHtml(data.tempatTanggal || '-')),
+        baris('Metode Bayar', escapeHtml(data.metode || '-'))
     ].join('');
 
     // Ukuran & struktur layout disamakan persis dengan buildNotaHTML: 794x416px
@@ -4102,6 +4105,7 @@ function buildKuitansiHTML(data, kodeVerifikasi) {
                 <div style="font-size:8.5px;color:${NOTA_TEMA.inkSoft};text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Jumlah Diterima</div>
                 <div style="font-size:23px;font-weight:800;color:${NOTA_TEMA.navy};line-height:1.15;">${formatRupiah(jumlah)}</div>
                 <div style="font-size:9.5px;color:#555;font-style:italic;margin-top:3px;">Terbilang: ${escapeHtml(terbilang)}</div>
+                ${data.keterangan ? `<div style="font-size:9.5px;color:${NOTA_TEMA.inkSoft};margin-top:5px;padding-top:5px;border-top:1px dashed ${NOTA_TEMA.line};">Untuk Pembayaran: <span style="color:#1a1a1a;font-weight:600;">${escapeHtml(data.keterangan)}</span></div>` : ''}
             </div>
 
             ${buildNotaSignatureHTML(data.dari || 'Yang Menyerahkan', data.penerima || 'Penerima')}
@@ -4818,9 +4822,32 @@ async function toggleDokumenJamaah(jamaahId, key, checked) {
 // 20. KUITANSI (samakan tampilan & alur unduh dengan Nota Pembayaran — lihat
 // buildKuitansiHTML() dan bagian "19C/19D. NOTA PEMBAYARAN / AUDIT NOTA")
 // ============================================================
-function openKuitansiModal() {
+// Nomor kuitansi dibuat OTOMATIS & TERSISTEM oleh database (sequence + RPC
+// next_kuitansi_nomor(), lihat sql/tambah_nomor_kuitansi_otomatis.sql) —
+// diambil sekali tiap modal dibuka, field-nya dikunci (readonly) supaya
+// tidak bisa diketik ulang/diduplikasi manual oleh staf.
+async function fetchNextKuitansiNomor() {
+    const field = document.getElementById('kwt_nomor');
+    field.value = 'Memuat...';
+    try {
+        const { data, error } = await supabaseClient.rpc('next_kuitansi_nomor');
+        if (error) throw error;
+        field.value = data || '-';
+    } catch (err) {
+        console.warn('Gagal mengambil nomor kuitansi otomatis (migrasi belum dijalankan?):', err);
+        // Fallback sementara berbasis waktu supaya modal tetap bisa dipakai
+        // walau migrasi sql/tambah_nomor_kuitansi_otomatis.sql belum jalan —
+        // ditandai jelas "(sementara)" supaya tidak disalahartikan sebagai
+        // nomor resmi tersistem.
+        field.value = `AHI/KWT/${new Date().getFullYear()}/${Date.now().toString().slice(-6)} (sementara)`;
+        showToast('Nomor kuitansi otomatis gagal dibuat dari server, pakai nomor sementara. Jalankan migrasi sql/tambah_nomor_kuitansi_otomatis.sql', 'error');
+    }
+}
+
+async function openKuitansiModal() {
     document.getElementById('kuitansiModal').classList.add('open');
     document.getElementById('kuitansiForm').reset();
+    await fetchNextKuitansiNomor();
     updateKuitansiPreview();
 }
 
@@ -4834,6 +4861,7 @@ function readKuitansiFormData() {
         tempatTanggal: document.getElementById('kwt_tempat_tanggal').value,
         dari: document.getElementById('kwt_dari').value,
         jumlah: document.getElementById('kwt_jumlah').value,
+        metode: document.getElementById('kwt_metode').value,
         penerima: document.getElementById('kwt_penerima').value,
         keterangan: document.getElementById('kwt_keterangan').value
     };
@@ -4864,7 +4892,7 @@ async function downloadKuitansi(format = 'jpeg') {
         jamaahNama: data.dari,
         programNama: null,
         jumlah: parseRupiahToNumber(data.jumlah),
-        metadata: { tempatTanggal: data.tempatTanggal, penerima: data.penerima, keterangan: data.keterangan }
+        metadata: { tempatTanggal: data.tempatTanggal, metode: data.metode, penerima: data.penerima, keterangan: data.keterangan }
     });
 
     const exportFn = format === 'pdf' ? exportNotaElementAsPdf : exportNotaElementAsJpeg;

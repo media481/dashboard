@@ -354,7 +354,7 @@ create table if not exists nota_audit_log (
     id uuid primary key default gen_random_uuid(),
     created_at timestamptz not null default now(),
     nomor_nota text not null,
-    jenis text not null check (jenis in ('pembayaran', 'riwayat')),
+    jenis text not null check (jenis in ('pembayaran', 'riwayat', 'kuitansi')),
     jamaah_id uuid,
     jamaah_nama text,
     program_nama text,
@@ -528,6 +528,26 @@ grant execute on function check_login_rate_limit(text) to anon, authenticated;
 grant execute on function bump_login_failure(text) to anon, authenticated;
 grant execute on function verify_dashboard_password(text) to anon, authenticated;
 grant execute on function set_admin_password(text, text) to anon, authenticated;
+
+-- ============================================================================
+-- 10. NOMOR KUITANSI OTOMATIS (sequence + RPC, lihat modal Kuitansi)
+-- ============================================================================
+create sequence if not exists kuitansi_nomor_seq start 1;
+
+create or replace function next_kuitansi_nomor()
+returns text
+language plpgsql
+security definer
+as $$
+declare
+    v_nomor text;
+begin
+    v_nomor := 'AHI/KWT/' || to_char(current_date, 'YYYY') || '/' || lpad(nextval('kuitansi_nomor_seq')::text, 6, '0');
+    return v_nomor;
+end;
+$$;
+
+grant execute on function next_kuitansi_nomor() to anon, authenticated;
 
 -- ============================================================================
 -- SELESAI.
