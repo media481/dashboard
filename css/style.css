@@ -61,6 +61,8 @@
             overflow-x: hidden;
             z-index: 100;
             transition: padding .2s ease;
+            grid-column: 1;
+            grid-row: 1;
         }
         .sidebar::-webkit-scrollbar { width: 4px; }
         .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
@@ -265,6 +267,9 @@
             padding: 18px 20px 60px; /* kiri-kanan dikurangi separuh dari 40px -> 20px,
                 biar jarak sidebar-ke-tabel lebih efisien (ruang konten lebih lega) */
             overflow-x: hidden;
+            grid-column: 2;
+            grid-row: 1;
+            min-width: 0; /* cegah konten lebar (mis. tabel) memaksa track ikut melebar */
         }
 
         .topbar {
@@ -1996,7 +2001,7 @@
             .app { grid-template-columns: 1fr; }
             .sidebar { display: none; }
             .sidebar-collapse-btn { display: none; }
-            main { padding: 14px; }
+            main { padding: 14px; grid-column: 1; }
             .topbar { flex-direction: column; align-items: flex-start; }
             .topbar-left { flex-direction: column; gap: 2px; }
             .topbar-center { width: 100%; }
