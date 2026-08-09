@@ -173,7 +173,6 @@
             transition: background .15s ease, color .15s ease;
             text-decoration: none;
             border: none;
-            border-left: 2px solid transparent;
             background: none;
             width: 100%;
             text-align: left;
@@ -183,11 +182,9 @@
         .nav-item:hover { background: rgba(255,255,255,0.04); color: #EDF1F6; }
         .nav-item.active {
             background: rgba(232,150,61,0.08);
-            border-left-color: #E8963D;
             color: #fff;
         }
-        .nav-item.active i { opacity: 1; color: #E8963D; }
-        .sidebar.collapsed .nav-item.active { border-left-color: transparent; }
+        .nav-item.active i { opacity: 1; color: #D4AF37; }
 
         .nav-login-area {
             margin-top: auto;
@@ -1921,7 +1918,6 @@
         .mobile-sidebar nav .nav-item { color: #9AABBF; }
         .mobile-sidebar nav .nav-item.active {
             background: rgba(232,150,61,0.08);
-            border-left-color: #E8963D;
             color: #fff;
         }
 
