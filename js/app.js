@@ -4557,10 +4557,10 @@ function renderPembayaranIncomeSummary(jamaahAll, totalPerJamaah) {
         </div>
         <div class="pb-hero-progress-track"><div class="pb-hero-progress-fill" style="width:${grandPct}%;"></div></div>
         <div class="pb-hero-foot">
-            <span><b>${formatRupiah(grandTagihan)}</b>Total Tagihan</span>
-            <span><b>${formatRupiah(grandSisa)}</b>Sisa Belum Terbayar</span>
-            <span><b>${totalJamaah}</b>Jamaah</span>
-            <span><b>${programRows.length}</b>Program Berjalan</span>
+            <span><i class="bi bi-receipt"></i>Total Tagihan<b>${formatRupiah(grandTagihan)}</b></span>
+            <span><i class="bi bi-hourglass-split"></i>Sisa Belum Terbayar<b>${formatRupiah(grandSisa)}</b></span>
+            <span><i class="bi bi-people-fill"></i>Jamaah<b>${totalJamaah}</b></span>
+            <span><i class="bi bi-signpost-split-fill"></i>Program Berjalan<b>${programRows.length}</b></span>
         </div>
     `;
 
