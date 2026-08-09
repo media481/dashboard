@@ -806,41 +806,42 @@
 </div>
 
 <!-- ===== MODAL: KUITANSI ===== -->
+<!-- Tampilan & alur unduh disamakan persis dengan Nota Pembayaran (modal
+     Kelola Cicilan): preview di-render dari builder yang sama
+     (buildKuitansiHTML, lihat js/app.js) dan diskalakan proporsional lewat
+     renderScaledNotaInto(), lalu diunduh sungguhan sebagai JPEG/PDF
+     (html2canvas + jsPDF) dan tercatat ke nota_audit_log (jenis: 'kuitansi'). -->
 <div class="modal-overlay" id="kuitansiModal">
-    <div class="modal-content" style="max-width:800px;">
+    <div class="modal-content" style="max-width:1180px;">
         <div class="modal-header">
-            <h2><i class="bi bi-receipt"></i> Cetak Kuitansi</h2>
+            <h2><i class="bi bi-receipt"></i> Kuitansi</h2>
             <button class="modal-close" onclick="closeKuitansiModal()">&times;</button>
         </div>
         <div class="modal-body">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-                <div>
-                    <div class="form-group"><label>Nomor Kuitansi</label><input type="text" id="kwt_nomor" placeholder="AHI-001" oninput="renderKwtPreview()"></div>
-                    <div class="form-group"><label>Tempat &amp; Tanggal</label><input type="text" id="kwt_tempat_tanggal" placeholder="Yogyakarta, 24 Juli 2026" oninput="renderKwtPreview()"></div>
-                    <div class="form-group"><label>Sudah Terima Dari</label><input type="text" id="kwt_dari" placeholder="Nama jamaah" oninput="renderKwtPreview()"></div>
-                    <div class="form-group"><label>Jumlah (Rp) *</label><input type="number" id="kwt_jumlah" placeholder="23000000" oninput="onKwtJumlahInput()"></div>
-                    <div class="form-group"><label>Uang Sebanyak (Terbilang)</label><input type="text" id="kwt_terbilang" placeholder="Otomatis" oninput="renderKwtPreview()"></div>
-                    <div class="form-group"><label>Nama Penerima</label><input type="text" id="kwt_penerima" placeholder="Nama staf" oninput="renderKwtPreview()"></div>
-                    <div class="form-group"><label>Untuk Pembayaran</label><textarea id="kwt_keterangan" rows="2" placeholder="DP Program Umroh..." oninput="renderKwtPreview()"></textarea></div>
-                    <button class="btn-primary" onclick="downloadKuitansiPDF()" style="width:100%;justify-content:center;"><i class="bi bi-file-earmark-pdf-fill"></i> Download PDF</button>
-                </div>
-                <div>
-                    <label style="font-weight:600;font-size:13px;display:block;margin-bottom:8px;">Preview</label>
-                    <div id="kwt_preview_sheet" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:20px;font-size:12px;">
-                        <div style="text-align:center;border-bottom:2px solid #1a6fa8;padding-bottom:10px;margin-bottom:10px;">
-                            <div style="font-size:18px;font-weight:800;color:#1a6fa8;">AMIRU TOUR</div>
-                            <div style="font-size:10px;color:#666;">PT AMIRU HARAMAIN INDONESIA</div>
-                        </div>
-                        <div style="text-align:center;font-size:14px;font-weight:700;margin:8px 0;">KUITANSI</div>
-                        <div style="display:grid;grid-template-columns:100px 1fr;gap:4px;font-size:11px;">
-                            <span style="color:#666;">Nomor</span><span id="pv_nomor">-</span>
-                            <span style="color:#666;">Tempat/Tgl</span><span id="pv_tempat_tanggal">-</span>
-                            <span style="color:#666;">Dari</span><span id="pv_dari">-</span>
-                            <span style="color:#666;">Jumlah</span><span id="pv_jumlah" style="font-weight:700;">Rp 0,-</span>
-                            <span style="color:#666;">Terbilang</span><span id="pv_terbilang">-</span>
-                            <span style="color:#666;">Penerima</span><span id="pv_penerima">-</span>
-                            <span style="color:#666;">Untuk</span><span id="pv_keterangan">-</span>
-                        </div>
+            <div class="kuitansi-layout">
+                <form id="kuitansiForm" class="kuitansi-form" onsubmit="return false;">
+                    <div class="form-group"><label>Nomor Kuitansi</label><input type="text" id="kwt_nomor" placeholder="Isi manual, mis. AHI/2026/000123" oninput="updateKuitansiPreview()"></div>
+                    <div class="form-group"><label>Tempat &amp; Tanggal</label><input type="text" id="kwt_tempat_tanggal" placeholder="Yogyakarta, 24 Juli 2026" oninput="updateKuitansiPreview()"></div>
+                    <div class="form-group"><label>Sudah Terima Dari</label><input type="text" id="kwt_dari" placeholder="Nama jamaah" oninput="updateKuitansiPreview()"></div>
+                    <div class="form-group"><label>Jumlah (Rp) *</label><input type="number" id="kwt_jumlah" placeholder="23000000" min="1" oninput="updateKuitansiPreview()"></div>
+                    <div class="form-group">
+                        <label>Uang Sebanyak (Terbilang)</label>
+                        <div style="font-size:12px;font-style:italic;color:var(--ink-soft);padding:8px 0;" id="kwt_terbilang_display">-</div>
+                    </div>
+                    <div class="form-group"><label>Nama Penerima</label><input type="text" id="kwt_penerima" placeholder="Nama staf" oninput="updateKuitansiPreview()"></div>
+                    <div class="form-group"><label>Untuk Pembayaran</label><textarea id="kwt_keterangan" rows="2" placeholder="DP Program Umroh..." oninput="updateKuitansiPreview()"></textarea></div>
+                </form>
+                <div class="cicilan-modal-preview kuitansi-preview">
+                    <div class="cicilan-preview-head">
+                        <h4><i class="bi bi-file-earmark-text-fill"></i> Preview Kuitansi</h4>
+                        <button type="button" class="btn-nota-expand" onclick="openNotaLightbox('kwtPreviewContent')" title="Perbesar preview (layar penuh)"><i class="bi bi-arrows-fullscreen"></i></button>
+                    </div>
+                    <div id="kwtPreviewContent" class="nota-preview-content"></div>
+                    <p class="nota-preview-note">Kode Verifikasi dibuat &amp; dicatat ke sistem audit saat Anda menekan "Unduh JPEG" atau "Unduh PDF".</p>
+                    <div class="nota-preview-actions">
+                        <button type="button" class="btn-cancel" onclick="closeKuitansiModal()">Tutup</button>
+                        <button type="button" class="btn-download-jpeg" id="kwtDownloadJpegBtn" onclick="downloadKuitansi('jpeg')"><i class="bi bi-image-fill"></i> Unduh JPEG</button>
+                        <button type="button" class="btn-download-pdf" id="kwtDownloadPdfBtn" onclick="downloadKuitansi('pdf')"><i class="bi bi-file-earmark-pdf-fill"></i> Unduh PDF</button>
                     </div>
                 </div>
             </div>

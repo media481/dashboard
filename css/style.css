@@ -1407,6 +1407,15 @@
         /* Preview nota di-scale proporsional via JS (fitNotaPreviewScale). */
         .nota-preview-scale-wrap { margin: 0 auto; }
 
+        /* ---- Modal Kuitansi: form kiri (lebar tetap) + preview kanan
+           (mengisi sisa ruang), disamakan gaya visualnya dengan panel
+           preview Nota Pembayaran di modal Kelola Cicilan. ---- */
+        .kuitansi-layout { display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start; }
+        .kuitansi-preview { position: static; }
+        @media (max-width: 860px) {
+            .kuitansi-layout { grid-template-columns: 1fr; }
+        }
+
         /* ---- Lightbox "Perbesar": tampilkan nota apa adanya di ukuran
            semaksimal mungkin (nyaris layar penuh) untuk pengecekan detail
            terakhir sebelum diunduh. Dipisah dari panel preview supaya tidak

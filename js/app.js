@@ -1492,7 +1492,7 @@ async function renderAdminPanel() {
             <div class="admin-subtab-panel" id="adminSubTab-auditnota" style="display:none;">
                 <div class="admin-section-header">
                     <div><h4><i class="bi bi-file-earmark-lock2-fill"></i> Audit Nota</h4>
-                    <p>Setiap nota yang diunduh (pembayaran & riwayat) otomatis tercatat di sini. Log ini append-only — tidak bisa diedit atau dihapus siapa pun, termasuk Admin.</p></div>
+                    <p>Setiap nota yang diunduh (pembayaran, riwayat & kuitansi) otomatis tercatat di sini. Log ini append-only — tidak bisa diedit atau dihapus siapa pun, termasuk Admin.</p></div>
                 </div>
                 <div class="admin-toolbar">
                     <input type="text" id="auditNotaSearch" placeholder="Cari nama jamaah / no. nota / kode verifikasi..." style="flex:1;min-width:220px;" oninput="handleAuditNotaSearchInput()">
@@ -1500,6 +1500,7 @@ async function renderAdminPanel() {
                         <option value="">Semua Jenis</option>
                         <option value="pembayaran">Nota Pembayaran</option>
                         <option value="riwayat">Nota Riwayat</option>
+                        <option value="kuitansi">Kuitansi</option>
                     </select>
                 </div>
                 <div class="admin-table-card">
@@ -3858,7 +3859,7 @@ async function loadNotaAuditLog(reset) {
         if (error) throw error;
 
         const rows = data || [];
-        const jenisLabel = { pembayaran: 'Nota Pembayaran', riwayat: 'Nota Riwayat' };
+        const jenisLabel = { pembayaran: 'Nota Pembayaran', riwayat: 'Nota Riwayat', kuitansi: 'Kuitansi' };
         const rowsHtml = rows.map(r => `
             <tr>
                 <td style="white-space:nowrap;font-size:12px;">${escapeHtml(new Date(r.created_at).toLocaleString('id-ID'))}</td>
@@ -4049,6 +4050,78 @@ function buildNotaHTML(cicilan, kodeVerifikasi) {
     </div>`;
 }
 
+// ---- KUITANSI (manual, bukan dari data cicilan/pembayaran tersimpan) ----
+// Dipakai oleh tombol "Kuitansi" di tab Keberangkatan — beda dari Nota
+// Pembayaran (yang otomatis dari baris pembayaran_jamaah), kuitansi ini
+// diisi bebas oleh staf (nomor, jumlah, keterangan manual). Tampilannya
+// SENGAJA disamakan persis dengan Nota Pembayaran (pakai ulang komponen
+// builder yang sama: header, watermark, tanda tangan, kode verifikasi)
+// supaya kedua jenis dokumen punya identitas visual yang konsisten.
+function buildKuitansiHTML(data, kodeVerifikasi) {
+    const jumlah = parseRupiahToNumber(data.jumlah);
+    const terbilang = data.terbilang || rupiahTerbilang(jumlah);
+    const nomor = data.nomor && data.nomor.trim() ? data.nomor.trim() : '(nomor belum diisi)';
+
+    const baris = (label, value, opts = {}) => `
+        <tr>
+            <td style="padding:2.5px 0;font-size:10px;color:${NOTA_TEMA.inkSoft};width:110px;vertical-align:top;">${label}</td>
+            <td style="padding:2.5px 0;font-size:10px;color:#1a1a1a;vertical-align:top;${opts.bold ? 'font-weight:700;' : ''}">: ${value}</td>
+        </tr>`;
+
+    const kolomKiri = [
+        baris('Diterima Dari', escapeHtml(data.dari || '-'), { bold: true }),
+        baris('Untuk Pembayaran', escapeHtml(data.keterangan || '-'))
+    ].join('');
+    const kolomKanan = [
+        baris('Tempat / Tanggal', escapeHtml(data.tempatTanggal || '-'))
+    ].join('');
+
+    // Ukuran & struktur layout disamakan persis dengan buildNotaHTML: 794x416px
+    // (210x110mm @96dpi), disusun stack ke bawah (kop+judul -> info -> jumlah
+    // diterima -> tanda tangan -> footer), bukan kolom-kolom terpisah.
+    return `
+    <div style="position:relative;width:794px;height:416px;background:#fff;font-family:'Inter',Arial,sans-serif;color:#1a1a1a;padding:22px 28px;box-sizing:border-box;border:1px solid ${NOTA_TEMA.line};overflow:hidden;display:flex;flex-direction:column;">
+        ${buildNotaWatermarkHTML()}
+
+        <div style="position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-shrink:0;border-bottom:1.5px solid ${NOTA_TEMA.navy};padding-bottom:9px;margin-bottom:12px;">
+            ${buildNotaHeaderHTML()}
+            ${buildNotaTitleBarHTML('KUITANSI', [`No. ${escapeHtml(nomor)}`])}
+        </div>
+
+        <div style="position:relative;z-index:1;flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;">
+            <div style="display:flex;gap:20px;">
+                <table style="width:64%;border-collapse:collapse;">
+                    ${kolomKiri}
+                </table>
+                <table style="width:36%;border-collapse:collapse;">
+                    ${kolomKanan}
+                </table>
+            </div>
+
+            <div style="background:${NOTA_TEMA.tint};border-left:3px solid ${NOTA_TEMA.navy};border-radius:2px;padding:9px 16px;">
+                <div style="font-size:8.5px;color:${NOTA_TEMA.inkSoft};text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Jumlah Diterima</div>
+                <div style="font-size:23px;font-weight:800;color:${NOTA_TEMA.navy};line-height:1.15;">${formatRupiah(jumlah)}</div>
+                <div style="font-size:9.5px;color:#555;font-style:italic;margin-top:3px;">Terbilang: ${escapeHtml(terbilang)}</div>
+            </div>
+
+            ${buildNotaSignatureHTML(data.dari || 'Yang Menyerahkan', data.penerima || 'Penerima')}
+        </div>
+
+        <div style="position:relative;z-index:1;text-align:left;font-size:8px;color:${NOTA_TEMA.inkSoft};flex-shrink:0;margin-top:8px;padding-top:6px;border-top:1px solid ${NOTA_TEMA.line};">
+            <div style="margin-bottom:3px;">
+                <b>Rekening Pembayaran:</b>
+                Bank Syariah Indonesia 2026 64 2027 a.n. Amiru Tour
+                &nbsp;&middot;&nbsp;
+                Bank Nasional Indonesia 2026 64 2026 a.n. Amiru Haramain Indonesia
+            </div>
+            <div style="color:#a0a8b3;">
+                Dokumen ini dicetak otomatis oleh sistem dan sah sebagai bukti pembayaran resmi ${escapeHtml(NOTA_PERUSAHAAN.brand)}.
+                ${notaKodeVerifikasiFooterHTML(kodeVerifikasi)}
+            </div>
+        </div>
+    </div>`;
+}
+
 // Render nota (HTML string) ke #notaRenderArea lalu tangkap jadi <canvas> lewat
 // html2canvas. Dipakai bersama oleh export JPEG maupun PDF supaya proses
 // render & pengelolaan spinner tombol tidak dobel ditulis di dua tempat.
@@ -4146,6 +4219,18 @@ function setNotaPreviewPanelChrome(title, showActions) {
     if (actionsEl) actionsEl.style.display = showActions ? '' : 'none';
 }
 
+// [DIPAKAI BERSAMA] Render HTML nota (apa pun jenisnya: nota pembayaran,
+// nota riwayat, atau kuitansi) ke dalam sebuah kontainer, dibungkus wrapper
+// yang di-scale proporsional (bukan overflow/scroll) supaya yang terlihat =
+// keseluruhan nota, cuma diperkecil menyesuaikan lebar kontainer. Dipakai
+// oleh showNotaPreviewPanel() (modal Kelola Cicilan) & updateKuitansiPreview()
+// (modal Kuitansi) supaya keduanya identik persis cara render & skalanya.
+function renderScaledNotaInto(contentEl, html) {
+    if (!contentEl) return;
+    contentEl.innerHTML = `<div class="nota-preview-scale-wrap"><div class="nota-preview-scale-inner">${html}</div></div>`;
+    requestAnimationFrame(() => fitScaleInto(contentEl));
+}
+
 function showNotaPreviewPanel(html) {
     // Nota dirender pada ukuran aslinya (500-1123px, sesuai jenis nota) supaya
     // hasilnya identik dengan file yang diunduh — panel preview jauh lebih
@@ -4153,13 +4238,15 @@ function showNotaPreviewPanel(html) {
     // proporsional (bukan overflow/scroll) agar yang terlihat = keseluruhan
     // nota, cuma diperkecil. Ukuran final tetap dihitung dari nota versi asli.
     const content = document.getElementById('notaPreviewContent');
-    content.innerHTML = `<div class="nota-preview-scale-wrap"><div class="nota-preview-scale-inner">${html}</div></div>`;
+    renderScaledNotaInto(content, html);
     document.getElementById('cicilanPreviewPanel').style.display = 'block';
-    requestAnimationFrame(fitNotaPreviewScale);
 }
 
 function fitNotaPreviewScale() {
-    const content = document.getElementById('notaPreviewContent');
+    fitScaleInto(document.getElementById('notaPreviewContent'));
+}
+
+function fitScaleInto(content) {
     if (!content) return;
     const wrap = content.querySelector('.nota-preview-scale-wrap');
     const inner = content.querySelector('.nota-preview-scale-inner');
@@ -4198,6 +4285,8 @@ function fitNotaPreviewScale() {
 window.addEventListener('resize', () => {
     const panel = document.getElementById('cicilanPreviewPanel');
     if (panel && panel.style.display !== 'none') fitNotaPreviewScale();
+    const kwtContent = document.getElementById('kwtPreviewContent');
+    if (kwtContent && document.getElementById('kuitansiModal')?.classList.contains('open')) fitScaleInto(kwtContent);
     const lightbox = document.getElementById('notaLightboxOverlay');
     if (lightbox && lightbox.classList.contains('open')) fitNotaLightboxScale();
 });
@@ -4205,8 +4294,8 @@ window.addEventListener('resize', () => {
 // ---- "Perbesar" (lightbox layar penuh) untuk preview nota. Mengambil ulang
 // HTML nota yang sedang tampil di panel preview (bukan generate ulang) supaya
 // konsisten persis dengan yang sedang dilihat user, hanya beda skala. ----
-function openNotaLightbox() {
-    const panelInner = document.querySelector('#notaPreviewContent .nota-preview-scale-inner');
+function openNotaLightbox(sourceContentId = 'notaPreviewContent') {
+    const panelInner = document.querySelector(`#${sourceContentId} .nota-preview-scale-inner`);
     const stage = document.getElementById('notaLightboxStage');
     const overlay = document.getElementById('notaLightboxOverlay');
     if (!panelInner || !stage || !overlay || !panelInner.firstElementChild) return;
@@ -4726,48 +4815,61 @@ async function toggleDokumenJamaah(jamaahId, key, checked) {
 }
 
 // ============================================================
-// 20. KUITANSI
+// 20. KUITANSI (samakan tampilan & alur unduh dengan Nota Pembayaran — lihat
+// buildKuitansiHTML() dan bagian "19C/19D. NOTA PEMBAYARAN / AUDIT NOTA")
 // ============================================================
 function openKuitansiModal() {
     document.getElementById('kuitansiModal').classList.add('open');
-    renderKwtPreview();
+    document.getElementById('kuitansiForm').reset();
+    updateKuitansiPreview();
 }
 
 function closeKuitansiModal() {
     document.getElementById('kuitansiModal').classList.remove('open');
 }
 
-function renderKwtPreview() {
-    const nomor = document.getElementById('kwt_nomor').value || '-';
-    const tempat = document.getElementById('kwt_tempat_tanggal').value || '-';
-    const dari = document.getElementById('kwt_dari').value || '-';
-    const jumlah = document.getElementById('kwt_jumlah').value || '0';
-    const terbilang = document.getElementById('kwt_terbilang').value || '-';
-    const penerima = document.getElementById('kwt_penerima').value || '-';
-    const keterangan = document.getElementById('kwt_keterangan').value || '-';
-
-    document.getElementById('pv_nomor').textContent = nomor;
-    document.getElementById('pv_tempat_tanggal').textContent = tempat;
-    document.getElementById('pv_dari').textContent = dari;
-    document.getElementById('pv_jumlah').textContent = 'Rp ' + parseInt(jumlah).toLocaleString('id-ID') + ',-';
-    document.getElementById('pv_terbilang').textContent = terbilang;
-    document.getElementById('pv_penerima').textContent = penerima;
-    document.getElementById('pv_keterangan').textContent = keterangan;
+function readKuitansiFormData() {
+    return {
+        nomor: document.getElementById('kwt_nomor').value,
+        tempatTanggal: document.getElementById('kwt_tempat_tanggal').value,
+        dari: document.getElementById('kwt_dari').value,
+        jumlah: document.getElementById('kwt_jumlah').value,
+        penerima: document.getElementById('kwt_penerima').value,
+        keterangan: document.getElementById('kwt_keterangan').value
+    };
 }
 
-function onKwtJumlahInput() {
-    const val = document.getElementById('kwt_jumlah').value;
-    const display = document.getElementById('kwt_jumlah_display');
-    if (val) {
-        display.textContent = 'Rp ' + parseInt(val).toLocaleString('id-ID') + ',-';
-    } else {
-        display.textContent = '';
-    }
-    renderKwtPreview();
+function updateKuitansiPreview() {
+    const data = readKuitansiFormData();
+    const display = document.getElementById('kwt_terbilang_display');
+    const jumlah = parseRupiahToNumber(data.jumlah);
+    if (display) display.textContent = jumlah ? rupiahTerbilang(jumlah) : '-';
+    renderScaledNotaInto(document.getElementById('kwtPreviewContent'), buildKuitansiHTML(data, NOTA_KODE_PREVIEW));
 }
 
-function downloadKuitansiPDF() {
-    showToast('Fitur download PDF akan segera hadir');
+async function downloadKuitansi(format = 'jpeg') {
+    const data = readKuitansiFormData();
+    if (!parseRupiahToNumber(data.jumlah)) { showToast('Isi jumlah kuitansi terlebih dahulu', 'error'); return; }
+
+    const btn = document.getElementById(format === 'pdf' ? 'kwtDownloadPdfBtn' : 'kwtDownloadJpegBtn');
+    const namaUntuk = (data.dari || 'Kuitansi').replace(/[^a-zA-Z0-9]+/g, '-');
+
+    // Sama seperti Nota Pembayaran: kode verifikasi dihitung & dicatat ke
+    // audit log SEBELUM nota dirender, supaya ikut tercetak di dokumennya
+    // sendiri dan bisa dicocokkan balik ke log (menu Admin > Audit Nota).
+    const kodeVerifikasi = await logNotaAudit({
+        jenis: 'kuitansi',
+        nomorNotaValue: data.nomor && data.nomor.trim() ? data.nomor.trim() : '(nomor belum diisi)',
+        jamaahId: null,
+        jamaahNama: data.dari,
+        programNama: null,
+        jumlah: parseRupiahToNumber(data.jumlah),
+        metadata: { tempatTanggal: data.tempatTanggal, penerima: data.penerima, keterangan: data.keterangan }
+    });
+
+    const exportFn = format === 'pdf' ? exportNotaElementAsPdf : exportNotaElementAsJpeg;
+    const ext = format === 'pdf' ? 'pdf' : 'jpg';
+    await exportFn(buildKuitansiHTML(data, kodeVerifikasi), `Kuitansi-${namaUntuk}.${ext}`, btn);
 }
 
 // ============================================================
