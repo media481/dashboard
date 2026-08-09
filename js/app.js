@@ -5061,13 +5061,11 @@ function buildKuitansiHTML(data, kodeVerifikasi) {
             <td style="padding:2.5px 0;font-size:10px;color:#1a1a1a;vertical-align:top;${opts.bold ? 'font-weight:700;' : ''}">: ${value}</td>
         </tr>`;
 
-    // [Untuk Pembayaran dipindah ke bawah kotak "Jumlah Diterima", bukan di
-    // tabel atas — lihat blok jumlah di bawah] jadi kolom kiri di sini hanya
-    // berisi identitas penyetor.
-    const kolomKiri = [
-        baris('Diterima Dari', escapeHtml(data.dari || '-'), { bold: true })
-    ].join('');
-    const kolomKanan = [
+    // Diterima Dari, Tempat/Tanggal, dan Metode Bayar disusun satu kolom
+    // ke bawah (bukan dua kolom bersebelahan) sesuai urutan: Diterima Dari
+    // di atas, lalu Tempat/Tanggal & Metode Bayar di bawahnya.
+    const kolomInfo = [
+        baris('Diterima Dari', escapeHtml(data.dari || '-'), { bold: true }),
         baris('Tempat / Tanggal', escapeHtml(data.tempatTanggal || '-')),
         baris('Metode Bayar', escapeHtml(data.metode || '-'))
     ].join('');
@@ -5086,11 +5084,8 @@ function buildKuitansiHTML(data, kodeVerifikasi) {
 
         <div style="position:relative;z-index:1;flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;">
             <div style="display:flex;gap:20px;">
-                <table style="width:64%;border-collapse:collapse;">
-                    ${kolomKiri}
-                </table>
-                <table style="width:36%;border-collapse:collapse;">
-                    ${kolomKanan}
+                <table style="width:100%;border-collapse:collapse;">
+                    ${kolomInfo}
                 </table>
             </div>
 
