@@ -1385,6 +1385,7 @@ async function renderAdminPanel() {
                         <option value="lunas">Lunas</option>
                         <option value="cicilan">Cicilan</option>
                         <option value="belum">Belum Bayar</option>
+                        <option value="batal">Batal</option>
                     </select>
                 </div>
                 <div class="admin-table-card">
@@ -3191,7 +3192,8 @@ async function loadKbJamaahForProgram(programId) {
             grandTotalDibayar += dibayar;
 
             let statusLabel, statusClass;
-            if (hargaProgram > 0 && dibayar >= hargaProgram) { statusLabel = '<i class="bi bi-check-circle-fill"></i> Lunas'; statusClass = 'available'; }
+            if (j.status === 'batal') { statusLabel = '<i class="bi bi-x-circle-fill"></i> Batal'; statusClass = 'batal'; }
+            else if (hargaProgram > 0 && dibayar >= hargaProgram) { statusLabel = '<i class="bi bi-check-circle-fill"></i> Lunas'; statusClass = 'available'; }
             else if (dibayar > 0) { statusLabel = '<i class="bi bi-arrow-repeat"></i> Cicilan'; statusClass = 'limited'; }
             else { statusLabel = '<i class="bi bi-hourglass-split"></i> Belum Bayar'; statusClass = 'full'; }
 
@@ -3226,7 +3228,7 @@ async function loadKbJamaahForProgram(programId) {
         }).join('');
 
         const grandSisa = Math.max(grandTotalTagihan - grandTotalDibayar, 0);
-        const totalLunas = jamaah.filter(j => hargaProgram > 0 && (totalPerJamaah[j.id] || 0) >= hargaProgram).length;
+        const totalLunas = jamaah.filter(j => j.status !== 'batal' && hargaProgram > 0 && (totalPerJamaah[j.id] || 0) >= hargaProgram).length;
 
         container.innerHTML = `
             <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
@@ -3502,19 +3504,24 @@ function renderCicilanHistory() {
         return;
     }
     listEl.innerHTML = cicilanList.map(c => {
-        const metodeClass = c.metode === 'Cash' ? 'cash' : (c.metode === 'Transfer' ? '' : 'lainnya');
+        const isRefund = Number(c.jumlah || 0) < 0 || c.metode === 'Refund';
+        const metodeClass = isRefund ? 'refund' : (c.metode === 'Cash' ? 'cash' : (c.metode === 'Transfer' ? '' : 'lainnya'));
+        const amountDisplay = isRefund
+            ? `- ${formatRupiah(Math.abs(Number(c.jumlah || 0)))}`
+            : formatRupiah(Number(c.jumlah || 0));
         return `
-        <div class="cicilan-history-item">
+        <div class="cicilan-history-item${isRefund ? ' is-refund' : ''}">
             <div>
-                <span class="cicilan-history-amount">${formatRupiah(Number(c.jumlah || 0))}</span>
+                <span class="cicilan-history-amount${isRefund ? ' is-refund' : ''}">${amountDisplay}</span>
                 ${c.metode ? `<span class="cicilan-history-badge ${metodeClass}">${escapeHtml(c.metode)}</span>` : ''}
                 <div class="cicilan-history-meta">${escapeHtml(c.tanggal || '-')}${c.keterangan ? ' · ' + escapeHtml(c.keterangan) : ''}</div>
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                ${!isRefund ? `
                 <button type="button" class="cicilan-nota-btn" onclick="previewNotaPembayaran('${c.id}', this)" title="Preview lalu unduh nota bukti pembayaran (JPEG)">
                     <i class="bi bi-file-earmark-image-fill"></i>
-                </button>
-                <button type="button" class="cicilan-delete-btn" onclick="deleteCicilan('${c.id}')" title="Hapus pembayaran ini">
+                </button>` : ''}
+                <button type="button" class="cicilan-delete-btn" onclick="deleteCicilan('${c.id}')" title="Hapus ${isRefund ? 'refund' : 'pembayaran'} ini">
                     <i class="bi bi-trash-fill"></i>
                 </button>
             </div>
@@ -3664,7 +3671,8 @@ async function renderPembayaranPanel() {
             const sisa = Math.max(hargaProgram - dibayar, 0);
             const pct = hargaProgram > 0 ? Math.min(100, Math.round((dibayar / hargaProgram) * 100)) : 0;
             let status = 'belum';
-            if (hargaProgram > 0 && dibayar >= hargaProgram) status = 'lunas';
+            if (j.status === 'batal') status = 'batal';
+            else if (hargaProgram > 0 && dibayar >= hargaProgram) status = 'lunas';
             else if (dibayar > 0) status = 'cicilan';
             return { j, program, hargaProgram, dibayar, sisa, pct, status };
         });
@@ -3687,12 +3695,15 @@ async function renderPembayaranPanel() {
         const grandSisa = Math.max(grandTagihan - grandDibayar, 0);
         const totalLunas = rowsData.filter(r => r.status === 'lunas').length;
         const totalBelum = rowsData.filter(r => r.status === 'belum').length;
+        const totalBatal = rowsData.filter(r => r.status === 'batal').length;
+        const totalCicilan = rowsData.length - totalLunas - totalBelum - totalBatal;
 
         document.getElementById('pbStatsBar').innerHTML = `
             <span class="status-badge available">${rowsData.length} Jamaah</span>
             <span class="status-badge available">${totalLunas} Lunas</span>
-            <span class="status-badge limited">${rowsData.length - totalLunas - totalBelum} Cicilan</span>
+            <span class="status-badge limited">${totalCicilan} Cicilan</span>
             <span class="status-badge full">${totalBelum} Belum Bayar</span>
+            ${totalBatal ? `<span class="status-badge batal">${totalBatal} Batal</span>` : ''}
             <span class="status-badge available">Dibayar: ${formatRupiah(grandDibayar)}</span>
             <span class="status-badge full">Sisa: ${formatRupiah(grandSisa)}</span>
         `;
@@ -3706,7 +3717,8 @@ async function renderPembayaranPanel() {
         const canEdit = canManageProgramData();
         tbody.innerHTML = rowsData.map(r => {
             let statusLabel, statusClass;
-            if (r.status === 'lunas') { statusLabel = '<i class="bi bi-check-circle-fill"></i> Lunas'; statusClass = 'available'; }
+            if (r.status === 'batal') { statusLabel = '<i class="bi bi-x-circle-fill"></i> Batal'; statusClass = 'batal'; }
+            else if (r.status === 'lunas') { statusLabel = '<i class="bi bi-check-circle-fill"></i> Lunas'; statusClass = 'available'; }
             else if (r.status === 'cicilan') { statusLabel = '<i class="bi bi-arrow-repeat"></i> Cicilan'; statusClass = 'limited'; }
             else { statusLabel = '<i class="bi bi-hourglass-split"></i> Belum Bayar'; statusClass = 'full'; }
 
@@ -4397,6 +4409,7 @@ function hideNotaPreviewPanel() {
 function previewNotaPembayaran(cicilanId, btn) {
     const cicilan = cicilanList.find(c => String(c.id) === String(cicilanId));
     if (!cicilan) { showToast('Data pembayaran tidak ditemukan', 'error'); return; }
+    if (Number(cicilan.jumlah || 0) < 0) { showToast('Nota pembayaran tidak berlaku untuk baris refund', 'error'); return; }
     notaPreviewPending = { type: 'pembayaran', cicilanId, btn };
     setNotaPreviewPanelChrome('Preview Nota', true);
     showNotaPreviewPanel(buildNotaHTML(cicilan, NOTA_KODE_PREVIEW));
@@ -4430,6 +4443,8 @@ function updateLiveNotaDraft() {
     const keterangan = document.getElementById('cic_keterangan')?.value.trim() || '';
 
     if (!tanggal && !jumlah) { hideNotaPreviewPanel(); return; }
+    // Nota "Jumlah Diterima" tidak relevan untuk Refund — tidak ada preview live di mode ini.
+    if (metode === 'Refund') { hideNotaPreviewPanel(); return; }
 
     const draftCicilan = { id: 'draft', tanggal, jumlah, metode, keterangan };
     notaPreviewPending = { type: 'draft' };
@@ -4451,6 +4466,7 @@ async function confirmDownloadNotaPreview(format = 'jpeg') {
 async function downloadNotaPembayaran(cicilanId, btn, format = 'jpeg') {
     const cicilan = cicilanList.find(c => String(c.id) === String(cicilanId));
     if (!cicilan) { showToast('Data pembayaran tidak ditemukan', 'error'); return; }
+    if (Number(cicilan.jumlah || 0) < 0) { showToast('Nota pembayaran tidak berlaku untuk baris refund', 'error'); return; }
 
     const namaJamaah = (cicilanJamaahInfo && cicilanJamaahInfo.nama ? cicilanJamaahInfo.nama : 'Jamaah').replace(/[^a-zA-Z0-9]+/g, '-');
     const nomor = nomorNota(cicilan);
@@ -4609,20 +4625,25 @@ async function saveCicilan(e) {
     // Terima angka desimal (mis. 2.5 juta) — parseInt() akan memotong ke 2 juta.
     // Dibulatkan ke bawah ke rupiah utuh supaya tidak ada sen yang menggantung.
     const jumlahRaw = document.getElementById('cic_jumlah').value;
-    const jumlah = Math.floor(Number(jumlahRaw));
+    const isRefund = document.getElementById('cic_metode').value === 'Refund';
+    // Staf tetap mengetik angka positif (jumlah yang dikembalikan) di form;
+    // untuk metode Refund kita simpan sebagai baris NEGATIF di pembayaran_jamaah
+    // supaya SUM total dibayar otomatis berkurang tanpa perlu kolom/tabel baru.
+    const jumlahAbs = Math.floor(Number(jumlahRaw));
+    const jumlah = isRefund ? -jumlahAbs : jumlahAbs;
     const metode = document.getElementById('cic_metode').value;
     const keterangan = document.getElementById('cic_keterangan').value.trim();
 
     if (!jamaahId) { showToast('Data jamaah tidak valid', 'error'); return; }
     if (!tanggal) { showToast('Tanggal wajib diisi', 'error'); return; }
     if (jumlahRaw === '' || isNaN(Number(jumlahRaw))) { showToast('Jumlah pembayaran harus berupa angka', 'error'); return; }
-    if (!jumlah || jumlah <= 0) { showToast('Jumlah pembayaran wajib diisi', 'error'); return; }
+    if (!jumlahAbs || jumlahAbs <= 0) { showToast(isRefund ? 'Jumlah refund wajib diisi' : 'Jumlah pembayaran wajib diisi', 'error'); return; }
 
     try {
         const { error } = await supabaseClient.from('pembayaran_jamaah').insert([{ jamaah_id: jamaahId, tanggal, jumlah, metode, keterangan }]);
         if (error) throw error;
 
-        showToast('Pembayaran berhasil dicatat');
+        showToast(isRefund ? 'Refund berhasil dicatat' : 'Pembayaran berhasil dicatat');
         document.getElementById('cicilanForm').reset();
         document.getElementById('cic_jamaahId').value = jamaahId;
         document.getElementById('cic_tanggal').value = new Date().toISOString().slice(0, 10);
@@ -4645,8 +4666,9 @@ async function deleteCicilan(id) {
     if (!cic) { showToast('Data pembayaran tidak ditemukan', 'error'); return; }
     // Gunakan modal konfirmasi kustom (bukan confirm() bawaan browser) supaya
     // konsisten dengan app, dan hapus dicatat ke log audit nota.
+    const isRefund = Number(cic.jumlah || 0) < 0;
     openDeleteModal('pembayaran_jamaah', id,
-        `pembayaran ${formatRupiah(Number(cic.jumlah || 0))}${cic.tanggal ? ' (' + cic.tanggal + ')' : ''}`);
+        `${isRefund ? 'refund' : 'pembayaran'} ${formatRupiah(Math.abs(Number(cic.jumlah || 0)))}${cic.tanggal ? ' (' + cic.tanggal + ')' : ''}`);
 }
 
 // Dipanggil dari confirmDeleteAction() setelah hapus pembayaran_jamaah berhasil.
@@ -4664,6 +4686,9 @@ async function syncJamaahStatus(jamaahId) {
     try {
         const { data: jamaahRow, error: jErr } = await supabaseClient.from('kb_jamaah').select('*').eq('id', jamaahId).single();
         if (jErr || !jamaahRow) return;
+        // Status "Batal" diset manual lewat form Edit Jamaah dan sengaja tidak
+        // dihidupkan lagi otomatis oleh transaksi pembayaran/refund berikutnya.
+        if (jamaahRow.status === 'batal') return;
 
         const program = dataUmroh.find(p => String(p.id) === String(jamaahRow.program_id));
         const hargaProgram = parseRupiahToNumber(program ? program.harga_quint : 0);
@@ -4714,6 +4739,9 @@ async function syncJamaahStatusForProgram(programId) {
 
         const updates = [];
         for (const j of jamaahRows) {
+            // Lewati jamaah yang statusnya sudah dikunci "Batal" secara manual —
+            // lihat catatan yang sama di syncJamaahStatus().
+            if (j.status === 'batal') continue;
             const totalDibayar = totalPerJamaah[j.id] || 0;
             let statusBaru;
             if (hargaProgram > 0 && totalDibayar >= hargaProgram) statusBaru = 'lunas';

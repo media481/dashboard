@@ -804,6 +804,7 @@
         .status-badge.available { background: var(--success-tint); color: var(--success); }
         .status-badge.limited { background: var(--warn-tint); color: #A5541A; }
         .status-badge.full { background: var(--danger-tint); color: var(--danger); }
+        .status-badge.batal { background: #e5e7eb; color: #4b5563; }
 
         /* Action Buttons */
         .action-btns {
@@ -1579,6 +1580,9 @@
         }
         .cicilan-history-badge.cash { background: var(--success-tint); color: #1b6b48; }
         .cicilan-history-badge.lainnya { background: var(--bg); color: var(--ink-soft); border: 1px solid var(--line); }
+        .cicilan-history-badge.refund { background: var(--danger-tint); color: var(--danger); }
+        .cicilan-history-amount.is-refund { color: var(--danger); }
+        .cicilan-history-item.is-refund { border-color: var(--danger-tint); background: #fff9f9; }
         .cicilan-history-empty {
             text-align: center;
             padding: 28px 16px;
