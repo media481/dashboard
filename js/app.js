@@ -2748,6 +2748,17 @@ async function maybeDailySnapshot() {
 // ============================================================
 // 17. DELETE CONFIRM
 // ============================================================
+// Ratakan teks konfirmasi hapus sebelum dibandingkan: Intl.NumberFormat
+// (dipakai formatRupiah untuk nama konfirmasi hapus pembayaran, mis. "pembayaran
+// Rp2.500.000 (2026-08-01)") kadang menyisipkan spasi tak-terputus (non-breaking
+// space, U+00A0) yang tidak bisa diketik dari keyboard biasa -- kalau tidak
+// dinormalisasi, tombol "Hapus Permanen" tidak akan pernah aktif walau user
+// sudah mengetik ulang persis secara visual. Perbandingan juga dibuat tidak
+// sensitif kapitalisasi supaya lebih toleran terhadap salah ketik kecil.
+function normalizeConfirmText(str) {
+    return String(str || '').replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
 function openDeleteModal(table, id, name, extraWarning) {
     if (table === 'programs') {
         const jumlahJamaah = (kbJamaahList || []).filter(j => String(j.program_id) === String(id)).length;
@@ -2772,9 +2783,10 @@ function openDeleteModal(table, id, name, extraWarning) {
 }
 
 function onDeleteConfirmInput() {
-    const input = document.getElementById('deleteConfirmInput').value.trim();
-    document.getElementById('deleteConfirmBtn').disabled = input !== deleteTarget.name;
+    const input = normalizeConfirmText(document.getElementById('deleteConfirmInput').value);
+    document.getElementById('deleteConfirmBtn').disabled = input !== normalizeConfirmText(deleteTarget.name);
 }
+
 
 async function confirmDeleteAction() {
     if (!deleteTarget.id || !deleteTarget.table) return;
@@ -2818,7 +2830,7 @@ async function confirmDeleteAction() {
         let cicRowSebelumHapus = null;
         if (finishedTable === 'pembayaran_jamaah') {
             const { data } = await supabaseClient
-                .from('pembayaran_jamaah').select('jumlah, tanggal, metode, nomor_nota').eq('id', finishedId).single();
+                .from('pembayaran_jamaah').select('jumlah, tanggal, metode, keterangan').eq('id', finishedId).single();
             cicRowSebelumHapus = data || null;
         }
 
