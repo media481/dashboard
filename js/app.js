@@ -5050,7 +5050,8 @@ const NOTA_TEMA = {
     gold: '#b8935a',
     tint: '#eef2f7',
     line: '#d7dfe9',
-    inkSoft: '#64758A'
+    inkSoft: '#64758A',
+    stampRed: '#b3372c'
 };
 
 const NOTA_KODE_PREVIEW = '__PREVIEW__';
@@ -5068,6 +5069,29 @@ function buildNotaWatermarkHTML() {
     return `
         <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none;z-index:0;">
             <div style="transform:rotate(-28deg);font-size:54px;font-weight:800;letter-spacing:.12em;color:${NOTA_TEMA.navy};opacity:.045;white-space:nowrap;font-family:Georgia,'Times New Roman',serif;">${escapeHtml(NOTA_PERUSAHAAN.brand)}</div>
+        </div>`;
+}
+
+// Cap "LUNAS" bergaya stempel tinta (dua garis lingkaran, dimiringkan) —
+// dimunculkan HANYA saat dokumen ini berstatus KUITANSI (pembayaran sudah
+// melunasi seluruh tagihan program), sebagai penanda visual cepat bahwa
+// nota ini sudah lunas tanpa perlu membaca baris "Sisa Tagihan". Diposisikan
+// via `bottom`/`right` (bukan `top`) supaya konsisten menumpuk di area
+// tanda tangan petugas — lazimnya cap memang dibubuhkan di dekat tanda
+// tangan penerima — dan tetap pas walau tinggi nota berbeda-beda (Nota
+// Riwayat tingginya dinamis mengikuti jumlah baris transaksi, tidak
+// dikunci 416px seperti Nota Pembayaran).
+function buildNotaLunasStampHTML(tanggalPelunasan) {
+    const tgl = tanggalPelunasan ? tanggalIndonesia(tanggalPelunasan) : '';
+    return `
+        <div style="position:absolute;bottom:70px;right:60px;z-index:2;transform:rotate(-12deg);pointer-events:none;opacity:.85;">
+            <div style="width:96px;height:96px;border-radius:50%;border:3px solid ${NOTA_TEMA.stampRed};display:flex;align-items:center;justify-content:center;">
+                <div style="width:82px;height:82px;border-radius:50%;border:1px solid ${NOTA_TEMA.stampRed};display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+                    <div style="font-family:Georgia,'Times New Roman',serif;font-size:17px;font-weight:800;letter-spacing:.05em;color:${NOTA_TEMA.stampRed};line-height:1.1;">LUNAS</div>
+                    ${tgl ? `<div style="font-size:6.5px;font-weight:700;color:${NOTA_TEMA.stampRed};margin-top:2px;white-space:nowrap;">${escapeHtml(tgl)}</div>` : ''}
+                    <div style="font-size:5px;font-weight:700;letter-spacing:.08em;color:${NOTA_TEMA.stampRed};margin-top:2px;">${escapeHtml(NOTA_PERUSAHAAN.brand || 'AMIRU TOUR')}</div>
+                </div>
+            </div>
         </div>`;
 }
 
@@ -5183,6 +5207,7 @@ function buildNotaHTML(cicilan, kodeVerifikasi) {
     return `
     <div style="position:relative;width:794px;height:416px;background:#fff;font-family:'Inter',Arial,sans-serif;color:#1a1a1a;padding:22px 28px;box-sizing:border-box;border:1px solid ${NOTA_TEMA.line};overflow:hidden;display:flex;flex-direction:column;">
         ${buildNotaWatermarkHTML()}
+        ${isKuitansi ? buildNotaLunasStampHTML(cicilan.tanggal) : ''}
 
         <div style="position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-shrink:0;border-bottom:1.5px solid ${NOTA_TEMA.navy};padding-bottom:9px;margin-bottom:12px;">
             ${buildNotaHeaderHTML()}
@@ -5665,6 +5690,20 @@ function buildNotaRiwayatHTML(kodeVerifikasi) {
     const statusLunas = hargaProgram > 0 && totalDibayar >= hargaProgram;
     const lebihBayar = Math.max(totalDibayar - hargaProgram, 0);
 
+    // Tanggal pelunasan = tanggal transaksi yang PERTAMA KALI membuat akumulasi
+    // pembayaran (urut tanggal, bukan urut input) mencapai/melewati harga
+    // program — dicari dengan menelusuri berjalan (running total), bukan cuma
+    // dipakai tanggal baris terakhir, karena urutan input transaksi bisa saja
+    // tidak sama dengan urutan tanggalnya.
+    let tanggalPelunasan = null;
+    if (statusLunas) {
+        let running = 0;
+        for (const c of riwayat) {
+            running += Number(c.jumlah || 0);
+            if (running >= hargaProgram) { tanggalPelunasan = c.tanggal; break; }
+        }
+    }
+
     const rows = riwayat.length ? riwayat.map((c, i) => `
         <tr style="background:${i % 2 === 0 ? '#fff' : NOTA_TEMA.tint};">
             <td style="padding:7px 6px;border-bottom:1px solid ${NOTA_TEMA.line};text-align:center;color:${NOTA_TEMA.inkSoft};font-size:10px;">${i + 1}</td>
@@ -5702,6 +5741,7 @@ function buildNotaRiwayatHTML(kodeVerifikasi) {
     return `
     <div style="position:relative;width:794px;background:#fff;font-family:'Inter',Arial,sans-serif;color:#1a1a1a;padding:22px 28px;box-sizing:border-box;border:1px solid ${NOTA_TEMA.line};overflow:hidden;">
         ${buildNotaWatermarkHTML()}
+        ${statusLunas ? buildNotaLunasStampHTML(tanggalPelunasan) : ''}
 
         <div style="position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border-bottom:1.5px solid ${NOTA_TEMA.navy};padding-bottom:9px;margin-bottom:12px;">
             ${buildNotaHeaderHTML()}
