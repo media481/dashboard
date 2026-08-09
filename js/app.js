@@ -654,6 +654,7 @@ async function loadDataFromSupabase(forceRefresh = false) {
             link_poster: p.link_poster, link_metaads: p.link_metaads,
             link_dokumentasi: p.link_dokumentasi, created_at: p.created_at,
             is_active: p.is_active !== false,
+            kuota_pax: p.kuota_pax || 45,
             admin_data_lengkap: p.admin_data_lengkap
         }));
         sessionStorage.setItem(CACHE_KEY, JSON.stringify(plainData));
@@ -745,9 +746,17 @@ function hitungEstimasi(dateObj, now) {
 // (tab "Program Umroh") dan renderFeaturedSection (tab "Unggulan") supaya
 // tampilan kedua tabel identik persis.
 function buildProgramRowHTML(item, now, nearestIds) {
-    const isAvailable = item.dateObj >= now;
-    const statusClass = isAvailable ? "available" : "full";
-    const statusLabel = isAvailable ? "Tersedia" : "Expired";
+    const isExpired = item.dateObj < now;
+    const kuota = item.kuota_pax || 45;
+    // Jamaah "batal" tidak dihitung mengisi kuota. kbJamaahList sendiri sudah
+    // terfilter diarsipkan=false (lihat loadKbJamaah), jadi jamaah program yang
+    // sudah diarsipkan otomatis tidak ikut menghitung kuota di sini.
+    const terisi = (kbJamaahList || []).filter(j => String(j.program_id) === String(item.id) && j.status !== 'batal').length;
+    const isPenuh = terisi >= kuota;
+    let statusClass, statusLabel;
+    if (isExpired) { statusClass = 'full'; statusLabel = 'Expired'; }
+    else if (isPenuh) { statusClass = 'full'; statusLabel = `${terisi}/${kuota} Penuh`; }
+    else { statusClass = 'available'; statusLabel = `${terisi}/${kuota} Tersedia`; }
     const isNearest = nearestIds.has(String(item.id));
 
     const hasPosterHover = !!item.link_poster;
@@ -1356,6 +1365,12 @@ async function renderAdminPanel() {
                                 <select id="admin_maskapai">${renderMaskapaiOptions()}</select>
                             </div>
                         </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Kuota Pax</label>
+                                <input type="number" id="admin_kuota_pax" placeholder="45" min="1" value="45">
+                            </div>
+                        </div>
                     </div>
 
                     <div class="admin-fieldset" id="af-harga">
@@ -1920,6 +1935,7 @@ function getAdminFormData() {
         tgl: document.getElementById('admin_tgl')?.value || '',
         durasi: document.getElementById('admin_durasi')?.value || '',
         maskapai: document.getElementById('admin_maskapai')?.value || '',
+        kuota_pax: parseInt(document.getElementById('admin_kuota_pax')?.value, 10) || 45,
         harga_quint: document.getElementById('admin_harga_quint')?.value || '',
         harga_quad: document.getElementById('admin_harga_quad')?.value || '',
         harga_triple: document.getElementById('admin_harga_triple')?.value || '',
@@ -1955,6 +1971,7 @@ function setAdminFormData(data) {
     }
     document.getElementById('admin_durasi').value = data.durasi || '';
     if (data.maskapai) document.getElementById('admin_maskapai').value = data.maskapai;
+    document.getElementById('admin_kuota_pax').value = data.kuota_pax || 45;
     document.getElementById('admin_harga_quint').value = data.harga_quint || '';
     document.getElementById('admin_harga_quad').value = data.harga_quad || '';
     document.getElementById('admin_harga_triple').value = data.harga_triple || '';
