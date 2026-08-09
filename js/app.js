@@ -249,13 +249,18 @@ function generateAutoWAText(data) {
     const tidakList = data.tidak_termasuk ? data.tidak_termasuk.split('\n').map(i => i.trim()).filter(Boolean) : ['Paspor', 'Vaksin', 'Pengeluaran pribadi'];
     teks += `❌ Tidak termasuk: ${tidakList.join(', ')}\n`;
 
-    teks += `📞 Info & Itinerary:\nwa.me/6285122336300\nwa.me/6285196241819`;
+    teks += `📞 Info & Itinerary:\n${(NOTA_PERUSAHAAN.kontak_wa || []).map(n => 'wa.me/' + n).join('\n')}`;
     return teks;
 }
 
 // --- Generate Caption WA pakai AI (Claude API) — diadaptasi dari tool "Generator Caption Umroh" ---
 const WA_CAPTION_LIMIT = 1024; // batas umum WA sebelum caption gambar berisiko terpotong tampilannya
-const WA_CAPTION_CONTACTS = 'wa.me/6285122336300\nwa.me/6285196241819';
+// Diambil dinamis dari NOTA_PERUSAHAAN.kontak_wa (function, bukan const string,
+// karena dulu di-hardcode saat file di-parse -- sekarang harus dihitung ulang
+// tiap dipanggil supaya ikut isi terbaru dari Profil Perusahaan).
+function getWaCaptionContacts() {
+    return (NOTA_PERUSAHAAN.kontak_wa || []).map(n => 'wa.me/' + n).join('\n');
+}
 const WA_CAPTION_SYSTEM_PROMPT = `Kamu adalah copywriter marketing untuk biro umroh "Amiru Tour". Tugasmu mengubah catatan kasar/konsep program dari direktur menjadi SATU caption WhatsApp siap kirim dalam Bahasa Indonesia, mengikuti pola format berikut secara konsisten (struktur section, gaya bullet/emoji), dengan isi yang disesuaikan sepenuhnya dari konsep yang diberikan user:
 
 CONTOH POLA YANG HARUS DIIKUTI STRUKTURNYA:
@@ -392,7 +397,7 @@ async function generateCaptionAI() {
     if (btnText) btnText.textContent = 'Menyusun...';
 
     try {
-        const userMsg = `KONSEP PROGRAM:\n${raw}\n\nNOMOR WA KONTAK YANG DIPAKAI DI BAGIAN PENUTUP:\n${WA_CAPTION_CONTACTS}`;
+        const userMsg = `KONSEP PROGRAM:\n${raw}\n\nNOMOR WA KONTAK YANG DIPAKAI DI BAGIAN PENUTUP:\n${getWaCaptionContacts()}`;
         const response = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -1605,7 +1610,7 @@ async function renderAdminPanel() {
 
         // Render tabel & siapkan form untuk role yang boleh mengedit
         renderAdminTable();
-        if (isAdmin) renderCompanyRekeningRows();
+        if (isAdmin) { renderCompanyRekeningRows(); renderCompanyKontakWaRows(); }
         if (canEditData) {
             const dateInput = document.getElementById('admin_tgl_date');
             if (dateInput) {
@@ -3784,14 +3789,19 @@ let NOTA_PERUSAHAAN = {
     rekening: [
         { bank: 'Bank Syariah Indonesia', nomor: '2026 64 2027', an: 'Amiru Tour' },
         { bank: 'Bank Nasional Indonesia', nomor: '2026 64 2026', an: 'Amiru Haramain Indonesia' }
-    ]
+    ],
+    // Nomor WA yang dicetak di bagian penutup caption marketing WA (Generate Auto
+    // WA Text & Generate Caption AI) — dulu hardcode ('6285122336300' &
+    // '6285196241819') di 2 tempat berbeda di kode, terpisah dari field
+    // "Telepon" di atas (yang dipakai di kop nota, bukan caption marketing).
+    kontak_wa: ['6285122336300', '6285196241819']
 };
 
 // ========== PROFIL PERUSAHAAN (dinamis, tersimpan di Supabase tg_config) ==========
 // Sebelumnya semua data di NOTA_PERUSAHAAN (nama, alamat, telp, email, logo,
 // rekening) hardcode langsung di kode. Sekarang disimpan di tabel tg_config
 // (key/value, tabel yang sama dipakai untuk pengaturan ticker/infobar) supaya
-// bisa diedit lewat menu admin "Profil Perusahaan" tanpa perlu ubah kode.
+// bisa diedit lewat menu admin "Perusahaan" tanpa perlu ubah kode.
 const COMPANY_PROFILE_KEY = 'company_profile';
 
 async function loadCompanyProfile() {
@@ -3806,7 +3816,8 @@ async function loadCompanyProfile() {
             alamat: saved.alamat || NOTA_PERUSAHAAN.alamat,
             telp: saved.telp || NOTA_PERUSAHAAN.telp,
             email: saved.email || NOTA_PERUSAHAAN.email,
-            rekening: Array.isArray(saved.rekening) && saved.rekening.length ? saved.rekening : NOTA_PERUSAHAAN.rekening
+            rekening: Array.isArray(saved.rekening) && saved.rekening.length ? saved.rekening : NOTA_PERUSAHAAN.rekening,
+            kontak_wa: Array.isArray(saved.kontak_wa) && saved.kontak_wa.length ? saved.kontak_wa : NOTA_PERUSAHAAN.kontak_wa
         };
     } catch (_) {
         // Gagal ambil/parse -> diamkan, tetap pakai default supaya nota tetap bisa dicetak
@@ -3815,11 +3826,14 @@ async function loadCompanyProfile() {
 
 // Draft rekening yang sedang diedit di form Profil Perusahaan (array of {bank,nomor,an})
 let profileRekeningDraft = [];
+// Draft nomor WA marketing yang sedang diedit (array of string, tanpa "wa.me/")
+let profileKontakWaDraft = [];
 // Data URL logo yang baru dipilih user tapi belum disimpan (null = belum ganti, pakai logo lama)
 let profileLogoPendingDataUrl = null;
 
 function renderCompanyProfileForm() {
     profileRekeningDraft = (NOTA_PERUSAHAAN.rekening || []).map(r => ({ ...r }));
+    profileKontakWaDraft = (NOTA_PERUSAHAAN.kontak_wa || []).slice();
     profileLogoPendingDataUrl = null;
     return `
         <div class="admin-section-header">
@@ -3867,6 +3881,13 @@ function renderCompanyProfileForm() {
             <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;">Daftar rekening yang dicetak di footer semua nota. Bisa lebih dari satu.</p>
             <div id="cp_rekening_list"></div>
             <button type="button" class="btn-cancel" onclick="addCompanyRekeningRow()"><i class="bi bi-plus-lg"></i> Tambah Rekening</button>
+        </div>
+
+        <div class="admin-fieldset">
+            <div class="admin-fieldset-title"><i class="bi bi-whatsapp"></i> Kontak WA Marketing</div>
+            <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;">Nomor WA yang dicetak di bagian penutup caption marketing (Generate Teks WA Otomatis &amp; Generate Caption AI) — beda dari field Telepon di atas.</p>
+            <div id="cp_kontak_wa_list"></div>
+            <button type="button" class="btn-cancel" onclick="addCompanyKontakWaRow()"><i class="bi bi-plus-lg"></i> Tambah Nomor WA</button>
         </div>
 
         <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
@@ -3917,6 +3938,38 @@ function updateCompanyRekeningField(index, field, value) {
     profileRekeningDraft[index][field] = value;
 }
 
+function renderCompanyKontakWaRows() {
+    const wrap = document.getElementById('cp_kontak_wa_list');
+    if (!wrap) return;
+    if (!profileKontakWaDraft.length) {
+        wrap.innerHTML = `<p class="cp-rekening-empty">Belum ada nomor WA. Klik "Tambah Nomor WA" di bawah.</p>`;
+        return;
+    }
+    wrap.innerHTML = profileKontakWaDraft.map((n, i) => `
+        <div class="cp-rekening-row" style="grid-template-columns:1fr auto;">
+            <div class="cp-rekening-field">
+                <label>Nomor WA (format 62xxxxxxxxxx)</label>
+                <input type="text" value="${escapeHtml(n || '')}" placeholder="Contoh: 6285122336300" oninput="updateCompanyKontakWaField(${i}, this.value)">
+            </div>
+            <button type="button" class="btn-icon-ghost danger" title="Hapus" onclick="removeCompanyKontakWaRow(${i})"><i class="bi bi-trash-fill"></i></button>
+        </div>
+    `).join('');
+}
+
+function addCompanyKontakWaRow() {
+    profileKontakWaDraft.push('');
+    renderCompanyKontakWaRows();
+}
+
+function removeCompanyKontakWaRow(index) {
+    profileKontakWaDraft.splice(index, 1);
+    renderCompanyKontakWaRows();
+}
+
+function updateCompanyKontakWaField(index, value) {
+    profileKontakWaDraft[index] = value;
+}
+
 function handleCompanyLogoUpload(input) {
     const file = input.files && input.files[0];
     if (!file) return;
@@ -3941,6 +3994,9 @@ async function saveCompanyProfile() {
     const rekening = profileRekeningDraft
         .map(r => ({ bank: (r.bank || '').trim(), nomor: (r.nomor || '').trim(), an: (r.an || '').trim() }))
         .filter(r => r.bank || r.nomor || r.an);
+    const kontak_wa = profileKontakWaDraft
+        .map(n => (n || '').replace(/\D/g, ''))
+        .filter(Boolean);
 
     if (!brand || !nama || !alamat) {
         if (statusEl) statusEl.innerHTML = `<p style="color:var(--danger);font-size:13px;"><i class="bi bi-exclamation-circle-fill"></i> Brand, Nama Perusahaan, dan Alamat wajib diisi.</p>`;
@@ -3954,7 +4010,8 @@ async function saveCompanyProfile() {
         telp,
         email,
         logo: profileLogoPendingDataUrl || NOTA_PERUSAHAAN.logo,
-        rekening
+        rekening,
+        kontak_wa
     };
 
     try {
