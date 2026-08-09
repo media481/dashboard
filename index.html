@@ -18,8 +18,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
     
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.13.1/font/bootstrap-icons.min.css">
     
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -46,65 +46,65 @@
                 </div>
             </div>
             <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" onclick="toggleSidebarCollapse()" title="Ciutkan sidebar">
-                <i class="fa-solid fa-angles-left"></i>
+                <i class="bi bi-chevron-double-left"></i>
             </button>
         </div>
 
         <nav>
             <div class="nav-label">Navigasi</div>
             <button class="nav-item active" data-tab="umroh" title="Program Umroh">
-                <i class="fa-solid fa-list"></i> <span class="nav-text">Program Umroh</span>
+                <i class="bi bi-list-ul"></i> <span class="nav-text">Program Umroh</span>
             </button>
             <button class="nav-item" data-tab="unggulan" title="Unggulan">
-                <i class="fa-solid fa-star"></i> <span class="nav-text">Unggulan</span>
+                <i class="bi bi-star-fill"></i> <span class="nav-text">Unggulan</span>
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="info" style="display:none;" title="Jadwal Tamu">
-                <i class="fa-solid fa-calendar-check"></i> <span class="nav-text">Jadwal Tamu</span>
+                <i class="bi bi-calendar-check-fill"></i> <span class="nav-text">Jadwal Tamu</span>
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="pendaftaran" style="display:none;" title="Form Pendaftaran">
-                <i class="fa-solid fa-clipboard-list"></i> <span class="nav-text">Form Pendaftaran</span>
+                <i class="bi bi-clipboard-check-fill"></i> <span class="nav-text">Form Pendaftaran</span>
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="keberangkatan" style="display:none;" title="Keberangkatan">
-                <i class="fa-solid fa-plane-departure"></i> <span class="nav-text">Keberangkatan</span>
+                <i class="bi bi-airplane-engines-fill"></i> <span class="nav-text">Keberangkatan</span>
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="dokumen" style="display:none;" title="Kelengkapan Dokumen">
-                <i class="fa-solid fa-file-circle-check"></i> <span class="nav-text">Kelengkapan Dokumen</span>
+                <i class="bi bi-file-earmark-check-fill"></i> <span class="nav-text">Kelengkapan Dokumen</span>
             </button>
 
             <div class="nav-label nav-admin-only" style="display:none;">Manajemen</div>
             <button class="nav-item nav-admin-only" data-subtab="program" style="display:none;" onclick="openAdminPanel('program')" title="Edit &amp; Tambah Program">
-                <i class="fa-solid fa-kaaba"></i> <span class="nav-text">Edit &amp; Tambah Program</span>
+                <i class="bi bi-moon-stars-fill"></i> <span class="nav-text">Edit &amp; Tambah Program</span>
             </button>
             <button class="nav-item nav-admin-only" data-subtab="pembayaran" style="display:none;" onclick="openAdminPanel('pembayaran')" title="Pembayaran">
-                <i class="fa-solid fa-money-bill-wave"></i> <span class="nav-text">Pembayaran</span>
+                <i class="bi bi-cash-stack"></i> <span class="nav-text">Pembayaran</span>
             </button>
             <button class="nav-item nav-admin-only" data-subtab="unggulan" style="display:none;" onclick="openAdminPanel('unggulan')" title="Program Unggulan">
-                <i class="fa-solid fa-star"></i> <span class="nav-text">Program Unggulan</span>
+                <i class="bi bi-star-fill"></i> <span class="nav-text">Program Unggulan</span>
             </button>
 
             <div class="nav-label nav-admin-only" style="display:none;">System</div>
             <button class="nav-item nav-admin-only" data-subtab="crosscheck" style="display:none;" onclick="openAdminPanel('crosscheck')" title="Crosscheck">
-                <i class="fa-solid fa-magnifying-glass-chart"></i> <span class="nav-text">Crosscheck</span>
+                <i class="bi bi-graph-up-arrow"></i> <span class="nav-text">Crosscheck</span>
             </button>
             <button class="nav-item nav-admin-only" data-subtab="telegram" style="display:none;" onclick="openAdminPanel('telegram')" title="Telegram">
-                <i class="fa-brands fa-telegram"></i> <span class="nav-text">Telegram</span>
+                <i class="bi bi-telegram"></i> <span class="nav-text">Telegram</span>
             </button>
             <button class="nav-item nav-admin-only" data-subtab="auditnota" style="display:none;" onclick="openAdminPanel('auditnota')" title="Audit Nota">
-                <i class="fa-solid fa-file-shield"></i> <span class="nav-text">Audit Nota</span>
+                <i class="bi bi-file-earmark-lock2-fill"></i> <span class="nav-text">Audit Nota</span>
             </button>
             <button class="nav-item nav-admin-only" data-subtab="usersettings" style="display:none;" onclick="openAdminPanel('usersettings')" title="Pengaturan User">
-                <i class="fa-solid fa-user-gear"></i> <span class="nav-text">Pengaturan User</span>
+                <i class="bi bi-person-gear"></i> <span class="nav-text">Pengaturan User</span>
             </button>
             <button class="nav-item nav-admin-only" data-subtab="snapshot" style="display:none;" onclick="openAdminPanel('snapshot')" title="Snapshot / Backup">
-                <i class="fa-solid fa-camera-retro"></i> <span class="nav-text">Snapshot</span>
+                <i class="bi bi-camera2"></i> <span class="nav-text">Snapshot</span>
             </button>
 
             <div class="nav-login-area">
                 <button class="nav-item login-btn" onclick="openAdminPanel()" title="Login">
-                    <i class="fa-solid fa-arrow-right-to-bracket"></i> <span class="nav-text">Login</span>
+                    <i class="bi bi-box-arrow-in-right"></i> <span class="nav-text">Login</span>
                 </button>
                 <button class="nav-item logout-btn" style="display:none;" onclick="logoutAdmin()" title="Logout">
-                    <i class="fa-solid fa-arrow-right-from-bracket"></i> <span class="nav-text">Logout</span>
+                    <i class="bi bi-box-arrow-right"></i> <span class="nav-text">Logout</span>
                 </button>
             </div>
         </nav>
@@ -120,14 +120,14 @@
             </div>
             <div class="topbar-actions">
                 <div class="search-box">
-                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <i class="bi bi-search"></i>
                     <input type="text" id="searchInput" placeholder="Cari program, maskapai..." oninput="handleSearchInput(event)">
                 </div>
                 <button class="btn-primary" id="btnTambahProgram" onclick="openAdminPanel('program')" style="display:none;">
-                    <i class="fa-solid fa-plus"></i> Tambah
+                    <i class="bi bi-plus-lg"></i> Tambah
                 </button>
                 <button class="hamburger-toggle" onclick="toggleMobileSidebar()">
-                    <i class="fa-solid fa-bars"></i>
+                    <i class="bi bi-list"></i>
                 </button>
             </div>
         </div>
@@ -135,28 +135,28 @@
         <!-- METRICS -->
         <div class="metrics" id="metricsContainer">
             <div class="metric-card">
-                <div class="m-icon icon-brand"><i class="fa-solid fa-layer-group"></i></div>
+                <div class="m-icon icon-brand"><i class="bi bi-layers-fill"></i></div>
                 <div class="m-info">
                     <div class="m-value" id="totalPrograms">0</div>
                     <div class="m-label">Total Program</div>
                 </div>
             </div>
             <div class="metric-card">
-                <div class="m-icon icon-success"><i class="fa-solid fa-star"></i></div>
+                <div class="m-icon icon-success"><i class="bi bi-star-fill"></i></div>
                 <div class="m-info">
                     <div class="m-value" id="totalFeatured">0</div>
                     <div class="m-label">Unggulan</div>
                 </div>
             </div>
             <div class="metric-card">
-                <div class="m-icon icon-warn"><i class="fa-solid fa-calendar-check"></i></div>
+                <div class="m-icon icon-warn"><i class="bi bi-calendar-check-fill"></i></div>
                 <div class="m-info">
                     <div class="m-value" id="totalJadwal">0</div>
                     <div class="m-label">Jadwal Tamu</div>
                 </div>
             </div>
             <div class="metric-card">
-                <div class="m-icon icon-brand"><i class="fa-solid fa-plane-departure"></i></div>
+                <div class="m-icon icon-brand"><i class="bi bi-airplane-engines-fill"></i></div>
                 <div class="m-info">
                     <div class="m-value" id="totalKeberangkatan">0</div>
                     <div class="m-label">Keberangkatan</div>
@@ -168,23 +168,23 @@
         <div class="tabs-wrapper">
             <div class="tabs-bar" id="tabsBar">
                 <button class="tab-btn active" data-tab="umroh">
-                    <i class="fa-solid fa-list"></i> <span>Program Umroh</span>
+                    <i class="bi bi-list-ul"></i> <span>Program Umroh</span>
                 </button>
                 <button class="tab-btn" data-tab="unggulan">
-                    <i class="fa-solid fa-star"></i> <span>Unggulan</span>
+                    <i class="bi bi-star-fill"></i> <span>Unggulan</span>
                 </button>
                 <button class="tab-btn nav-loggedin-only" data-tab="info" style="display:none;">
-                    <i class="fa-solid fa-calendar-check"></i> <span>Jadwal Tamu</span>
+                    <i class="bi bi-calendar-check-fill"></i> <span>Jadwal Tamu</span>
                     <span class="badge" id="jadwalBadge" style="display:none;">0</span>
                 </button>
                 <button class="tab-btn nav-loggedin-only" data-tab="pendaftaran" style="display:none;">
-                    <i class="fa-solid fa-clipboard-list"></i> <span>Form Pendaftaran</span>
+                    <i class="bi bi-clipboard-check-fill"></i> <span>Form Pendaftaran</span>
                 </button>
                 <button class="tab-btn nav-loggedin-only" data-tab="keberangkatan" style="display:none;">
-                    <i class="fa-solid fa-plane-departure"></i> <span>Keberangkatan</span>
+                    <i class="bi bi-airplane-engines-fill"></i> <span>Keberangkatan</span>
                 </button>
                 <button class="tab-btn nav-loggedin-only" data-tab="dokumen" style="display:none;">
-                    <i class="fa-solid fa-file-circle-check"></i> <span>Kelengkapan Dokumen</span>
+                    <i class="bi bi-file-earmark-check-fill"></i> <span>Kelengkapan Dokumen</span>
                 </button>
             </div>
 
@@ -245,12 +245,12 @@
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
                         <p style="color:var(--ink-soft);font-size:13px;">Jadwal kunjungan tamu ke kantor</p>
                         <button class="btn-primary" id="btnTambahJadwal" onclick="openJadwalModal()" style="font-size:12px;padding:6px 14px;">
-                            <i class="fa-solid fa-plus"></i> Tambah Jadwal
+                            <i class="bi bi-plus-lg"></i> Tambah Jadwal
                         </button>
                     </div>
                     <div class="pf-toolbar">
                         <div class="pf-search-wrap">
-                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <i class="bi bi-search"></i>
                             <input type="text" id="jfSearchInput" placeholder="Cari nama tamu, asal, atau keperluan..." oninput="handleJfSearchInput(this.value)">
                         </div>
                         <select id="jfStatusFilter" onchange="handleJfStatusFilter(this.value)">
@@ -286,12 +286,12 @@
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
                         <p style="color:var(--ink-soft);font-size:13px;">Daftar minat calon jamaah sebelum resmi masuk data Keberangkatan</p>
                         <button class="btn-primary" id="btnTambahPendaftaran" onclick="openPendaftaranModal()" style="font-size:12px;padding:6px 14px;">
-                            <i class="fa-solid fa-plus"></i> Tambah Pendaftaran
+                            <i class="bi bi-plus-lg"></i> Tambah Pendaftaran
                         </button>
                     </div>
                     <div class="pf-toolbar">
                         <div class="pf-search-wrap">
-                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <i class="bi bi-search"></i>
                             <input type="text" id="pfSearchInput" placeholder="Cari nama, program, asal, atau WhatsApp..." oninput="handlePfSearchInput(this.value)">
                         </div>
                         <select id="pfStatusFilter" onchange="handlePfStatusFilter(this.value)">
@@ -329,15 +329,15 @@
                             <option value="">-- Pilih Program --</option>
                         </select>
                         <button class="btn-primary" id="btnTambahJamaah" onclick="openKbModal()" style="font-size:12px;padding:6px 14px;">
-                            <i class="fa-solid fa-user-plus"></i> Tambah Jamaah
+                            <i class="bi bi-person-plus-fill"></i> Tambah Jamaah
                         </button>
                         <button class="btn-success" onclick="openKuitansiModal()" style="font-size:12px;padding:6px 14px;">
-                            <i class="fa-solid fa-receipt"></i> Kuitansi
+                            <i class="bi bi-receipt"></i> Kuitansi
                         </button>
                     </div>
                     <div id="kbJamaahContent">
                         <div class="kb-no-program">
-                            <i class="fa-solid fa-plane-departure"></i>
+                            <i class="bi bi-airplane-engines-fill"></i>
                             <p>Pilih program di atas untuk melihat daftar jamaah & pembayaran.</p>
                         </div>
                     </div>
@@ -353,7 +353,7 @@
                     <div id="dokSummary"></div>
                     <div id="dokContent">
                         <div class="kb-no-program">
-                            <i class="fa-solid fa-file-circle-check"></i>
+                            <i class="bi bi-file-earmark-check-fill"></i>
                             <p>Pilih program di atas untuk mengecek kelengkapan dokumen jamaah.</p>
                         </div>
                     </div>
@@ -366,7 +366,7 @@
     <div id="adminPageView" class="admin-page" style="display:none;">
         <div class="admin-page-header">
             <button class="admin-back-btn" onclick="closeAdminPanel()" title="Kembali ke Dashboard">
-                <i class="fa-solid fa-arrow-left"></i>
+                <i class="bi bi-arrow-left"></i>
             </button>
             <div>
                 <h1><span id="adminPageTitle">Admin Panel</span></h1>
@@ -383,62 +383,62 @@
 <!-- ===== MOBILE SIDEBAR OVERLAY ===== -->
 <div class="mobile-sidebar-overlay" id="mobileSidebarOverlay" onclick="if(event.target===this) toggleMobileSidebar()">
     <div class="mobile-sidebar">
-        <button class="close-btn" onclick="toggleMobileSidebar()"><i class="fa-solid fa-xmark"></i></button>
+        <button class="close-btn" onclick="toggleMobileSidebar()"><i class="bi bi-x-lg"></i></button>
         <nav>
             <div class="nav-label">Navigasi</div>
             <button class="nav-item active" data-tab="umroh" onclick="switchTab('umroh'); toggleMobileSidebar();">
-                <i class="fa-solid fa-list"></i> Program Umroh
+                <i class="bi bi-list-ul"></i> Program Umroh
             </button>
             <button class="nav-item" data-tab="unggulan" onclick="switchTab('unggulan'); toggleMobileSidebar();">
-                <i class="fa-solid fa-star"></i> Unggulan
+                <i class="bi bi-star-fill"></i> Unggulan
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="info" style="display:none;" onclick="switchTab('info'); toggleMobileSidebar();">
-                <i class="fa-solid fa-calendar-check"></i> Jadwal Tamu
+                <i class="bi bi-calendar-check-fill"></i> Jadwal Tamu
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="pendaftaran" style="display:none;" onclick="switchTab('pendaftaran'); toggleMobileSidebar();">
-                <i class="fa-solid fa-clipboard-list"></i> Form Pendaftaran
+                <i class="bi bi-clipboard-check-fill"></i> Form Pendaftaran
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="keberangkatan" style="display:none;" onclick="switchTab('keberangkatan'); toggleMobileSidebar();">
-                <i class="fa-solid fa-plane-departure"></i> Keberangkatan
+                <i class="bi bi-airplane-engines-fill"></i> Keberangkatan
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="dokumen" style="display:none;" onclick="switchTab('dokumen'); toggleMobileSidebar();">
-                <i class="fa-solid fa-file-circle-check"></i> Kelengkapan Dokumen
+                <i class="bi bi-file-earmark-check-fill"></i> Kelengkapan Dokumen
             </button>
 
             <div class="nav-label nav-admin-only" style="display:none;">Manajemen</div>
             <button class="nav-item nav-admin-only" data-subtab="program" style="display:none;" onclick="openAdminPanel('program'); toggleMobileSidebar();">
-                <i class="fa-solid fa-kaaba"></i> Edit &amp; Tambah Program
+                <i class="bi bi-moon-stars-fill"></i> Edit &amp; Tambah Program
             </button>
             <button class="nav-item nav-admin-only" data-subtab="pembayaran" style="display:none;" onclick="openAdminPanel('pembayaran'); toggleMobileSidebar();">
-                <i class="fa-solid fa-money-bill-wave"></i> Pembayaran
+                <i class="bi bi-cash-stack"></i> Pembayaran
             </button>
             <button class="nav-item nav-admin-only" data-subtab="unggulan" style="display:none;" onclick="openAdminPanel('unggulan'); toggleMobileSidebar();">
-                <i class="fa-solid fa-star"></i> Program Unggulan
+                <i class="bi bi-star-fill"></i> Program Unggulan
             </button>
 
             <div class="nav-label nav-admin-only" style="display:none;">System</div>
             <button class="nav-item nav-admin-only" data-subtab="crosscheck" style="display:none;" onclick="openAdminPanel('crosscheck'); toggleMobileSidebar();">
-                <i class="fa-solid fa-magnifying-glass-chart"></i> Crosscheck
+                <i class="bi bi-graph-up-arrow"></i> Crosscheck
             </button>
             <button class="nav-item nav-admin-only" data-subtab="telegram" style="display:none;" onclick="openAdminPanel('telegram'); toggleMobileSidebar();">
-                <i class="fa-brands fa-telegram"></i> Telegram
+                <i class="bi bi-telegram"></i> Telegram
             </button>
             <button class="nav-item nav-admin-only" data-subtab="auditnota" style="display:none;" onclick="openAdminPanel('auditnota'); toggleMobileSidebar();">
-                <i class="fa-solid fa-file-shield"></i> Audit Nota
+                <i class="bi bi-file-earmark-lock2-fill"></i> Audit Nota
             </button>
             <button class="nav-item nav-admin-only" data-subtab="usersettings" style="display:none;" onclick="openAdminPanel('usersettings'); toggleMobileSidebar();">
-                <i class="fa-solid fa-user-gear"></i> Pengaturan User
+                <i class="bi bi-person-gear"></i> Pengaturan User
             </button>
             <button class="nav-item nav-admin-only" data-subtab="snapshot" style="display:none;" onclick="openAdminPanel('snapshot'); toggleMobileSidebar();">
-                <i class="fa-solid fa-camera-retro"></i> Snapshot
+                <i class="bi bi-camera2"></i> Snapshot
             </button>
 
             <div class="nav-login-area">
                 <button class="nav-item login-btn" onclick="openAdminPanel(); toggleMobileSidebar();">
-                    <i class="fa-solid fa-arrow-right-to-bracket"></i> Login
+                    <i class="bi bi-box-arrow-in-right"></i> Login
                 </button>
                 <button class="nav-item logout-btn" style="display:none;" onclick="logoutAdmin(); toggleMobileSidebar();">
-                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+                    <i class="bi bi-box-arrow-right"></i> Logout
                 </button>
             </div>
         </nav>
@@ -446,13 +446,13 @@
 </div>
 
 <!-- ===== TOAST ===== -->
-<div class="toast" id="toast"><i class="fa-solid fa-circle-check"></i> <span id="toastMessage">Berhasil!</span></div>
+<div class="toast" id="toast"><i class="bi bi-check-circle-fill"></i> <span id="toastMessage">Berhasil!</span></div>
 
 <!-- ===== MODAL: JADWAL TAMU ===== -->
 <div class="modal-overlay" id="jadwalModal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2><i class="fa-solid fa-calendar-plus"></i> <span id="jadwalModalTitle">Tambah Jadwal Tamu</span></h2>
+            <h2><i class="bi bi-calendar-plus-fill"></i> <span id="jadwalModalTitle">Tambah Jadwal Tamu</span></h2>
             <button class="modal-close" onclick="closeJadwalModal()">&times;</button>
         </div>
         <div class="modal-body">
@@ -505,7 +505,7 @@
                     </div>
                 </div>
                 <div class="form-actions">
-                    <button type="submit" class="btn-submit"><i class="fa-solid fa-save"></i> Simpan</button>
+                    <button type="submit" class="btn-submit"><i class="bi bi-floppy-fill"></i> Simpan</button>
                     <button type="button" class="btn-cancel" onclick="closeJadwalModal()">Batal</button>
                 </div>
             </form>
@@ -517,7 +517,7 @@
 <div class="modal-overlay" id="pendaftaranModal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2><i class="fa-solid fa-clipboard-list"></i> <span id="pendaftaranModalTitle">Tambah Pendaftaran</span></h2>
+            <h2><i class="bi bi-clipboard-check-fill"></i> <span id="pendaftaranModalTitle">Tambah Pendaftaran</span></h2>
             <button class="modal-close" onclick="closePendaftaranModal()">&times;</button>
         </div>
         <div class="modal-body">
@@ -619,7 +619,7 @@
                     </div>
                 </div>
                 <div class="form-actions">
-                    <button type="submit" class="btn-submit"><i class="fa-solid fa-save"></i> Simpan</button>
+                    <button type="submit" class="btn-submit"><i class="bi bi-floppy-fill"></i> Simpan</button>
                     <button type="button" class="btn-cancel" onclick="closePendaftaranModal()">Batal</button>
                 </div>
             </form>
@@ -631,7 +631,7 @@
 <div class="modal-overlay" id="kbModal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2><i class="fa-solid fa-user-plus"></i> <span id="kbModalTitle">Tambah Data Jamaah</span></h2>
+            <h2><i class="bi bi-person-plus-fill"></i> <span id="kbModalTitle">Tambah Data Jamaah</span></h2>
             <button class="modal-close" onclick="closeKbModal()">&times;</button>
         </div>
         <div class="modal-body">
@@ -639,7 +639,7 @@
                 <input type="hidden" id="kb_editId" value="">
                 <input type="hidden" id="kb_pendaftaran_source" value="">
                 <div id="kbFromPendaftaranBox" style="display:none;background:var(--success-tint);padding:14px;border-radius:12px;margin-bottom:18px;border:1px solid #bbf7d0;">
-                    <label style="font-size:12px;font-weight:700;color:var(--success);margin-bottom:0;display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-clipboard-list"></i> Ambil dari Form Pendaftaran <span style="font-weight:500;color:var(--ink-soft);font-size:11px;">(opsional)</span></label>
+                    <label style="font-size:12px;font-weight:700;color:var(--success);margin-bottom:0;display:flex;align-items:center;gap:6px;"><i class="bi bi-clipboard-check-fill"></i> Ambil dari Form Pendaftaran <span style="font-weight:500;color:var(--ink-soft);font-size:11px;">(opsional)</span></label>
                     <select id="kb_from_pendaftaran" onchange="fillKbFromPendaftaran(this.value)" style="width:100%;padding:9px 12px;border:1px solid #86efac;border-radius:8px;font-size:12.5px;font-family:inherit;background:#fff;margin-top:10px;">
                         <option value="">-- Pilih calon jamaah dari Pendaftaran --</option>
                     </select>
@@ -687,7 +687,7 @@
                     </div>
                 </div>
                 <div class="form-actions">
-                    <button type="submit" class="btn-submit"><i class="fa-solid fa-save"></i> Simpan</button>
+                    <button type="submit" class="btn-submit"><i class="bi bi-floppy-fill"></i> Simpan</button>
                     <button type="button" class="btn-cancel" onclick="closeKbModal()">Batal</button>
                 </div>
             </form>
@@ -706,7 +706,7 @@
 <div class="modal-overlay" id="cicilanModal">
     <div class="modal-content cicilan-modal-1col">
         <div class="modal-header">
-            <h2><i class="fa-solid fa-money-bill-wave"></i> <span id="cicilanModalTitle">Kelola Cicilan</span></h2>
+            <h2><i class="bi bi-cash-stack"></i> <span id="cicilanModalTitle">Kelola Cicilan</span></h2>
             <button class="modal-close" onclick="closeCicilanModal()">&times;</button>
         </div>
         <div class="modal-body">
@@ -716,7 +716,7 @@
 
                     <form id="cicilanForm" class="cicilan-form cicilan-add-card" onsubmit="saveCicilan(event)">
                         <input type="hidden" id="cic_jamaahId" value="">
-                        <div class="cicilan-section-title"><i class="fa-solid fa-circle-plus"></i> Tambah Pembayaran</div>
+                        <div class="cicilan-section-title"><i class="bi bi-plus-circle-fill"></i> Tambah Pembayaran</div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Tanggal <span class="required">*</span></label>
@@ -742,16 +742,16 @@
                             </div>
                         </div>
                         <div class="form-actions">
-                            <button type="submit" class="btn-submit"><i class="fa-solid fa-plus"></i> Tambah Pembayaran</button>
+                            <button type="submit" class="btn-submit"><i class="bi bi-plus-lg"></i> Tambah Pembayaran</button>
                             <button type="button" class="btn-cancel" onclick="closeCicilanModal()">Tutup</button>
                         </div>
                     </form>
 
                     <div class="cicilan-modal-preview" id="cicilanPreviewPanel" style="display:none;">
                         <div class="cicilan-preview-head">
-                            <h4><i class="fa-solid fa-file-invoice"></i> <span id="cicilanPreviewTitle">Preview Nota</span></h4>
+                            <h4><i class="bi bi-file-earmark-text-fill"></i> <span id="cicilanPreviewTitle">Preview Nota</span></h4>
                             <div class="cicilan-preview-head-actions">
-                                <button type="button" class="btn-nota-expand" onclick="openNotaLightbox()" title="Perbesar preview (layar penuh)"><i class="fa-solid fa-expand"></i></button>
+                                <button type="button" class="btn-nota-expand" onclick="openNotaLightbox()" title="Perbesar preview (layar penuh)"><i class="bi bi-arrows-fullscreen"></i></button>
                                 <button type="button" class="modal-close" onclick="hideNotaPreviewPanel()" title="Tutup preview">&times;</button>
                             </div>
                         </div>
@@ -760,17 +760,17 @@
                             <p class="nota-preview-note">Kode Verifikasi dibuat &amp; dicatat ke sistem audit saat Anda menekan "Unduh JPEG" atau "Unduh PDF".</p>
                             <div class="nota-preview-actions">
                                 <button type="button" class="btn-cancel" onclick="hideNotaPreviewPanel()">Batal</button>
-                                <button type="button" class="btn-download-jpeg" id="notaPreviewDownloadBtn" onclick="confirmDownloadNotaPreview('jpeg')"><i class="fa-solid fa-image"></i> Unduh JPEG</button>
-                                <button type="button" class="btn-download-pdf" id="notaPreviewDownloadPdfBtn" onclick="confirmDownloadNotaPreview('pdf')"><i class="fa-solid fa-file-pdf"></i> Unduh PDF</button>
+                                <button type="button" class="btn-download-jpeg" id="notaPreviewDownloadBtn" onclick="confirmDownloadNotaPreview('jpeg')"><i class="bi bi-image-fill"></i> Unduh JPEG</button>
+                                <button type="button" class="btn-download-pdf" id="notaPreviewDownloadPdfBtn" onclick="confirmDownloadNotaPreview('pdf')"><i class="bi bi-file-earmark-pdf-fill"></i> Unduh PDF</button>
                             </div>
                         </div>
                     </div>
 
                     <div class="cicilan-section cicilan-history-section">
                         <div class="cicilan-section-head">
-                            <div class="cicilan-section-title"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Pembayaran <span class="cicilan-history-count" id="cicilanHistoryCount"></span></div>
+                            <div class="cicilan-section-title"><i class="bi bi-clock-history"></i> Riwayat Pembayaran <span class="cicilan-history-count" id="cicilanHistoryCount"></span></div>
                             <button type="button" class="btn-nota-riwayat" id="btnNotaRiwayat" onclick="previewNotaRiwayatLengkap(this)" title="Preview lalu unduh nota berisi seluruh riwayat pembayaran (JPEG)">
-                                <i class="fa-solid fa-file-image"></i> Unduh Nota Riwayat
+                                <i class="bi bi-file-earmark-image-fill"></i> Unduh Nota Riwayat
                             </button>
                         </div>
                         <div id="cicilanHistoryList" class="cicilan-history"></div>
@@ -785,7 +785,7 @@
 <div class="modal-overlay" id="kuitansiModal">
     <div class="modal-content" style="max-width:800px;">
         <div class="modal-header">
-            <h2><i class="fa-solid fa-receipt"></i> Cetak Kuitansi</h2>
+            <h2><i class="bi bi-receipt"></i> Cetak Kuitansi</h2>
             <button class="modal-close" onclick="closeKuitansiModal()">&times;</button>
         </div>
         <div class="modal-body">
@@ -798,7 +798,7 @@
                     <div class="form-group"><label>Uang Sebanyak (Terbilang)</label><input type="text" id="kwt_terbilang" placeholder="Otomatis" oninput="renderKwtPreview()"></div>
                     <div class="form-group"><label>Nama Penerima</label><input type="text" id="kwt_penerima" placeholder="Nama staf" oninput="renderKwtPreview()"></div>
                     <div class="form-group"><label>Untuk Pembayaran</label><textarea id="kwt_keterangan" rows="2" placeholder="DP Program Umroh..." oninput="renderKwtPreview()"></textarea></div>
-                    <button class="btn-primary" onclick="downloadKuitansiPDF()" style="width:100%;justify-content:center;"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+                    <button class="btn-primary" onclick="downloadKuitansiPDF()" style="width:100%;justify-content:center;"><i class="bi bi-file-earmark-pdf-fill"></i> Download PDF</button>
                 </div>
                 <div>
                     <label style="font-weight:600;font-size:13px;display:block;margin-bottom:8px;">Preview</label>
@@ -828,7 +828,7 @@
 <div class="modal-overlay" id="deleteConfirmModal">
     <div class="modal-content" style="max-width:450px;">
         <div class="modal-header">
-            <h2 style="color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> Hapus Data</h2>
+            <h2 style="color:var(--danger);"><i class="bi bi-exclamation-triangle-fill"></i> Hapus Data</h2>
             <button class="modal-close" onclick="closeDeleteConfirmModal()">&times;</button>
         </div>
         <div class="modal-body">
@@ -841,7 +841,7 @@
                 <input type="text" id="deleteConfirmInput" placeholder="Ketik nama..." oninput="onDeleteConfirmInput()">
             </div>
             <div class="form-actions" style="border-top:none;padding-top:0;">
-                <button class="btn-danger" id="deleteConfirmBtn" onclick="confirmDeleteAction()" disabled><i class="fa-solid fa-trash"></i> Hapus Permanen</button>
+                <button class="btn-danger" id="deleteConfirmBtn" onclick="confirmDeleteAction()" disabled><i class="bi bi-trash-fill"></i> Hapus Permanen</button>
                 <button class="btn-cancel" onclick="closeDeleteConfirmModal()">Batal</button>
             </div>
         </div>
@@ -853,10 +853,10 @@
     <div class="poster-popup-inner">
         <div class="poster-popup-img-wrap">
             <div id="posterPopupLoading" class="poster-popup-loading">
-                <i class="fa-solid fa-spinner fa-spin"></i>
+                <i class="bi bi-arrow-repeat bi-spin"></i>
             </div>
             <div id="posterPopupError" class="poster-popup-error">
-                <i class="fa-solid fa-image-slash"></i>
+                <i class="bi bi-images"></i>
                 <span>Gagal memuat poster</span>
             </div>
             <img id="posterPopupImg" alt="Poster Program">

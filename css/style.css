@@ -19,6 +19,11 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Bootstrap Icons tidak punya utility animasi spin bawaan (beda dgn fa-spin
+   di Font Awesome sebelumnya), jadi dibuat manual untuk ikon loading/scanning. */
+@keyframes bi-spin-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.bi-spin { display: inline-block; animation: bi-spin-rotate 1s linear infinite; }
         html {
             scrollbar-width: none; /* Firefox */
             -ms-overflow-style: none; /* Edge/IE */

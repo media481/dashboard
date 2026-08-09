@@ -133,8 +133,8 @@ function showToast(msg, type = 'success') {
     const msgEl = document.getElementById('toastMessage');
     const iconEl = toast.querySelector('i');
     if (iconEl) {
-        const iconMap = { success: 'fa-circle-check', error: 'fa-circle-exclamation', info: 'fa-circle-info' };
-        iconEl.className = 'fa-solid ' + (iconMap[type] || iconMap.success);
+        const iconMap = { success: 'bi-check-circle-fill', error: 'bi-exclamation-circle-fill', info: 'bi-info-circle-fill' };
+        iconEl.className = 'bi ' + (iconMap[type] || iconMap.success);
     }
     msgEl.textContent = msg;
     toast.className = 'toast ' + type;
@@ -510,11 +510,11 @@ async function loadDataFromSupabase(forceRefresh = false) {
     } catch (err) {
         const msg = err?.message || String(err);
         loadingEl.innerHTML = `<div style="padding:40px;text-align:center;color:var(--danger);">
-            <i class="fa-solid fa-wifi" style="font-size:24px;display:block;margin-bottom:10px;"></i>
+            <i class="bi bi-wifi" style="font-size:24px;display:block;margin-bottom:10px;"></i>
             Gagal memuat data. Periksa koneksi internet Anda.<br>
             <span style="font-size:12px;color:var(--ink-soft);">${escapeHtml(msg)}</span><br>
             <button onclick="loadDataFromSupabase(true)" style="margin-top:12px;padding:6px 16px;border-radius:6px;border:none;background:var(--accent,#2563eb);color:#fff;cursor:pointer;">
-                <i class="fa-solid fa-rotate-right"></i> Coba Lagi
+                <i class="bi bi-arrow-clockwise"></i> Coba Lagi
             </button>
         </div>`;
         showToast('Gagal memuat data — periksa koneksi internet', 'error');
@@ -528,9 +528,9 @@ async function loadDataFromSupabase(forceRefresh = false) {
 function renderProgramLinkBtn(url, label, iconClass) {
     const safeUrl = (url || '').trim();
     if (!safeUrl) {
-        return `<button type="button" disabled title="${escapeHtml(label)} (belum diisi)" style="opacity:.35;cursor:not-allowed;"><i class="fa-solid ${iconClass}"></i></button>`;
+        return `<button type="button" disabled title="${escapeHtml(label)} (belum diisi)" style="opacity:.35;cursor:not-allowed;"><i class="bi ${iconClass}"></i></button>`;
     }
-    return `<button type="button" onclick="window.open('${escapeJsAttr(safeUrl)}', '_blank', 'noopener')" title="${escapeHtml(label)}"><i class="fa-solid ${iconClass}"></i></button>`;
+    return `<button type="button" onclick="window.open('${escapeJsAttr(safeUrl)}', '_blank', 'noopener')" title="${escapeHtml(label)}"><i class="bi ${iconClass}"></i></button>`;
 }
 
 // ============================================================
@@ -592,16 +592,16 @@ function buildProgramRowHTML(item, now, nearestIds) {
             <td>${escapeHtml(formatRupiah(item.harga_quad || item.harga_quint))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_double))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_triple))}</td>
-            <td>${escapeHtml(item.tgl||'-')}${isNearest ? ` <span class="nearest-badge" title="Salah satu dari 3 keberangkatan terdekat"><i class="fa-solid fa-bolt"></i> Terdekat</span>` : ''}</td>
+            <td>${escapeHtml(item.tgl||'-')}${isNearest ? ` <span class="nearest-badge" title="Salah satu dari 3 keberangkatan terdekat"><i class="bi bi-lightning-charge-fill"></i> Terdekat</span>` : ''}</td>
             <td>${escapeHtml(item.durasi||'-')}</td>
             <td>${escapeHtml(item.maskapai||'-')}</td>
             <td>
                 <div class="action-btns">
-                    <button onclick="openDetailModal('${item.id}')" title="Detail"><i class="fa-solid fa-eye"></i></button>
-                    ${renderProgramLinkBtn(item.link_poster, 'Link Poster', 'fa-image')}
-                    ${renderProgramLinkBtn(item.link_itinerary, 'Link Itinerary', 'fa-route')}
-                    ${renderProgramLinkBtn(item.link_metaads, 'Link Meta Ads', 'fa-bullhorn')}
-                    ${renderProgramLinkBtn(item.link_dokumentasi, 'Link Dokumentasi', 'fa-images')}
+                    <button onclick="openDetailModal('${item.id}')" title="Detail"><i class="bi bi-eye-fill"></i></button>
+                    ${renderProgramLinkBtn(item.link_poster, 'Link Poster', 'bi-image-fill')}
+                    ${renderProgramLinkBtn(item.link_itinerary, 'Link Itinerary', 'bi-signpost-2-fill')}
+                    ${renderProgramLinkBtn(item.link_metaads, 'Link Meta Ads', 'bi-megaphone-fill')}
+                    ${renderProgramLinkBtn(item.link_dokumentasi, 'Link Dokumentasi', 'bi-images')}
                 </div>
             </td>
             <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
@@ -615,7 +615,7 @@ function renderTable(data) {
     const canEdit = canManageProgramData(); // admin & user boleh edit/hapus, guest & publik hanya lihat
     if (!data || !data.length) {
         tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--ink-soft);">
-            <i class="fa-solid fa-inbox" style="font-size:24px;display:block;margin-bottom:10px;"></i>
+            <i class="bi bi-inbox-fill" style="font-size:24px;display:block;margin-bottom:10px;"></i>
             Belum ada program umroh.${canEdit ? ' Klik "Tambah" untuk menambahkan.' : ''}
         </td></tr>`;
         return;
@@ -783,7 +783,7 @@ async function checkAdminLogin() {
 
     if (Date.now() < loginLockTime) {
         const waitSeconds = Math.ceil((loginLockTime - Date.now()) / 1000);
-        errorDiv.innerHTML = '<i class="fa-solid fa-hourglass-half"></i> Terlalu banyak percobaan. Coba lagi ' + waitSeconds + ' detik.';
+        errorDiv.innerHTML = '<i class="bi bi-hourglass-split"></i> Terlalu banyak percobaan. Coba lagi ' + waitSeconds + ' detik.';
         return;
     }
     if (loginLockTime && Date.now() >= loginLockTime) {
@@ -792,7 +792,7 @@ async function checkAdminLogin() {
     }
 
     if (!email || !pwd) {
-        errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Email dan password wajib diisi!';
+        errorDiv.innerHTML = '<i class="bi bi-exclamation-circle-fill"></i> Email dan password wajib diisi!';
         return;
     }
 
@@ -809,7 +809,7 @@ async function checkAdminLogin() {
 
         if (profileErr || !profile) {
             await supabaseClient.auth.signOut();
-            errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Akun ini belum terdaftar di dashboard_profiles. Hubungi admin untuk didaftarkan.';
+            errorDiv.innerHTML = '<i class="bi bi-exclamation-circle-fill"></i> Akun ini belum terdaftar di dashboard_profiles. Hubungi admin untuk didaftarkan.';
             return;
         }
 
@@ -823,9 +823,9 @@ async function checkAdminLogin() {
         loginAttempts++;
         if (loginAttempts >= 5) {
             loginLockTime = Date.now() + 60000;
-            errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Terlalu banyak percobaan. Coba lagi 1 menit.';
+            errorDiv.innerHTML = '<i class="bi bi-exclamation-circle-fill"></i> Terlalu banyak percobaan. Coba lagi 1 menit.';
         } else {
-            errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Email atau password salah! Sisa percobaan: ' + (5 - loginAttempts);
+            errorDiv.innerHTML = '<i class="bi bi-exclamation-circle-fill"></i> Email atau password salah! Sisa percobaan: ' + (5 - loginAttempts);
         }
     }
 }
@@ -845,15 +845,15 @@ async function createNewUser() {
     const dashboard_role = document.getElementById('us_new_role')?.value || 'user';
 
     if (!label || !email || !password) {
-        if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger);font-size:12.5px;"><i class="fa-solid fa-circle-exclamation"></i> Nama, email, dan password wajib diisi.</span>';
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger);font-size:12.5px;"><i class="bi bi-exclamation-circle-fill"></i> Nama, email, dan password wajib diisi.</span>';
         return;
     }
     if (password.length < 6) {
-        if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger);font-size:12.5px;"><i class="fa-solid fa-circle-exclamation"></i> Password minimal 6 karakter.</span>';
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger);font-size:12.5px;"><i class="bi bi-exclamation-circle-fill"></i> Password minimal 6 karakter.</span>';
         return;
     }
 
-    if (statusEl) statusEl.innerHTML = '<span style="color:var(--ink-soft);font-size:12.5px;"><i class="fa-solid fa-hourglass-half"></i> Membuat user...</span>';
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--ink-soft);font-size:12.5px;"><i class="bi bi-hourglass-split"></i> Membuat user...</span>';
     try {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session) throw new Error('Sesi login tidak ditemukan, silakan login ulang.');
@@ -870,12 +870,12 @@ async function createNewUser() {
         if (!resp.ok || !result.ok) throw new Error(result.description || 'Gagal menambah user');
 
         ['us_new_label', 'us_new_email', 'us_new_password'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-        if (statusEl) statusEl.innerHTML = '<span style="color:var(--success);font-size:12.5px;"><i class="fa-solid fa-circle-check"></i> User berhasil ditambahkan.</span>';
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--success);font-size:12.5px;"><i class="bi bi-check-circle-fill"></i> User berhasil ditambahkan.</span>';
         showToast('User baru berhasil ditambahkan');
         loadUserList();
     } catch (err) {
         console.error('createNewUser error:', err);
-        if (statusEl) statusEl.innerHTML = `<span style="color:var(--danger);font-size:12.5px;"><i class="fa-solid fa-circle-exclamation"></i> Gagal menambah user: ${escapeHtml(err.message)}</span>`;
+        if (statusEl) statusEl.innerHTML = `<span style="color:var(--danger);font-size:12.5px;"><i class="bi bi-exclamation-circle-fill"></i> Gagal menambah user: ${escapeHtml(err.message)}</span>`;
         showToast('Gagal menambah user', 'error');
     }
 }
@@ -983,7 +983,7 @@ function getAdminLoginBoxHtml() {
     <div class="admin-login-wrap">
     <div class="admin-login-box">
         <div class="admin-login-head">
-            <div class="admin-login-icon"><i class="fa-solid fa-shield-halved"></i></div>
+            <div class="admin-login-icon"><i class="bi bi-shield-check"></i></div>
             <div>
                 <h3>Masuk Dashboard</h3>
                 <p>Admin &middot; User &middot; Guest</p>
@@ -992,18 +992,18 @@ function getAdminLoginBoxHtml() {
         <div class="admin-login-body">
             <label class="admin-login-label" for="adminEmailInput">Email</label>
             <div class="admin-login-field">
-                <i class="fa-solid fa-envelope field-icon"></i>
+                <i class="bi bi-envelope-fill field-icon"></i>
                 <input type="email" id="adminEmailInput" placeholder="nama@amiru-dashboard.internal" autocomplete="username" onkeydown="if(event.key==='Enter')checkAdminLogin()">
             </div>
             <label class="admin-login-label" for="adminPasswordInput">Password</label>
             <div class="admin-login-field has-toggle">
-                <i class="fa-solid fa-lock field-icon"></i>
+                <i class="bi bi-lock-fill field-icon"></i>
                 <input type="password" id="adminPasswordInput" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')checkAdminLogin()">
                 <button type="button" class="toggle-pw" onclick="toggleAdminPasswordVisibility()" aria-label="Tampilkan password">
-                    <i class="fa-solid fa-eye" id="adminPwToggleIcon"></i>
+                    <i class="bi bi-eye-fill" id="adminPwToggleIcon"></i>
                 </button>
             </div>
-            <button onclick="checkAdminLogin()" class="btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Masuk</button>
+            <button onclick="checkAdminLogin()" class="btn-primary"><i class="bi bi-box-arrow-in-right"></i> Masuk</button>
             <div id="adminLoginError" class="admin-login-error"></div>
             <p class="admin-login-hint">Lupa password? Hubungi Admin untuk direset.</p>
         </div>
@@ -1017,7 +1017,7 @@ function toggleAdminPasswordVisibility() {
     if (!input || !icon) return;
     const showing = input.type === 'text';
     input.type = showing ? 'password' : 'text';
-    icon.className = showing ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+    icon.className = showing ? 'bi bi-eye-fill' : 'bi bi-eye-slash-fill';
 }
 
 const ADMIN_SUBTAB_META = {
@@ -1082,12 +1082,12 @@ async function renderAdminPanel() {
         container.innerHTML = `
             <div class="admin-subtab-panel" id="adminSubTab-program" style="display:block;">
             <div class="admin-toolbar">
-                ${canEditData ? `<button class="btn-primary" onclick="showAdminForm()"><i class="fa-solid fa-plus"></i> Tambah Program</button>` : `<span class="admin-role-note"><i class="fa-solid fa-eye"></i> Mode lihat saja (Guest)</span>`}
+                ${canEditData ? `<button class="btn-primary" onclick="showAdminForm()"><i class="bi bi-plus-lg"></i> Tambah Program</button>` : `<span class="admin-role-note"><i class="bi bi-eye-fill"></i> Mode lihat saja (Guest)</span>`}
                 <div class="admin-toolbar-right">
                     ${isAdmin ? `
-                    <button class="btn-icon-ghost" onclick="exportAdminData()" title="Export Data"><i class="fa-solid fa-download"></i></button>
-                    <button class="btn-icon-ghost" onclick="importAdminData()" title="Import Data"><i class="fa-solid fa-upload"></i></button>
-                    <button class="btn-icon-ghost danger" onclick="clearAllAdminData()" title="Hapus Semua Data"><i class="fa-solid fa-trash"></i></button>
+                    <button class="btn-icon-ghost" onclick="exportAdminData()" title="Export Data"><i class="bi bi-download"></i></button>
+                    <button class="btn-icon-ghost" onclick="importAdminData()" title="Import Data"><i class="bi bi-upload"></i></button>
+                    <button class="btn-icon-ghost danger" onclick="clearAllAdminData()" title="Hapus Semua Data"><i class="bi bi-trash-fill"></i></button>
                     ` : ''}
                 </div>
             </div>
@@ -1095,24 +1095,24 @@ async function renderAdminPanel() {
             ${canEditData ? `
             <div id="adminFormContainer" class="admin-form-card" style="display:none;">
                 <div class="admin-form-head">
-                    <h3><i class="fa-solid fa-file-pen"></i> <span id="adminFormTitle">Tambah Program Baru</span></h3>
+                    <h3><i class="bi bi-file-earmark-richtext-fill"></i> <span id="adminFormTitle">Tambah Program Baru</span></h3>
                     <div class="admin-form-head-actions">
-                        <button class="btn-submit-sm" onclick="saveAdminProgram()" title="Simpan (Ctrl+Enter)"><i class="fa-solid fa-save"></i> <span>Simpan</span></button>
+                        <button class="btn-submit-sm" onclick="saveAdminProgram()" title="Simpan (Ctrl+Enter)"><i class="bi bi-floppy-fill"></i> <span>Simpan</span></button>
                         <button class="admin-form-close" onclick="hideAdminForm()" title="Batal (Esc)">&times;</button>
                     </div>
                 </div>
                 <div class="admin-form-body">
                     <details id="parseBroadcastBox" class="admin-broadcast-box">
-                        <summary class="label"><i class="fa-solid fa-wand-magic-sparkles"></i> Auto-isi dari Teks Broadcast <span class="bc-hint">(opsional — klik untuk buka)</span></summary>
+                        <summary class="label"><i class="bi bi-magic"></i> Auto-isi dari Teks Broadcast <span class="bc-hint">(opsional — klik untuk buka)</span></summary>
                         <textarea id="parseBroadcastInput" rows="3" placeholder="Paste teks broadcast program umroh di sini..."></textarea>
                         <div class="bc-actions">
-                            <button onclick="parseBroadcastText()"><i class="fa-solid fa-wand-magic-sparkles"></i> Isi Otomatis</button>
+                            <button onclick="parseBroadcastText()"><i class="bi bi-magic"></i> Isi Otomatis</button>
                             <span id="parseStatus" style="font-size:12px;color:var(--success);font-weight:600;display:none;"></span>
                         </div>
                     </details>
 
                     <div class="admin-fieldset">
-                        <div class="admin-fieldset-title"><i class="fa-solid fa-circle-info"></i> Informasi Program</div>
+                        <div class="admin-fieldset-title"><i class="bi bi-info-circle-fill"></i> Informasi Program</div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Nama Program <span class="required">*</span></label>
@@ -1137,7 +1137,7 @@ async function renderAdminPanel() {
                     </div>
 
                     <div class="admin-fieldset">
-                        <div class="admin-fieldset-title"><i class="fa-solid fa-tags"></i> Harga per Kamar</div>
+                        <div class="admin-fieldset-title"><i class="bi bi-tags-fill"></i> Harga per Kamar</div>
                         <div class="form-row form-row-4">
                             <div class="form-group">
                                 <label>Harga Quad</label>
@@ -1159,7 +1159,7 @@ async function renderAdminPanel() {
                     </div>
 
                     <div class="admin-fieldset">
-                        <div class="admin-fieldset-title"><i class="fa-solid fa-hotel"></i> Akomodasi</div>
+                        <div class="admin-fieldset-title"><i class="bi bi-building-fill"></i> Akomodasi</div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Hotel Makkah</label>
@@ -1183,7 +1183,7 @@ async function renderAdminPanel() {
                     </div>
 
                     <div class="admin-fieldset">
-                        <div class="admin-fieldset-title"><i class="fa-solid fa-link"></i> Link & Aset</div>
+                        <div class="admin-fieldset-title"><i class="bi bi-link-45deg"></i> Link & Aset</div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Link Poster</label>
@@ -1207,7 +1207,7 @@ async function renderAdminPanel() {
                     </div>
 
                     <div class="admin-fieldset">
-                        <div class="admin-fieldset-title"><i class="fa-solid fa-align-left"></i> Konten Tambahan</div>
+                        <div class="admin-fieldset-title"><i class="bi bi-text-left"></i> Konten Tambahan</div>
                         <div class="form-group">
                             <label>Fasilitas / Termasuk</label>
                             <textarea id="admin_termasuk" rows="3" placeholder="Tiket pesawat PP&#10;Visa umroh&#10;Hotel bintang 4" maxlength="2000"></textarea>
@@ -1224,7 +1224,7 @@ async function renderAdminPanel() {
                             <div class="teks-wa-label-row">
                                 <label style="margin-bottom:0;">Teks WA</label>
                                 <button type="button" class="btn-ai-caption" id="btnGenCaptionAI" onclick="generateCaptionAI()">
-                                    <i class="fa-solid fa-wand-magic-sparkles"></i> <span id="btnGenCaptionAIText">Generate dengan AI</span>
+                                    <i class="bi bi-magic"></i> <span id="btnGenCaptionAIText">Generate dengan AI</span>
                                 </button>
                             </div>
                             <textarea id="admin_teks_wa" rows="4" placeholder="Kosongkan untuk generate otomatis, atau klik Generate dengan AI" maxlength="5000" oninput="updateWaCaptionGauge(this.value)"></textarea>
@@ -1233,7 +1233,7 @@ async function renderAdminPanel() {
                     </div>
                 </div>
                 <div class="admin-form-footer">
-                    <button class="btn-submit" onclick="saveAdminProgram()"><i class="fa-solid fa-save"></i> Simpan</button>
+                    <button class="btn-submit" onclick="saveAdminProgram()"><i class="bi bi-floppy-fill"></i> Simpan</button>
                     <button class="btn-cancel" onclick="hideAdminForm()">Batal</button>
                 </div>
             </div>
@@ -1267,13 +1267,13 @@ async function renderAdminPanel() {
             ${isAdmin ? `
             <div class="admin-subtab-panel" id="adminSubTab-pembayaran" style="display:none;">
                 <div class="admin-section-header">
-                    <div><h4><i class="fa-solid fa-money-bill-wave"></i> Pembayaran Biaya Umroh</h4>
+                    <div><h4><i class="bi bi-cash-stack"></i> Pembayaran Biaya Umroh</h4>
                     <p>Pantau & kelola cicilan/pelunasan biaya umroh seluruh jamaah dari semua program</p></div>
                 </div>
                 <div class="pb-income-hero" id="pbIncomeHero"></div>
                 <div class="pb-income-breakdown-wrap">
                     <div class="pb-income-breakdown-head">
-                        <h4><i class="fa-solid fa-chart-column"></i> Rincian Pemasukan per Program</h4>
+                        <h4><i class="bi bi-bar-chart-line-fill"></i> Rincian Pemasukan per Program</h4>
                         <span class="count" id="pbBreakdownCount">0 program</span>
                     </div>
                     <div class="pb-income-breakdown-grid" id="pbIncomeBreakdown"></div>
@@ -1318,7 +1318,7 @@ async function renderAdminPanel() {
 
             <div class="admin-subtab-panel" id="adminSubTab-unggulan" style="display:none;">
                 <div class="admin-section-header">
-                    <div><h4><i class="fa-solid fa-star" style="color:#d97706;"></i> Program Unggulan</h4>
+                    <div><h4><i class="bi bi-star-fill" style="color:#d97706;"></i> Program Unggulan</h4>
                     <p>Pilih program untuk ditampilkan di beranda (antara running text & tabel program)</p></div>
                     <div class="sec-actions"><span id="featuredCounter" style="background:#f59e0b;color:#fff;font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;">0 dipilih</span></div>
                 </div>
@@ -1342,7 +1342,7 @@ async function renderAdminPanel() {
 
             <div class="admin-subtab-panel" id="adminSubTab-crosscheck" style="display:none;">
                 <div class="admin-section-header">
-                    <div><h4><i class="fa-solid fa-magnifying-glass-chart"></i> Crosscheck Data Program</h4>
+                    <div><h4><i class="bi bi-graph-up-arrow"></i> Crosscheck Data Program</h4>
                     <p>Poster dibaca otomatis (OCR) & dibandingkan dengan data teks program saat disimpan</p></div>
                 </div>
                 <div class="cx-stats-bar" id="cxStatsBar"></div>
@@ -1352,17 +1352,17 @@ async function renderAdminPanel() {
                 </div>
                 <div class="cx-program-selector" id="cxProgramSelector"></div>
                 <div id="cxPanelContent">
-                    <div class="cx-empty"><i class="fa-solid fa-magnifying-glass-chart"></i><p>Pilih program di atas untuk melihat data crosscheck.</p></div>
+                    <div class="cx-empty"><i class="bi bi-graph-up-arrow"></i><p>Pilih program di atas untuk melihat data crosscheck.</p></div>
                 </div>
             </div>
 
             <div class="admin-subtab-panel" id="adminSubTab-telegram" style="display:none;">
                 <div class="admin-section-header">
-                    <div><h4><i class="fa-brands fa-telegram"></i> Notifikasi Telegram</h4>
+                    <div><h4><i class="bi bi-telegram"></i> Notifikasi Telegram</h4>
                     <p>Kirim notifikasi otomatis ke grup/chat Telegram saat ada program/jadwal baru</p></div>
                 </div>
                 <div class="tg-info-box">
-                    <b><i class="fa-solid fa-list-check"></i> Cara Setup:</b><br>
+                    <b><i class="bi bi-list-check"></i> Cara Setup:</b><br>
                     1. Buat bot via <b>@BotFather</b> di Telegram → dapatkan <b>Bot Token</b><br>
                     2. Tambahkan bot ke grup/chat yang diinginkan, jadikan <b>Admin</b><br>
                     3. Dapatkan <b>Chat ID</b> via <code>@userinfobot</code> atau <code>https://api.telegram.org/bot[TOKEN]/getUpdates</code><br>
@@ -1382,20 +1382,20 @@ async function renderAdminPanel() {
                 <div class="cx-label-sm">Penerima Notifikasi</div>
                 <p class="tg-hint">Centang jenis notifikasi yang diterima tiap penerima. <b>Pengingat 1 bulan</b> dikirim otomatis saat halaman dibuka.</p>
                 <div class="tg-recipients-list" id="tgRecipientsList"></div>
-                <button class="tg-add-btn" onclick="addTgRecipient()"><i class="fa-solid fa-plus"></i> Tambah Penerima</button>
+                <button class="tg-add-btn" onclick="addTgRecipient()"><i class="bi bi-plus-lg"></i> Tambah Penerima</button>
                 <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;">
-                    <button class="btn-primary" onclick="saveTgConfig()"><i class="fa-solid fa-save"></i> Simpan Konfigurasi</button>
-                    <button class="btn-cancel" onclick="testTgNotif()"><i class="fa-solid fa-paper-plane"></i> Test Kirim</button>
+                    <button class="btn-primary" onclick="saveTgConfig()"><i class="bi bi-floppy-fill"></i> Simpan Konfigurasi</button>
+                    <button class="btn-cancel" onclick="testTgNotif()"><i class="bi bi-send-fill"></i> Test Kirim</button>
                 </div>
                 <div id="tgStatusMsg" style="margin-top:12px;"></div>
                 <div class="tg-notif-log" id="tgNotifLog" style="display:none;">
-                    <p style="color:var(--ink-soft);font-size:11px;margin-bottom:6px;"><i class="fa-solid fa-list"></i> LOG PENGIRIMAN TELEGRAM:</p>
+                    <p style="color:var(--ink-soft);font-size:11px;margin-bottom:6px;"><i class="bi bi-list-ul"></i> LOG PENGIRIMAN TELEGRAM:</p>
                 </div>
             </div>
 
             <div class="admin-subtab-panel" id="adminSubTab-auditnota" style="display:none;">
                 <div class="admin-section-header">
-                    <div><h4><i class="fa-solid fa-file-shield"></i> Audit Nota</h4>
+                    <div><h4><i class="bi bi-file-earmark-lock2-fill"></i> Audit Nota</h4>
                     <p>Setiap nota yang diunduh (pembayaran & riwayat) otomatis tercatat di sini. Log ini append-only — tidak bisa diedit atau dihapus siapa pun, termasuk Admin.</p></div>
                 </div>
                 <div class="admin-toolbar">
@@ -1429,18 +1429,18 @@ async function renderAdminPanel() {
                     </div>
                 </div>
                 <div style="display:flex;justify-content:center;margin-top:14px;">
-                    <button class="btn-cancel" id="auditNotaLoadMoreBtn" onclick="loadNotaAuditLog(false)" style="display:none;"><i class="fa-solid fa-rotate"></i> Muat Lebih Banyak</button>
+                    <button class="btn-cancel" id="auditNotaLoadMoreBtn" onclick="loadNotaAuditLog(false)" style="display:none;"><i class="bi bi-arrow-clockwise"></i> Muat Lebih Banyak</button>
                 </div>
             </div>
 
             <div class="admin-subtab-panel" id="adminSubTab-usersettings" style="display:none;">
                 <div class="admin-section-header">
-                    <div><h4><i class="fa-solid fa-user-gear"></i> Pengaturan User</h4>
+                    <div><h4><i class="bi bi-person-gear"></i> Pengaturan User</h4>
                     <p>Tambah akun baru per-orang dengan role Admin (akses penuh) atau User (kelola data program)</p></div>
                 </div>
 
                 <div class="admin-fieldset" style="margin-top:28px;">
-                    <div class="admin-fieldset-title"><i class="fa-solid fa-user-plus"></i> Tambah User Baru</div>
+                    <div class="admin-fieldset-title"><i class="bi bi-person-plus-fill"></i> Tambah User Baru</div>
                     <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;">Buat akun login baru untuk satu orang, dengan role Admin (akses penuh) atau User (kelola data program).</p>
                     <div class="form-group">
                         <label>Nama / Label<span class="required">*</span></label>
@@ -1463,13 +1463,13 @@ async function renderAdminPanel() {
                     </div>
                 </div>
                 <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
-                    <button class="btn-primary" onclick="createNewUser()"><i class="fa-solid fa-user-plus"></i> Tambah User</button>
+                    <button class="btn-primary" onclick="createNewUser()"><i class="bi bi-person-plus-fill"></i> Tambah User</button>
                 </div>
                 <div id="usNewUserStatus" style="margin-top:12px;"></div>
 
                 <div class="admin-table-card" style="margin-top:28px;">
                     <div class="admin-table-head">
-                        <h4><i class="fa-solid fa-users"></i> Daftar User Terdaftar</h4>
+                        <h4><i class="bi bi-people-fill"></i> Daftar User Terdaftar</h4>
                         <span class="count" id="usUserListCount">-</span>
                     </div>
                     <div class="admin-table-wrap">
@@ -1484,14 +1484,14 @@ async function renderAdminPanel() {
             <div class="admin-subtab-panel" id="adminSubTab-snapshot" style="display:none;">
                 <div class="snap-header">
                     <div class="snap-header-title">
-                        <i class="fa-solid fa-camera-retro"></i>
+                        <i class="bi bi-camera2"></i>
                         <div>
                             <h4>Snapshot / Backup</h4>
                             <span>Maks 10 · tertua otomatis terhapus · tidak bisa dihapus manual</span>
                         </div>
                     </div>
                     <button class="btn-primary btn-sm" onclick="takeSnapshot('Manual ' + new Date().toLocaleDateString('id-ID'), 'manual').then(() => renderSnapshotAdminTable());">
-                        <i class="fa-solid fa-camera"></i> Ambil
+                        <i class="bi bi-camera-fill"></i> Ambil
                     </button>
                 </div>
                 <div id="snapshotTableWrap"></div>
@@ -1550,8 +1550,8 @@ function renderAdminTable() {
             ${canEditData ? `
             <td style="text-align:right;">
                 <div class="action-btns" style="justify-content:flex-end;">
-                    <button onclick="editAdminProgram('${p.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
-                    <button onclick="openDeleteModal('programs','${p.id}','${escapeJsAttr(p.nama)}')" class="danger" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+                    <button onclick="editAdminProgram('${p.id}')" title="Edit"><i class="bi bi-pencil-fill"></i></button>
+                    <button onclick="openDeleteModal('programs','${p.id}','${escapeJsAttr(p.nama)}')" class="danger" title="Hapus"><i class="bi bi-trash-fill"></i></button>
                 </div>
             </td>
             ` : ''}
@@ -2332,14 +2332,14 @@ const SNAPSHOT_TRIGGER_LABEL = {
 function renderSnapshotAdminTable() {
     const wrap = document.getElementById('snapshotTableWrap');
     if (!wrap) return;
-    wrap.innerHTML = '<div style="text-align:center;padding:18px;color:var(--ink-soft);font-size:12px;"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</div>';
+    wrap.innerHTML = '<div style="text-align:center;padding:18px;color:var(--ink-soft);font-size:12px;"><i class="bi bi-arrow-repeat bi-spin"></i> Memuat...</div>';
     listSnapshots().then(rows => {
         const pct = Math.min(100, Math.round((rows.length / MAX_SNAPSHOTS) * 100));
 
         if (!rows.length) {
             wrap.innerHTML = `
                 <div class="snap-progress-wrap"><div class="snap-progress-track"><div class="snap-progress-fill" style="width:0%;"></div></div><span class="snap-progress-label">0/${MAX_SNAPSHOTS}</span></div>
-                <div class="snap-empty"><i class="fa-solid fa-camera-retro"></i><span>Belum ada snapshot. Klik <b>Ambil</b> untuk cadangan pertama.</span></div>`;
+                <div class="snap-empty"><i class="bi bi-camera2"></i><span>Belum ada snapshot. Klik <b>Ambil</b> untuk cadangan pertama.</span></div>`;
             return;
         }
 
@@ -2353,7 +2353,7 @@ function renderSnapshotAdminTable() {
                 <span class="snap-dot" style="background:${trig.color};" title="${escapeHtml(trig.text)}"></span>
                 <span class="snap-row-label" title="${escapeHtml(r.label || 'Snapshot')}">${escapeHtml(r.label || 'Snapshot')}</span>
                 <span class="snap-row-meta">${tstr} · ${total} baris</span>
-                <button class="btn-icon-ghost btn-xs" title="Pulihkan snapshot ini" onclick="restoreSnapshot('${r.id}')"><i class="fa-solid fa-rotate-left"></i></button>
+                <button class="btn-icon-ghost btn-xs" title="Pulihkan snapshot ini" onclick="restoreSnapshot('${r.id}')"><i class="bi bi-arrow-counterclockwise"></i></button>
             </div>`;
         }).join('');
 
@@ -2563,7 +2563,7 @@ function renderJfPagination(totalItems) {
     if (totalPages <= 1) { el.innerHTML = ''; return; }
     if (jfCurrentPage > totalPages) jfCurrentPage = totalPages;
 
-    let html = `<button ${jfCurrentPage === 1 ? 'disabled' : ''} onclick="goToJfPage(${jfCurrentPage - 1})" title="Sebelumnya"><i class="fa-solid fa-chevron-left"></i></button>`;
+    let html = `<button ${jfCurrentPage === 1 ? 'disabled' : ''} onclick="goToJfPage(${jfCurrentPage - 1})" title="Sebelumnya"><i class="bi bi-chevron-left"></i></button>`;
     const pages = [];
     for (let i = 1; i <= totalPages; i++) {
         if (i === 1 || i === totalPages || Math.abs(i - jfCurrentPage) <= 1) pages.push(i);
@@ -2573,7 +2573,7 @@ function renderJfPagination(totalItems) {
         if (p === '...') html += `<span class="pf-page-ellipsis">…</span>`;
         else html += `<button class="${p === jfCurrentPage ? 'active' : ''}" onclick="goToJfPage(${p})">${p}</button>`;
     });
-    html += `<button ${jfCurrentPage === totalPages ? 'disabled' : ''} onclick="goToJfPage(${jfCurrentPage + 1})" title="Berikutnya"><i class="fa-solid fa-chevron-right"></i></button>`;
+    html += `<button ${jfCurrentPage === totalPages ? 'disabled' : ''} onclick="goToJfPage(${jfCurrentPage + 1})" title="Berikutnya"><i class="bi bi-chevron-right"></i></button>`;
     el.innerHTML = html;
 }
 
@@ -2589,10 +2589,10 @@ function renderJadwalSection() {
     if (countEl) countEl.textContent = `${filtered.length} dari ${jadwalList.length} jadwal`;
 
     if (!jadwalList.length) {
-        tbody.innerHTML = `<tr><td colspan="8"><div class="pf-empty"><i class="fa-solid fa-calendar-xmark"></i>Belum ada jadwal tamu. Klik "Tambah Jadwal" untuk menambahkan.</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8"><div class="pf-empty"><i class="bi bi-calendar-x-fill"></i>Belum ada jadwal tamu. Klik "Tambah Jadwal" untuk menambahkan.</div></td></tr>`;
         renderJfPagination(0);
     } else if (!filtered.length) {
-        tbody.innerHTML = `<tr><td colspan="8"><div class="pf-empty"><i class="fa-solid fa-magnifying-glass"></i>Tidak ada jadwal yang cocok dengan pencarian/filter.</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8"><div class="pf-empty"><i class="bi bi-search"></i>Tidak ada jadwal yang cocok dengan pencarian/filter.</div></td></tr>`;
         renderJfPagination(0);
     } else {
         const sorted = [...filtered].sort((a, b) => new Date(a.tgl) - new Date(b.tgl));
@@ -2618,9 +2618,9 @@ function renderJadwalSection() {
                 <td><span class="jadwal-status-pill ${stKey}">${statusLabelMap[stKey]}</span></td>
                 <td>
                     <div class="pf-actions">
-                        ${j.wa ? `<a href="https://wa.me/${j.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(j.nama||'')}%20kami%20dari%20PT%20Amiru%20Haramain%20Indonesia" target="_blank" class="pf-btn-wa" title="Hubungi via WhatsApp"><i class="fab fa-whatsapp"></i></a>` : ''}
-                        <button type="button" class="pf-btn-edit" onclick="openJadwalModal('${j.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
-                        <button type="button" class="pf-btn-delete" onclick="openDeleteModal('jadwal_tamu', '${j.id}', '${escapeJsAttr(j.nama)}')" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+                        ${j.wa ? `<a href="https://wa.me/${j.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(j.nama||'')}%20kami%20dari%20PT%20Amiru%20Haramain%20Indonesia" target="_blank" class="pf-btn-wa" title="Hubungi via WhatsApp"><i class="bi bi-whatsapp"></i></a>` : ''}
+                        <button type="button" class="pf-btn-edit" onclick="openJadwalModal('${j.id}')" title="Edit"><i class="bi bi-pencil-fill"></i></button>
+                        <button type="button" class="pf-btn-delete" onclick="openDeleteModal('jadwal_tamu', '${j.id}', '${escapeJsAttr(j.nama)}')" title="Hapus"><i class="bi bi-trash-fill"></i></button>
                     </div>
                 </td>
             </tr>`;
@@ -2782,7 +2782,7 @@ function renderPfPagination(totalItems) {
     if (totalPages <= 1) { el.innerHTML = ''; return; }
     if (pfCurrentPage > totalPages) pfCurrentPage = totalPages;
 
-    let html = `<button ${pfCurrentPage === 1 ? 'disabled' : ''} onclick="goToPfPage(${pfCurrentPage - 1})" title="Sebelumnya"><i class="fa-solid fa-chevron-left"></i></button>`;
+    let html = `<button ${pfCurrentPage === 1 ? 'disabled' : ''} onclick="goToPfPage(${pfCurrentPage - 1})" title="Sebelumnya"><i class="bi bi-chevron-left"></i></button>`;
     const pages = [];
     for (let i = 1; i <= totalPages; i++) {
         if (i === 1 || i === totalPages || Math.abs(i - pfCurrentPage) <= 1) pages.push(i);
@@ -2792,7 +2792,7 @@ function renderPfPagination(totalItems) {
         if (p === '...') html += `<span class="pf-page-ellipsis">…</span>`;
         else html += `<button class="${p === pfCurrentPage ? 'active' : ''}" onclick="goToPfPage(${p})">${p}</button>`;
     });
-    html += `<button ${pfCurrentPage === totalPages ? 'disabled' : ''} onclick="goToPfPage(${pfCurrentPage + 1})" title="Berikutnya"><i class="fa-solid fa-chevron-right"></i></button>`;
+    html += `<button ${pfCurrentPage === totalPages ? 'disabled' : ''} onclick="goToPfPage(${pfCurrentPage + 1})" title="Berikutnya"><i class="bi bi-chevron-right"></i></button>`;
     el.innerHTML = html;
 }
 
@@ -2805,21 +2805,21 @@ function renderPendaftaranSection() {
     if (countEl) countEl.textContent = `${filtered.length} dari ${pendaftaranList.length} pendaftaran`;
 
     if (!pendaftaranList.length) {
-        tbody.innerHTML = `<tr><td colspan="7"><div class="pf-empty"><i class="fa-solid fa-clipboard-list"></i>Belum ada pendaftaran. Klik "Tambah Pendaftaran" untuk menambahkan.</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7"><div class="pf-empty"><i class="bi bi-clipboard-check-fill"></i>Belum ada pendaftaran. Klik "Tambah Pendaftaran" untuk menambahkan.</div></td></tr>`;
         renderPfPagination(0);
         return;
     }
     if (!filtered.length) {
-        tbody.innerHTML = `<tr><td colspan="7"><div class="pf-empty"><i class="fa-solid fa-magnifying-glass"></i>Tidak ada pendaftaran yang cocok dengan pencarian/filter.</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7"><div class="pf-empty"><i class="bi bi-search"></i>Tidak ada pendaftaran yang cocok dengan pencarian/filter.</div></td></tr>`;
         renderPfPagination(0);
         return;
     }
 
     const statusMap = {
-        baru: { label: 'Baru', icon: 'fa-circle-plus' },
-        dihubungi: { label: 'Dihubungi', icon: 'fa-arrows-rotate' },
-        deal: { label: 'Deal', icon: 'fa-circle-check' },
-        batal: { label: 'Batal', icon: 'fa-circle-xmark' }
+        baru: { label: 'Baru', icon: 'bi-plus-circle-fill' },
+        dihubungi: { label: 'Dihubungi', icon: 'bi-arrow-repeat' },
+        deal: { label: 'Deal', icon: 'bi-check-circle-fill' },
+        batal: { label: 'Batal', icon: 'bi-x-circle-fill' }
     };
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / PF_PAGE_SIZE));
@@ -2837,12 +2837,12 @@ function renderPendaftaranSection() {
             <td>${p.tanggal_daftar ? escapeHtml(p.tanggal_daftar) : (p.created_at ? escapeHtml(String(p.created_at).slice(0, 10)) : '-')}</td>
             <td>${escapeHtml(p.asal || '-')}</td>
             <td>${p.wa ? escapeHtml(p.wa) : '-'}</td>
-            <td><span class="pf-status-pill ${stKey}"><i class="fa-solid ${st.icon}"></i> ${st.label}</span></td>
+            <td><span class="pf-status-pill ${stKey}"><i class="bi ${st.icon}"></i> ${st.label}</span></td>
             <td>
                 <div class="pf-actions">
-                    ${p.wa ? `<a href="https://wa.me/${p.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(p.nama||'')}%20kami%20dari%20PT%20Amiru%20Haramain%20Indonesia" target="_blank" class="pf-btn-wa" title="Hubungi via WhatsApp"><i class="fab fa-whatsapp"></i></a>` : ''}
-                    <button type="button" class="pf-btn-edit" onclick="openPendaftaranModal('${p.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
-                    <button type="button" class="pf-btn-delete" onclick="openDeleteModal('pendaftaran', '${p.id}', '${escapeJsAttr(p.nama)}')" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+                    ${p.wa ? `<a href="https://wa.me/${p.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(p.nama||'')}%20kami%20dari%20PT%20Amiru%20Haramain%20Indonesia" target="_blank" class="pf-btn-wa" title="Hubungi via WhatsApp"><i class="bi bi-whatsapp"></i></a>` : ''}
+                    <button type="button" class="pf-btn-edit" onclick="openPendaftaranModal('${p.id}')" title="Edit"><i class="bi bi-pencil-fill"></i></button>
+                    <button type="button" class="pf-btn-delete" onclick="openDeleteModal('pendaftaran', '${p.id}', '${escapeJsAttr(p.nama)}')" title="Hapus"><i class="bi bi-trash-fill"></i></button>
                 </div>
             </td>
         </tr>`;
@@ -3017,7 +3017,7 @@ async function loadKbJamaahForProgram(programId) {
     kbSelectedProgram = programId || null;
     const container = document.getElementById('kbJamaahContent');
     if (!programId) {
-        container.innerHTML = `<div class="kb-no-program"><i class="fa-solid fa-plane-departure"></i><p>Pilih program di atas untuk melihat daftar jamaah.</p></div>`;
+        container.innerHTML = `<div class="kb-no-program"><i class="bi bi-airplane-engines-fill"></i><p>Pilih program di atas untuk melihat daftar jamaah.</p></div>`;
         return;
     }
 
@@ -3034,7 +3034,7 @@ async function loadKbJamaahForProgram(programId) {
 
         const jamaah = data || [];
         if (!jamaah.length) {
-            container.innerHTML = `<div class="kb-no-program"><i class="fa-solid fa-user-slash"></i><p>Belum ada jamaah terdaftar untuk program ini.</p></div>`;
+            container.innerHTML = `<div class="kb-no-program"><i class="bi bi-person-dash-fill"></i><p>Belum ada jamaah terdaftar untuk program ini.</p></div>`;
             return;
         }
 
@@ -3060,9 +3060,9 @@ async function loadKbJamaahForProgram(programId) {
             grandTotalDibayar += dibayar;
 
             let statusLabel, statusClass;
-            if (hargaProgram > 0 && dibayar >= hargaProgram) { statusLabel = '<i class="fa-solid fa-circle-check"></i> Lunas'; statusClass = 'available'; }
-            else if (dibayar > 0) { statusLabel = '<i class="fa-solid fa-arrows-rotate"></i> Cicilan'; statusClass = 'limited'; }
-            else { statusLabel = '<i class="fa-solid fa-hourglass-half"></i> Belum Bayar'; statusClass = 'full'; }
+            if (hargaProgram > 0 && dibayar >= hargaProgram) { statusLabel = '<i class="bi bi-check-circle-fill"></i> Lunas'; statusClass = 'available'; }
+            else if (dibayar > 0) { statusLabel = '<i class="bi bi-arrow-repeat"></i> Cicilan'; statusClass = 'limited'; }
+            else { statusLabel = '<i class="bi bi-hourglass-split"></i> Belum Bayar'; statusClass = 'full'; }
 
             return `
                 <tr style="border-bottom:1px solid var(--line);">
@@ -3082,12 +3082,12 @@ async function loadKbJamaahForProgram(programId) {
                     <td style="padding:10px 14px;white-space:nowrap;">
                         <div class="row-actions">
                             <button class="btn-primary btn-pay" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${j.id}')">
-                                <i class="fa-solid fa-money-bill-wave"></i> Bayar
+                                <i class="bi bi-cash-stack"></i> Bayar
                             </button>
                             ${canEdit ? `
                             <span class="row-actions-sep"></span>
-                            <button type="button" class="row-icon-btn" onclick="openKbModal('${j.id}')" style="background:var(--brand-tint);color:var(--brand);" title="Edit data jamaah"><i class="fa-solid fa-pen"></i></button>
-                            <button type="button" class="row-icon-btn" onclick="openDeleteModal('kb_jamaah', '${j.id}', '${escapeJsAttr(j.nama)}')" style="background:var(--danger-tint);color:var(--danger);" title="Hapus data jamaah"><i class="fa-solid fa-trash"></i></button>
+                            <button type="button" class="row-icon-btn" onclick="openKbModal('${j.id}')" style="background:var(--brand-tint);color:var(--brand);" title="Edit data jamaah"><i class="bi bi-pencil-fill"></i></button>
+                            <button type="button" class="row-icon-btn" onclick="openDeleteModal('kb_jamaah', '${j.id}', '${escapeJsAttr(j.nama)}')" style="background:var(--danger-tint);color:var(--danger);" title="Hapus data jamaah"><i class="bi bi-trash-fill"></i></button>
                             ` : ''}
                         </div>
                     </td>
@@ -3104,7 +3104,7 @@ async function loadKbJamaahForProgram(programId) {
                 <span class="status-badge available">Total Dibayar: ${formatRupiah(grandTotalDibayar)}</span>
                 <span class="status-badge ${grandSisa > 0 ? 'full' : 'available'}">Sisa Tagihan: ${formatRupiah(grandSisa)}</span>
             </div>
-            ${!hargaProgram ? `<div style="font-size:12px;color:var(--warn);margin-bottom:10px;"><i class="fa-solid fa-triangle-exclamation"></i> Harga program ini belum diisi, sisa tagihan tidak bisa dihitung akurat.</div>` : ''}
+            ${!hargaProgram ? `<div style="font-size:12px;color:var(--warn);margin-bottom:10px;"><i class="bi bi-exclamation-triangle-fill"></i> Harga program ini belum diisi, sisa tagihan tidak bisa dihitung akurat.</div>` : ''}
             <div class="table-container" style="overflow-x:auto;">
                 <table style="width:100%;border-collapse:collapse;font-size:13px;">
                     <thead style="background:var(--bg);">
@@ -3128,7 +3128,7 @@ async function loadKbJamaahForProgram(programId) {
     } catch (err) {
         console.error('Load jamaah error:', err);
         container.innerHTML = `<div class="kb-no-program" style="color:var(--danger);">
-            <i class="fa-solid fa-circle-exclamation"></i>
+            <i class="bi bi-exclamation-circle-fill"></i>
             <p>Gagal memuat data: ${err.message}</p>
         </div>`;
     }
@@ -3342,7 +3342,7 @@ async function loadCicilanHistory(jamaahId) {
                         <div class="cicilan-summary-sisa">${isLunas ? 'Lunas' : formatRupiah(sisa)}</div>
                     </div>
                     ${isLunas
-                        ? `<span class="cicilan-summary-lunas-badge"><i class="fa-solid fa-circle-check"></i> Lunas</span>`
+                        ? `<span class="cicilan-summary-lunas-badge"><i class="bi bi-check-circle-fill"></i> Lunas</span>`
                         : `<span class="cicilan-summary-pct-badge">${pct}% terbayar</span>`}
                 </div>
                 <div class="cicilan-progress-track"><div class="cicilan-progress-fill" style="width:${pct}%;"></div></div>
@@ -3367,7 +3367,7 @@ function renderCicilanHistory() {
     if (countEl) countEl.textContent = cicilanList.length ? `(${cicilanList.length})` : '';
     if (btnRiwayat) btnRiwayat.disabled = !cicilanList.length;
     if (!cicilanList.length) {
-        listEl.innerHTML = `<div class="cicilan-history-empty"><i class="fa-solid fa-receipt"></i><p>Belum ada pembayaran tercatat.</p></div>`;
+        listEl.innerHTML = `<div class="cicilan-history-empty"><i class="bi bi-receipt"></i><p>Belum ada pembayaran tercatat.</p></div>`;
         return;
     }
     listEl.innerHTML = cicilanList.map(c => {
@@ -3381,10 +3381,10 @@ function renderCicilanHistory() {
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
                 <button type="button" class="cicilan-nota-btn" onclick="previewNotaPembayaran('${c.id}', this)" title="Preview lalu unduh nota bukti pembayaran (JPEG)">
-                    <i class="fa-solid fa-file-image"></i>
+                    <i class="bi bi-file-earmark-image-fill"></i>
                 </button>
                 <button type="button" class="cicilan-delete-btn" onclick="deleteCicilan('${c.id}')" title="Hapus pembayaran ini">
-                    <i class="fa-solid fa-trash"></i>
+                    <i class="bi bi-trash-fill"></i>
                 </button>
             </div>
         </div>`;
@@ -3441,7 +3441,7 @@ function renderPembayaranIncomeSummary(jamaahAll, totalPerJamaah) {
     heroEl.innerHTML = `
         <div class="pb-hero-top">
             <div>
-                <div class="pb-hero-label"><i class="fa-solid fa-sack-dollar"></i> Total Pemasukan Terkumpul</div>
+                <div class="pb-hero-label"><i class="bi bi-piggy-bank-fill"></i> Total Pemasukan Terkumpul</div>
                 <div class="pb-hero-amount">${formatRupiah(grandDibayar)}</div>
             </div>
             <div class="pb-hero-pct-badge">${grandPct}% dari target</div>
@@ -3465,7 +3465,7 @@ function renderPembayaranIncomeSummary(jamaahAll, totalPerJamaah) {
         <div class="pb-income-card">
             <div class="pb-income-card-head">
                 <span class="pb-income-card-name" title="${escapeHtml(g.nama)}">${escapeHtml(g.nama)}</span>
-                <span class="pb-income-card-jamaah"><i class="fa-solid fa-user-group"></i> ${g.jamaahCount}</span>
+                <span class="pb-income-card-jamaah"><i class="bi bi-people-fill"></i> ${g.jamaahCount}</span>
             </div>
             <div class="pb-income-card-amount">${formatRupiah(g.dibayar)}</div>
             <div class="pb-income-card-track"><div class="pb-income-card-fill" style="width:${g.pct}%;"></div></div>
@@ -3575,9 +3575,9 @@ async function renderPembayaranPanel() {
         const canEdit = canManageProgramData();
         tbody.innerHTML = rowsData.map(r => {
             let statusLabel, statusClass;
-            if (r.status === 'lunas') { statusLabel = '<i class="fa-solid fa-circle-check"></i> Lunas'; statusClass = 'available'; }
-            else if (r.status === 'cicilan') { statusLabel = '<i class="fa-solid fa-arrows-rotate"></i> Cicilan'; statusClass = 'limited'; }
-            else { statusLabel = '<i class="fa-solid fa-hourglass-half"></i> Belum Bayar'; statusClass = 'full'; }
+            if (r.status === 'lunas') { statusLabel = '<i class="bi bi-check-circle-fill"></i> Lunas'; statusClass = 'available'; }
+            else if (r.status === 'cicilan') { statusLabel = '<i class="bi bi-arrow-repeat"></i> Cicilan'; statusClass = 'limited'; }
+            else { statusLabel = '<i class="bi bi-hourglass-split"></i> Belum Bayar'; statusClass = 'full'; }
 
             return `
                 <tr>
@@ -3595,7 +3595,7 @@ async function renderPembayaranPanel() {
                     <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
                     <td style="text-align:right;white-space:nowrap;">
                         <button class="btn-primary btn-pay" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${r.j.id}')" ${!canEdit ? 'disabled title="Tidak punya izin"' : ''}>
-                            <i class="fa-solid fa-money-bill-wave"></i> Bayar
+                            <i class="bi bi-cash-stack"></i> Bayar
                         </button>
                     </td>
                 </tr>`;
@@ -3942,7 +3942,7 @@ async function captureNotaCanvas(htmlString, btn) {
 
     notaGenerating = true;
     const originalIcon = btn ? btn.innerHTML : null;
-    if (btn) { btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; btn.disabled = true; }
+    if (btn) { btn.innerHTML = '<i class="bi bi-arrow-repeat bi-spin"></i>'; btn.disabled = true; }
 
     const renderArea = document.getElementById('notaRenderArea');
     renderArea.innerHTML = htmlString;
@@ -4489,7 +4489,7 @@ async function loadDokumenForProgram(programId) {
     summaryEl.innerHTML = '';
 
     if (!programId) {
-        container.innerHTML = `<div class="kb-no-program"><i class="fa-solid fa-file-circle-check"></i><p>Pilih program di atas untuk mengecek kelengkapan dokumen jamaah.</p></div>`;
+        container.innerHTML = `<div class="kb-no-program"><i class="bi bi-file-earmark-check-fill"></i><p>Pilih program di atas untuk mengecek kelengkapan dokumen jamaah.</p></div>`;
         return;
     }
 
@@ -4502,7 +4502,7 @@ async function loadDokumenForProgram(programId) {
         const jamaah = data || [];
 
         if (!jamaah.length) {
-            container.innerHTML = `<div class="kb-no-program"><i class="fa-solid fa-user-slash"></i><p>Belum ada jamaah terdaftar untuk program ini.</p></div>`;
+            container.innerHTML = `<div class="kb-no-program"><i class="bi bi-person-dash-fill"></i><p>Belum ada jamaah terdaftar untuk program ini.</p></div>`;
             return;
         }
 
@@ -4561,7 +4561,7 @@ async function loadDokumenForProgram(programId) {
                                             style="width:16px;height:16px;cursor:${canEdit ? 'pointer' : 'default'};">
                                     </td>`).join('')}
                                 <td style="padding:10px 14px;border-left:1px solid var(--line);">
-                                    <span class="status-badge ${lengkap ? 'available' : 'full'}">${lengkap ? '<i class="fa-solid fa-circle-check"></i> Lengkap' : '<i class="fa-solid fa-hourglass-half"></i> Belum Lengkap'}</span>
+                                    <span class="status-badge ${lengkap ? 'available' : 'full'}">${lengkap ? '<i class="bi bi-check-circle-fill"></i> Lengkap' : '<i class="bi bi-hourglass-split"></i> Belum Lengkap'}</span>
                                 </td>
                             </tr>`;
                         }).join('')}
@@ -4574,7 +4574,7 @@ async function loadDokumenForProgram(programId) {
     } catch (err) {
         console.error('Load dokumen jamaah error:', err);
         container.innerHTML = `<div class="kb-no-program" style="color:var(--danger);">
-            <i class="fa-solid fa-circle-exclamation"></i>
+            <i class="bi bi-exclamation-circle-fill"></i>
             <p>Gagal memuat data dokumen — periksa koneksi internet.</p>
         </div>`;
     }
@@ -4781,9 +4781,9 @@ function renderCxStatsBar() {
         if (priority === 0) mismatch++; else if (priority === 1) missing++; else ok++;
     });
     bar.innerHTML = `
-        <div class="cx-stat-chip ok"><i class="fa-solid fa-circle-check"></i> ${ok} cocok</div>
-        <div class="cx-stat-chip warn"><i class="fa-solid fa-triangle-exclamation"></i> ${mismatch} tidak cocok</div>
-        <div class="cx-stat-chip missing"><i class="fa-solid fa-circle-info"></i> ${missing} belum ada data</div>
+        <div class="cx-stat-chip ok"><i class="bi bi-check-circle-fill"></i> ${ok} cocok</div>
+        <div class="cx-stat-chip warn"><i class="bi bi-exclamation-triangle-fill"></i> ${mismatch} tidak cocok</div>
+        <div class="cx-stat-chip missing"><i class="bi bi-info-circle-fill"></i> ${missing} belum ada data</div>
     `;
 }
 
@@ -4812,9 +4812,9 @@ function renderCxProgramSelector() {
         const isScanning = cxScanningIds.has(String(p.id));
         return `<button class="cx-program-pill${isActive?' active':''}${mismatchCount>0?' has-warning':''}" onclick="selectCxProgram('${p.id}')">
             ${escapeHtml(p.nama||'Program')}
-            ${isScanning ? '<i class="fa-solid fa-spinner fa-spin" style="color:var(--brand);font-size:9px;margin-left:2px;" title="Sedang scan poster..."></i>' : ''}
-            ${!isScanning && hasData ? '<i class="fa-solid fa-circle-check" style="color:var(--success);font-size:9px;margin-left:2px;" title="Ada data lengkap"></i>' : ''}
-            ${!isScanning && mismatchCount>0 ? `<i class="fa-solid fa-triangle-exclamation cx-pill-warn" title="${mismatchCount} data tidak cocok"></i>` : ''}
+            ${isScanning ? '<i class="bi bi-arrow-repeat bi-spin" style="color:var(--brand);font-size:9px;margin-left:2px;" title="Sedang scan poster..."></i>' : ''}
+            ${!isScanning && hasData ? '<i class="bi bi-check-circle-fill" style="color:var(--success);font-size:9px;margin-left:2px;" title="Ada data lengkap"></i>' : ''}
+            ${!isScanning && mismatchCount>0 ? `<i class="bi bi-exclamation-triangle-fill cx-pill-warn" title="${mismatchCount} data tidak cocok"></i>` : ''}
         </button>`;
     }).join('');
 }
@@ -4829,7 +4829,7 @@ function renderCxPanel(progId) {
     const content = document.getElementById('cxPanelContent');
     if (!content) return;
     const prog = adminPrograms.find(p => String(p.id) === String(progId));
-    if (!prog) { content.innerHTML = '<div class="cx-empty"><i class="fa-solid fa-magnifying-glass-chart"></i><p>Program tidak ditemukan.</p></div>'; return; }
+    if (!prog) { content.innerHTML = '<div class="cx-empty"><i class="bi bi-graph-up-arrow"></i><p>Program tidak ditemukan.</p></div>'; return; }
     const adl = (() => { try { return prog.admin_data_lengkap ? (typeof prog.admin_data_lengkap === 'string' ? JSON.parse(prog.admin_data_lengkap) : prog.admin_data_lengkap) : {}; } catch(e) { return {}; } })();
     const val = (v) => v ? escapeHtml(v) : '<span class="cx-value empty">—</span>';
     const hasAdl = Object.keys(adl).length > 0;
@@ -4862,12 +4862,12 @@ function renderCxPanel(progId) {
             const hasBoth = r.plain && r.poster;
             const isMatch = hasBoth && cxValuesMatch(r.field, r.plain, r.poster);
             const rowClass = hasBoth ? (isMatch ? 'cx-match' : 'cx-mismatch') : '';
-            const pill = hasBoth ? `<span class="cx-match-pill ${isMatch?'ok':'no'}">${isMatch?'<i class="fa-solid fa-check"></i> Cocok':'<i class="fa-solid fa-xmark"></i> Beda'}</span>` : `<span class="cx-match-pill skip">—</span>`;
+            const pill = hasBoth ? `<span class="cx-match-pill ${isMatch?'ok':'no'}">${isMatch?'<i class="bi bi-check-lg"></i> Cocok':'<i class="bi bi-x-lg"></i> Beda'}</span>` : `<span class="cx-match-pill skip">—</span>`;
             return `<div class="cx-compare-row ${rowClass}">
                 <div class="cx-compare-field"><div class="cx-compare-label">${escapeHtml(r.label)}</div>${pill}</div>
-                <div class="cx-compare-col"><div class="cx-compare-label"><i class="fa-solid fa-file-lines"></i> Teks</div><div class="cx-compare-val ${r.plain?'':'empty'}">${r.plain ? escapeHtml(r.plain) : '—'}</div></div>
+                <div class="cx-compare-col"><div class="cx-compare-label"><i class="bi bi-file-earmark-text-fill"></i> Teks</div><div class="cx-compare-val ${r.plain?'':'empty'}">${r.plain ? escapeHtml(r.plain) : '—'}</div></div>
                 <div class="cx-divider"></div>
-                <div class="cx-compare-col"><div class="cx-compare-label"><i class="fa-solid fa-image"></i> Poster</div><div class="cx-compare-val ${r.poster?'':'empty'}">${r.poster ? escapeHtml(r.poster) : '—'}</div></div>
+                <div class="cx-compare-col"><div class="cx-compare-label"><i class="bi bi-image-fill"></i> Poster</div><div class="cx-compare-val ${r.poster?'':'empty'}">${r.poster ? escapeHtml(r.poster) : '—'}</div></div>
             </div>`;
         }).join('');
     };
@@ -4880,29 +4880,29 @@ function renderCxPanel(progId) {
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
         <div style="font-size:14px;font-weight:700;color:var(--brand-deep);">${escapeHtml(prog.nama||'Program')}</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            ${mismatchCount > 0 ? `<span class="cx-mismatch-count"><i class="fa-solid fa-triangle-exclamation"></i> ${mismatchCount} tidak cocok</span>` : ''}
-            <button class="cx-parse-btn" onclick="openCxEditModal('${prog.id}')"><i class="fa-solid fa-edit"></i> Input Manual</button>
-            ${hasPoster ? `<button class="cx-parse-btn" onclick="autoScanPosterForProgram('${prog.id}')" ${isScanning?'disabled':''}><i class="fa-solid fa-${isScanning?'spinner fa-spin':'arrows-rotate'}"></i> ${isScanning?'Memindai...':'Scan Ulang Poster'}</button>` : ''}
-            ${hasPoster ? `<button class="cx-parse-btn" onclick="window.open('${escapeJsAttr(prog.link_poster)}','_blank')"><i class="fa-solid fa-image"></i> Lihat Poster</button>` : ''}
+            ${mismatchCount > 0 ? `<span class="cx-mismatch-count"><i class="bi bi-exclamation-triangle-fill"></i> ${mismatchCount} tidak cocok</span>` : ''}
+            <button class="cx-parse-btn" onclick="openCxEditModal('${prog.id}')"><i class="bi bi-pencil-square"></i> Input Manual</button>
+            ${hasPoster ? `<button class="cx-parse-btn" onclick="autoScanPosterForProgram('${prog.id}')" ${isScanning?'disabled':''}><i class="bi ${isScanning?'bi-arrow-repeat bi-spin':'bi-arrow-repeat'}"></i> ${isScanning?'Memindai...':'Scan Ulang Poster'}</button>` : ''}
+            ${hasPoster ? `<button class="cx-parse-btn" onclick="window.open('${escapeJsAttr(prog.link_poster)}','_blank')"><i class="bi bi-image-fill"></i> Lihat Poster</button>` : ''}
         </div>
     </div>
     ${isScanning ? `
     <div class="cx-status-bar scanning">
-        <i class="fa-solid fa-spinner fa-spin"></i>
+        <i class="bi bi-arrow-repeat bi-spin"></i>
         <div style="flex:1;">
             <div>Membaca poster otomatis dengan AI (OCR)... bisa sampai ±20 detik.</div>
             <div class="cx-ocr-progress-wrap"><div class="cx-ocr-progress-bar" id="cxOcrBar_${progId}" style="width:${cxOcrProgress[progId]||0}%;"></div></div>
         </div>
     </div>` : `
     <div class="cx-status-bar ${mismatchCount > 0 ? 'warn' : (hasAdl ? 'ok' : 'missing')}">
-        <i class="fa-solid fa-${mismatchCount > 0 ? 'triangle-exclamation' : (hasAdl ? 'circle-check' : 'circle-info')}"></i>
+        <i class="bi ${mismatchCount > 0 ? 'bi-exclamation-triangle-fill' : (hasAdl ? 'bi-check-circle-fill' : 'bi-info-circle-fill')}"></i>
         ${mismatchCount > 0
             ? `Ditemukan <b>${mismatchCount} field</b> yang tidak cocok antara data teks & poster.`
             : (hasAdl ? 'Data lengkap tersedia. ' + (adl.poster_data ? 'Data poster sudah terbaca — semua cocok.' : (hasPoster ? 'Poster akan dibaca otomatis saat program disimpan, atau klik Scan Ulang Poster.' : 'Belum ada link poster.')) : 'Belum ada data lengkap.')}
         ${posterSource ? `<span class="cx-source-tag ${posterSource}">${posterSource === 'ocr' ? 'Sumber: OCR otomatis' : 'Sumber: Input manual'}</span>` : ''}
     </div>`}
     ${adl.poster_data ? `
-    <div class="cx-section-title" style="margin-top:20px;"><i class="fa-solid fa-code-compare"></i> Perbandingan: Data Teks vs Poster</div>
+    <div class="cx-section-title" style="margin-top:20px;"><i class="bi bi-arrow-left-right"></i> Perbandingan: Data Teks vs Poster</div>
     <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Hijau = cocok &nbsp;·&nbsp; Merah = tidak sesuai${posterSource==='ocr' ? ' &nbsp;·&nbsp; Hasil OCR bisa salah baca, koreksi via Input Manual.' : ''}</div>
     ${buildCompareRows()}` : ''}
     `;
@@ -4943,14 +4943,14 @@ function openCxEditModal(progId) {
             <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;">Ketik data yang tertera di poster untuk dibandingkan dengan data teks program.</p>
             ${adl.poster_data_source === 'ocr' && pd._raw_ocr_text ? `
             <details style="margin-bottom:16px;">
-                <summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--brand);"><i class="fa-solid fa-file-lines"></i> Lihat teks mentah hasil OCR</summary>
+                <summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--brand);"><i class="bi bi-file-earmark-text-fill"></i> Lihat teks mentah hasil OCR</summary>
                 <div style="margin-top:8px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px;font-size:11.5px;white-space:pre-wrap;max-height:140px;overflow-y:auto;">${escapeHtml(pd._raw_ocr_text)}</div>
             </details>` : ''}
             <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 ${fields.map(f => `<div class="form-group"><label>${escapeHtml(f.label)}</label><input type="text" id="cxp_${f.key}" value="${escapeHtml(f.val)}" placeholder="Dari poster..."></div>`).join('')}
             </div>
             <div class="form-actions" style="border-top:none;padding-top:14px;">
-                <button class="btn-submit" onclick="saveCxPosterData('${prog.id}')"><i class="fa-solid fa-save"></i> Simpan & Bandingkan</button>
+                <button class="btn-submit" onclick="saveCxPosterData('${prog.id}')"><i class="bi bi-floppy-fill"></i> Simpan & Bandingkan</button>
                 <button class="btn-cancel" onclick="document.getElementById('cxEditModal').classList.remove('open')">Batal</button>
             </div>
         </div>
@@ -5008,7 +5008,7 @@ function renderFeaturedSection() {
 
     if (!featuredPrograms.length) {
         tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--ink-soft);">
-            <i class="fa-solid fa-star" style="font-size:24px;display:block;margin-bottom:10px;"></i>
+            <i class="bi bi-star-fill" style="font-size:24px;display:block;margin-bottom:10px;"></i>
             Belum ada program unggulan. Kelola melalui Admin Panel.
         </td></tr>`;
         return;
@@ -5120,7 +5120,7 @@ function collectTgRecipients() {
 async function renderTgRecipients() {
     const list = document.getElementById('tgRecipientsList');
     if (!list) return;
-    list.innerHTML = '<p style="color:var(--ink-soft);font-size:12px;"><i class="fa-solid fa-hourglass-half"></i> Memuat konfigurasi...</p>';
+    list.innerHTML = '<p style="color:var(--ink-soft);font-size:12px;"><i class="bi bi-hourglass-split"></i> Memuat konfigurasi...</p>';
     const cfg = await getTgConfig();
     const tokenInput = document.getElementById('tg_bot_token');
     const edgeInput  = document.getElementById('tg_edge_url');
@@ -5142,9 +5142,9 @@ function addTgRecipientRow(r) {
     const row = document.createElement('div');
     row.className = 'tg-recipient-row';
     const typeOpts = [
-        { val: 'program', label: '<i class="fa-solid fa-box"></i> Program Baru' },
-        { val: 'jadwal', label: '<i class="fa-solid fa-calendar-days"></i> Jadwal Tamu' },
-        { val: 'reminder', label: '<i class="fa-solid fa-bell"></i> Pengingat 1 Bulan' },
+        { val: 'program', label: '<i class="bi bi-box-seam"></i> Program Baru' },
+        { val: 'jadwal', label: '<i class="bi bi-calendar3"></i> Jadwal Tamu' },
+        { val: 'reminder', label: '<i class="bi bi-bell-fill"></i> Pengingat 1 Bulan' },
     ];
     row.innerHTML = `
         <input class="tg-chat-id" placeholder="Chat ID (mis: -1001234567890)" value="${escapeHtml(r.chatId||'')}">
@@ -5152,16 +5152,16 @@ function addTgRecipientRow(r) {
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             ${typeOpts.map(t => `<label class="tg-type-label"><input type="checkbox" class="tg-type-check" value="${t.val}" ${(r.types||[]).includes(t.val)?'checked':''}> ${t.label}</label>`).join('')}
         </div>
-        <button class="tg-remove-btn" onclick="this.closest('.tg-recipient-row').remove()" title="Hapus penerima"><i class="fa-solid fa-times"></i></button>`;
+        <button class="tg-remove-btn" onclick="this.closest('.tg-recipient-row').remove()" title="Hapus penerima"><i class="bi bi-x-lg"></i></button>`;
     list.appendChild(row);
 }
 
 function showTgStatus(msg, type) {
     const el = document.getElementById('tgStatusMsg');
     if (!el) return;
-    const iconMap = { ok: 'fa-circle-check', err: 'fa-circle-exclamation' };
-    const icon = iconMap[type] || 'fa-circle-info';
-    el.innerHTML = `<span class="tg-status ${type}"><i class="fa-solid ${icon}"></i> ${escapeHtml(msg)}</span>`;
+    const iconMap = { ok: 'bi-check-circle-fill', err: 'bi-exclamation-circle-fill' };
+    const icon = iconMap[type] || 'bi-info-circle-fill';
+    el.innerHTML = `<span class="tg-status ${type}"><i class="bi ${icon}"></i> ${escapeHtml(msg)}</span>`;
     setTimeout(() => { if (el) el.innerHTML = ''; }, 4000);
 }
 
@@ -5472,14 +5472,14 @@ window.hidePosterPopup = hidePosterPopup;
         const trigger = document.createElement('button');
         trigger.type = 'button';
         trigger.className = 'cs-select-trigger';
-        trigger.innerHTML = '<span class="cs-select-value"></span><i class="fa-solid fa-chevron-down cs-select-caret"></i>';
+        trigger.innerHTML = '<span class="cs-select-value"></span><i class="bi bi-chevron-down cs-select-caret"></i>';
         wrapper.appendChild(trigger);
 
         const panel = document.createElement('div');
         panel.className = 'cs-select-panel';
         const searchPlaceholder = selectEl.getAttribute('data-search-placeholder') || 'Cari paket umroh...';
         panel.innerHTML =
-            '<div class="cs-select-search-wrap"><i class="fa-solid fa-magnifying-glass"></i>' +
+            '<div class="cs-select-search-wrap"><i class="bi bi-search"></i>' +
             '<input type="text" class="cs-select-search" placeholder="' + escapeHtml(searchPlaceholder) + '" autocomplete="off"></div>' +
             '<div class="cs-select-options"></div>';
         wrapper.appendChild(panel);
@@ -5526,7 +5526,7 @@ window.hidePosterPopup = hidePosterPopup;
                 optionsWrap.appendChild(item);
             });
             if (!anyVisible) {
-                optionsWrap.innerHTML = '<div class="cs-select-empty"><i class="fa-solid fa-magnifying-glass" style="margin-right:6px;"></i>Paket tidak ditemukan</div>';
+                optionsWrap.innerHTML = '<div class="cs-select-empty"><i class="bi bi-search" style="margin-right:6px;"></i>Paket tidak ditemukan</div>';
             }
         }
 
