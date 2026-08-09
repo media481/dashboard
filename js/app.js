@@ -2552,6 +2552,18 @@ async function confirmDeleteAction() {
     try {
         const finishedTable = deleteTarget.table;
         const finishedId = deleteTarget.id;
+
+        // Untuk pembayaran_jamaah: ambil data barisnya SEBELUM dihapus, supaya
+        // audit log (nota_audit_log) punya nilai yang akurat. Kalau diambil
+        // SETELAH delete, barisnya sudah tidak ada lagi di DB -> audit selalu
+        // gagal tercatat tanpa pesan error apa pun (bug lama, sudah diperbaiki).
+        let cicRowSebelumHapus = null;
+        if (finishedTable === 'pembayaran_jamaah') {
+            const { data } = await supabaseClient
+                .from('pembayaran_jamaah').select('jumlah, tanggal, metode, nomor_nota').eq('id', finishedId).single();
+            cicRowSebelumHapus = data || null;
+        }
+
         const result = await supabaseClient.from(finishedTable).delete().eq('id', finishedId);
         if (result.error) throw result.error;
 
@@ -2573,21 +2585,20 @@ async function confirmDeleteAction() {
             renderDokProgramSelector();
             updateMetrics();
         } else if (finishedTable === 'pembayaran_jamaah') {
-            // Ambil data cicilan dari DB langsung (bukan cuma cache) supaya nilai
-            // yang dicatat ke audit akurat, lalu catat jejak penghapusan.
+            // Catat jejak penghapusan pakai data yang sudah diambil sebelum delete di atas.
             try {
-                const { data: cicRow } = await supabaseClient
-                    .from('pembayaran_jamaah').select('jumlah, tanggal, metode').eq('id', finishedId).single();
-                if (cicRow) {
+                if (cicRowSebelumHapus) {
                     await logNotaAudit({
                         jenis: 'hapus',
-                        nomorNotaValue: `HAPUS/${nomorNota(cicRow)}`,
+                        nomorNotaValue: `HAPUS/${nomorNota(cicRowSebelumHapus)}`,
                         jamaahId: cicilanJamaahId,
                         jamaahNama: cicilanJamaahInfo?.nama,
                         programNama: cicilanProgramInfo?.nama,
-                        jumlah: Number(cicRow.jumlah || 0),
-                        metadata: { cicilanId: finishedId, tanggal: cicRow.tanggal, metode: cicRow.metode }
+                        jumlah: Number(cicRowSebelumHapus.jumlah || 0),
+                        metadata: { cicilanId: finishedId, tanggal: cicRowSebelumHapus.tanggal, metode: cicRowSebelumHapus.metode }
                     });
+                } else {
+                    console.warn('Audit hapus pembayaran dilewati: data baris tidak ditemukan sebelum dihapus.');
                 }
             } catch (auditErr) {
                 console.warn('Gagal mencatat audit hapus pembayaran (non-fatal):', auditErr);
