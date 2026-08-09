@@ -627,6 +627,31 @@
     </div>
 </div>
 
+<!-- ===== MODAL: DETAIL PROGRAM / TEKS MARKETING WA ===== -->
+<div class="modal-overlay" id="programDetailModal">
+    <div class="modal-content" style="max-width:560px;">
+        <div class="modal-header">
+            <h2><i class="bi bi-info-circle-fill"></i> <span id="pdModalTitle">Detail Program</span></h2>
+            <button class="modal-close" onclick="closeProgramDetailModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="display:grid;grid-template-columns:100px 1fr;gap:8px 12px;font-size:13px;margin-bottom:18px;">
+                <span style="color:var(--ink-soft);">Tanggal</span><strong id="pd_tgl">-</strong>
+                <span style="color:var(--ink-soft);">Durasi</span><strong id="pd_durasi">-</strong>
+                <span style="color:var(--ink-soft);">Maskapai</span><strong id="pd_maskapai">-</strong>
+                <span style="color:var(--ink-soft);">Harga</span><strong id="pd_harga" style="white-space:pre-line;">-</strong>
+            </div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;justify-content:space-between;">
+                    <span><i class="bi bi-whatsapp"></i> Teks Marketing WA</span>
+                    <button type="button" class="btn-cancel" style="padding:4px 10px;font-size:12px;" onclick="copyProgramDetailWaText()"><i class="bi bi-clipboard-fill"></i> Salin</button>
+                </label>
+                <textarea id="pd_teks_wa" rows="10" readonly style="white-space:pre-wrap;background:var(--bg-soft,#f8fafc);"></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ===== MODAL: KEBERANGKATAN ===== -->
 <div class="modal-overlay" id="kbModal">
     <div class="modal-content">

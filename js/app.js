@@ -697,8 +697,43 @@ function openDetailModal(programId) {
     if (program.harga_double) hargaLines.push(`Double: ${formatRupiah(program.harga_double)}`);
     if (program.harga_triple) hargaLines.push(`Triple: ${formatRupiah(program.harga_triple)}`);
     const hargaText = hargaLines.length ? hargaLines.join('\n') : formatRupiah(program.harga_quint);
-    alert(`Detail Program\n\nNama: ${program.nama}\nTanggal: ${program.tgl}\nDurasi: ${program.durasi}\nMaskapai: ${program.maskapai}\nHarga:\n${hargaText}\n\nTeks WA:\n${waText}`);
+
+    document.getElementById('pdModalTitle').textContent = program.nama || 'Detail Program';
+    document.getElementById('pd_tgl').textContent = program.tgl || '-';
+    document.getElementById('pd_durasi').textContent = program.durasi || '-';
+    document.getElementById('pd_maskapai').textContent = program.maskapai || '-';
+    document.getElementById('pd_harga').textContent = hargaText || '-';
+    document.getElementById('pd_teks_wa').value = waText || '';
+
+    document.getElementById('programDetailModal').classList.add('open');
 }
+function closeProgramDetailModal() {
+    document.getElementById('programDetailModal').classList.remove('open');
+}
+async function copyProgramDetailWaText() {
+    const text = document.getElementById('pd_teks_wa').value;
+    if (!text) { showToast('Tidak ada teks untuk disalin', 'error'); return; }
+    try {
+        await navigator.clipboard.writeText(text);
+        showToast('Teks WA disalin ke clipboard');
+    } catch (err) {
+        // Fallback untuk browser/lingkungan tanpa Clipboard API (mis. HTTP non-secure)
+        const ta = document.getElementById('pd_teks_wa');
+        ta.removeAttribute('readonly');
+        ta.focus();
+        ta.select();
+        try {
+            document.execCommand('copy');
+            showToast('Teks WA disalin ke clipboard');
+        } catch (err2) {
+            showToast('Gagal menyalin teks', 'error');
+        } finally {
+            ta.setAttribute('readonly', 'readonly');
+        }
+    }
+}
+window.closeProgramDetailModal = closeProgramDetailModal;
+window.copyProgramDetailWaText = copyProgramDetailWaText;
 
 // ============================================================
 // 12. ADMIN LOGIN
