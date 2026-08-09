@@ -577,40 +577,16 @@ function hitungEstimasi(dateObj, now) {
     return parts.join(' ') + ' lagi';
 }
 
-function renderTable(data) {
-    const tbody = document.getElementById('tableBody');
-    if (!tbody) return;
-    const now = new Date();
-    const canEdit = canManageProgramData(); // admin & user boleh edit/hapus, guest & publik hanya lihat
-    if (!data || !data.length) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--ink-soft);">
-            <i class="fa-solid fa-inbox" style="font-size:24px;display:block;margin-bottom:10px;"></i>
-            Belum ada program umroh.${canEdit ? ' Klik "Tambah" untuk menambahkan.' : ''}
-        </td></tr>`;
-        return;
-    }
+// Bangun HTML satu baris <tr> program umroh. Dipakai bareng oleh renderTable
+// (tab "Program Umroh") dan renderFeaturedSection (tab "Unggulan") supaya
+// tampilan kedua tabel identik persis.
+function buildProgramRowHTML(item, now, nearestIds) {
+    const isAvailable = item.dateObj >= now;
+    const statusClass = isAvailable ? "available" : "full";
+    const statusLabel = isAvailable ? "Tersedia" : "Expired";
+    const isNearest = nearestIds.has(String(item.id));
 
-    const nearestIds = getNearestDepartureIds(3);
-
-    tbody.innerHTML = data.map(item => {
-        const isAvailable = item.dateObj >= now;
-        const statusClass = isAvailable ? "available" : "full";
-        const statusLabel = isAvailable ? "Tersedia" : "Expired";
-        const diffMs = item.dateObj - now;
-        let cdText = "sudah berangkat";
-        if (diffMs >= 0) {
-            const diffDays = Math.floor(diffMs / (1000*60*60*24));
-            const years = Math.floor(diffDays/365), months = Math.floor((diffDays%365)/30), days = (diffDays%365)%30;
-            const parts = [];
-            if (years) parts.push(`${years}th`);
-            if (months) parts.push(`${months}bl`);
-            if (days) parts.push(`${days}hr`);
-            if (!parts.length) parts.push("hari ini!");
-            cdText = parts.join(" ") + (diffDays>0?" lagi":"");
-        }
-        const isNearest = nearestIds.has(String(item.id));
-
-        return `<tr class="${isNearest ? 'row-nearest-departure' : ''}">
+    return `<tr class="${isNearest ? 'row-nearest-departure' : ''}">
             <td title="${escapeHtml(item.nama||'')}"><strong>${escapeHtml(item.nama||'')}</strong></td>
             <td>${escapeHtml(hitungEstimasi(item.dateObj, now))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_quad || item.harga_quint))}</td>
@@ -630,7 +606,23 @@ function renderTable(data) {
             </td>
             <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
         </tr>`;
-    }).join('');
+}
+
+function renderTable(data) {
+    const tbody = document.getElementById('tableBody');
+    if (!tbody) return;
+    const now = new Date();
+    const canEdit = canManageProgramData(); // admin & user boleh edit/hapus, guest & publik hanya lihat
+    if (!data || !data.length) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--ink-soft);">
+            <i class="fa-solid fa-inbox" style="font-size:24px;display:block;margin-bottom:10px;"></i>
+            Belum ada program umroh.${canEdit ? ' Klik "Tambah" untuk menambahkan.' : ''}
+        </td></tr>`;
+        return;
+    }
+
+    const nearestIds = getNearestDepartureIds(3);
+    tbody.innerHTML = data.map(item => buildProgramRowHTML(item, now, nearestIds)).join('');
 }
 
 function updateMetrics() {
@@ -1327,8 +1319,8 @@ async function renderAdminPanel() {
             <div class="admin-subtab-panel" id="adminSubTab-unggulan" style="display:none;">
                 <div class="admin-section-header">
                     <div><h4><i class="fa-solid fa-star" style="color:#d97706;"></i> Program Unggulan</h4>
-                    <p>Pilih maksimal 3 program untuk ditampilkan di beranda (antara running text & tabel program)</p></div>
-                    <div class="sec-actions"><span id="featuredCounter" style="background:#f59e0b;color:#fff;font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;">0/3</span></div>
+                    <p>Pilih program untuk ditampilkan di beranda (antara running text & tabel program)</p></div>
+                    <div class="sec-actions"><span id="featuredCounter" style="background:#f59e0b;color:#fff;font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;">0 dipilih</span></div>
                 </div>
                 <div class="admin-table-card">
                     <div class="admin-table-head">
@@ -5008,26 +5000,24 @@ async function loadFeaturedIds() {
 }
 
 function renderFeaturedSection() {
-    const grid = document.getElementById('featuredGrid');
-    if (!grid) return;
+    const tbody = document.getElementById('featuredTableBody');
+    if (!tbody) return;
 
+    const now = new Date();
     const featuredPrograms = dataUmroh.filter(p => featuredIds.includes(String(p.id)) && p.is_active !== false);
 
     if (!featuredPrograms.length) {
-        grid.innerHTML = `<div class="featured-empty"><i class="fa-solid fa-star"></i>Belum ada program unggulan. Kelola melalui Admin Panel.</div>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--ink-soft);">
+            <i class="fa-solid fa-star" style="font-size:24px;display:block;margin-bottom:10px;"></i>
+            Belum ada program unggulan. Kelola melalui Admin Panel.
+        </td></tr>`;
         return;
     }
 
-    grid.innerHTML = featuredPrograms.map(p => `
-        <div class="featured-card">
-            <div class="fc-title"><i class="fa-solid fa-star"></i> ${escapeHtml(p.nama)}</div>
-            <div class="fc-meta">${escapeHtml(formatRupiah(p.harga_quint))} • ${escapeHtml(p.tgl)}</div>
-            <div class="fc-meta" style="margin-top:4px;">${escapeHtml(p.maskapai || '')} • ${escapeHtml(p.durasi || '')}</div>
-        </div>
-    `).join('');
+    const nearestIds = getNearestDepartureIds(3);
+    tbody.innerHTML = featuredPrograms.map(item => buildProgramRowHTML(item, now, nearestIds)).join('');
 }
 
-const MAX_FEATURED = 3;
 function isFeatured(id) { return featuredIds.includes(String(id)); }
 
 async function toggleFeatured(id) {
@@ -5038,7 +5028,7 @@ async function toggleFeatured(id) {
         featuredIds = featuredIds.filter(i => i !== id);
         showToast('⭐ Program dihapus dari unggulan');
     } else {
-        if (featuredIds.length >= MAX_FEATURED) { showToast('⚠️ Maksimal ' + MAX_FEATURED + ' program unggulan!', 'error'); return; }
+        // Tidak ada batas maksimal lagi — semua program bisa dijadikan unggulan.
         const { error } = await supabaseClient.from('featured_programs').insert([{ program_id: id }]);
         if (error) { showToast('❌ Gagal menambah: ' + error.message, 'error'); return; }
         featuredIds.push(id);
@@ -5056,20 +5046,17 @@ function renderFeaturedAdminTable() {
         return;
     }
     const currentCount = featuredIds.length;
-    const isFull = currentCount >= MAX_FEATURED;
     const counter = document.getElementById('featuredCounter');
-    if (counter) counter.textContent = currentCount + '/' + MAX_FEATURED;
+    if (counter) counter.textContent = currentCount + ' dipilih';
     tbody.innerHTML = adminPrograms.map(p => {
         const featured = isFeatured(p.id);
-        const canAdd = featured || !isFull;
-        const btnLabel = featured ? '⭐ Tampil di Unggulan' : (isFull ? '🚫 Slot Penuh' : '☆ Jadikan Unggulan');
+        const btnLabel = featured ? '⭐ Tampil di Unggulan' : '☆ Jadikan Unggulan';
         const btnClass = featured ? 'featured-toggle-btn on' : 'featured-toggle-btn off';
-        const disabled = !canAdd ? ' disabled style="opacity:.5;cursor:not-allowed;"' : '';
         return `<tr>
             <td><strong>${escapeHtml(p.nama || '-')}</strong></td>
             <td>${escapeHtml(p.tgl || '-')}</td>
             <td style="text-align:right;">
-                <button class="${btnClass}"${disabled} onclick="toggleFeatured('${p.id}'); renderFeaturedAdminTable();">
+                <button class="${btnClass}" onclick="toggleFeatured('${p.id}'); renderFeaturedAdminTable();">
                     ${btnLabel}
                 </button>
             </td>
