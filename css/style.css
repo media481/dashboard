@@ -696,6 +696,9 @@
         .table-container::-webkit-scrollbar { display: none; } /* Chrome/Safari */
         .table-container table {
             width: 100%;
+            min-width: 1040px; /* jaga lebar minimum tiap kolom: saat sidebar diperluas
+                & main-content menyempit, tabel scroll horizontal (bukan kolom
+                diperas) supaya konten tiap sel tetap sebaris / tidak wrap 2 baris */
             border-collapse: collapse;
             font-size: 13.5px;
         }
@@ -724,9 +727,19 @@
             padding: 12px 16px;
             border-bottom: 1px solid var(--line);
             vertical-align: middle;
+            white-space: nowrap; /* cegah teks/tombol pecah ke baris baru saat kolom menyempit */
         }
         .table-container tbody tr:last-child td { border-bottom: none; }
         .table-container tbody tr:hover { background: #FAFBF9; }
+
+        /* Kolom "Nama Program": boleh panjang, tapi dipotong rapi dengan ellipsis
+           (bukan wrap) supaya tinggi baris tetap konsisten. Nama lengkap tetap
+           bisa dibaca lewat tooltip (title attribute, lihat renderTable di app.js). */
+        .table-container td:first-child {
+            max-width: 280px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
 
         /* 3 program dengan keberangkatan paling dekat */
         .table-container tbody tr.row-nearest-departure {
@@ -770,7 +783,8 @@
         .action-btns {
             display: flex;
             gap: 6px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap; /* 5 tombol (Detail + 4 link) tetap sebaris, tabel scroll
+                horizontal kalau kurang tempat, bukan tombol turun ke baris ke-2 */
         }
         .action-btns button {
             border: none;

@@ -611,7 +611,7 @@ function renderTable(data) {
         const isNearest = nearestIds.has(String(item.id));
 
         return `<tr class="${isNearest ? 'row-nearest-departure' : ''}">
-            <td><strong>${escapeHtml(item.nama||'')}</strong></td>
+            <td title="${escapeHtml(item.nama||'')}"><strong>${escapeHtml(item.nama||'')}</strong></td>
             <td>${escapeHtml(hitungEstimasi(item.dateObj, now))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_quad || item.harga_quint))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_double))}</td>
