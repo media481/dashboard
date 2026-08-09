@@ -754,6 +754,52 @@
                         <input type="text" id="kb_catatan" placeholder="Catatan tambahan...">
                     </div>
                 </div>
+                <details id="kbF4Details" style="margin:4px 0 18px;border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:2px 14px;">
+                    <summary style="cursor:pointer;padding:10px 0;font-size:12.5px;font-weight:700;color:var(--ink-soft);"><i class="bi bi-file-earmark-text-fill"></i> Data Lengkap (sesuai F4) <span style="font-weight:500;">— opsional, untuk dokumen visa/manifest</span></summary>
+                    <div style="padding-bottom:14px;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Jenis Kelamin</label>
+                                <select id="kb_jenis_kelamin">
+                                    <option value="">-- Pilih --</option>
+                                    <option value="Laki-laki">Laki-laki</option>
+                                    <option value="Perempuan">Perempuan</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Tempat, Tanggal Lahir</label>
+                                <div class="form-row" style="gap:8px;">
+                                    <input type="text" id="kb_tempat_lahir" placeholder="Tempat lahir" style="flex:1;">
+                                    <input type="date" id="kb_tgl_lahir" style="flex:1;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Alamat</label>
+                            <input type="text" id="kb_alamat" placeholder="Alamat sesuai KTP">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Kode Pos</label>
+                                <input type="text" id="kb_kode_pos" placeholder="Kode pos" maxlength="10">
+                            </div>
+                            <div class="form-group">
+                                <label>Telp Rumah</label>
+                                <input type="text" id="kb_telp_rumah" placeholder="Telp rumah (opsional)" maxlength="20">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nama Ahli Waris</label>
+                                <input type="text" id="kb_ahli_waris_nama" placeholder="Nama ahli waris">
+                            </div>
+                            <div class="form-group">
+                                <label>Hubungan Ahli Waris</label>
+                                <input type="text" id="kb_ahli_waris_hubungan" placeholder="Contoh: Anak, Suami, Istri">
+                            </div>
+                        </div>
+                    </div>
+                </details>
                 <div class="form-actions">
                     <button type="submit" class="btn-submit"><i class="bi bi-floppy-fill"></i> Simpan</button>
                     <button type="button" class="btn-cancel" onclick="closeKbModal()">Batal</button>

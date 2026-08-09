@@ -1081,6 +1081,7 @@
         }
         .pf-btn-wa { background: #dcfce7; color: #16a34a; }
         .pf-btn-edit { background: var(--brand-tint); color: var(--brand); }
+        .pf-btn-convert { background: var(--success-tint); color: var(--success); }
         .pf-btn-delete { background: var(--danger-tint); color: var(--danger); }
         .pf-empty {
             padding: 40px 20px;

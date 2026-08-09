@@ -2485,7 +2485,7 @@ const TABLE_LABEL = {
 // upsert tidak ditolak Supabase gara-gara kolom yang tidak dikenal.
 const OPTIONAL_TABLE_COLUMNS = {
     jadwal_tamu: ['id', 'nama', 'tgl', 'jam', 'asal', 'jumlah', 'keperluan', 'wa', 'catatan', 'created_at'],
-    kb_jamaah: ['id', 'program_id', 'nama', 'nik', 'paspor', 'wa', 'asal', 'tipe_kamar', 'harga_custom', 'status', 'catatan', 'dokumen', 'created_at'],
+    kb_jamaah: ['id', 'program_id', 'nama', 'nik', 'paspor', 'wa', 'asal', 'tipe_kamar', 'harga_custom', 'status', 'catatan', 'dokumen', 'created_at', 'jenis_kelamin', 'tempat_lahir', 'tgl_lahir', 'alamat', 'kode_pos', 'telp_rumah', 'ahli_waris_nama', 'ahli_waris_hubungan'],
     pendaftaran: ['id', 'program_id', 'nama', 'wa', 'asal', 'status', 'catatan', 'created_at'],
     featured_programs: ['id', 'program_id', 'created_at']
 };
@@ -3247,6 +3247,7 @@ function renderPendaftaranSection() {
             <td>
                 <div class="pf-actions">
                     ${p.wa ? `<a href="https://wa.me/${p.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(p.nama||'')}%20kami%20dari%20${encodeURIComponent(NOTA_PERUSAHAAN.nama)}" target="_blank" class="pf-btn-wa" title="Hubungi via WhatsApp"><i class="bi bi-whatsapp"></i></a>` : ''}
+                    ${stKey !== 'deal' ? `<button type="button" class="pf-btn-convert" onclick="convertPendaftaranToJamaah('${p.id}')" title="Jadikan Jamaah — langsung buka form Keberangkatan dengan data terisi"><i class="bi bi-person-check-fill"></i></button>` : ''}
                     <button type="button" class="pf-btn-edit" onclick="openPendaftaranModal('${p.id}')" title="Edit"><i class="bi bi-pencil-fill"></i></button>
                     <button type="button" class="pf-btn-delete" onclick="openDeleteModal('pendaftaran', '${p.id}', '${escapeJsAttr(p.nama)}')" title="Hapus"><i class="bi bi-trash-fill"></i></button>
                 </div>
@@ -3255,6 +3256,18 @@ function renderPendaftaranSection() {
     }).join('');
 
     renderPfPagination(filtered.length);
+}
+
+// Shortcut dari baris Form Pendaftaran: loncat langsung ke tab Keberangkatan,
+// buka modal Tambah Jamaah, dan otomatis isi datanya dari pendaftaran ini —
+// tanpa staf harus cari nama lagi di dropdown "Ambil dari Form Pendaftaran".
+function convertPendaftaranToJamaah(pendaftaranId) {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menambah data jamaah', 'error'); return; }
+    switchTab('keberangkatan');
+    openKbModal();
+    const sel = document.getElementById('kb_from_pendaftaran');
+    if (sel) sel.value = pendaftaranId;
+    fillKbFromPendaftaran(pendaftaranId);
 }
 
 function openPendaftaranModal(id = null) {
@@ -3783,11 +3796,25 @@ function openKbModal(id = null) {
         document.getElementById('kb_harga_custom').value = j.harga_custom || '';
         document.getElementById('kb_status').value = j.status || 'pending';
         document.getElementById('kb_catatan').value = j.catatan || '';
+        document.getElementById('kb_jenis_kelamin').value = j.jenis_kelamin || '';
+        document.getElementById('kb_tempat_lahir').value = j.tempat_lahir || '';
+        document.getElementById('kb_tgl_lahir').value = j.tgl_lahir || '';
+        document.getElementById('kb_alamat').value = j.alamat || '';
+        document.getElementById('kb_kode_pos').value = j.kode_pos || '';
+        document.getElementById('kb_telp_rumah').value = j.telp_rumah || '';
+        document.getElementById('kb_ahli_waris_nama').value = j.ahli_waris_nama || '';
+        document.getElementById('kb_ahli_waris_hubungan').value = j.ahli_waris_hubungan || '';
+        // Buka otomatis kalau salah satu field F4 sudah terisi, biar kelihatan tanpa perlu klik
+        const hasF4 = j.jenis_kelamin || j.tempat_lahir || j.tgl_lahir || j.alamat || j.kode_pos || j.telp_rumah || j.ahli_waris_nama || j.ahli_waris_hubungan;
+        const f4Details = document.getElementById('kbF4Details');
+        if (f4Details) f4Details.open = !!hasF4;
     } else {
         document.getElementById('kbModalTitle').textContent = 'Tambah Data Jamaah';
         document.getElementById('kb_tipe_kamar').value = 'quad';
         document.getElementById('kb_harga_custom').value = '';
         document.getElementById('kb_status').value = 'pending';
+        const f4Details = document.getElementById('kbF4Details');
+        if (f4Details) f4Details.open = false;
         renderKbPendaftaranOptions();
         fromPendaftaranBox.style.display = '';
     }
@@ -3834,6 +3861,20 @@ function fillKbFromPendaftaran(pendaftaranId) {
     if (p.catatan) document.getElementById('kb_catatan').value = p.catatan;
     document.getElementById('kb_pendaftaran_source').value = p.id;
 
+    // Ikut salin data lengkap F4 supaya tidak perlu diketik ulang manual
+    // nanti saat dibutuhkan untuk dokumen visa/manifest.
+    document.getElementById('kb_jenis_kelamin').value = p.jenis_kelamin || '';
+    document.getElementById('kb_tempat_lahir').value = p.tempat_lahir || '';
+    document.getElementById('kb_tgl_lahir').value = p.tgl_lahir || '';
+    document.getElementById('kb_alamat').value = p.alamat || '';
+    document.getElementById('kb_kode_pos').value = p.kode_pos || '';
+    document.getElementById('kb_telp_rumah').value = p.telp_rumah || '';
+    document.getElementById('kb_ahli_waris_nama').value = p.ahli_waris_nama || '';
+    document.getElementById('kb_ahli_waris_hubungan').value = p.ahli_waris_hubungan || '';
+    const f4Details = document.getElementById('kbF4Details');
+    const hasF4 = p.jenis_kelamin || p.tempat_lahir || p.tgl_lahir || p.alamat || p.kode_pos || p.telp_rumah || p.ahli_waris_nama || p.ahli_waris_hubungan;
+    if (f4Details) f4Details.open = !!hasF4;
+
     showToast('Data diisi dari pendaftaran "' + (p.nama || '') + '" — lengkapi No. Paspor & status pembayaran lalu Simpan');
 }
 
@@ -3859,7 +3900,15 @@ async function saveKbJamaah(e) {
         tipe_kamar: document.getElementById('kb_tipe_kamar').value || 'quad',
         harga_custom: document.getElementById('kb_harga_custom').value.trim(),
         status: document.getElementById('kb_status').value,
-        catatan: document.getElementById('kb_catatan').value.trim()
+        catatan: document.getElementById('kb_catatan').value.trim(),
+        jenis_kelamin: document.getElementById('kb_jenis_kelamin').value || null,
+        tempat_lahir: document.getElementById('kb_tempat_lahir').value.trim() || null,
+        tgl_lahir: document.getElementById('kb_tgl_lahir').value || null,
+        alamat: document.getElementById('kb_alamat').value.trim() || null,
+        kode_pos: document.getElementById('kb_kode_pos').value.trim() || null,
+        telp_rumah: document.getElementById('kb_telp_rumah').value.trim() || null,
+        ahli_waris_nama: document.getElementById('kb_ahli_waris_nama').value.trim() || null,
+        ahli_waris_hubungan: document.getElementById('kb_ahli_waris_hubungan').value.trim() || null
     };
 
     if (!data.program_id) { showToast('Silakan pilih program terlebih dahulu', 'error'); return; }
