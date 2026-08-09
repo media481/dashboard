@@ -10,15 +10,10 @@ const CACHE_DURATION = 60000;
 const SESSION_DURATION = 30 * 60 * 1000;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 // [MIGRASI SUPABASE AUTH] Login sekarang lewat supabaseClient.auth.signInWithPassword()
-// langsung -- Supabase Auth yang membuat & menandatangani JWT-nya sendiri, jadi tidak
-// pernah tersandung isu kid/JWT Signing Key custom lagi. 4 role berbagi satu password
-// masing-masing lewat 4 akun tetap (lihat scripts/setup-auth-accounts.mjs).
-const ROLE_EMAILS = [
-    { email: 'admin@amiru-dashboard.internal', role: 'admin', label: 'Admin' },
-    { email: 'cs@amiru-dashboard.internal',    role: 'user',  label: 'CS / Customer Service' },
-    { email: 'user@amiru-dashboard.internal',  role: 'user',  label: 'User' },
-    { email: 'guest@amiru-dashboard.internal', role: 'guest', label: 'Guest' }
-];
+// langsung dengan email+password yang diketik user -- Supabase Auth yang membuat &
+// menandatangani JWT-nya sendiri, jadi tidak pernah tersandung isu kid/JWT Signing
+// Key custom lagi. Role ditentukan dari tabel dashboard_profiles setelah login berhasil
+// (lihat checkAdminLogin() dan sql/migrate_supabase_auth.sql).
 const ADMIN_CHANGE_PASSWORD_URL = SUPABASE_URL + '/functions/v1/admin-change-password';
 
 let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -710,13 +705,12 @@ function openDetailModal(programId) {
 // ============================================================
 // 12. ADMIN LOGIN  [MIGRASI: Supabase Auth asli, bukan JWT custom]
 // ============================================================
-// Password TIDAK pernah dibandingkan di browser. Kita coba signInWithPassword()
-// terhadap 4 akun tetap (lihat ROLE_EMAILS) sampai salah satu cocok -- Supabase
-// Auth sendiri yang memverifikasi password & menandatangani JWT resminya, jadi
-// tidak ada lagi custom kid/JWT Signing Key yang bisa mismatch (root cause PGRST301).
+// [MIGRASI] Login dengan email + password langsung ke supabaseClient.auth.signInWithPassword().
+// Role ditentukan SETELAH login berhasil dengan membaca dashboard_profiles milik user
+// tsb (bukan ditebak dari akun mana yang cocok) -- lihat sql/migrate_supabase_auth.sql.
 async function loadUserRoles() {
-    // Tidak ada lagi yang perlu dimuat: role ditentukan oleh akun mana yang berhasil
-    // login (ROLE_EMAILS), bukan dibaca dari app_config. Fungsi ini dipertahankan
+    // Tidak ada lagi yang perlu dimuat: role dibaca dari dashboard_profiles setelah
+    // login (lihat checkAdminLogin()), bukan dari app_config. Fungsi ini dipertahankan
     // sebagai no-op supaya pemanggil lama (mis. setelah ganti password) tetap aman.
     USER_ROLES = {};
 }
@@ -777,10 +771,12 @@ async function checkSession() {
     }
 }
 
-// [MIGRASI] Login dengan mencoba signInWithPassword() ke tiap akun di ROLE_EMAILS
-// sampai ada yang berhasil. Ini mempertahankan UX lama (satu kolom password, role
-// otomatis terdeteksi) tanpa perlu Edge Function/JWT custom sama sekali.
+// [MIGRASI] Login dengan email + password langsung ke Supabase Auth (satu kali
+// signInWithPassword, bukan coba 4 akun bergantian lagi). Role ditentukan SETELAH
+// login berhasil, dengan membaca dashboard_profiles milik user tsb (bukan ditebak
+// dari email yang diketik) -- supaya tetap aman walau nanti akun bertambah per-orang.
 async function checkAdminLogin() {
+    const email = document.getElementById('adminEmailInput')?.value.trim();
     const pwd = document.getElementById('adminPasswordInput')?.value;
     const errorDiv = document.getElementById('adminLoginError');
     if (!errorDiv) return;
@@ -795,32 +791,42 @@ async function checkAdminLogin() {
         loginLockTime = 0;
     }
 
-    if (!pwd) {
-        errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Password kosong!';
+    if (!email || !pwd) {
+        errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Email dan password wajib diisi!';
         return;
     }
 
-    let matched = null;
-    for (const acc of ROLE_EMAILS) {
-        const { data, error } = await supabaseClient.auth.signInWithPassword({ email: acc.email, password: pwd });
-        if (!error && data?.session) { matched = acc; break; }
-    }
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: pwd });
 
-    if (matched) {
+    if (!error && data?.session) {
+        // Ambil role dashboard user ini dari dashboard_profiles (diisi lewat
+        // scripts/setup-auth-accounts.mjs atau manual di SQL Editor -- lihat sql/migrate_supabase_auth.sql).
+        const { data: profile, error: profileErr } = await supabaseClient
+            .from('dashboard_profiles')
+            .select('dashboard_role, label')
+            .eq('id', data.session.user.id)
+            .single();
+
+        if (profileErr || !profile) {
+            await supabaseClient.auth.signOut();
+            errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Akun ini belum terdaftar di dashboard_profiles. Hubungi admin untuk didaftarkan.';
+            return;
+        }
+
         loginAttempts = 0;
-        setAdminSession(matched.role);
+        setAdminSession(profile.dashboard_role);
         const petugasNama = document.getElementById('adminPetugasInput')?.value.trim() || '';
         try { sessionStorage.setItem('admin_petugas_nama', petugasNama); } catch (_) {}
         closeAdminPanel();
         renderSidebarNav();
-        showToast('Berhasil login sebagai ' + matched.label);
+        showToast('Berhasil login sebagai ' + profile.label);
     } else {
         loginAttempts++;
         if (loginAttempts >= 5) {
             loginLockTime = Date.now() + 60000;
             errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Terlalu banyak percobaan. Coba lagi 1 menit.';
         } else {
-            errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Password salah! Sisa percobaan: ' + (5 - loginAttempts);
+            errorDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Email atau password salah! Sisa percobaan: ' + (5 - loginAttempts);
         }
     }
 }
@@ -948,8 +954,10 @@ function getAdminLoginBoxHtml() {
         <div class="admin-login-body">
             <label class="admin-login-label" for="adminPetugasInput">Nama Petugas <span>(opsional)</span></label>
             <input type="text" id="adminPetugasInput" placeholder="Untuk log audit" maxlength="100" onkeydown="if(event.key==='Enter')checkAdminLogin()">
+            <label class="admin-login-label" for="adminEmailInput">Email</label>
+            <input type="email" id="adminEmailInput" placeholder="nama@amiru-dashboard.internal" autocomplete="username" onkeydown="if(event.key==='Enter')checkAdminLogin()">
             <label class="admin-login-label" for="adminPasswordInput">Password</label>
-            <input type="password" id="adminPasswordInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')checkAdminLogin()">
+            <input type="password" id="adminPasswordInput" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')checkAdminLogin()">
             <button onclick="checkAdminLogin()" class="btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Masuk</button>
             <div id="adminLoginError" class="admin-login-error"></div>
         </div>
@@ -1435,8 +1443,8 @@ async function renderAdminPanel() {
         if (subtitleEl) subtitleEl.textContent = 'Masuk untuk mengakses fitur pengelolaan';
         container.innerHTML = getAdminLoginBoxHtml();
         setTimeout(() => {
-            const pwd = document.getElementById('adminPasswordInput');
-            if (pwd) pwd.focus();
+            const emailInput = document.getElementById('adminEmailInput');
+            if (emailInput) emailInput.focus();
         }, 100);
     }
 }
