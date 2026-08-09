@@ -1052,7 +1052,10 @@ async function checkAdminLogin() {
 
         loginAttempts = 0;
         setAdminSession(profile.dashboard_role);
-        try { sessionStorage.setItem('admin_login_email', email); } catch (_) {}
+        try {
+            sessionStorage.setItem('admin_login_email', email);
+            sessionStorage.setItem('admin_login_label', profile.label || '');
+        } catch (_) {}
         closeAdminPanel();
         renderSidebarNav();
         showToast('Berhasil login sebagai ' + profile.label);
@@ -1155,6 +1158,7 @@ async function logoutAdmin() {
     sessionStorage.removeItem('admin_role');
     sessionStorage.removeItem('admin_login_time');
     sessionStorage.removeItem('admin_login_email');
+    sessionStorage.removeItem('admin_login_label');
     if (sessionTimeout) clearTimeout(sessionTimeout);
     closeAdminPanel();
     renderSidebarNav();
@@ -5104,9 +5108,17 @@ function buildRekeningFooterHTML() {
 // Nama penerima/petugas yang dicetak di kolom tanda tangan kanan nota. Dulu
 // nama ini ditulis tetap ("Ali Santoso") di semua nota otomatis (Nota
 // Pembayaran & Nota Riwayat) walau petugas yang login/mengunduh berbeda-beda
-// — sekarang diambil dinamis dari akun yang sedang login (sama seperti yang
-// sudah dipakai untuk audit log), dengan fallback netral kalau kosong.
+// — sekarang diambil dinamis dari akun yang sedang login. Yang dicetak di
+// nota adalah NAMA akun (kolom "label" di dashboard_profiles, mis. "Ali
+// Santoso"), BUKAN email login-nya — email tetap dipakai terpisah untuk
+// dicetak_oleh_nama di audit log (lebih akurat untuk audit karena tidak
+// bisa diketik bebas/dipalsukan user), tapi kurang enak dibaca kalau dicetak
+// di nota yang diterima jamaah.
 function getPetugasDisplayName() {
+    try {
+        const label = sessionStorage.getItem('admin_login_label');
+        if (label) return label;
+    } catch (_) {}
     return getPetugasNama() || 'Petugas Amiru Tour';
 }
 
