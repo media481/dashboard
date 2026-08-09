@@ -5055,6 +5055,9 @@ async function sha256Hex(text) {
 // ulang hash yang sama dari data aslinya untuk mengecek nota itu tidak dipalsukan.
 // dicetak_oleh_nama sekarang otomatis = email akun yang login (bukan input manual
 // lagi) -- lebih akurat untuk audit karena tidak bisa diketik bebas/dipalsukan user.
+// Untuk TAMPILAN di tabel Audit Nota dipakai dicetak_oleh_label (nama, mis. "Ali
+// Santoso") yang disimpan terpisah lewat getPetugasDisplayName() -- lihat
+// logNotaAudit() & sql/tambah_dicetak_oleh_label_audit.sql.
 function getPetugasNama() {
     try { return sessionStorage.getItem('admin_login_email') || ''; } catch (_) { return ''; }
 }
@@ -5077,6 +5080,7 @@ async function logNotaAudit({ jenis, nomorNotaValue, jamaahId, jamaahNama, progr
             jumlah: jumlah != null ? jumlah : null,
             dicetak_oleh_role: currentRole || 'publik',
             dicetak_oleh_nama: getPetugasNama() || null,
+            dicetak_oleh_label: getPetugasDisplayName() || null,
             kode_verifikasi: kodeVerifikasi,
             hash_konten: hash,
             metadata: metadata || null
@@ -5140,7 +5144,7 @@ async function loadNotaAuditLog(reset) {
                 <td>${escapeHtml(jenisLabel[r.jenis] || r.jenis)}</td>
                 <td>${escapeHtml(r.jamaah_nama || '-')}</td>
                 <td style="white-space:nowrap;">${r.jumlah != null ? formatRupiah(Number(r.jumlah)) : '-'}</td>
-                <td>${escapeHtml(r.dicetak_oleh_nama || '-')} <span style="color:var(--ink-soft);font-size:11px;">(${escapeHtml(r.dicetak_oleh_role || '-')})</span></td>
+                <td>${escapeHtml(r.dicetak_oleh_label || r.dicetak_oleh_nama || '-')} <span style="color:var(--ink-soft);font-size:11px;">(${escapeHtml(r.dicetak_oleh_role || '-')})</span></td>
                 <td style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;">${escapeHtml(r.kode_verifikasi || '-')}</td>
                 <td style="text-align:center;">
                     <button type="button" class="row-icon-btn" onclick="previewNotaFromAudit('${r.id}', this)" style="background:var(--brand-tint);color:var(--brand);" title="Preview nota sesuai kode verifikasi ini">
