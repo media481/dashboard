@@ -5101,7 +5101,11 @@ function handleAuditNotaSearchInput() {
 }
 
 async function loadNotaAuditLog(reset) {
-    if (currentRole !== 'admin') return;
+    // Sebelumnya hardcode admin-only, padahal menu "Audit Nota" sendiri sudah
+    // bisa diizinkan untuk role "user" lewat Userman > Akses Menu per Role.
+    // Disamakan ke pola akses "boleh kelola data" (admin/user) yang dipakai
+    // di tempat lain -- guest tetap tidak dapat lihat log audit finansial ini.
+    if (currentRole !== 'admin' && currentRole !== 'user') return;
     const tbody = document.getElementById('auditNotaTableBody');
     const loadMoreBtn = document.getElementById('auditNotaLoadMoreBtn');
     const countEl = document.getElementById('auditNotaCount');
