@@ -784,6 +784,9 @@
             user-select: none;
             white-space: nowrap;
         }
+        .table-container th:first-child {
+            width: 360px;
+        }
         .table-container th .sort-icon {
             margin-left: 4px;
             opacity: .4;
@@ -811,7 +814,8 @@
            (bukan wrap) supaya tinggi baris tetap konsisten. Nama lengkap tetap
            bisa dibaca lewat tooltip (title attribute, lihat renderTable di app.js). */
         .table-container td:first-child {
-            max-width: 280px;
+            width: 360px;
+            max-width: 360px;
             overflow: hidden;
             text-overflow: ellipsis;
         }
