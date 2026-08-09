@@ -797,6 +797,10 @@
         .admin-table-wrap td { padding: 12px 18px; border-top: 1px solid var(--line); }
         .admin-table-wrap tbody tr { transition: background .12s; }
         .admin-table-wrap tbody tr:hover { background: var(--brand-tint); }
+        .admin-table-wrap tbody tr {
+            content-visibility: auto;
+            contain-intrinsic-size: auto 45px;
+        }
 
         /* ===== SNAPSHOT (compact) ===== */
         .snap-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
@@ -869,6 +873,16 @@
         }
         .table-container tbody tr:last-child td { border-bottom: none; }
         .table-container tbody tr:hover { background: #FAFBF9; }
+
+        /* Baris yang belum kelihatan di layar tidak dirender browser sampai
+           akan discroll ke situ (skip layout/paint) -- membantu tabel tetap
+           smooth walau datanya banyak, tanpa perlu virtual scrolling di JS.
+           contain-intrinsic-size = perkiraan tinggi 1 baris supaya scrollbar
+           tidak "loncat" sebelum baris itu benar-benar dirender. */
+        .table-container tbody tr {
+            content-visibility: auto;
+            contain-intrinsic-size: auto 49px;
+        }
 
         /* Kolom terakhir (Status): kasih padding kanan ekstra + lebar minimum,
            supaya badge "Tersedia"/"Expired" tidak mepet ke pinggir tabel saat
