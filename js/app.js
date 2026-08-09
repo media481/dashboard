@@ -3735,7 +3735,18 @@ const NOTA_PERUSAHAAN = {
     nama: 'PT AMIRU HARAMAIN INDONESIA',
     alamat: 'Jl. Taman Kenari No A3 Kledokan, Caturtunggal, Kec. Depok, Kabupaten Sleman, DIY',
     telp: '0851-2233-6300',
-    email: 'salam@amirutour.com'
+    email: 'salam@amirutour.com',
+    // Sumber tunggal daftar rekening pembayaran yang dicetak di footer SEMUA
+    // jenis nota (Nota Pembayaran, Nota Riwayat, Kuitansi) lewat
+    // buildRekeningFooterHTML() — sebelumnya teks ini di-copy-paste manual
+    // persis sama di 3 tempat berbeda di file ini, jadi kalau rekening
+    // berubah harus diingat untuk update 3x (rawan salah satu kelewat).
+    // Sekarang cukup ubah di satu tempat ini, otomatis ikut berubah di
+    // ketiga jenis nota.
+    rekening: [
+        { bank: 'Bank Syariah Indonesia', nomor: '2026 64 2027', an: 'Amiru Tour' },
+        { bank: 'Bank Nasional Indonesia', nomor: '2026 64 2026', an: 'Amiru Haramain Indonesia' }
+    ]
 };
 
 const TERBILANG_SATUAN = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan', 'Sepuluh', 'Sebelas'];
@@ -3948,6 +3959,25 @@ function buildNotaTitleBarHTML(judul, metaLines) {
         </div>`;
 }
 
+// Merender daftar rekening dari NOTA_PERUSAHAAN.rekening secara dinamis
+// (bukan teks tetap) — dipakai bersama oleh Nota Pembayaran, Nota Riwayat,
+// dan Kuitansi supaya footer rekening ketiganya selalu sinkron.
+function buildRekeningFooterHTML() {
+    const daftar = (NOTA_PERUSAHAAN.rekening || [])
+        .map(r => `${escapeHtml(r.bank)} ${escapeHtml(r.nomor)} a.n. ${escapeHtml(r.an)}`)
+        .join('&nbsp;&middot;&nbsp;');
+    return `<b>Rekening Pembayaran:</b> ${daftar || '-'}`;
+}
+
+// Nama penerima/petugas yang dicetak di kolom tanda tangan kanan nota. Dulu
+// nama ini ditulis tetap ("Ali Santoso") di semua nota otomatis (Nota
+// Pembayaran & Nota Riwayat) walau petugas yang login/mengunduh berbeda-beda
+// — sekarang diambil dinamis dari akun yang sedang login (sama seperti yang
+// sudah dipakai untuk audit log), dengan fallback netral kalau kosong.
+function getPetugasDisplayName() {
+    return getPetugasNama() || 'Petugas Amiru Tour';
+}
+
 function buildNotaSignatureHTML(kiriLabel, kananLabel) {
     return `
         <div style="position:relative;z-index:1;display:flex;justify-content:space-between;gap:10px;font-size:8.5px;text-align:center;color:#333;">
@@ -4032,15 +4062,12 @@ function buildNotaHTML(cicilan, kodeVerifikasi) {
                 ${rekapItem('Sisa Tagihan', statusLunas ? (lebihBayar > 0 ? `LUNAS · Lebih Bayar ${formatRupiah(lebihBayar)}` : 'LUNAS') : formatRupiah(sisaTagihan), { color: lebihBayar > 0 ? NOTA_TEMA.gold : '' })}
             </div>
 
-            ${buildNotaSignatureHTML(jamaah.nama || 'Jamaah / Penyerah', 'Ali Santoso')}
+            ${buildNotaSignatureHTML(jamaah.nama || 'Jamaah / Penyerah', getPetugasDisplayName())}
         </div>
 
         <div style="position:relative;z-index:1;text-align:left;font-size:8px;color:${NOTA_TEMA.inkSoft};flex-shrink:0;margin-top:8px;padding-top:6px;border-top:1px solid ${NOTA_TEMA.line};">
             <div style="margin-bottom:3px;">
-                <b>Rekening Pembayaran:</b>
-                Bank Syariah Indonesia 2026 64 2027 a.n. Amiru Tour
-                &nbsp;&middot;&nbsp;
-                Bank Nasional Indonesia 2026 64 2026 a.n. Amiru Haramain Indonesia
+                ${buildRekeningFooterHTML()}
             </div>
             <div style="color:#a0a8b3;">
                 Dokumen ini dicetak otomatis oleh sistem dan sah sebagai bukti pembayaran resmi ${escapeHtml(NOTA_PERUSAHAAN.brand)}.
@@ -4113,10 +4140,7 @@ function buildKuitansiHTML(data, kodeVerifikasi) {
 
         <div style="position:relative;z-index:1;text-align:left;font-size:8px;color:${NOTA_TEMA.inkSoft};flex-shrink:0;margin-top:8px;padding-top:6px;border-top:1px solid ${NOTA_TEMA.line};">
             <div style="margin-bottom:3px;">
-                <b>Rekening Pembayaran:</b>
-                Bank Syariah Indonesia 2026 64 2027 a.n. Amiru Tour
-                &nbsp;&middot;&nbsp;
-                Bank Nasional Indonesia 2026 64 2026 a.n. Amiru Haramain Indonesia
+                ${buildRekeningFooterHTML()}
             </div>
             <div style="color:#a0a8b3;">
                 Dokumen ini dicetak otomatis oleh sistem dan sah sebagai bukti pembayaran resmi ${escapeHtml(NOTA_PERUSAHAAN.brand)}.
@@ -4520,15 +4544,12 @@ function buildNotaRiwayatHTML(kodeVerifikasi) {
                 ${rekapItem('Sisa Tagihan', statusLunas ? (lebihBayar > 0 ? `LUNAS · Lebih Bayar ${formatRupiah(lebihBayar)}` : 'LUNAS') : formatRupiah(sisaTagihan), { color: lebihBayar > 0 ? NOTA_TEMA.gold : '' })}
             </div>
 
-            ${buildNotaSignatureHTML(jamaah.nama || 'Jamaah / Penyerah', 'Ali Santoso')}
+            ${buildNotaSignatureHTML(jamaah.nama || 'Jamaah / Penyerah', getPetugasDisplayName())}
         </div>
 
         <div style="position:relative;z-index:1;text-align:left;font-size:8px;color:${NOTA_TEMA.inkSoft};margin-top:8px;padding-top:6px;border-top:1px solid ${NOTA_TEMA.line};">
             <div style="margin-bottom:3px;">
-                <b>Rekening Pembayaran:</b>
-                Bank Syariah Indonesia 2026 64 2027 a.n. Amiru Tour
-                &nbsp;&middot;&nbsp;
-                Bank Nasional Indonesia 2026 64 2026 a.n. Amiru Haramain Indonesia
+                ${buildRekeningFooterHTML()}
             </div>
             <div style="color:#a0a8b3;">
                 Dokumen ini dicetak otomatis oleh sistem sebagai rekap riwayat pembayaran resmi ${escapeHtml(NOTA_PERUSAHAAN.brand)}.
@@ -4848,6 +4869,24 @@ async function openKuitansiModal() {
     document.getElementById('kuitansiModal').classList.add('open');
     document.getElementById('kuitansiForm').reset();
     await fetchNextKuitansiNomor();
+
+    // "Nama Penerima" & "Tempat & Tanggal" dulu kosong tiap modal dibuka
+    // (staf harus ketik ulang manual tiap kali, termasu nama sendiri).
+    // Sekarang diisi otomatis dari data yang sudah tersedia secara dinamis:
+    // - Nama Penerima: nama/email akun yang sedang login (sama seperti yang
+    //   dipakai getPetugasNama() untuk audit log) — tetap bisa diedit manual
+    //   kalau kuitansi diterima orang lain.
+    // - Tempat & Tanggal: kota kantor (dari NOTA_PERUSAHAAN.alamat, fallback
+    //   'Sleman') + tanggal hari ini format Indonesia — tetap bisa diedit.
+    const penerimaField = document.getElementById('kwt_penerima');
+    if (penerimaField && !penerimaField.value) penerimaField.value = getPetugasDisplayName();
+
+    const tempatTanggalField = document.getElementById('kwt_tempat_tanggal');
+    if (tempatTanggalField && !tempatTanggalField.value) {
+        const kota = (NOTA_PERUSAHAAN.alamat.match(/Kec\.\s*[^,]+,\s*([^,]+)/) || [])[1] || 'Sleman';
+        tempatTanggalField.value = `${kota}, ${tanggalIndonesia(new Date().toISOString().slice(0, 10))}`;
+    }
+
     updateKuitansiPreview();
 }
 
