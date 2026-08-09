@@ -4738,7 +4738,12 @@ async function autoScanPosterForProgram(progId) {
     renderCxProgramSelector();
 
     try {
-        const result = await cxRunOcr(progId, prog.link_poster, (pct) => {
+        // [FIX] resolveImageUrl() dulu sebelum kirim ke OCR — kalau link_poster berupa
+        // link share Google Drive biasa (/file/d/ID/view), server OCR akan fetch HTML
+        // halaman viewer-nya (bukan gambar) dan gagal/salah baca. Popup hover poster
+        // sudah benar melakukan ini, tapi jalur OCR sebelumnya lupa dipasangi juga.
+        const posterUrlForOcr = resolveImageUrl(prog.link_poster);
+        const result = await cxRunOcr(progId, posterUrlForOcr, (pct) => {
             cxOcrProgress[progId] = pct;
             if (String(cxSelectedProgram) === String(progId)) {
                 const bar = document.getElementById('cxOcrBar_' + progId);

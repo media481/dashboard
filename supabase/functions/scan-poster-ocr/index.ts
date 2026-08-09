@@ -23,7 +23,12 @@ const CORS_HEADERS = {
 };
 
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-const GEMINI_MODEL = "gemini-2.0-flash";
+// [FIX] "gemini-2.0-flash" resmi di-shutdown Google per 1 Juni 2026 (lihat
+// https://ai.google.dev/gemini-api/docs/models/gemini-2.0-flash) — setiap
+// request ke model ini akan gagal (404/error). Diganti ke "gemini-3.5-flash-lite",
+// model GA (stable) termurah & tercepat di keluarga 3.x, cocok untuk tugas
+// ekstraksi terstruktur seperti OCR poster ini.
+const GEMINI_MODEL = "gemini-3.5-flash-lite";
 const GEMINI_URL =
   `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
@@ -61,7 +66,17 @@ Ketentuan:
 async function fetchImageAsBase64(imageUrl: string): Promise<{ data: string; mimeType: string }> {
   const res = await fetch(imageUrl);
   if (!res.ok) throw new Error(`Gagal mengambil gambar poster (status ${res.status})`);
-  const mimeType = res.headers.get("content-type") || "image/jpeg";
+  const mimeType = (res.headers.get("content-type") || "image/jpeg").split(";")[0].trim();
+  // [FIX] Validasi: kalau URL poster ternyata bukan gambar langsung (mis. link Google
+  // Drive/halaman web yang belum di-resolve ke direct link), fetch di atas akan sukses
+  // (200 OK) tapi isinya HTML, bukan gambar — dan Gemini akan gagal/salah baca tanpa
+  // pesan error yang jelas. Ketahuan lebih awal di sini supaya pesannya jelas.
+  if (!mimeType.startsWith("image/")) {
+    throw new Error(
+      `URL poster tidak mengarah ke file gambar langsung (content-type: ${mimeType}). ` +
+      `Pastikan link poster berupa direct image link, bukan link halaman/viewer.`,
+    );
+  }
   const buffer = new Uint8Array(await res.arrayBuffer());
   let binary = "";
   const chunkSize = 8192;
@@ -114,7 +129,10 @@ Deno.serve(async (req: Request) => {
           },
         ],
         generationConfig: {
-          temperature: 0.1,
+          // [FIX] "temperature"/"top_p"/"top_k" sudah deprecated untuk model
+          // keluarga Gemini 3.x (gemini-3.5-flash-lite) — cukup andalkan default
+          // model untuk task ekstraksi. responseMimeType tetap dipakai supaya
+          // output selalu berupa JSON valid tanpa perlu strip markdown fences.
           responseMimeType: "application/json",
         },
       }),
@@ -126,8 +144,15 @@ Deno.serve(async (req: Request) => {
     }
 
     const geminiData = await geminiRes.json();
-    const textOut = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!textOut) throw new Error("Gemini tidak mengembalikan hasil bacaan.");
+    // [FIX] Gabungkan semua part teks (bukan cuma ambil parts[0]) — model keluarga
+    // Gemini 3.x kadang mengembalikan lebih dari satu part (mis. bila thinking
+    // level tidak minimal), jadi ambil part[0] saja bisa memotong hasil JSON.
+    const parts = geminiData?.candidates?.[0]?.content?.parts || [];
+    const textOut = parts.map((p: { text?: string }) => p?.text || "").join("").trim();
+    if (!textOut) {
+      const finishReason = geminiData?.candidates?.[0]?.finishReason;
+      throw new Error(`Gemini tidak mengembalikan hasil bacaan.${finishReason ? ` (finishReason: ${finishReason})` : ""}`);
+    }
 
     let parsed: { fields?: Record<string, string>; raw_text?: string };
     try {
