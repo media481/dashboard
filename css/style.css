@@ -1559,6 +1559,9 @@
         .cicilan-summary-foot { display: flex; gap: 22px; flex-wrap: wrap; }
         .cicilan-summary-foot span { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; opacity: .85; }
         .cicilan-summary-foot b { font-size: 13.5px; font-weight: 700; opacity: 1; }
+        .cicilan-summary-warning { display: flex; align-items: flex-start; gap: 7px; margin-top: 12px; padding: 9px 11px; border-radius: 8px; font-size: 11.5px; line-height: 1.4; background: rgba(255,255,255,.16); }
+        .cicilan-summary-warning.is-info { background: rgba(255,255,255,.22); }
+        .cicilan-summary-warning i { margin-top: 1px; flex-shrink: 0; }
         @media (max-width: 480px) {
             .cicilan-summary-sisa { font-size: 20px; }
         }

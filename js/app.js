@@ -2495,7 +2495,7 @@ async function maybeDailySnapshot() {
 // ============================================================
 // 17. DELETE CONFIRM
 // ============================================================
-function openDeleteModal(table, id, name) {
+function openDeleteModal(table, id, name, extraWarning) {
     if (table === 'programs') {
         const jumlahJamaah = (kbJamaahList || []).filter(j => String(j.program_id) === String(id)).length;
         if (jumlahJamaah > 0) {
@@ -2510,6 +2510,11 @@ function openDeleteModal(table, id, name) {
     document.getElementById('deleteConfirmName').textContent = `"${name}"`;
     document.getElementById('deleteConfirmInput').value = '';
     document.getElementById('deleteConfirmBtn').disabled = true;
+    const warnEl = document.getElementById('deleteConfirmExtraWarning');
+    if (warnEl) {
+        if (extraWarning) { warnEl.textContent = extraWarning; warnEl.style.display = ''; }
+        else { warnEl.textContent = ''; warnEl.style.display = 'none'; }
+    }
     document.getElementById('deleteConfirmModal').classList.add('open');
 }
 
@@ -3210,7 +3215,7 @@ async function loadKbJamaahForProgram(programId) {
                             ${canEdit ? `
                             <span class="row-actions-sep"></span>
                             <button type="button" class="row-icon-btn" onclick="openKbModal('${j.id}')" style="background:var(--brand-tint);color:var(--brand);" title="Edit data jamaah"><i class="bi bi-pencil-fill"></i></button>
-                            <button type="button" class="row-icon-btn" onclick="openDeleteModal('kb_jamaah', '${j.id}', '${escapeJsAttr(j.nama)}')" style="background:var(--danger-tint);color:var(--danger);" title="Hapus data jamaah"><i class="bi bi-trash-fill"></i></button>
+                            <button type="button" class="row-icon-btn" onclick="openDeleteModal('kb_jamaah', '${j.id}', '${escapeJsAttr(j.nama)}'${dibayar > 0 ? `, '⚠️ Jamaah ini punya riwayat pembayaran senilai ${escapeJsAttr(formatRupiah(dibayar))} yang akan IKUT TERHAPUS PERMANEN (nota & riwayat cicilan hilang, tidak bisa dipulihkan).'` : ''})" style="background:var(--danger-tint);color:var(--danger);" title="Hapus data jamaah"><i class="bi bi-trash-fill"></i></button>
                             ` : ''}
                         </div>
                     </td>
@@ -3455,8 +3460,18 @@ async function loadCicilanHistory(jamaahId) {
 
         const totalDibayar = cicilanList.reduce((sum, c) => sum + Number(c.jumlah || 0), 0);
         const sisa = Math.max(hargaProgram - totalDibayar, 0);
+        const lebihBayar = Math.max(totalDibayar - hargaProgram, 0);
         const isLunas = hargaProgram > 0 && sisa <= 0;
         const pct = hargaProgram > 0 ? Math.min(100, Math.round((totalDibayar / hargaProgram) * 100)) : 0;
+        // Peringatan kalau harga program belum diisi -- status "Lunas" tidak akan
+        // pernah muncul otomatis walau sudah dibayar penuh, karena perhitungan
+        // status butuh Harga Quint > 0 sebagai acuan (lihat syncJamaahStatus()).
+        const hargaKosongWarning = !hargaProgram
+            ? `<div class="cicilan-summary-warning"><i class="bi bi-exclamation-triangle-fill"></i> Harga Quint program ini belum diisi — status "Lunas" tidak bisa dihitung otomatis sebelum harga diisi di menu Manajemen &gt; Edit Program.</div>`
+            : '';
+        const lebihBayarWarning = (hargaProgram > 0 && lebihBayar > 0)
+            ? `<div class="cicilan-summary-warning is-info"><i class="bi bi-info-circle-fill"></i> Kelebihan bayar ${formatRupiah(lebihBayar)} — cek apakah perlu di-refund atau dipindah sebagai DP program lain.</div>`
+            : '';
         document.getElementById('cicilanRingkasan').innerHTML = `
             <div class="cicilan-summary-card${isLunas ? ' is-lunas' : ''}">
                 <div class="cicilan-summary-top">
@@ -3473,6 +3488,8 @@ async function loadCicilanHistory(jamaahId) {
                     <span>Harga Program <b>${formatRupiah(hargaProgram)}</b></span>
                     <span>Total Dibayar <b>${formatRupiah(totalDibayar)}</b></span>
                 </div>
+                ${hargaKosongWarning}
+                ${lebihBayarWarning}
             </div>`;
 
         renderCicilanHistory();
@@ -4943,9 +4960,11 @@ async function downloadNotaRiwayatLengkap(btn, format = 'jpeg') {
     );
 }
 
+let cicilanSaving = false; // guard anti double-submit (double-click/double-tap pas koneksi lambat)
 async function saveCicilan(e) {
     e.preventDefault();
     if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengelola pembayaran', 'error'); return; }
+    if (cicilanSaving) return; // sudah ada proses simpan berjalan, abaikan submit susulan
     const jamaahId = document.getElementById('cic_jamaahId').value;
     const tanggal = document.getElementById('cic_tanggal').value;
     // Terima angka desimal (mis. 2.5 juta) — parseInt() akan memotong ke 2 juta.
@@ -4965,6 +4984,9 @@ async function saveCicilan(e) {
     if (jumlahRaw === '' || isNaN(Number(jumlahRaw))) { showToast('Jumlah pembayaran harus berupa angka', 'error'); return; }
     if (!jumlahAbs || jumlahAbs <= 0) { showToast(isRefund ? 'Jumlah refund wajib diisi' : 'Jumlah pembayaran wajib diisi', 'error'); return; }
 
+    const submitBtn = document.querySelector('#cicilanForm button[type="submit"]');
+    cicilanSaving = true;
+    if (submitBtn) submitBtn.disabled = true;
     try {
         const { error } = await supabaseClient.from('pembayaran_jamaah').insert([{ jamaah_id: jamaahId, tanggal, jumlah, metode, keterangan }]);
         if (error) throw error;
@@ -4983,6 +5005,9 @@ async function saveCicilan(e) {
     } catch (err) {
         console.error('Save cicilan error:', err);
         showToast('Gagal menyimpan pembayaran: ' + err.message, 'error');
+    } finally {
+        cicilanSaving = false;
+        if (submitBtn) submitBtn.disabled = false;
     }
 }
 

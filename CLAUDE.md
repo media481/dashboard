@@ -126,6 +126,35 @@ Sidebar bersifat role-aware, di-render oleh `renderSidebarNav()`. Warna brand pa
 custom properties `--brand`, `--brand-deep`, `--brand-tint` di `css/style.css` — ganti di
 satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
 
+## Catatan alur Pembayaran & Cicilan (`pembayaran_jamaah`)
+
+- Status jamaah (`lunas`/`dp`/`pending`) dihitung dari `SUM(pembayaran_jamaah.jumlah)`
+  dibanding `programs.harga_quint` — **hanya kolom `harga_quint`** yang dipakai
+  sebagai acuan harga per jamaah, bukan `harga_quad`/`harga_triple`/`harga_double`
+  (kolom-kolom itu murni informasi tampilan paket, tidak terhubung ke jamaah
+  tertentu karena `kb_jamaah` tidak punya kolom tipe kamar). Kalau `harga_quint`
+  kosong, status jamaah di program itu **tidak akan pernah otomatis jadi "Lunas"**
+  walau sudah dibayar penuh — modal Kelola Cicilan sekarang menampilkan
+  peringatan soal ini di ringkasan.
+- Refund disimpan sebagai baris **negatif** di `pembayaran_jamaah` (bukan tabel
+  terpisah), supaya `SUM()` otomatis mengurangi total dibayar.
+- Kelebihan bayar (total dibayar > harga program) ditampilkan sebagai peringatan
+  info di ringkasan modal Kelola Cicilan — sistem tidak memblokir pembayaran
+  melebihi sisa tagihan (fleksibel untuk kasus DP awal besar/pelunasan lebih).
+- `saveCicilan()` punya guard `cicilanSaving` untuk cegah insert dobel kalau
+  tombol submit di-double click/tap saat koneksi lambat.
+- Hapus jamaah (`kb_jamaah`) akan **cascade delete** semua riwayat pembayarannya
+  (FK `on delete cascade`) — modal konfirmasi hapus sekarang menampilkan
+  peringatan total nilai pembayaran yang akan ikut hilang kalau jamaah itu
+  punya riwayat bayar, tapi tetap tidak memblokir (beda dari hapus program yang
+  diblokir total kalau masih ada jamaah).
+- `nota_audit_log` bersifat append-only (trigger DB memblokir UPDATE/DELETE).
+  Untuk log jenis "hapus pembayaran", data baris HARUS diambil dari DB
+  **sebelum** perintah delete dijalankan (lihat `confirmDeleteAction()`) —
+  kalau diambil sesudahnya baris itu sudah tidak ada lagi dan audit gagal
+  tercatat tanpa pesan error (bug lama yang sudah diperbaiki, jangan diulang
+  kalau refactor bagian ini).
+
 ## Kalau menambah/mengubah fitur
 
 - Edit langsung di `js/app.js`, ikuti pola section comment yang sudah ada
