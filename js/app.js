@@ -1691,7 +1691,7 @@ async function renderAdminPanel() {
                 <div class="admin-section-header">
                     <div><h4><i class="bi bi-star-fill" style="color:#d97706;"></i> Program Unggulan</h4>
                     <p>Pilih program untuk ditampilkan di beranda (antara running text & tabel program)</p></div>
-                    <div class="sec-actions"><span id="featuredCounter" style="background:#f59e0b;color:#fff;font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;">0 dipilih</span></div>
+                    <div class="sec-actions"></div>
                 </div>
                 <div class="admin-table-card">
                     <div class="admin-table-head">
@@ -6828,12 +6828,20 @@ function renderFeaturedAdminTable() {
         tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--ink-soft);">Belum ada program.</td></tr>';
         return;
     }
-    const currentCount = featuredIds.length;
-    const counter = document.getElementById('featuredCounter');
-    if (counter) counter.textContent = currentCount + ' dipilih';
-    tbody.innerHTML = adminPrograms.map(p => {
+    // Urutkan berdasarkan tanggal berangkat terdekat di atas (program tanpa
+    // tanggal valid ditaruh paling bawah), supaya tidak bergantung ke urutan
+    // adminPrograms dari tempat lain.
+    const sorted = [...adminPrograms].sort((a, b) => {
+        const da = a.tgl ? parseDateFromString(a.tgl) : null;
+        const db = b.tgl ? parseDateFromString(b.tgl) : null;
+        if (!da && !db) return 0;
+        if (!da) return 1;
+        if (!db) return -1;
+        return da - db;
+    });
+    tbody.innerHTML = sorted.map(p => {
         const featured = isFeatured(p.id);
-        const btnLabel = featured ? '⭐ Tampil di Unggulan' : '☆ Jadikan Unggulan';
+        const btnLabel = featured ? 'Tampil di Unggulan' : '☆ Jadikan Unggulan';
         const btnClass = featured ? 'featured-toggle-btn on' : 'featured-toggle-btn off';
         return `<tr>
             <td><strong>${escapeHtml(p.nama || '-')}</strong></td>

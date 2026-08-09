@@ -951,10 +951,10 @@
             white-space: nowrap;
         }
         .featured-toggle-btn.on {
-            background: #f59e0b;
-            color: #fff;
+            background: #fecaca;
+            color: #991b1b;
         }
-        .featured-toggle-btn.on:hover { background: #d97706; }
+        .featured-toggle-btn.on:hover { background: #fca5a5; }
         .featured-toggle-btn.off {
             background: #eef2f7;
             color: #475569;
