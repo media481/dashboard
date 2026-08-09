@@ -204,11 +204,24 @@ function isValidUrl(string) {
     catch (_) { return false; }
 }
 
+// Standarisasi ejaan "Umrah" -> "Umroh" (ejaan resmi yang dipakai Amiru Tour) di
+// mana pun kata itu muncul, baik dari teks broadcast yang di-paste admin maupun
+// dari hasil generate AI. Case pattern kata sumber tetap dipertahankan
+// (Umrah->Umroh, UMRAH->UMROH, umrah->umroh) supaya rapi di judul/caption.
+function normalizeUmrohSpelling(text) {
+    if (!text) return text;
+    return text.replace(/umrah/gi, (match) => {
+        if (match === match.toUpperCase()) return 'UMROH';
+        if (match[0] === match[0].toUpperCase()) return 'Umroh';
+        return 'umroh';
+    });
+}
+
 // ============================================================
 // 4. GENERATE AUTO WA TEXT
 // ============================================================
 function generateAutoWAText(data) {
-    const s = v => (v || '').toString().replace(/javascript:/gi, 'blocked:');
+    const s = v => normalizeUmrohSpelling((v || '').toString().replace(/javascript:/gi, 'blocked:'));
     const namaUpper = s(data.nama || 'PROGRAM UMROH').toUpperCase();
     let teks = `🌟 *${namaUpper}* 🌟\n    Bersama Amiru Tour\n`;
 
@@ -276,6 +289,7 @@ ATURAN KETAT:
 4. Kalimat pembuka harus terasa ditulis khusus untuk program ini, bukan template kosong seperti "kesempatan langka beribadah di tanah suci" jika tidak relevan dengan isi konsep.
 5. Jika konsep tidak menyebutkan info tertentu (misal tidak ada kereta cepat), jangan ditulis sama sekali.
 6. Output HANYA berupa teks caption final. JANGAN ada kalimat pembuka/penutup dari kamu, JANGAN ada markdown code fence, JANGAN ada penjelasan tambahan.
+7. Selalu gunakan ejaan "Umroh" (bukan "Umrah") di seluruh teks caption, walau konsep/input dari user memakai ejaan "Umrah".
 
 ATURAN PANJANG TEKS (PALING PENTING):
 WhatsApp memotong tampilan caption gambar di sekitar 1024 karakter. Target panjang caption final HARUS di bawah 900 karakter total, TANPA menghilangkan satu pun poin penting (tanggal, harga per kategori kamar, hotel, termasuk/tidak termasuk, kontak). Caranya memadatkan, bukan memotong info:
@@ -351,6 +365,8 @@ async function generateCaptionAI() {
     let raw = (document.getElementById('parseBroadcastInput')?.value || '').trim();
     if (!raw) raw = buildRawConceptFromAdminForm();
     if (!raw) { showToast('Isi dulu Nama Program, atau paste Teks Broadcast', 'error'); return; }
+    // Standarisasi ejaan "Umrah" -> "Umroh" di konsep sebelum dikirim ke AI.
+    raw = normalizeUmrohSpelling(raw);
 
     if (btn) btn.disabled = true;
     if (btnText) btnText.textContent = 'Menyusun...';
@@ -369,8 +385,10 @@ async function generateCaptionAI() {
         });
         if (!response.ok) throw new Error('Gagal memanggil API (status ' + response.status + ')');
         const data = await response.json();
-        const result = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+        let result = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
         if (!result) throw new Error('Tidak ada hasil teks dari model.');
+        // Jaga-jaga kalau model tetap menulis "Umrah" walau sudah diinstruksikan di system prompt.
+        result = normalizeUmrohSpelling(result);
 
         teksWaEl.value = result;
         updateWaCaptionGauge(result);
@@ -1910,8 +1928,12 @@ async function clearAllAdminData() {
 // 15. PARSE BROADCAST
 // ============================================================
 function parseBroadcastText() {
-    const raw = document.getElementById('parseBroadcastInput').value.trim();
-    if (!raw) { showToast('Paste teks broadcast dulu', 'error'); return; }
+    const rawInput = document.getElementById('parseBroadcastInput').value.trim();
+    if (!rawInput) { showToast('Paste teks broadcast dulu', 'error'); return; }
+    // Broadcast dari grup WA sering pakai ejaan "Umrah" -- standarisasi ke "Umroh"
+    // dulu sebelum diparsing, supaya field yang terisi otomatis (nama program, dll)
+    // ikut konsisten pakai ejaan resmi Amiru Tour.
+    const raw = normalizeUmrohSpelling(rawInput);
 
     const lines = raw.split('\n').map(l => l.trim()).filter(l => l);
     const clean = s => s.replace(/^\*+|\*+$/g, '').trim();
