@@ -113,6 +113,42 @@
         .sidebar.collapsed .nav-item i { width: auto; font-size: 15px; }
         .sidebar.collapsed .sidebar-foot { justify-content: center; }
 
+        /* ---- Hover-to-expand: saat sidebar dalam mode ciut (desktop), arahkan
+           mouse ke atasnya supaya melebar sementara (overlay, tidak mendorong
+           konten/tabel di sebelah kanan) lalu otomatis menciut lagi begitu
+           mouse keluar. Murni CSS :hover, tidak butuh JS tambahan. ---- */
+        @media (min-width: 769px) {
+            .sidebar.collapsed {
+                width: 46px;
+                transition: width .25s ease, padding .2s ease, box-shadow .25s ease;
+            }
+            .sidebar.collapsed:hover {
+                width: 200px;
+                position: fixed;
+                top: 0;
+                left: 0;
+                padding: 26px 16px;
+                box-shadow: 14px 0 34px rgba(0,0,0,.22);
+                z-index: 200;
+            }
+            .sidebar.collapsed:hover .sidebar-top { flex-direction: row; gap: 8px; }
+            .sidebar.collapsed:hover .sidebar-collapse-btn { transform: rotate(180deg); }
+            .sidebar.collapsed:hover .brand { justify-content: flex-start; }
+            .sidebar.collapsed:hover .brand-text,
+            .sidebar.collapsed:hover .nav-label,
+            .sidebar.collapsed:hover .nav-item .nav-text,
+            .sidebar.collapsed:hover .sidebar-foot-text {
+                display: block;
+            }
+            .sidebar.collapsed:hover .nav-item {
+                justify-content: flex-start;
+                gap: 10px;
+                padding: 9px 10px;
+            }
+            .sidebar.collapsed:hover .nav-item i { width: 16px; font-size: 13px; }
+            .sidebar.collapsed:hover .sidebar-foot { justify-content: flex-start; }
+        }
+
         .brand {
             display: flex;
             align-items: center;
