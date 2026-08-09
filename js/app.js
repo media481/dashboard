@@ -2081,6 +2081,15 @@ async function exportAdminData() {
             _meta: { app: 'Dashboard Amiru', exported_at: new Date().toISOString(), version: '2.0' },
             programs: res.ok ? await res.json() : []
         };
+        // Sertakan juga tabel lain supaya backup bisa dipulihkan utuh (lihat importAdminData).
+        for (const tbl of ['jadwal_tamu', 'kb_jamaah', 'pendaftaran', 'featured_programs']) {
+            try {
+                const r = await fetch(`${SUPABASE_URL}/rest/v1/${tbl}?select=*&order=created_at.asc`, { headers });
+                backup[tbl] = r.ok ? await r.json() : [];
+            } catch (e) {
+                backup[tbl] = [];
+            }
+        }
         const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -2097,12 +2106,28 @@ function isValidUUID(str) {
     return typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 }
 
+// Kolom yang benar-benar ada di tabel `programs` (lihat sql/00_setup_semua_tabel.sql).
+// File backup dari versi/tool lain bisa saja punya field tambahan (mis. field lama
+// yang sudah tidak dipakai seperti "link_form" atau "updated_at" yang memang tidak
+// ada kolomnya di sini) -- field begitu HARUS dibuang sebelum upsert, karena
+// Supabase/PostgREST menolak seluruh request kalau ada kolom yang tidak dikenal.
+const PROGRAM_COLUMNS = [
+    'id', 'nama', 'tgl', 'durasi', 'maskapai', 'harga_quint',
+    'link_poster', 'link_itinerary', 'link_metaads', 'link_dokumentasi',
+    'teks_wa', 'admin_data_lengkap', 'is_active', 'created_at'
+];
+function pickAllowedColumns(obj, allowed) {
+    const out = {};
+    for (const k of allowed) { if (Object.prototype.hasOwnProperty.call(obj, k)) out[k] = obj[k]; }
+    return out;
+}
+
 // Import satu batch program, kembalikan {ok, failed:[{nama,reason}]}
 async function importProgramList(list) {
     let ok = 0;
     const failed = [];
     for (const progRaw of list) {
-        const prog = { ...progRaw };
+        const prog = pickAllowedColumns(progRaw, PROGRAM_COLUMNS);
         const nama = prog.nama || '(tanpa nama)';
         if (!prog.nama || !isValidProgramName(prog.nama)) {
             failed.push({ nama, reason: 'Nama program kosong atau mengandung karakter tidak valid' });
@@ -2124,14 +2149,67 @@ async function importProgramList(list) {
     return { ok, failed };
 }
 
-function showImportResult(ok, failed) {
-    if (!failed.length) {
-        showToast(`Import selesai — ${ok} program`);
+function showImportResult(ok, failed, otherResults) {
+    const otherOk = (otherResults || []).filter(r => r.ok);
+    const otherFailed = (otherResults || []).filter(r => !r.ok);
+    const otherOkText = otherOk.map(r => `${r.count} ${TABLE_LABEL[r.tbl] || r.tbl}`).join(', ');
+
+    if (!failed.length && !otherFailed.length) {
+        showToast(`Import selesai — ${ok} program${otherOkText ? ', ' + otherOkText : ''}`);
         return;
     }
     const list = failed.map(f => `• ${f.nama} — ${f.reason}`).join('\n');
-    showToast(`Import selesai — ${ok} berhasil, ${failed.length} gagal`, 'error');
-    alert(`Berikut program yang GAGAL diimport (${failed.length}):\n\n${list}`);
+    const otherList = otherFailed.map(f => `• ${TABLE_LABEL[f.tbl] || f.tbl} — ${f.reason}`).join('\n');
+    showToast(`Import selesai — sebagian gagal, lihat detail`, 'error');
+    alert(`Hasil import:\n\n${ok} program berhasil${otherOkText ? ', ' + otherOkText : ''}.\n${failed.length ? `\nProgram GAGAL (${failed.length}):\n${list}\n` : ''}${otherFailed.length ? `\nData lain GAGAL:\n${otherList}` : ''}`);
+}
+
+// Tabel opsional selain "programs" yang mungkin ada di file backup (mis. hasil
+// export dari versi lain / tool lain) -- diimport kalau ada datanya, dilewati
+// kalau tidak ada supaya backup lama (yang hanya berisi programs) tetap kompatibel.
+const OPTIONAL_IMPORT_TABLES = ['jadwal_tamu', 'kb_jamaah', 'pendaftaran', 'featured_programs'];
+const TABLE_LABEL = {
+    jadwal_tamu: 'jadwal tamu',
+    kb_jamaah: 'data jamaah',
+    pendaftaran: 'pendaftaran',
+    featured_programs: 'program unggulan'
+};
+// Kolom asli tiap tabel (lihat sql/00_setup_semua_tabel.sql) -- sama seperti
+// PROGRAM_COLUMNS, dipakai untuk membuang field asing dari file backup supaya
+// upsert tidak ditolak Supabase gara-gara kolom yang tidak dikenal.
+const OPTIONAL_TABLE_COLUMNS = {
+    jadwal_tamu: ['id', 'nama', 'tgl', 'jam', 'asal', 'jumlah', 'keperluan', 'wa', 'catatan', 'created_at'],
+    kb_jamaah: ['id', 'program_id', 'nama', 'nik', 'paspor', 'wa', 'asal', 'status', 'catatan', 'dokumen', 'created_at'],
+    pendaftaran: ['id', 'program_id', 'nama', 'wa', 'asal', 'status', 'catatan', 'created_at'],
+    featured_programs: ['id', 'program_id', 'created_at']
+};
+
+// Import tabel-tabel opsional (selain programs) dari objek backup, upsert by id.
+// Program HARUS sudah diimport lebih dulu (lihat pemanggil) karena kb_jamaah &
+// featured_programs mereferensikan program_id lewat foreign key.
+async function importOtherTables(imported) {
+    const results = [];
+    for (const tbl of OPTIONAL_IMPORT_TABLES) {
+        const rows = Array.isArray(imported[tbl]) ? imported[tbl] : [];
+        if (!rows.length) continue;
+        const allowedCols = OPTIONAL_TABLE_COLUMNS[tbl] || null;
+        const clean = rows.filter(r => r && typeof r === 'object').map(r => {
+            const c = allowedCols ? pickAllowedColumns(r, allowedCols) : { ...r };
+            // id lama non-UUID tidak kompatibel dengan kolom uuid -> buang supaya
+            // Supabase generate UUID baru (insert sebagai baris baru).
+            if (c.id && !isValidUUID(c.id)) delete c.id;
+            return c;
+        });
+        if (!clean.length) continue;
+        try {
+            const { error } = await supabaseClient.from(tbl).upsert(clean, { onConflict: 'id' });
+            if (error) results.push({ tbl, ok: false, count: 0, reason: error.message || 'Error tidak diketahui' });
+            else results.push({ tbl, ok: true, count: clean.length });
+        } catch (err) {
+            results.push({ tbl, ok: false, count: 0, reason: err.message || 'Error tidak diketahui' });
+        }
+    }
+    return results;
 }
 
 function importAdminData() {
@@ -2147,14 +2225,28 @@ function importAdminData() {
         reader.onload = async (event) => {
             try {
                 const imported = JSON.parse(event.target.result);
-                if (imported && imported._meta && imported.programs) {
-                    if (!confirm(`Restore backup dari ${new Date(imported._meta.exported_at).toLocaleString('id-ID')}?\n\n• ${imported.programs.length} program\n\nData yang ada TIDAK akan dihapus, hanya ditambah/diperbarui.`)) return;
+                const hasPrograms = imported && Array.isArray(imported.programs);
+                const hasOtherData = imported && OPTIONAL_IMPORT_TABLES.some(t => Array.isArray(imported[t]) && imported[t].length);
+                if (imported && imported._meta && (hasPrograms || hasOtherData)) {
+                    const counts = [`${(imported.programs || []).length} program`];
+                    OPTIONAL_IMPORT_TABLES.forEach(t => {
+                        const n = Array.isArray(imported[t]) ? imported[t].length : 0;
+                        if (n) counts.push(`${n} ${TABLE_LABEL[t]}`);
+                    });
+                    if (!confirm(`Restore backup dari ${new Date(imported._meta.exported_at).toLocaleString('id-ID')}?\n\n• ${counts.join('\n• ')}\n\nData yang ada TIDAK akan dihapus, hanya ditambah/diperbarui.`)) return;
                     await ensureAutoSnapshot('auto-pre-import', 'Auto sebelum Import');
                     showToast('Mengimport data...');
-                    const { ok, failed } = await importProgramList(imported.programs);
+                    const { ok, failed } = await importProgramList(imported.programs || []);
+                    // Program diimport dulu (di atas) baru tabel lain, supaya foreign key
+                    // program_id di kb_jamaah/featured_programs valid.
+                    const otherResults = await importOtherTables(imported);
                     await loadDataFromSupabase(true);
+                    if (typeof loadKbJamaah === 'function') { try { await loadKbJamaah(); } catch (e2) {} }
+                    if (typeof loadJadwal === 'function') { try { await loadJadwal(); } catch (e2) {} }
+                    if (typeof loadPendaftaran === 'function') { try { await loadPendaftaran(); } catch (e2) {} }
+                    if (typeof loadFeaturedIds === 'function') { try { await loadFeaturedIds(); } catch (e2) {} }
                     await renderAdminPanel();
-                    showImportResult(ok, failed);
+                    showImportResult(ok, failed, otherResults);
                 } else if (Array.isArray(imported)) {
                     if (!confirm(`Import ${imported.length} program?`)) return;
                     const { ok, failed } = await importProgramList(imported);
