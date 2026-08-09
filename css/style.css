@@ -224,7 +224,8 @@
 
         /* ===== MAIN ===== */
         main {
-            padding: 18px 40px 60px;
+            padding: 18px 20px 60px; /* kiri-kanan dikurangi separuh dari 40px -> 20px,
+                biar jarak sidebar-ke-tabel lebih efisien (ruang konten lebih lega) */
             overflow-x: hidden;
         }
 
@@ -731,6 +732,15 @@
         }
         .table-container tbody tr:last-child td { border-bottom: none; }
         .table-container tbody tr:hover { background: #FAFBF9; }
+
+        /* Kolom terakhir (Status): kasih padding kanan ekstra + lebar minimum,
+           supaya badge "Tersedia"/"Expired" tidak mepet ke pinggir tabel saat
+           sidebar diperluas (main-content menyempit & kolom ikut terperas). */
+        .table-container th:last-child,
+        .table-container td:last-child {
+            padding-right: 24px;
+            min-width: 120px;
+        }
 
         /* Kolom "Nama Program": boleh panjang, tapi dipotong rapi dengan ellipsis
            (bukan wrap) supaya tinggi baris tetap konsisten. Nama lengkap tetap
