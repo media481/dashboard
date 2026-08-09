@@ -150,7 +150,7 @@
 ✈️ Maskapai: ${escapeHtml(data.maskapai||'-')}
 💰 Harga: ${escapeHtml(data.harga_quint||'-')}
 
-📌 <i>PT Amiru Haramain Indonesia</i>
+📌 <i>${escapeHtml(NOTA_PERUSAHAAN.nama)}</i>
 🕐 ${new Date().toLocaleString('id-ID')}`;
     }
 
@@ -170,7 +170,7 @@
 👥 Jumlah: ${entry.jumlah ? entry.jumlah + ' orang' : '-'}
 💼 Keperluan: ${escapeHtml(entry.keperluan||'-')}${entry.catatan ? '\n📝 Catatan: '+escapeHtml(entry.catatan) : ''}
 
-📌 <i>PT Amiru Haramain Indonesia</i>`;
+📌 <i>${escapeHtml(NOTA_PERUSAHAAN.nama)}</i>`;
     }
 
     // Format pesan: Pengingat program hampir berangkat (≤ 30 hari)
@@ -185,7 +185,7 @@
 ✈️ Maskapai: ${escapeHtml(data.maskapai||'-')}
 💰 Harga: ${escapeHtml(data.harga_quint||'-')}
 
-📌 <i>PT Amiru Haramain Indonesia</i>
+📌 <i>${escapeHtml(NOTA_PERUSAHAAN.nama)}</i>
 🕐 ${new Date().toLocaleString('id-ID')}`;
     }
 
@@ -253,7 +253,7 @@
 ✈️ Maskapai: Saudia Airlines
 💰 Harga: Rp 34.500.000
 
-📌 <i>PT Amiru Haramain Indonesia</i>
+📌 <i>${escapeHtml(NOTA_PERUSAHAAN.nama)}</i>
 🕐 ${waktu}`;
         const msgJadwal = `🧪 <b>TEST — Jadwal Tamu Baru</b>
 
@@ -264,14 +264,14 @@
 👥 Jumlah: 3 orang
 💼 Keperluan: Konsultasi Paket Umroh
 
-📌 <i>PT Amiru Haramain Indonesia</i>`;
+📌 <i>${escapeHtml(NOTA_PERUSAHAAN.nama)}</i>`;
         const msgReminder = `🔔 <b>TEST — Pengingat Program</b>
 
 🕌 <b>Umroh Spesial Akbar</b>
 📅 Tanggal Berangkat: 15 Februari 2025
 ⏰ <b>Sisa 20 hari lagi!</b>
 
-📌 <i>PT Amiru Haramain Indonesia</i>
+📌 <i>${escapeHtml(NOTA_PERUSAHAAN.nama)}</i>
 🕐 ${waktu}`;
 
         showTgStatus('⏳ Mengirim test...', 'ok');

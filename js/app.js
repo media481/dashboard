@@ -2757,7 +2757,7 @@ function renderJadwalSection() {
                 <td><span class="jadwal-status-pill ${stKey}">${statusLabelMap[stKey]}</span></td>
                 <td>
                     <div class="pf-actions">
-                        ${j.wa ? `<a href="https://wa.me/${j.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(j.nama||'')}%20kami%20dari%20PT%20Amiru%20Haramain%20Indonesia" target="_blank" class="pf-btn-wa" title="Hubungi via WhatsApp"><i class="bi bi-whatsapp"></i></a>` : ''}
+                        ${j.wa ? `<a href="https://wa.me/${j.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(j.nama||'')}%20kami%20dari%20${encodeURIComponent(NOTA_PERUSAHAAN.nama)}" target="_blank" class="pf-btn-wa" title="Hubungi via WhatsApp"><i class="bi bi-whatsapp"></i></a>` : ''}
                         <button type="button" class="pf-btn-edit" onclick="openJadwalModal('${j.id}')" title="Edit"><i class="bi bi-pencil-fill"></i></button>
                         <button type="button" class="pf-btn-delete" onclick="openDeleteModal('jadwal_tamu', '${j.id}', '${escapeJsAttr(j.nama)}')" title="Hapus"><i class="bi bi-trash-fill"></i></button>
                     </div>
@@ -2979,7 +2979,7 @@ function renderPendaftaranSection() {
             <td><span class="pf-status-pill ${stKey}"><i class="bi ${st.icon}"></i> ${st.label}</span></td>
             <td>
                 <div class="pf-actions">
-                    ${p.wa ? `<a href="https://wa.me/${p.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(p.nama||'')}%20kami%20dari%20PT%20Amiru%20Haramain%20Indonesia" target="_blank" class="pf-btn-wa" title="Hubungi via WhatsApp"><i class="bi bi-whatsapp"></i></a>` : ''}
+                    ${p.wa ? `<a href="https://wa.me/${p.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(p.nama||'')}%20kami%20dari%20${encodeURIComponent(NOTA_PERUSAHAAN.nama)}" target="_blank" class="pf-btn-wa" title="Hubungi via WhatsApp"><i class="bi bi-whatsapp"></i></a>` : ''}
                     <button type="button" class="pf-btn-edit" onclick="openPendaftaranModal('${p.id}')" title="Edit"><i class="bi bi-pencil-fill"></i></button>
                     <button type="button" class="pf-btn-delete" onclick="openDeleteModal('pendaftaran', '${p.id}', '${escapeJsAttr(p.nama)}')" title="Hapus"><i class="bi bi-trash-fill"></i></button>
                 </div>
@@ -5906,7 +5906,7 @@ function formatTgProgram(data, isEdit = false) {
 ✈️ Maskapai: ${escapeHtml(data.maskapai||'-')}
 💰 Harga: ${escapeHtml(data.harga_quint||'-')}
 
-📌 <i>PT Amiru Haramain Indonesia</i>
+📌 <i>${escapeHtml(NOTA_PERUSAHAAN.nama)}</i>
 🕐 ${new Date().toLocaleString('id-ID')}`;
 }
 
@@ -5925,7 +5925,7 @@ function formatTgJadwal(entry, isEdit = false) {
 👥 Jumlah: ${entry.jumlah ? entry.jumlah + ' orang' : '-'}
 💼 Keperluan: ${escapeHtml(entry.keperluan||'-')}${entry.catatan ? '\n📝 Catatan: '+escapeHtml(entry.catatan) : ''}
 
-📌 <i>PT Amiru Haramain Indonesia</i>`;
+📌 <i>${escapeHtml(NOTA_PERUSAHAAN.nama)}</i>`;
 }
 
 function formatTgReminder(data, sisaHari) {
@@ -5939,7 +5939,7 @@ function formatTgReminder(data, sisaHari) {
 ✈️ Maskapai: ${escapeHtml(data.maskapai||'-')}
 💰 Harga: ${escapeHtml(data.harga_quint||'-')}
 
-📌 <i>PT Amiru Haramain Indonesia</i>
+📌 <i>${escapeHtml(NOTA_PERUSAHAAN.nama)}</i>
 🕐 ${new Date().toLocaleString('id-ID')}`;
 }
 
@@ -5987,9 +5987,9 @@ async function checkAndSendReminders() {
 async function testTgNotif() {
     await saveTgConfig();
     const waktu = new Date().toLocaleString('id-ID');
-    const msgProgram = `🧪 <b>TEST — Program Baru</b>\n\n🕌 <b>Contoh: Umroh Ramadhan</b>\n📅 Berangkat: 01 Maret 2027\n⏳ Durasi: 9 Hari\n✈️ Maskapai: Saudia Airlines\n💰 Harga: Rp 34.500.000\n\n📌 <i>PT Amiru Haramain Indonesia</i>\n🕐 ${waktu}`;
-    const msgJadwal = `🧪 <b>TEST — Jadwal Tamu Baru</b>\n\n👤 <b>H. Budi Santoso</b>\n🏠 Asal: Ponorogo\n📅 Tanggal: Senin, 27 Januari 2027\n🕐 Jam: 09:00\n👥 Jumlah: 3 orang\n💼 Keperluan: Konsultasi Paket Umroh\n\n📌 <i>PT Amiru Haramain Indonesia</i>`;
-    const msgReminder = `🔔 <b>TEST — Pengingat Program</b>\n\n🕌 <b>Umroh Spesial Akbar</b>\n📅 Tanggal Berangkat: 15 Februari 2027\n⏰ <b>Sisa 20 hari lagi!</b>\n\n📌 <i>PT Amiru Haramain Indonesia</i>\n🕐 ${waktu}`;
+    const msgProgram = `🧪 <b>TEST — Program Baru</b>\n\n🕌 <b>Contoh: Umroh Ramadhan</b>\n📅 Berangkat: 01 Maret 2027\n⏳ Durasi: 9 Hari\n✈️ Maskapai: Saudia Airlines\n💰 Harga: Rp 34.500.000\n\n📌 <i>${escapeHtml(NOTA_PERUSAHAAN.nama)}</i>\n🕐 ${waktu}`;
+    const msgJadwal = `🧪 <b>TEST — Jadwal Tamu Baru</b>\n\n👤 <b>H. Budi Santoso</b>\n🏠 Asal: Ponorogo\n📅 Tanggal: Senin, 27 Januari 2027\n🕐 Jam: 09:00\n👥 Jumlah: 3 orang\n💼 Keperluan: Konsultasi Paket Umroh\n\n📌 <i>${escapeHtml(NOTA_PERUSAHAAN.nama)}</i>`;
+    const msgReminder = `🔔 <b>TEST — Pengingat Program</b>\n\n🕌 <b>Umroh Spesial Akbar</b>\n📅 Tanggal Berangkat: 15 Februari 2027\n⏰ <b>Sisa 20 hari lagi!</b>\n\n📌 <i>${escapeHtml(NOTA_PERUSAHAAN.nama)}</i>\n🕐 ${waktu}`;
 
     showTgStatus('Mengirim test...', 'ok');
     await sendTelegramNotif(msgProgram, 'program');
@@ -6017,6 +6017,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     `).join('');
 
     // Load data
+    await loadCompanyProfile();
     await loadUserRoles();
     await checkSession(); // pulihkan status login (kalau ada) sebelum render tabel utama
     applyRoleUIVisibility();

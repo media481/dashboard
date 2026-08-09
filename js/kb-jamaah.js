@@ -224,7 +224,7 @@
 
     function kbHubungi(wa, nama) {
         const no = wa.replace(/\D/g,'');
-        const pesan = encodeURIComponent(`Assalamualaikum ${nama}, kami dari PT Amiru Haramain Indonesia. Kami menghubungi terkait persiapan keberangkatan umroh Anda. Terima kasih 🕋`);
+        const pesan = encodeURIComponent(`Assalamualaikum ${nama}, kami dari ${NOTA_PERUSAHAAN.nama}. Kami menghubungi terkait persiapan keberangkatan umroh Anda. Terima kasih 🕋`);
         window.open(`https://wa.me/${no}?text=${pesan}`, '_blank');
     }
 
