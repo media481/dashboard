@@ -299,6 +299,21 @@ function parseRupiahToNumber(val) {
     return digits ? parseInt(digits, 10) : 0;
 }
 
+// Format input nominal secara live sambil diketik: tambahkan titik ribuan
+// (mis. "5000000" -> "5.000.000") supaya lebih mudah dibaca & diketik untuk
+// angka besar. Field-nya sengaja type="text" (bukan number), karena
+// <input type="number"> tidak bisa menampilkan titik pemisah ribuan.
+// Kursor dipertahankan relatif dari akhir teks supaya tetap nyaman diketik
+// walau posisi titik ikut bergeser tiap karakter ditambah/dihapus.
+function formatNominalInput(el) {
+    if (!el) return;
+    const cursorFromEnd = el.value.length - (el.selectionStart ?? el.value.length);
+    const digits = el.value.replace(/[^\d]/g, '');
+    el.value = digits ? parseInt(digits, 10).toLocaleString('id-ID') : '';
+    const pos = Math.max(el.value.length - cursorFromEnd, 0);
+    try { el.setSelectionRange(pos, pos); } catch (_) { /* input type tanpa dukungan selection range, abaikan */ }
+}
+
 // Pilih harga acuan tagihan seorang jamaah: kalau jamaah punya `harga_custom`
 // (nego khusus / diskon / harga custom di luar Quad-Triple-Double program),
 // itu yang dipakai. Kalau kosong, fallback ke harga tipe_kamar-nya (lihat
@@ -5627,21 +5642,21 @@ async function saveCicilan(e) {
     if (cicilanSaving) return; // sudah ada proses simpan berjalan, abaikan submit susulan
     const jamaahId = document.getElementById('cic_jamaahId').value;
     const tanggal = document.getElementById('cic_tanggal').value;
-    // Terima angka desimal (mis. 2.5 juta) — parseInt() akan memotong ke 2 juta.
-    // Dibulatkan ke bawah ke rupiah utuh supaya tidak ada sen yang menggantung.
+    // Field cic_jumlah sekarang menampilkan titik ribuan (lihat
+    // formatNominalInput()), jadi diparse pakai parseRupiahToNumber() yang
+    // membuang semua karakter non-digit, bukan Number() langsung.
     const jumlahRaw = document.getElementById('cic_jumlah').value;
     const isRefund = document.getElementById('cic_metode').value === 'Refund';
     // Staf tetap mengetik angka positif (jumlah yang dikembalikan) di form;
     // untuk metode Refund kita simpan sebagai baris NEGATIF di pembayaran_jamaah
     // supaya SUM total dibayar otomatis berkurang tanpa perlu kolom/tabel baru.
-    const jumlahAbs = Math.floor(Number(jumlahRaw));
+    const jumlahAbs = parseRupiahToNumber(jumlahRaw);
     const jumlah = isRefund ? -jumlahAbs : jumlahAbs;
     const metode = document.getElementById('cic_metode').value;
     const keterangan = document.getElementById('cic_keterangan').value.trim();
 
     if (!jamaahId) { showToast('Data jamaah tidak valid', 'error'); return; }
     if (!tanggal) { showToast('Tanggal wajib diisi', 'error'); return; }
-    if (jumlahRaw === '' || isNaN(Number(jumlahRaw))) { showToast('Jumlah pembayaran harus berupa angka', 'error'); return; }
     if (!jumlahAbs || jumlahAbs <= 0) { showToast(isRefund ? 'Jumlah refund wajib diisi' : 'Jumlah pembayaran wajib diisi', 'error'); return; }
 
     const submitBtn = document.querySelector('#cicilanForm button[type="submit"]');
