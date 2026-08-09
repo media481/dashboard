@@ -5397,7 +5397,7 @@ function renderScaledNotaInto(contentEl, html) {
     requestAnimationFrame(() => fitScaleInto(contentEl));
 }
 
-function showNotaPreviewPanel(html) {
+function showNotaPreviewPanel(html, autoScroll = true) {
     // Nota dirender pada ukuran aslinya (500-1123px, sesuai jenis nota) supaya
     // hasilnya identik dengan file yang diunduh — panel preview jauh lebih
     // sempit dari itu, jadi di sini kita bungkus dengan wrapper yang di-scale
@@ -5405,7 +5405,20 @@ function showNotaPreviewPanel(html) {
     // nota, cuma diperkecil. Ukuran final tetap dihitung dari nota versi asli.
     const content = document.getElementById('notaPreviewContent');
     renderScaledNotaInto(content, html);
-    document.getElementById('cicilanPreviewPanel').style.display = 'block';
+    const panel = document.getElementById('cicilanPreviewPanel');
+    panel.style.display = 'block';
+    // Auto-scroll panel preview ke tampilan supaya user tidak perlu scroll
+    // manual — hanya untuk aksi klik preview yang eksplisit (tombol Preview
+    // Nota / Unduh Nota Riwayat). Live draft (autoScroll=false) sengaja TIDAK
+    // ikut auto-scroll, karena kalau ikut, tampilan akan lompat-lompat tiap
+    // user mengetik di form "Tambah Pembayaran" yang letaknya di atas panel.
+    if (autoScroll) {
+        // Dipanggil di frame berikutnya supaya layout (display:block) sudah
+        // settle dulu sebelum posisi scroll dihitung.
+        requestAnimationFrame(() => {
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
 }
 
 function fitNotaPreviewScale() {
@@ -5559,7 +5572,7 @@ function updateLiveNotaDraft() {
     const draftCicilan = { id: 'draft', tanggal, jumlah, metode, keterangan };
     notaPreviewPending = { type: 'draft' };
     setNotaPreviewPanelChrome('Preview Nota — Live (belum disimpan)', false);
-    showNotaPreviewPanel(buildNotaHTML(draftCicilan, NOTA_KODE_PREVIEW));
+    showNotaPreviewPanel(buildNotaHTML(draftCicilan, NOTA_KODE_PREVIEW), false);
 }
 
 async function confirmDownloadNotaPreview(format = 'jpeg') {
