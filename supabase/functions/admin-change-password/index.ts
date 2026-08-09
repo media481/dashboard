@@ -25,7 +25,7 @@ const CORS_HEADERS = {
 
 // role dashboard -> email akun bersama yang passwordnya mau diubah
 const ROLE_EMAIL: Record<string, string> = {
-  admin: "admin@amiru-dashboard.internal",
+  admin: "epuser.ad@gmail.com", // akun admin nyata
   user: "user@amiru-dashboard.internal", // dipakai juga untuk akun "cs" jika kamu pisah nanti
   guest: "guest@amiru-dashboard.internal",
 };
