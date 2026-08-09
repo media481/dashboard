@@ -701,7 +701,7 @@
                 & main-content menyempit, tabel scroll horizontal (bukan kolom
                 diperas) supaya konten tiap sel tetap sebaris / tidak wrap 2 baris */
             border-collapse: collapse;
-            font-size: 13.5px;
+            font-size: 12px;
         }
         .table-container thead {
             background: var(--bg);
