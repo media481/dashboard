@@ -74,7 +74,7 @@ const code = fs.readFileSync(APP_PATH, 'utf8');
 const context = vm.createContext(sandbox);
 // Tambahkan penangkap: deklarasikan fungsi sebagai property di sandbox
 // dengan meng-append kode yang menaruh fungsi ke globalThis
-const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS };';
+const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah };';
 vm.runInContext(wrapped, context, { filename: 'app.js' });
 const T = sandbox.__T;
 
@@ -129,6 +129,22 @@ test('escape quote di attr (aman dari break-out)', () => {
 console.log('\n=== TEST: konstanta & wiring kritis ===');
 test('MAX_SNAPSHOTS = 10', () => assert.strictEqual(T.MAX_SNAPSHOTS, 10));
 test('takeSnapshot terdefinisi', () => assert.strictEqual(typeof T.takeSnapshot, 'function'));
+
+console.log('\n=== TEST: getHargaKamarJamaah (harga per tipe kamar) ===');
+const progFull = { harga_quad: 'Rp 32.500.000', harga_triple: 'Rp 37.500.000', harga_double: 'Rp 42.000.000' };
+test('quad -> harga_quad', () => assert.strictEqual(T.getHargaKamarJamaah(progFull, 'quad'), 32500000));
+test('triple -> harga_triple', () => assert.strictEqual(T.getHargaKamarJamaah(progFull, 'triple'), 37500000));
+test('double -> harga_double', () => assert.strictEqual(T.getHargaKamarJamaah(progFull, 'double'), 42000000));
+test('tipe_kamar kosong/tidak dikenal -> fallback quad', () => assert.strictEqual(T.getHargaKamarJamaah(progFull, undefined), 32500000));
+test('program null -> 0', () => assert.strictEqual(T.getHargaKamarJamaah(null, 'triple'), 0));
+test('data lama: harga_quad kosong -> fallback harga_quint', () => {
+  const prog = { harga_quint: 'Rp 30.000.000' };
+  assert.strictEqual(T.getHargaKamarJamaah(prog, 'quad'), 30000000);
+});
+test('triple diminta tapi harga_triple belum diisi -> fallback ke quad', () => {
+  const prog = { harga_quad: 'Rp 32.500.000' };
+  assert.strictEqual(T.getHargaKamarJamaah(prog, 'triple'), 32500000);
+});
 
 // ============================================================
 console.log(`\n=== HASIL: ${passed} passed, ${failed} failed ===`);

@@ -172,6 +172,28 @@ function parseRupiahToNumber(val) {
     return digits ? parseInt(digits, 10) : 0;
 }
 
+// Pilih harga acuan tagihan seorang jamaah berdasarkan tipe_kamar-nya, bukan
+// selalu harga_quint program (lihat sql/tambah_tipe_kamar_jamaah.sql untuk
+// latar belakang). Fallback ke harga Quad kalau harga tipe yang dipilih
+// belum diisi di programnya (mis. admin belum sempat isi harga_triple) —
+// supaya tagihan tidak tiba-tiba jadi Rp0 / tidak akurat, dan supaya
+// data lama (tipe_kamar belum diisi -> default 'quad') tetap berperilaku
+// persis seperti sebelum fitur ini ada.
+const TIPE_KAMAR_LABEL = { quad: 'Quad', triple: 'Triple', double: 'Double' };
+
+function getHargaKamarJamaah(program, tipeKamar) {
+    if (!program) return 0;
+    const hargaQuad = parseRupiahToNumber(program.harga_quad || program.harga_quint);
+    const hargaTriple = parseRupiahToNumber(program.harga_triple);
+    const hargaDouble = parseRupiahToNumber(program.harga_double);
+    switch (tipeKamar) {
+        case 'triple': return hargaTriple || hargaQuad;
+        case 'double': return hargaDouble || hargaQuad;
+        case 'quad':
+        default: return hargaQuad;
+    }
+}
+
 function formatRupiah(amount) {
     if (!amount && amount !== 0) return '-';
     if (typeof amount === 'string') {
@@ -2233,7 +2255,7 @@ const TABLE_LABEL = {
 // upsert tidak ditolak Supabase gara-gara kolom yang tidak dikenal.
 const OPTIONAL_TABLE_COLUMNS = {
     jadwal_tamu: ['id', 'nama', 'tgl', 'jam', 'asal', 'jumlah', 'keperluan', 'wa', 'catatan', 'created_at'],
-    kb_jamaah: ['id', 'program_id', 'nama', 'nik', 'paspor', 'wa', 'asal', 'status', 'catatan', 'dokumen', 'created_at'],
+    kb_jamaah: ['id', 'program_id', 'nama', 'nik', 'paspor', 'wa', 'asal', 'tipe_kamar', 'status', 'catatan', 'dokumen', 'created_at'],
     pendaftaran: ['id', 'program_id', 'nama', 'wa', 'asal', 'status', 'catatan', 'created_at'],
     featured_programs: ['id', 'program_id', 'created_at']
 };
@@ -3149,7 +3171,6 @@ async function loadKbJamaahForProgram(programId) {
     }
 
     const program = dataUmroh.find(p => String(p.id) === String(programId));
-    const hargaProgram = parseRupiahToNumber(program ? program.harga_quint : 0);
     const canEdit = canManageProgramData();
 
     try {
@@ -3177,9 +3198,11 @@ async function loadKbJamaahForProgram(programId) {
             totalPerJamaah[b.jamaah_id] = (totalPerJamaah[b.jamaah_id] || 0) + Number(b.jumlah || 0);
         });
 
-        let grandTotalTagihan = 0, grandTotalDibayar = 0;
+        let grandTotalTagihan = 0, grandTotalDibayar = 0, anyHargaKosong = false;
 
         const rows = jamaah.map(j => {
+            const hargaProgram = getHargaKamarJamaah(program, j.tipe_kamar);
+            if (!hargaProgram) anyHargaKosong = true;
             const dibayar = totalPerJamaah[j.id] || 0;
             const sisa = Math.max(hargaProgram - dibayar, 0);
             const pct = hargaProgram > 0 ? Math.min(100, Math.round((dibayar / hargaProgram) * 100)) : 0;
@@ -3197,7 +3220,7 @@ async function loadKbJamaahForProgram(programId) {
                     <td style="padding:10px 14px;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
                     <td style="padding:10px 14px;">${j.nik || '-'}</td>
                     <td style="padding:10px 14px;">${j.paspor || '-'}</td>
-                    <td style="padding:10px 14px;white-space:nowrap;">${formatRupiah(hargaProgram)}</td>
+                    <td style="padding:10px 14px;white-space:nowrap;">${formatRupiah(hargaProgram)}<br><span style="font-size:10px;color:var(--ink-soft);">${TIPE_KAMAR_LABEL[j.tipe_kamar] || 'Quad'}</span></td>
                     <td style="padding:10px 14px;white-space:nowrap;color:var(--success);font-weight:600;">${formatRupiah(dibayar)}</td>
                     <td style="padding:10px 14px;white-space:nowrap;color:${sisa > 0 ? 'var(--danger)' : 'var(--ink-soft)'};font-weight:600;">${formatRupiah(sisa)}</td>
                     <td style="padding:10px 14px;min-width:110px;">
@@ -3223,7 +3246,11 @@ async function loadKbJamaahForProgram(programId) {
         }).join('');
 
         const grandSisa = Math.max(grandTotalTagihan - grandTotalDibayar, 0);
-        const totalLunas = jamaah.filter(j => j.status !== 'batal' && hargaProgram > 0 && (totalPerJamaah[j.id] || 0) >= hargaProgram).length;
+        const totalLunas = jamaah.filter(j => {
+            if (j.status === 'batal') return false;
+            const h = getHargaKamarJamaah(program, j.tipe_kamar);
+            return h > 0 && (totalPerJamaah[j.id] || 0) >= h;
+        }).length;
 
         container.innerHTML = `
             <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
@@ -3232,7 +3259,7 @@ async function loadKbJamaahForProgram(programId) {
                 <span class="status-badge available">Total Dibayar: ${formatRupiah(grandTotalDibayar)}</span>
                 <span class="status-badge ${grandSisa > 0 ? 'full' : 'available'}">Sisa Tagihan: ${formatRupiah(grandSisa)}</span>
             </div>
-            ${!hargaProgram ? `<div style="font-size:12px;color:var(--warn);margin-bottom:10px;"><i class="bi bi-exclamation-triangle-fill"></i> Harga program ini belum diisi, sisa tagihan tidak bisa dihitung akurat.</div>` : ''}
+            ${anyHargaKosong ? `<div style="font-size:12px;color:var(--warn);margin-bottom:10px;"><i class="bi bi-exclamation-triangle-fill"></i> Ada jamaah yang harga tipe kamarnya belum diisi di program ini, sisa tagihan jamaah tsb tidak bisa dihitung akurat.</div>` : ''}
             <div class="table-container" style="overflow-x:auto;">
                 <table style="width:100%;border-collapse:collapse;font-size:13px;">
                     <thead style="background:var(--bg);">
@@ -3295,10 +3322,12 @@ function openKbModal(id = null) {
         document.getElementById('kb_paspor').value = j.paspor || '';
         document.getElementById('kb_wa').value = j.wa || '';
         document.getElementById('kb_asal').value = j.asal || '';
+        document.getElementById('kb_tipe_kamar').value = j.tipe_kamar || 'quad';
         document.getElementById('kb_status').value = j.status || 'pending';
         document.getElementById('kb_catatan').value = j.catatan || '';
     } else {
         document.getElementById('kbModalTitle').textContent = 'Tambah Data Jamaah';
+        document.getElementById('kb_tipe_kamar').value = 'quad';
         document.getElementById('kb_status').value = 'pending';
         renderKbPendaftaranOptions();
         fromPendaftaranBox.style.display = '';
@@ -3364,6 +3393,7 @@ async function saveKbJamaah(e) {
         paspor: document.getElementById('kb_paspor').value.trim(),
         wa: document.getElementById('kb_wa').value.trim(),
         asal: document.getElementById('kb_asal').value.trim(),
+        tipe_kamar: document.getElementById('kb_tipe_kamar').value || 'quad',
         status: document.getElementById('kb_status').value,
         catatan: document.getElementById('kb_catatan').value.trim()
     };
@@ -3444,7 +3474,7 @@ async function loadCicilanHistory(jamaahId) {
         if (jErr) throw jErr;
 
         const program = dataUmroh.find(p => String(p.id) === String(jamaahRow.program_id));
-        const hargaProgram = parseRupiahToNumber(program ? program.harga_quint : 0);
+        const hargaProgram = getHargaKamarJamaah(program, jamaahRow.tipe_kamar);
         cicilanJamaahInfo = jamaahRow;
         cicilanProgramInfo = program || null;
         cicilanHargaProgram = hargaProgram;
@@ -3558,7 +3588,7 @@ function renderPembayaranIncomeSummary(jamaahAll, totalPerJamaah) {
             byProgram[pid] = {
                 nama: program ? program.nama : 'Tanpa Program',
                 tanggal: program ? program.tanggal_berangkat : null,
-                harga: parseRupiahToNumber(program ? program.harga_quint : 0),
+                program,
                 jamaahCount: 0,
                 tagihan: 0,
                 dibayar: 0
@@ -3566,7 +3596,7 @@ function renderPembayaranIncomeSummary(jamaahAll, totalPerJamaah) {
         }
         const g = byProgram[pid];
         g.jamaahCount += 1;
-        g.tagihan += g.harga;
+        g.tagihan += getHargaKamarJamaah(g.program, j.tipe_kamar);
         g.dibayar += totalPerJamaah[j.id] || 0;
     });
 
@@ -3673,7 +3703,7 @@ async function renderPembayaranPanel() {
 
         let rowsData = jamaahAll.map(j => {
             const program = dataUmroh.find(p => String(p.id) === String(j.program_id));
-            const hargaProgram = parseRupiahToNumber(program ? program.harga_quint : 0);
+            const hargaProgram = getHargaKamarJamaah(program, j.tipe_kamar);
             const dibayar = totalPerJamaah[j.id] || 0;
             const sisa = Math.max(hargaProgram - dibayar, 0);
             const pct = hargaProgram > 0 ? Math.min(100, Math.round((dibayar / hargaProgram) * 100)) : 0;
@@ -3733,7 +3763,7 @@ async function renderPembayaranPanel() {
                 <tr>
                     <td><strong>${escapeHtml(r.j.nama || '-')}</strong>${r.j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(r.j.asal)}</span>` : ''}</td>
                     <td>${escapeHtml(r.program ? r.program.nama : '-')}</td>
-                    <td style="white-space:nowrap;">${formatRupiah(r.hargaProgram)}</td>
+                    <td style="white-space:nowrap;">${formatRupiah(r.hargaProgram)}<br><span style="font-size:10px;color:var(--ink-soft);">${TIPE_KAMAR_LABEL[r.j.tipe_kamar] || 'Quad'}</span></td>
                     <td style="white-space:nowrap;color:var(--success);font-weight:600;">${formatRupiah(r.dibayar)}</td>
                     <td style="white-space:nowrap;color:${r.sisa > 0 ? 'var(--danger)' : 'var(--ink-soft)'};font-weight:600;">${formatRupiah(r.sisa)}</td>
                     <td style="min-width:110px;">
@@ -4228,7 +4258,7 @@ async function previewNotaFromAudit(logId, btn) {
         // di modal Kelola Cicilan.
         cicilanJamaahInfo = jamaahRow;
         cicilanProgramInfo = dataUmroh.find(p => String(p.id) === String(jamaahRow.program_id)) || null;
-        cicilanHargaProgram = parseRupiahToNumber(cicilanProgramInfo ? cicilanProgramInfo.harga_quint : 0);
+        cicilanHargaProgram = getHargaKamarJamaah(cicilanProgramInfo, jamaahRow.tipe_kamar);
         cicilanList = bayarRows || [];
 
         if (row.jenis === 'riwayat') {
@@ -5042,7 +5072,7 @@ async function syncJamaahStatus(jamaahId) {
         if (jamaahRow.status === 'batal') return;
 
         const program = dataUmroh.find(p => String(p.id) === String(jamaahRow.program_id));
-        const hargaProgram = parseRupiahToNumber(program ? program.harga_quint : 0);
+        const hargaProgram = getHargaKamarJamaah(program, jamaahRow.tipe_kamar);
 
         const { data: bayarData, error: bErr } = await supabaseClient.from('pembayaran_jamaah').select('jumlah').eq('jamaah_id', jamaahId);
         if (bErr) return;
@@ -5074,9 +5104,8 @@ async function syncJamaahStatus(jamaahId) {
 async function syncJamaahStatusForProgram(programId) {
     try {
         const program = dataUmroh.find(p => String(p.id) === String(programId));
-        const hargaProgram = parseRupiahToNumber(program ? program.harga_quint : 0);
 
-        const { data: jamaahRows, error: jErr } = await supabaseClient.from('kb_jamaah').select('id, status').eq('program_id', programId);
+        const { data: jamaahRows, error: jErr } = await supabaseClient.from('kb_jamaah').select('id, status, tipe_kamar').eq('program_id', programId);
         if (jErr || !jamaahRows || !jamaahRows.length) return;
 
         const jamaahIds = jamaahRows.map(j => j.id);
@@ -5093,6 +5122,7 @@ async function syncJamaahStatusForProgram(programId) {
             // Lewati jamaah yang statusnya sudah dikunci "Batal" secara manual —
             // lihat catatan yang sama di syncJamaahStatus().
             if (j.status === 'batal') continue;
+            const hargaProgram = getHargaKamarJamaah(program, j.tipe_kamar);
             const totalDibayar = totalPerJamaah[j.id] || 0;
             let statusBaru;
             if (hargaProgram > 0 && totalDibayar >= hargaProgram) statusBaru = 'lunas';
