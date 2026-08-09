@@ -69,6 +69,9 @@
             <button class="nav-item nav-loggedin-only" data-tab="dokumen" style="display:none;" title="Dokumen">
                 <i class="bi bi-file-earmark-check-fill"></i> <span class="nav-text">Dokumen</span>
             </button>
+            <button class="nav-item nav-loggedin-only" data-tab="arsip" style="display:none;" title="Arsip Jamaah">
+                <i class="bi bi-archive-fill"></i> <span class="nav-text">Arsip Jamaah</span>
+            </button>
 
             <div class="nav-label nav-admin-only" style="display:none;">Manajemen</div>
             <button class="nav-item nav-admin-only" data-subtab="program" style="display:none;" onclick="openAdminPanel('program')" title="Tambah Program">
@@ -187,6 +190,9 @@
                 </button>
                 <button class="tab-btn nav-loggedin-only" data-tab="dokumen" style="display:none;">
                     <i class="bi bi-file-earmark-check-fill"></i> <span>Kelengkapan Dokumen</span>
+                </button>
+                <button class="tab-btn nav-loggedin-only" data-tab="arsip" style="display:none;">
+                    <i class="bi bi-archive-fill"></i> <span>Arsip Jamaah</span>
                 </button>
             </div>
 
@@ -345,6 +351,21 @@
                     </div>
                 </div>
 
+                <!-- TAB: Arsip Jamaah (sudah pulang ke tanah air, read-only, tidak bisa di-unarsip) -->
+                <div class="tab-panel" id="tab-arsip">
+                    <div class="kb-program-selector" id="arsipProgramSelector">
+                        <select id="arsipProgramSelect" class="searchable-select" data-cs-inline="1" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." onchange="selectArsipProgram(this.value)">
+                            <option value="">-- Pilih Program --</option>
+                        </select>
+                    </div>
+                    <div id="arsipJamaahContent">
+                        <div class="kb-no-program">
+                            <i class="bi bi-archive"></i>
+                            <p>Pilih program di atas untuk melihat jamaah yang sudah diarsipkan.</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- TAB: Kelengkapan Dokumen -->
                 <div class="tab-panel" id="tab-dokumen">
                     <div class="kb-program-selector" id="dokProgramSelector">
@@ -405,6 +426,9 @@
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="dokumen" style="display:none;" onclick="switchTab('dokumen'); toggleMobileSidebar();">
                 <i class="bi bi-file-earmark-check-fill"></i> Dokumen
+            </button>
+            <button class="nav-item nav-loggedin-only" data-tab="arsip" style="display:none;" onclick="switchTab('arsip'); toggleMobileSidebar();">
+                <i class="bi bi-archive-fill"></i> Arsip Jamaah
             </button>
 
             <div class="nav-label nav-admin-only" style="display:none;">Manajemen</div>
@@ -909,6 +933,29 @@
             <div class="form-actions" style="border-top:none;padding-top:0;">
                 <button class="btn-danger" id="deleteConfirmBtn" onclick="confirmDeleteAction()" disabled><i class="bi bi-trash-fill"></i> Hapus Permanen</button>
                 <button class="btn-cancel" onclick="closeDeleteConfirmModal()">Batal</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="arsipConfirmModal">
+    <div class="modal-content" style="max-width:450px;">
+        <div class="modal-header">
+            <h2 style="color:var(--warn);"><i class="bi bi-archive-fill"></i> Arsipkan Jamaah</h2>
+            <button class="modal-close" onclick="closeArsipConfirmModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="margin-bottom:12px;color:var(--ink-soft);">Jamaah akan pindah ke menu <strong>Arsip Jamaah</strong> (read-only) dan program ini akan otomatis dinonaktifkan. Tindakan ini <strong>tidak bisa dibatalkan / di-unarsip!</strong></p>
+            <div style="background:var(--brand-tint);padding:12px;border-radius:8px;margin-bottom:16px;">
+                <p style="font-weight:600;" id="arsipConfirmLabel">Program: </p>
+            </div>
+            <div class="form-group">
+                <label>Ketik <strong id="arsipConfirmName">"nama program"</strong> untuk konfirmasi</label>
+                <input type="text" id="arsipConfirmInput" placeholder="Ketik nama program..." oninput="onArsipConfirmInput()">
+            </div>
+            <div class="form-actions" style="border-top:none;padding-top:0;">
+                <button class="btn-danger" id="arsipConfirmBtn" onclick="confirmArsipkanSemua()" disabled><i class="bi bi-archive-fill"></i> Arsipkan Sekarang</button>
+                <button class="btn-cancel" onclick="closeArsipConfirmModal()">Batal</button>
             </div>
         </div>
     </div>

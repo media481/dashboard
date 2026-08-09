@@ -575,6 +575,7 @@ function switchTab(tabId) {
     if (tabId === 'pendaftaran') renderPendaftaranSection();
     if (tabId === 'keberangkatan') renderKbProgramSelector();
     if (tabId === 'dokumen') renderDokProgramSelector();
+    if (tabId === 'arsip') { loadArsipJamaah().then(renderArsipProgramSelector); }
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -3307,8 +3308,12 @@ async function savePendaftaran(e) {
 // ============================================================
 async function loadKbJamaah() {
     try {
+        // diarsipkan=false: jamaah yang sudah diarsipkan (lihat menu "Arsip
+        // Jamaah") sengaja TIDAK ikut ke cache ini, supaya otomatis hilang
+        // dari metrics, dropdown program, form cicilan, & form dokumen tanpa
+        // perlu difilter ulang di tiap tempat pakainya.
         const { data, error } = await withRetry(
-            () => supabaseClient.from('kb_jamaah').select('*').order('nama', { ascending: true }),
+            () => supabaseClient.from('kb_jamaah').select('*').eq('diarsipkan', false).order('nama', { ascending: true }),
             { label: 'Muat data jamaah' }
         );
         if (error) throw error;
@@ -3318,6 +3323,23 @@ async function loadKbJamaah() {
         console.error('Load kb_jamaah error:', err);
         kbJamaahList = [];
         showToast('Gagal memuat data jamaah — periksa koneksi internet', 'error');
+    }
+}
+
+let arsipJamaahList = [], arsipSelectedProgram = null;
+
+async function loadArsipJamaah() {
+    try {
+        const { data, error } = await withRetry(
+            () => supabaseClient.from('kb_jamaah').select('*').eq('diarsipkan', true).order('diarsipkan_at', { ascending: false }),
+            { label: 'Muat data arsip jamaah' }
+        );
+        if (error) throw error;
+        arsipJamaahList = data || [];
+    } catch (err) {
+        console.error('Load arsip jamaah error:', err);
+        arsipJamaahList = [];
+        showToast('Gagal memuat data arsip jamaah — periksa koneksi internet', 'error');
     }
 }
 
@@ -3387,12 +3409,18 @@ async function loadKbJamaahForProgram(programId) {
 
     try {
         const { data, error } = await withRetry(
-            () => supabaseClient.from('kb_jamaah').select('*').eq('program_id', programId).order('nama', { ascending: true }),
+            () => supabaseClient.from('kb_jamaah').select('*').eq('program_id', programId).eq('diarsipkan', false).order('nama', { ascending: true }),
             { label: 'Muat data jamaah' }
         );
         if (error) throw error;
 
         const jamaah = data || [];
+        const arsipBtnHtml = (canEdit && jamaah.length) ? `
+            <div style="margin-bottom:12px;">
+                <button type="button" class="btn-danger" style="font-size:12px;padding:6px 14px;" onclick="arsipkanSemuaJamaah('${programId}')">
+                    <i class="bi bi-archive-fill"></i> Arsipkan Semua Jamaah Program Ini
+                </button>
+            </div>` : '';
         if (!jamaah.length) {
             container.innerHTML = `<div class="kb-no-program"><i class="bi bi-person-dash-fill"></i><p>Belum ada jamaah terdaftar untuk program ini.</p></div>`;
             return;
@@ -3465,6 +3493,7 @@ async function loadKbJamaahForProgram(programId) {
         }).length;
 
         container.innerHTML = `
+            ${arsipBtnHtml}
             <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
                 <span class="status-badge available">${jamaah.length} Total Jamaah</span>
                 <span class="status-badge available">${totalLunas} Lunas</span>
@@ -3499,6 +3528,178 @@ async function loadKbJamaahForProgram(programId) {
             <p>Gagal memuat data: ${err.message}</p>
         </div>`;
     }
+}
+
+// ============================================================
+// ARSIP JAMAAH — sekali arsip, tidak bisa di-unarsip (lihat sql/tambah_arsip_jamaah.sql)
+// ============================================================
+let arsipConfirmTarget = { programId: null, programNama: null, jumlah: 0 };
+
+async function arsipkanSemuaJamaah(programId) {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengarsipkan jamaah', 'error'); return; }
+    const program = dataUmroh.find(p => String(p.id) === String(programId));
+    if (!program) return;
+
+    try {
+        // Cek ulang langsung ke database (bukan cache), status HARUS lunas
+        // atau batal untuk semua jamaah program ini sebelum boleh diarsipkan.
+        const { data: jamaahProgram, error } = await supabaseClient
+            .from('kb_jamaah').select('id, nama, status').eq('program_id', programId).eq('diarsipkan', false);
+        if (error) throw error;
+
+        if (!jamaahProgram || jamaahProgram.length === 0) {
+            showToast('Tidak ada jamaah aktif di program ini untuk diarsipkan', 'error');
+            return;
+        }
+
+        const belumLunas = jamaahProgram.filter(j => j.status !== 'lunas' && j.status !== 'batal');
+        if (belumLunas.length > 0) {
+            showToast(`Tidak bisa arsipkan — masih ada ${belumLunas.length} jamaah yang belum lunas (${belumLunas.slice(0, 3).map(j => j.nama).join(', ')}${belumLunas.length > 3 ? ', ...' : ''}).`, 'error');
+            return;
+        }
+
+        arsipConfirmTarget = { programId, programNama: program.nama, jumlah: jamaahProgram.length };
+        document.getElementById('arsipConfirmLabel').textContent = `Program: ${program.nama} — ${jamaahProgram.length} jamaah akan diarsipkan`;
+        document.getElementById('arsipConfirmName').textContent = `"${program.nama}"`;
+        document.getElementById('arsipConfirmInput').value = '';
+        document.getElementById('arsipConfirmBtn').disabled = true;
+        document.getElementById('arsipConfirmModal').classList.add('open');
+    } catch (err) {
+        console.error('Cek jamaah sebelum arsip gagal:', err);
+        showToast('Gagal memverifikasi data jamaah, coba lagi', 'error');
+    }
+}
+
+function closeArsipConfirmModal() {
+    document.getElementById('arsipConfirmModal').classList.remove('open');
+    arsipConfirmTarget = { programId: null, programNama: null, jumlah: 0 };
+}
+
+function onArsipConfirmInput() {
+    const input = document.getElementById('arsipConfirmInput').value.trim();
+    document.getElementById('arsipConfirmBtn').disabled = input !== arsipConfirmTarget.programNama;
+}
+
+async function confirmArsipkanSemua() {
+    const { programId, programNama } = arsipConfirmTarget;
+    if (!programId) return;
+
+    try {
+        const { data: arsipRows, error: updErr } = await supabaseClient
+            .from('kb_jamaah')
+            .update({ diarsipkan: true, diarsipkan_at: new Date().toISOString() })
+            .eq('program_id', programId).eq('diarsipkan', false)
+            .select('id, nama');
+        if (updErr) throw updErr;
+
+        const { error: progErr } = await supabaseClient
+            .from('programs').update({ is_active: false }).eq('id', programId);
+        if (progErr) console.error('Gagal nonaktifkan program setelah arsip:', progErr);
+
+        try {
+            await supabaseClient.from('jamaah_audit_log').insert(
+                (arsipRows || []).map(j => ({
+                    jamaah_id: j.id,
+                    jamaah_nama: j.nama,
+                    aksi: 'diarsipkan',
+                    field: 'diarsipkan',
+                    nilai_lama: 'false',
+                    nilai_baru: 'true',
+                    actor_role: currentRole || 'publik',
+                    actor_nama: getPetugasNama() || null
+                }))
+            );
+        } catch (logErr) { console.error('Gagal catat audit log arsip:', logErr); }
+
+        showToast(`Jamaah program "${programNama}" berhasil diarsipkan`);
+        closeArsipConfirmModal();
+        await loadDataFromSupabase(true);
+        await loadKbJamaah();
+        renderKbProgramSelector();
+        updateMetrics();
+    } catch (err) {
+        console.error('Arsipkan semua jamaah error:', err);
+        showToast('Gagal mengarsipkan jamaah — coba lagi', 'error');
+    }
+}
+
+function renderArsipProgramSelector() {
+    const select = document.getElementById('arsipProgramSelect');
+    if (!select) return;
+
+    if (!arsipJamaahList || arsipJamaahList.length === 0) {
+        select.innerHTML = '<option value="">-- Belum ada jamaah terarsip --</option>';
+        loadArsipJamaahForProgram('');
+        return;
+    }
+
+    // Program pemilik jamaah arsip bisa saja sudah is_active=false (memang
+    // dinonaktifkan otomatis saat diarsipkan), jadi ambil nama program dari
+    // dataUmroh TANPA filter is_active supaya tetap muncul di selector ini.
+    const programIds = [...new Set(arsipJamaahList.map(j => String(j.program_id)))];
+    const currentVal = select.value;
+    select.innerHTML = '<option value="">-- Pilih Program --</option>' +
+        programIds.map(id => {
+            const p = dataUmroh.find(pr => String(pr.id) === id);
+            const nama = p ? p.nama : '(program tidak ditemukan)';
+            const count = arsipJamaahList.filter(j => String(j.program_id) === id).length;
+            return `<option value="${id}">${escapeHtml(nama)} (${count} jamaah)</option>`;
+        }).join('');
+    select.value = (currentVal && programIds.includes(currentVal)) ? currentVal : '';
+    loadArsipJamaahForProgram(select.value);
+}
+
+function selectArsipProgram(id) {
+    document.getElementById('arsipProgramSelect').value = id;
+    loadArsipJamaahForProgram(id);
+}
+
+async function loadArsipJamaahForProgram(programId) {
+    arsipSelectedProgram = programId || null;
+    const container = document.getElementById('arsipJamaahContent');
+    if (!container) return;
+    if (!programId) {
+        container.innerHTML = `<div class="kb-no-program"><i class="bi bi-archive"></i><p>Pilih program di atas untuk melihat jamaah yang sudah diarsipkan.</p></div>`;
+        return;
+    }
+
+    const jamaah = arsipJamaahList.filter(j => String(j.program_id) === String(programId));
+    if (!jamaah.length) {
+        container.innerHTML = `<div class="kb-no-program"><i class="bi bi-person-dash-fill"></i><p>Belum ada jamaah terarsip untuk program ini.</p></div>`;
+        return;
+    }
+
+    const rows = jamaah.map(j => `
+        <tr style="border-bottom:1px solid var(--line);">
+            <td style="padding:10px 14px;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
+            <td style="padding:10px 14px;">${j.nik || '-'}</td>
+            <td style="padding:10px 14px;">${j.paspor || '-'}</td>
+            <td style="padding:10px 14px;">${j.diarsipkan_at ? new Date(j.diarsipkan_at).toLocaleDateString('id-ID') : '-'}</td>
+            <td style="padding:10px 14px;white-space:nowrap;">
+                <button class="btn-primary" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${j.id}')">
+                    <i class="bi bi-eye-fill"></i> Lihat Riwayat & Kuitansi
+                </button>
+            </td>
+        </tr>`).join('');
+
+    container.innerHTML = `
+        <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+            <span class="status-badge available">${jamaah.length} Jamaah Terarsip</span>
+        </div>
+        <div class="table-container" style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead style="background:var(--bg);">
+                    <tr>
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Nama</th>
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">NIK</th>
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Paspor</th>
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Tgl Diarsipkan</th>
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>`;
 }
 
 function openKbModal(id = null) {
@@ -3833,7 +4034,9 @@ async function loadCicilanHistory(jamaahId) {
         if (error) throw error;
         cicilanList = data || [];
 
-        document.getElementById('cicilanModalTitle').textContent = 'Kelola Cicilan — ' + (jamaahRow.nama || '');
+        document.getElementById('cicilanModalTitle').textContent = (jamaahRow.diarsipkan ? 'Riwayat Pembayaran (Arsip) — ' : 'Kelola Cicilan — ') + (jamaahRow.nama || '');
+        const cicilanFormEl = document.getElementById('cicilanForm');
+        if (cicilanFormEl) cicilanFormEl.style.display = jamaahRow.diarsipkan ? 'none' : '';
 
         const totalDibayar = cicilanList.reduce((sum, c) => sum + Number(c.jumlah || 0), 0);
         const sisa = Math.max(hargaProgram - totalDibayar, 0);
@@ -5544,7 +5747,7 @@ async function loadDokumenForProgram(programId) {
 
     try {
         const { data, error } = await withRetry(
-            () => supabaseClient.from('kb_jamaah').select('*').eq('program_id', programId).order('nama', { ascending: true }),
+            () => supabaseClient.from('kb_jamaah').select('*').eq('program_id', programId).eq('diarsipkan', false).order('nama', { ascending: true }),
             { label: 'Muat data jamaah' }
         );
         if (error) throw error;
