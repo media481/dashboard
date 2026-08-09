@@ -483,13 +483,14 @@ async function loadDataFromSupabase(forceRefresh = false) {
         );
         if (error) throw error;
 
-        const plainData = (data || []).map(p => ({
+        const plainData = (data || []).map(p => unpackProgramAdminData({
             id: p.id, nama: p.nama, tgl: p.tgl, durasi: p.durasi, maskapai: p.maskapai,
             harga_quint: p.harga_quint, teks_wa: p.teks_wa,
             link_form: p.link_form, link_itinerary: p.link_itinerary,
             link_poster: p.link_poster, link_metaads: p.link_metaads,
             link_dokumentasi: p.link_dokumentasi, created_at: p.created_at,
-            is_active: p.is_active !== false
+            is_active: p.is_active !== false,
+            admin_data_lengkap: p.admin_data_lengkap
         }));
         sessionStorage.setItem(CACHE_KEY, JSON.stringify(plainData));
         sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
@@ -582,7 +583,7 @@ function renderTable(data) {
     const now = new Date();
     const canEdit = canManageProgramData(); // admin & user boleh edit/hapus, guest & publik hanya lihat
     if (!data || !data.length) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--ink-soft);">
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--ink-soft);">
             <i class="fa-solid fa-inbox" style="font-size:24px;display:block;margin-bottom:10px;"></i>
             Belum ada program umroh.${canEdit ? ' Klik "Tambah" untuk menambahkan.' : ''}
         </td></tr>`;
@@ -612,7 +613,9 @@ function renderTable(data) {
         return `<tr class="${isNearest ? 'row-nearest-departure' : ''}">
             <td><strong>${escapeHtml(item.nama||'')}</strong></td>
             <td>${escapeHtml(hitungEstimasi(item.dateObj, now))}</td>
-            <td>${escapeHtml(formatRupiah(item.harga_quint))}</td>
+            <td>${escapeHtml(formatRupiah(item.harga_quad || item.harga_quint))}</td>
+            <td>${escapeHtml(formatRupiah(item.harga_double))}</td>
+            <td>${escapeHtml(formatRupiah(item.harga_triple))}</td>
             <td>${escapeHtml(item.tgl||'-')}${isNearest ? ` <span class="nearest-badge" title="Salah satu dari 3 keberangkatan terdekat"><i class="fa-solid fa-bolt"></i> Terdekat</span>` : ''}</td>
             <td>${escapeHtml(item.durasi||'-')}</td>
             <td>${escapeHtml(item.maskapai||'-')}</td>
@@ -672,7 +675,7 @@ function filterData(term) {
     } else {
         const keywords = t.split(/\s+/).filter(Boolean);
         currentData = visiblePrograms.filter(item => {
-            const haystack = [item.nama||'', item.maskapai||'', item.tgl||'', item.durasi||'', item.harga_quint||''].join(' ').toLowerCase();
+            const haystack = [item.nama||'', item.maskapai||'', item.tgl||'', item.durasi||'', item.harga_quint||'', item.harga_quad||'', item.harga_double||'', item.harga_triple||''].join(' ').toLowerCase();
             return keywords.every(kw => haystack.includes(kw));
         });
     }
@@ -692,7 +695,12 @@ function openDetailModal(programId) {
     const program = dataUmroh.find(p => String(p.id) === String(programId));
     if (!program) { showToast('Program tidak ditemukan', 'error'); return; }
     const waText = program.teks_wa || generateAutoWAText(program);
-    alert(`Detail Program\n\nNama: ${program.nama}\nTanggal: ${program.tgl}\nDurasi: ${program.durasi}\nMaskapai: ${program.maskapai}\nHarga: ${formatRupiah(program.harga_quint)}\n\nTeks WA:\n${waText}`);
+    const hargaLines = [];
+    if (program.harga_quad || program.harga_quint) hargaLines.push(`Quad: ${formatRupiah(program.harga_quad || program.harga_quint)}`);
+    if (program.harga_double) hargaLines.push(`Double: ${formatRupiah(program.harga_double)}`);
+    if (program.harga_triple) hargaLines.push(`Triple: ${formatRupiah(program.harga_triple)}`);
+    const hargaText = hargaLines.length ? hargaLines.join('\n') : formatRupiah(program.harga_quint);
+    alert(`Detail Program\n\nNama: ${program.nama}\nTanggal: ${program.tgl}\nDurasi: ${program.durasi}\nMaskapai: ${program.maskapai}\nHarga:\n${hargaText}\n\nTeks WA:\n${waText}`);
 }
 
 // ============================================================
