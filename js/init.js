@@ -1,6 +1,7 @@
     (async () => {
         initInfoBar();
         loadTickerSetting();
+        await loadCompanyProfile();
         await loadUserRoles();
         await loadJadwal();
         renderJadwalSection();
