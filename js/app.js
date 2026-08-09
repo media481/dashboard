@@ -57,7 +57,6 @@ function sortProgramsDefault(list) {
 let kbJamaahList = [], kbSelectedProgram = null, editingKbId = null;
 let cicilanList = [], cicilanJamaahId = null;
 let cicilanJamaahInfo = null, cicilanProgramInfo = null, cicilanHargaProgram = 0;
-let kuitansiJamaahId = null, kuitansiPaymentRecorded = false;
 let notaGenerating = false;
 let dokSelectedProgram = null;
 // type 'copy'   -> dua checkbox terpisah: Fotocopy & Asli (disimpan sbg {key}_fc / {key}_asli)
@@ -3502,9 +3501,6 @@ async function loadKbJamaahForProgram(programId) {
                     <td style="padding:10px 14px;"><span class="status-badge ${statusClass}">${statusLabel}</span></td>
                     <td style="padding:10px 14px;white-space:nowrap;">
                         <div class="row-actions">
-                            <button class="btn-success" style="font-size:11px;padding:5px 10px;" onclick="openKuitansiModal('${j.id}', '${escapeJsAttr(j.nama)}', '${escapeJsAttr(program.nama || '')}')" title="Buat kuitansi pembayaran pertama jamaah ini">
-                                <i class="bi bi-receipt"></i> Kuitansi
-                            </button>
                             <button class="btn-primary btn-pay" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${j.id}')">
                                 <i class="bi bi-cash-stack"></i> Bayar
                             </button>
@@ -4675,6 +4671,19 @@ function nomorNota(cicilan) {
     return `AHI/NOTA/${tgl || '000000'}/${idPart || '00000'} (sementara)`;
 }
 
+// Nomor yang ditampilkan saat sebuah baris pembayaran berstatus KUITANSI
+// (lihat buildNotaHTML) -- seri nomornya SENGAJA terpisah dari nomorNota()
+// (lihat sql/tambah_nomor_kuitansi_di_pembayaran.sql), diambil & dikunci
+// permanen ke kolom nomor_kuitansi baris itu saat pertama kali diunduh
+// (lihat downloadNotaPembayaran()). Sebelum diunduh (mis. saat preview live
+// atau reprint sebelum kolomnya terisi), tampilkan placeholder yang jelas
+// belum resmi -- sama semangatnya dengan fallback "(sementara)" di atas.
+function nomorKuitansiTampilan(cicilan) {
+    if (cicilan && cicilan.nomor_kuitansi) return cicilan.nomor_kuitansi;
+    if (cicilan && cicilan.id === 'draft') return 'DRAFT — belum tersimpan';
+    return `AHI/KWT/${new Date().getFullYear()}/—— (dibuat otomatis saat diunduh)`;
+}
+
 // ============================================================
 // 19D. AUDIT NOTA — hash & log tiap kali nota diterbitkan/diunduh
 // ============================================================
@@ -4814,7 +4823,11 @@ async function previewNotaFromAudit(logId, btn) {
 
         const meta = row.metadata || {};
 
-        if (row.jenis === 'kuitansi') {
+        // Baris lama (jenis 'kuitansi' dari modal Kuitansi manual yang sudah
+        // dihapus, sebelum digabung ke alur "Bayar") tidak punya cicilanId di
+        // metadata-nya — data lengkapnya tersimpan langsung di metadata baris
+        // log itu sendiri, jadi direkonstruksi lewat buildKuitansiHTML (legacy).
+        if (row.jenis === 'kuitansi' && !meta.cicilanId) {
             const data = {
                 nomor: row.nomor_nota,
                 tempatTanggal: meta.tempatTanggal || '',
@@ -4849,9 +4862,12 @@ async function previewNotaFromAudit(logId, btn) {
             return;
         }
 
-        // jenis === 'pembayaran': cari baris cicilan aslinya kalau masih ada
-        // (belum dihapus) supaya keterangan ikut tampil; kalau sudah dihapus,
-        // rekonstruksi seadanya dari data yang tersimpan di log.
+        // jenis 'pembayaran', atau 'kuitansi' baru (otomatis dari alur Bayar,
+        // ditandai adanya cicilanId di metadata): cari baris cicilan aslinya
+        // kalau masih ada (belum dihapus) supaya keterangan ikut tampil, lalu
+        // render lewat buildNotaHTML() yang sama — judulnya (NOTA PEMBAYARAN
+        // vs KUITANSI) otomatis mengikuti status lunas jamaah SAAT INI. Kalau
+        // baris cicilannya sudah dihapus, rekonstruksi seadanya dari log.
         const cicilan = cicilanList.find(c => String(c.id) === String(meta.cicilanId)) || {
             id: meta.cicilanId || 'log', jumlah: row.jumlah, metode: meta.metode,
             tanggal: meta.tanggal, nomor_nota: row.nomor_nota
@@ -4985,6 +5001,16 @@ function buildNotaHTML(cicilan, kodeVerifikasi) {
     const statusLunas = hargaProgram > 0 && totalDibayarSemua >= hargaProgram;
     const lebihBayar = Math.max(totalDibayarSemua - hargaProgram, 0);
 
+    // Judul & nomor dokumen ditentukan OTOMATIS oleh sistem, bukan dipilih
+    // manual staf: kalau pembayaran ini membuat jamaah berstatus LUNAS (baik
+    // lunas sekali bayar, maupun cicilan terakhir yang menutup pelunasan),
+    // dokumennya berjudul "KUITANSI" & pakai seri nomor kuitansi terpisah
+    // (nomorKuitansiTampilan). Selama masih ada sisa tagihan (DP/cicilan),
+    // tetap "NOTA PEMBAYARAN" dengan nomor nota biasa (nomorNota).
+    const isKuitansi = statusLunas && Number(cicilan.jumlah || 0) >= 0;
+    const judulDokumen = isKuitansi ? 'KUITANSI' : 'NOTA PEMBAYARAN';
+    const nomorDokumen = isKuitansi ? nomorKuitansiTampilan(cicilan) : nomorNota(cicilan);
+
     const baris = (label, value, opts = {}) => `
         <tr>
             <td style="padding:2.5px 0;font-size:10px;color:${NOTA_TEMA.inkSoft};width:110px;vertical-align:top;">${label}</td>
@@ -5014,8 +5040,8 @@ function buildNotaHTML(cicilan, kodeVerifikasi) {
 
         <div style="position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-shrink:0;border-bottom:1.5px solid ${NOTA_TEMA.navy};padding-bottom:9px;margin-bottom:12px;">
             ${buildNotaHeaderHTML()}
-            ${buildNotaTitleBarHTML('NOTA PEMBAYARAN', [
-                `No. ${escapeHtml(nomorNota(cicilan))}`,
+            ${buildNotaTitleBarHTML(judulDokumen, [
+                `No. ${escapeHtml(nomorDokumen)}`,
                 `${escapeHtml(tanggalIndonesia(cicilan.tanggal))}`
             ])}
         </div>
@@ -5059,13 +5085,15 @@ function buildNotaHTML(cicilan, kodeVerifikasi) {
     </div>`;
 }
 
-// ---- KUITANSI (manual, bukan dari data cicilan/pembayaran tersimpan) ----
-// Dipakai oleh tombol "Kuitansi" di tab Keberangkatan — beda dari Nota
-// Pembayaran (yang otomatis dari baris pembayaran_jamaah), kuitansi ini
-// diisi bebas oleh staf (nomor, jumlah, keterangan manual). Tampilannya
-// SENGAJA disamakan persis dengan Nota Pembayaran (pakai ulang komponen
-// builder yang sama: header, watermark, tanda tangan, kode verifikasi)
-// supaya kedua jenis dokumen punya identitas visual yang konsisten.
+// ---- KUITANSI (LEGACY, manual, bukan dari data cicilan/pembayaran
+// tersimpan) ----
+// Dulu dipakai oleh tombol "Kuitansi" terpisah di tab Keberangkatan
+// (diisi bebas oleh staf: nomor, jumlah, keterangan manual). Tombol & modal
+// itu SUDAH DIHAPUS — sejak digabung ke alur "Bayar", dokumen "KUITANSI"
+// dibuat otomatis oleh buildNotaHTML() (judul & nomornya mengikuti status
+// lunas jamaah). Fungsi ini DIPERTAHANKAN hanya supaya baris lama di Audit
+// Nota (jenis 'kuitansi' yang diterbitkan sebelum penggabungan ini) masih
+// bisa direkonstruksi & dipreview lewat previewNotaFromAudit().
 function buildKuitansiHTML(data, kodeVerifikasi) {
     const jumlah = parseRupiahToNumber(data.jumlah);
     const terbilang = data.terbilang || rupiahTerbilang(jumlah);
@@ -5228,8 +5256,7 @@ function setNotaPreviewPanelChrome(title, showActions) {
 // nota riwayat, atau kuitansi) ke dalam sebuah kontainer, dibungkus wrapper
 // yang di-scale proporsional (bukan overflow/scroll) supaya yang terlihat =
 // keseluruhan nota, cuma diperkecil menyesuaikan lebar kontainer. Dipakai
-// oleh showNotaPreviewPanel() (modal Kelola Cicilan) & updateKuitansiPreview()
-// (modal Kuitansi) supaya keduanya identik persis cara render & skalanya.
+// oleh showNotaPreviewPanel() (modal Kelola Cicilan).
 function renderScaledNotaInto(contentEl, html) {
     if (!contentEl) return;
     contentEl.innerHTML = `<div class="nota-preview-scale-wrap"><div class="nota-preview-scale-inner">${html}</div></div>`;
@@ -5290,8 +5317,6 @@ function fitScaleInto(content) {
 window.addEventListener('resize', () => {
     const panel = document.getElementById('cicilanPreviewPanel');
     if (panel && panel.style.display !== 'none') fitNotaPreviewScale();
-    const kwtContent = document.getElementById('kwtPreviewContent');
-    if (kwtContent && document.getElementById('kuitansiModal')?.classList.contains('open')) fitScaleInto(kwtContent);
     const lightbox = document.getElementById('notaLightboxOverlay');
     if (lightbox && lightbox.classList.contains('open')) fitNotaLightboxScale();
 });
@@ -5420,12 +5445,40 @@ async function downloadNotaPembayaran(cicilanId, btn, format = 'jpeg') {
     if (Number(cicilan.jumlah || 0) < 0) { showToast('Nota pembayaran tidak berlaku untuk baris refund', 'error'); return; }
 
     const namaJamaah = (cicilanJamaahInfo && cicilanJamaahInfo.nama ? cicilanJamaahInfo.nama : 'Jamaah').replace(/[^a-zA-Z0-9]+/g, '-');
-    const nomor = nomorNota(cicilan);
+
+    // Sama seperti buildNotaHTML: dokumen ini "KUITANSI" (seri nomor
+    // terpisah, dikunci permanen ke baris pembayaran ini) kalau pembayaran
+    // ini membuat jamaah LUNAS, selain itu tetap "NOTA PEMBAYARAN" biasa.
+    const totalDibayarSemua = cicilanList.reduce((sum, c) => sum + Number(c.jumlah || 0), 0);
+    const statusLunas = cicilanHargaProgram > 0 && totalDibayarSemua >= cicilanHargaProgram;
+    const isKuitansi = statusLunas && Number(cicilan.jumlah || 0) >= 0;
+
+    let nomor;
+    if (isKuitansi) {
+        // Nomor kuitansi diambil SEKALI dari sequence & dikunci permanen ke
+        // baris pembayaran ini (kolom nomor_kuitansi) supaya unduhan ulang
+        // (JPEG lalu PDF, atau reprint di lain waktu) tetap pakai nomor yang
+        // sama, tidak mengambil nomor baru tiap kali.
+        if (!cicilan.nomor_kuitansi) {
+            const nomorBaru = await fetchNextKuitansiNomorValue();
+            try {
+                const { error } = await supabaseClient.from('pembayaran_jamaah')
+                    .update({ nomor_kuitansi: nomorBaru }).eq('id', cicilan.id);
+                if (error) throw error;
+            } catch (err) {
+                console.warn('Gagal menyimpan nomor kuitansi ke database (migrasi sql/tambah_nomor_kuitansi_di_pembayaran.sql belum jalan?):', err);
+            }
+            cicilan.nomor_kuitansi = nomorBaru;
+        }
+        nomor = cicilan.nomor_kuitansi;
+    } else {
+        nomor = nomorNota(cicilan);
+    }
 
     // Hitung & catat kode verifikasi SEBELUM nota dirender, supaya kodenya
     // ikut tercetak di dokumen itu sendiri (bisa dicocokkan balik ke log audit).
     const kodeVerifikasi = await logNotaAudit({
-        jenis: 'pembayaran',
+        jenis: isKuitansi ? 'kuitansi' : 'pembayaran',
         nomorNotaValue: nomor,
         jamaahId: cicilanJamaahId,
         jamaahNama: cicilanJamaahInfo?.nama,
@@ -5436,11 +5489,10 @@ async function downloadNotaPembayaran(cicilanId, btn, format = 'jpeg') {
 
     const exportFn = format === 'pdf' ? exportNotaElementAsPdf : exportNotaElementAsJpeg;
     const ext = format === 'pdf' ? 'pdf' : 'jpg';
-    await exportFn(
-        buildNotaHTML(cicilan, kodeVerifikasi),
-        `Nota-Pembayaran-${namaJamaah}-${cicilan.tanggal || 'tanggal'}.${ext}`,
-        btn
-    );
+    const namaFile = isKuitansi
+        ? `Kuitansi-${namaJamaah}-${cicilan.tanggal || 'tanggal'}.${ext}`
+        : `Nota-Pembayaran-${namaJamaah}-${cicilan.tanggal || 'tanggal'}.${ext}`;
+    await exportFn(buildNotaHTML(cicilan, kodeVerifikasi), namaFile, btn);
 }
 
 function buildNotaRiwayatHTML(kodeVerifikasi) {
@@ -5890,153 +5942,30 @@ async function toggleDokumenJamaah(jamaahId, key, checked) {
 }
 
 // ============================================================
-// 20. KUITANSI (samakan tampilan & alur unduh dengan Nota Pembayaran — lihat
-// buildKuitansiHTML() dan bagian "19C/19D. NOTA PEMBAYARAN / AUDIT NOTA")
+// 20. KUITANSI — sejak digabung ke alur "Bayar" (lihat buildNotaHTML() dan
+// downloadNotaPembayaran() di bagian "19C/19D. NOTA PEMBAYARAN / AUDIT
+// NOTA"), tidak ada lagi tombol/modal Kuitansi manual terpisah. Fungsi di
+// bawah ini yang masih tersisa:
+//  - fetchNextKuitansiNomorValue(): dipakai downloadNotaPembayaran() untuk
+//    mengambil nomor kuitansi otomatis (RPC next_kuitansi_nomor(), lihat
+//    sql/tambah_nomor_kuitansi_otomatis.sql).
+//  - buildKuitansiHTML(): DIPERTAHANKAN hanya untuk merekonstruksi preview
+//    baris log Audit Nota lama (jenis 'kuitansi' yang dulu dibuat dari modal
+//    manual, sebelum digabung) — lihat previewNotaFromAudit().
 // ============================================================
-// Nomor kuitansi dibuat OTOMATIS & TERSISTEM oleh database (sequence + RPC
-// next_kuitansi_nomor(), lihat sql/tambah_nomor_kuitansi_otomatis.sql) —
-// diambil sekali tiap modal dibuka, field-nya dikunci (readonly) supaya
-// tidak bisa diketik ulang/diduplikasi manual oleh staf.
-async function fetchNextKuitansiNomor() {
-    const field = document.getElementById('kwt_nomor');
-    field.value = 'Memuat...';
+async function fetchNextKuitansiNomorValue() {
     try {
         const { data, error } = await supabaseClient.rpc('next_kuitansi_nomor');
         if (error) throw error;
-        field.value = data || '-';
+        return data || `AHI/KWT/${new Date().getFullYear()}/${Date.now().toString().slice(-6)} (sementara)`;
     } catch (err) {
         console.warn('Gagal mengambil nomor kuitansi otomatis (migrasi belum dijalankan?):', err);
-        // Fallback sementara berbasis waktu supaya modal tetap bisa dipakai
+        // Fallback sementara berbasis waktu supaya nota tetap bisa diunduh
         // walau migrasi sql/tambah_nomor_kuitansi_otomatis.sql belum jalan —
         // ditandai jelas "(sementara)" supaya tidak disalahartikan sebagai
         // nomor resmi tersistem.
-        field.value = `AHI/KWT/${new Date().getFullYear()}/${Date.now().toString().slice(-6)} (sementara)`;
         showToast('Nomor kuitansi otomatis gagal dibuat dari server, pakai nomor sementara. Jalankan migrasi sql/tambah_nomor_kuitansi_otomatis.sql', 'error');
-    }
-}
-
-async function openKuitansiModal(jamaahId, namaJamaah, namaProgram) {
-    document.getElementById('kuitansiModal').classList.add('open');
-    document.getElementById('kuitansiForm').reset();
-    await fetchNextKuitansiNomor();
-
-    // Simpan jamaah_id sesi modal ini: dipakai saat "Unduh JPEG"/"Unduh PDF"
-    // untuk mencatat jumlah kuitansi sebagai pembayaran pertama jamaah
-    // tsb ke tabel pembayaran_jamaah (lihat downloadKuitansi()). Dibuka
-    // tanpa jamaahId (mis. dari konteks lain) berarti tidak ada pencatatan
-    // otomatis — kuitansi tetap bisa dicetak seperti biasa.
-    kuitansiJamaahId = jamaahId || null;
-    kuitansiPaymentRecorded = false;
-
-    // "Nama Penerima" & "Tempat & Tanggal" dulu kosong tiap modal dibuka
-    // (staf harus ketik ulang manual tiap kali, termasu nama sendiri).
-    // Sekarang diisi otomatis dari data yang sudah tersedia secara dinamis:
-    // - Nama Penerima: nama/email akun yang sedang login (sama seperti yang
-    //   dipakai getPetugasNama() untuk audit log) — tetap bisa diedit manual
-    //   kalau kuitansi diterima orang lain.
-    // - Tempat & Tanggal: kota kantor (dari NOTA_PERUSAHAAN.alamat, fallback
-    //   'Sleman') + tanggal hari ini format Indonesia — tetap bisa diedit.
-    const penerimaField = document.getElementById('kwt_penerima');
-    if (penerimaField && !penerimaField.value) penerimaField.value = getPetugasDisplayName();
-
-    const tempatTanggalField = document.getElementById('kwt_tempat_tanggal');
-    if (tempatTanggalField && !tempatTanggalField.value) {
-        const kota = (NOTA_PERUSAHAAN.alamat.match(/Kec\.\s*[^,]+,\s*([^,]+)/) || [])[1] || 'Sleman';
-        tempatTanggalField.value = `${kota}, ${tanggalIndonesia(new Date().toISOString().slice(0, 10))}`;
-    }
-
-    // Dibuka dari tombol "Kuitansi" per jamaah (kolom aksi tabel Keberangkatan):
-    // prefill "Sudah Terima Dari" dengan nama jamaah & "Untuk Pembayaran"
-    // dengan nama program, supaya staf tidak perlu ketik ulang manual.
-    // Dipakai untuk mencatat pembayaran pertama jamaah (DP/pendaftaran);
-    // pembayaran berikutnya dicatat lewat tombol "Bayar" (Kelola Cicilan).
-    const dariField = document.getElementById('kwt_dari');
-    if (dariField && namaJamaah) dariField.value = namaJamaah;
-
-    const keteranganField = document.getElementById('kwt_keterangan');
-    if (keteranganField && namaProgram) keteranganField.value = `DP Program ${namaProgram}`;
-
-    updateKuitansiPreview();
-}
-
-function closeKuitansiModal() {
-    document.getElementById('kuitansiModal').classList.remove('open');
-    kuitansiJamaahId = null;
-    kuitansiPaymentRecorded = false;
-}
-
-function readKuitansiFormData() {
-    return {
-        nomor: document.getElementById('kwt_nomor').value,
-        tempatTanggal: document.getElementById('kwt_tempat_tanggal').value,
-        dari: document.getElementById('kwt_dari').value,
-        jumlah: document.getElementById('kwt_jumlah').value,
-        metode: document.getElementById('kwt_metode').value,
-        penerima: document.getElementById('kwt_penerima').value,
-        keterangan: document.getElementById('kwt_keterangan').value
-    };
-}
-
-function updateKuitansiPreview() {
-    const data = readKuitansiFormData();
-    const display = document.getElementById('kwt_terbilang_display');
-    const jumlah = parseRupiahToNumber(data.jumlah);
-    if (display) display.textContent = jumlah ? rupiahTerbilang(jumlah) : '-';
-    renderScaledNotaInto(document.getElementById('kwtPreviewContent'), buildKuitansiHTML(data, NOTA_KODE_PREVIEW));
-}
-
-async function downloadKuitansi(format = 'jpeg') {
-    const data = readKuitansiFormData();
-    if (!parseRupiahToNumber(data.jumlah)) { showToast('Isi jumlah kuitansi terlebih dahulu', 'error'); return; }
-
-    const btn = document.getElementById(format === 'pdf' ? 'kwtDownloadPdfBtn' : 'kwtDownloadJpegBtn');
-    const namaUntuk = (data.dari || 'Kuitansi').replace(/[^a-zA-Z0-9]+/g, '-');
-
-    // Sama seperti Nota Pembayaran: kode verifikasi dihitung & dicatat ke
-    // audit log SEBELUM nota dirender, supaya ikut tercetak di dokumennya
-    // sendiri dan bisa dicocokkan balik ke log (menu Admin > Audit Nota).
-    const kodeVerifikasi = await logNotaAudit({
-        jenis: 'kuitansi',
-        nomorNotaValue: data.nomor && data.nomor.trim() ? data.nomor.trim() : '(nomor belum diisi)',
-        jamaahId: kuitansiJamaahId,
-        jamaahNama: data.dari,
-        programNama: null,
-        jumlah: parseRupiahToNumber(data.jumlah),
-        metadata: { tempatTanggal: data.tempatTanggal, metode: data.metode, penerima: data.penerima, keterangan: data.keterangan }
-    });
-
-    const exportFn = format === 'pdf' ? exportNotaElementAsPdf : exportNotaElementAsJpeg;
-    const ext = format === 'pdf' ? 'pdf' : 'jpg';
-    await exportFn(buildKuitansiHTML(data, kodeVerifikasi), `Kuitansi-${namaUntuk}.${ext}`, btn);
-
-    // Kuitansi dibuka dari tombol per jamaah (kolom aksi tabel Keberangkatan):
-    // catat jumlahnya sebagai pembayaran pertama jamaah ke pembayaran_jamaah,
-    // supaya langsung ikut terhitung di status Lunas/DP & Kelola Cicilan —
-    // tidak perlu diinput dobel manual lewat tombol "Bayar". Hanya dicatat
-    // SEKALI per sesi modal (guard kuitansiPaymentRecorded), supaya kalau
-    // staf unduh JPEG lalu PDF dari kuitansi yang sama, jumlahnya tidak
-    // tercatat dobel.
-    if (kuitansiJamaahId && !kuitansiPaymentRecorded) {
-        try {
-            const { error } = await supabaseClient.from('pembayaran_jamaah').insert([{
-                jamaah_id: kuitansiJamaahId,
-                tanggal: new Date().toISOString().slice(0, 10),
-                jumlah: parseRupiahToNumber(data.jumlah),
-                metode: data.metode || null,
-                keterangan: data.keterangan ? `Kuitansi No. ${data.nomor}: ${data.keterangan}` : `Kuitansi No. ${data.nomor}`
-            }]);
-            if (error) throw error;
-
-            kuitansiPaymentRecorded = true;
-            showToast('Pembayaran dari kuitansi ini berhasil dicatat ke sistem');
-
-            await syncJamaahStatus(kuitansiJamaahId);
-            if (kbSelectedProgram) await loadKbJamaahForProgram(kbSelectedProgram);
-            if (adminSubTab === 'pembayaran') await renderPembayaranPanel();
-        } catch (err) {
-            console.error('Gagal mencatat pembayaran dari kuitansi:', err);
-            showToast('Kuitansi berhasil dibuat, tapi gagal mencatat ke sistem pembayaran: ' + err.message, 'error');
-        }
+        return `AHI/KWT/${new Date().getFullYear()}/${Date.now().toString().slice(-6)} (sementara)`;
     }
 }
 
@@ -6780,11 +6709,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 // 23. CLOSE MODALS ON OVERLAY CLICK
 // ============================================================
 document.querySelectorAll('.modal-overlay').forEach(el => {
-    // Modal Kuitansi dikecualikan: form-nya tidak auto-save, jadi klik di luar
-    // (termasuk area gap di layout form+preview) tidak boleh menutup modal
-    // dan menghilangkan input yang sedang diisi. Harus ditutup lewat tombol
-    // X atau "Tutup" secara eksplisit.
-    if (el.id === 'kuitansiModal') return;
     el.addEventListener('click', function(e) {
         if (e.target === this) this.classList.remove('open');
     });

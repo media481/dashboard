@@ -855,61 +855,6 @@
     </div>
 </div>
 
-<!-- ===== MODAL: KUITANSI ===== -->
-<!-- Tampilan & alur unduh disamakan persis dengan Nota Pembayaran (modal
-     Kelola Cicilan): preview di-render dari builder yang sama
-     (buildKuitansiHTML, lihat js/app.js) dan diskalakan proporsional lewat
-     renderScaledNotaInto(), lalu diunduh sungguhan sebagai JPEG/PDF
-     (html2canvas + jsPDF) dan tercatat ke nota_audit_log (jenis: 'kuitansi'). -->
-<div class="modal-overlay" id="kuitansiModal">
-    <div class="modal-content" style="max-width:1180px;">
-        <div class="modal-header">
-            <h2><i class="bi bi-receipt"></i> Kuitansi</h2>
-            <button class="modal-close" onclick="closeKuitansiModal()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <div class="kuitansi-layout">
-                <form id="kuitansiForm" class="kuitansi-form" onsubmit="return false;">
-                    <div class="form-group">
-                        <label>Nomor Kuitansi</label>
-                        <input type="text" id="kwt_nomor" readonly style="background:var(--bg);color:var(--ink-soft);cursor:not-allowed;">
-                        <small style="color:var(--ink-soft);font-size:11px;">Dibuat otomatis oleh sistem, tidak bisa diubah manual.</small>
-                    </div>
-                    <div class="form-group"><label>Tempat &amp; Tanggal</label><input type="text" id="kwt_tempat_tanggal" placeholder="Yogyakarta, 24 Juli 2026" oninput="updateKuitansiPreview()"></div>
-                    <div class="form-group"><label>Sudah Terima Dari</label><input type="text" id="kwt_dari" placeholder="Nama jamaah" oninput="updateKuitansiPreview()"></div>
-                    <div class="form-group"><label>Jumlah (Rp) *</label><input type="number" id="kwt_jumlah" placeholder="23000000" min="1" oninput="updateKuitansiPreview()"></div>
-                    <div class="form-group">
-                        <label>Uang Sebanyak (Terbilang)</label>
-                        <div style="font-size:12px;font-style:italic;color:var(--ink-soft);padding:8px 0;" id="kwt_terbilang_display">-</div>
-                    </div>
-                    <div class="form-group">
-                        <label>Metode Pembayaran</label>
-                        <select id="kwt_metode" onchange="updateKuitansiPreview()">
-                            <option value="Transfer">Transfer</option>
-                            <option value="Cash">Cash / Tunai</option>
-                        </select>
-                    </div>
-                    <div class="form-group"><label>Nama Penerima</label><input type="text" id="kwt_penerima" placeholder="Nama staf" oninput="updateKuitansiPreview()"></div>
-                    <div class="form-group"><label>Untuk Pembayaran</label><textarea id="kwt_keterangan" rows="2" placeholder="DP Program Umroh..." oninput="updateKuitansiPreview()"></textarea></div>
-                </form>
-                <div class="cicilan-modal-preview kuitansi-preview">
-                    <div class="cicilan-preview-head">
-                        <h4><i class="bi bi-file-earmark-text-fill"></i> Preview Kuitansi</h4>
-                        <button type="button" class="btn-nota-expand" onclick="openNotaLightbox('kwtPreviewContent')" title="Perbesar preview (layar penuh)"><i class="bi bi-arrows-fullscreen"></i></button>
-                    </div>
-                    <div id="kwtPreviewContent" class="nota-preview-content"></div>
-                    <p class="nota-preview-note">Kode Verifikasi dibuat &amp; dicatat ke sistem audit saat Anda menekan "Unduh JPEG" atau "Unduh PDF".</p>
-                    <div class="nota-preview-actions">
-                        <button type="button" class="btn-cancel" onclick="closeKuitansiModal()">Tutup</button>
-                        <button type="button" class="btn-download-jpeg" id="kwtDownloadJpegBtn" onclick="downloadKuitansi('jpeg')"><i class="bi bi-image-fill"></i> Unduh JPEG</button>
-                        <button type="button" class="btn-download-pdf" id="kwtDownloadPdfBtn" onclick="downloadKuitansi('pdf')"><i class="bi bi-file-earmark-pdf-fill"></i> Unduh PDF</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- ===== MODAL: DELETE CONFIRM ===== -->
 <div class="modal-overlay" id="deleteConfirmModal">
     <div class="modal-content" style="max-width:450px;">
