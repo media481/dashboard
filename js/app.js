@@ -548,7 +548,11 @@ async function generateCaptionAI() {
         // (pola sama dengan CX_OCR_FUNCTION_URL untuk OCR poster).
         const response = await fetch(WA_CAPTION_FUNCTION_URL, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "apikey": SUPABASE_ANON_KEY,
+                "Authorization": "Bearer " + SUPABASE_ANON_KEY
+            },
             body: JSON.stringify({ userMsg })
         });
         if (!response.ok) {
@@ -6395,7 +6399,11 @@ async function cxRunOcr(progId, imageUrl, onProgress) {
     onProgress(20);
     const res = await fetch(CX_OCR_FUNCTION_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+        },
         body: JSON.stringify({ imageUrl }),
     });
     onProgress(80);
