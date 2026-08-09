@@ -1,7 +1,9 @@
 // Supabase Edge Function: admin-create-user
 //
 // Dipakai dari tab "Pengaturan User" (khusus admin) untuk membuat akun baru
-// per-orang, dengan role 'admin' atau 'user'. Berbeda dari 3 akun tetap
+// per-orang, dengan role 'admin', 'user', atau 'guest' (lihat saja, tanpa
+// akses tulis -- diblokir juga di level RLS, lihat sql/tambah_role_guest_readonly.sql).
+// Berbeda dari 3 akun tetap
 // (admin@..., user@..., guest@...) yang dibuat lewat scripts/setup-auth-accounts.mjs
 // -- fungsi ini membuat akun BARU untuk orang lain, dan akun-akun itu berdampingan
 // dengan akun tetap yang sudah ada (dashboard_profiles menyimpan satu baris per user,
@@ -26,7 +28,7 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const ALLOWED_ROLES = ["admin", "user"];
+const ALLOWED_ROLES = ["admin", "user", "guest"];
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -86,7 +88,7 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, description: "Password minimal 6 karakter" }, 400);
   }
   if (!ALLOWED_ROLES.includes(dashboard_role)) {
-    return json({ ok: false, description: "Role harus 'admin' atau 'user'" }, 400);
+    return json({ ok: false, description: "Role harus 'admin', 'user', atau 'guest'" }, 400);
   }
 
   const { data: created, error: createErr } = await admin.auth.admin.createUser({

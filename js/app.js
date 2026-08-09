@@ -1507,12 +1507,12 @@ async function renderAdminPanel() {
             <div class="admin-subtab-panel" id="adminSubTab-usersettings" style="display:none;">
                 <div class="admin-section-header">
                     <div><h4><i class="bi bi-person-gear"></i> Pengaturan User</h4>
-                    <p>Tambah akun baru per-orang dengan role Admin (akses penuh) atau User (kelola data program)</p></div>
+                    <p>Tambah akun baru per-orang dengan role Admin (akses penuh), User (kelola data program), atau Guest (lihat saja)</p></div>
                 </div>
 
                 <div class="admin-fieldset" style="margin-top:28px;">
                     <div class="admin-fieldset-title"><i class="bi bi-person-plus-fill"></i> Tambah User Baru</div>
-                    <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;">Buat akun login baru untuk satu orang, dengan role Admin (akses penuh) atau User (kelola data program).</p>
+                    <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;">Buat akun login baru untuk satu orang, dengan role Admin (akses penuh), User (kelola data program), atau Guest (hanya lihat, tanpa akses tambah/edit/hapus).</p>
                     <div class="form-group">
                         <label>Nama / Label<span class="required">*</span></label>
                         <input type="text" id="us_new_label" placeholder="Contoh: Budi Santoso" autocomplete="off">
@@ -1530,6 +1530,7 @@ async function renderAdminPanel() {
                         <select id="us_new_role">
                             <option value="user">User biasa (kelola data program)</option>
                             <option value="admin">Admin (akses penuh)</option>
+                            <option value="guest">Guest (lihat saja, tanpa akses tulis)</option>
                         </select>
                     </div>
                 </div>

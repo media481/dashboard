@@ -43,6 +43,11 @@ sql/
                                   nota_audit_log (ledger append-only, UPDATE/DELETE
                                   diblokir trigger) — lihat panel Admin > Audit Nota
                                   (jalankan ini di project yang SUDAH jalan)
+  tambah_role_guest_readonly.sql ← kunci RLS write (insert/update/delete) semua tabel
+                                  inti ke role admin/user saja lewat current_dashboard_role(),
+                                  supaya role guest benar-benar read-only di database,
+                                  bukan cuma disembunyikan di UI (jalankan setelah
+                                  migrate_supabase_auth.sql & hardening_rls_keamanan.sql)
 .github/workflows/
   keep-supabase-alive.yml      ← ping REST API tiap 3 hari biar project Supabase
                                   free tier tidak auto-pause (butuh secret
@@ -103,10 +108,19 @@ kb_jamaah.dokumen jsonb) —
 
 Role: `admin`, `user`, `guest`, atau belum login sama sekali (anonim).
 - Anonim → hanya lihat "Program Umroh" & "Unggulan"
-- `guest` (sudah login) → tambahan lihat "Jadwal Tamu" & "Keberangkatan" (read-only)
+- `guest` (sudah login) → tambahan lihat semua tab `nav-loggedin-only` (Jadwal Tamu,
+  Pendaftaran, Keberangkatan, Dokumen) tapi **read-only** — tombol tambah/edit/hapus
+  disembunyikan (`canManageProgramData()`) DAN ditolak di level RLS database
+  (lihat `sql/tambah_role_guest_readonly.sql`), jadi tidak bisa ditembus lewat API
+  langsung meski punya JWT authenticated
 - `user` & `admin` → boleh tambah/edit/hapus data (dicek via `canManageProgramData()`)
 - `admin` saja → akses section "Manajemen": Edit & Tambah Program, Crosscheck,
   Telegram, Pengaturan User
+
+Buat akun guest baru lewat tab Admin > Pengaturan User, pilih role "Guest (lihat
+saja, tanpa akses tulis)". Butuh `sql/tambah_role_guest_readonly.sql` sudah dijalankan
+dan Edge Function `admin-create-user` sudah di-deploy ulang (ALLOWED_ROLES kini
+termasuk `guest`).
 
 Sidebar bersifat role-aware, di-render oleh `renderSidebarNav()`. Warna brand pakai CSS
 custom properties `--brand`, `--brand-deep`, `--brand-tint` di `css/style.css` — ganti di
