@@ -1631,7 +1631,6 @@ async function renderAdminPanel() {
             </div>
             </div>
 
-            ${isAdmin ? `
             <div class="admin-subtab-panel" id="adminSubTab-pembayaran" style="display:none;">
                 <div class="admin-section-header">
                     <div><h4><i class="bi bi-cash-stack"></i> Pembayaran Biaya Umroh</h4>
@@ -1899,12 +1898,11 @@ async function renderAdminPanel() {
                 </div>
                 <div id="assetsListWrap"></div>
             </div>
-            ` : ''}
         `;
 
         // Render tabel & siapkan form untuk role yang boleh mengedit
         renderAdminTable();
-        if (isAdmin) { renderCompanyRekeningRows(); renderCompanyKontakWaRows(); }
+        renderCompanyRekeningRows(); renderCompanyKontakWaRows();
         if (canEditData) {
             const dateInput = document.getElementById('admin_tgl_date');
             if (dateInput) {
