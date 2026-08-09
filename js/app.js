@@ -261,50 +261,12 @@ const WA_CAPTION_LIMIT = 1024; // batas umum WA sebelum caption gambar berisiko 
 function getWaCaptionContacts() {
     return (NOTA_PERUSAHAAN.kontak_wa || []).map(n => 'wa.me/' + n).join('\n');
 }
-const WA_CAPTION_SYSTEM_PROMPT = `Kamu adalah copywriter marketing untuk biro umroh "Amiru Tour". Tugasmu mengubah catatan kasar/konsep program dari direktur menjadi SATU caption WhatsApp siap kirim dalam Bahasa Indonesia, mengikuti pola format berikut secara konsisten (struktur section, gaya bullet/emoji), dengan isi yang disesuaikan sepenuhnya dari konsep yang diberikan user:
+// [FIX] System prompt AI dipindah ke Edge Function generate-wa-caption
+// (supabase/functions/generate-wa-caption/index.ts) supaya panggilan ke
+// Gemini API dilakukan di server, bukan langsung dari browser (lihat
+// catatan di generateCaptionAI() di bawah untuk detail alasannya).
+const WA_CAPTION_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/generate-wa-caption`;
 
-CONTOH POLA YANG HARUS DIIKUTI STRUKTURNYA:
-🕋 [JUDUL PROGRAM DENGAN EMOJI RELEVAN] 🕋
-📅 [Durasi] Hari: [Tanggal mulai] – [Tanggal selesai]
-[1-2 kalimat pembuka yang menarik, spesifik ke keunikan program ini — bukan kalimat generik]
-
-✈️ Fasilitas:
-✅ [Maskapai]
-✅ [Transportasi/kereta jika ada]
-✅ Hotel Madinah: [nama hotel] [bintang] ([durasi malam])
-✅ Hotel Makkah: [nama hotel] [bintang] ([durasi malam])
-✅ [fasilitas unik lain jika ada di konsep, misal city tour, tabligh akbar, dst]
-
-💰 Biaya Program:
-[Tulis tiap kategori/paket harga sesuai input, dengan format rapi per kategori kamar: Quad/Quint, Triple, Double, dst. Jika ada beberapa paket (misal upgrade hotel), buat sub-section terpisah]
-
-✅ Termasuk:
-- [list sesuai input]
-
-❌ Tidak Termasuk:
-- [list sesuai input]
-
-📞 Info & Itinerary:
-[nomor WA yang diberikan, masing-masing di baris sendiri]
-
-ATURAN KETAT:
-1. JANGAN mengubah, membulatkan, atau mengarang ulang angka harga maupun tanggal — salin persis dari input.
-2. JANGAN menambahkan section atau fasilitas yang tidak disebutkan di konsep (misal jangan mengada-adakan upgrade hotel kalau tidak ada di input).
-3. Pilih emoji header dan emoji fasilitas yang relevan dengan tema spesifik program ini (city tour, tabligh akbar, Al Ula, dst), jangan asal tempel emoji.
-4. Kalimat pembuka harus terasa ditulis khusus untuk program ini, bukan template kosong seperti "kesempatan langka beribadah di tanah suci" jika tidak relevan dengan isi konsep.
-5. Jika konsep tidak menyebutkan info tertentu (misal tidak ada kereta cepat), jangan ditulis sama sekali.
-6. Output HANYA berupa teks caption final. JANGAN ada kalimat pembuka/penutup dari kamu, JANGAN ada markdown code fence, JANGAN ada penjelasan tambahan.
-7. Selalu gunakan ejaan "Umroh" (bukan "Umrah") di seluruh teks caption, walau konsep/input dari user memakai ejaan "Umrah".
-
-ATURAN PANJANG TEKS (PALING PENTING):
-WhatsApp memotong tampilan caption gambar di sekitar 1024 karakter. Target panjang caption final HARUS di bawah 900 karakter total, TANPA menghilangkan satu pun poin penting (tanggal, harga per kategori kamar, hotel, termasuk/tidak termasuk, kontak). Caranya memadatkan, bukan memotong info:
-- Kalimat pembuka maksimal 1 kalimat pendek (bukan 2), langsung ke poin unik program — atau dihilangkan total jika konsep tidak punya elemen unik untuk dipromosikan.
-- Setiap baris fasilitas/hotel/termasuk/tidak termasuk: 1 baris singkat, hindari kata sambung dan keterangan berulang (misal jarak hotel cukup "350m dari Masjid Nabawi", tidak perlu ditambah "menit jalan kaki" kalau sudah jelas).
-- Gabungkan info yang searah jadi satu baris kalau memungkinkan, tanpa membuat baris jadi terlalu panjang.
-- List "Termasuk"/"Tidak Termasuk": gunakan kata kunci singkat per poin (3-6 kata), bukan kalimat lengkap.
-- Jangan ulangi info yang sudah disebut di bagian lain (misal nama program tidak perlu disebut ulang di body).
-- Spasi/baris kosong antar section tetap dipertahankan secukupnya untuk keterbacaan, tapi jangan ada baris kosong ganda.
-- Setelah menyusun draft di kepalamu, cek ulang: kalau masih di atas 900 karakter, padatkan lagi kalimat pembuka dan baris fasilitas terlebih dahulu sebelum menyentuh data harga/tanggal/kontak (data ini tidak boleh disingkat atau dihapus).`;
 
 function waCaptionGaugeColor(pct) {
     if (pct < 60) return 'var(--success)';
@@ -398,19 +360,23 @@ async function generateCaptionAI() {
 
     try {
         const userMsg = `KONSEP PROGRAM:\n${raw}\n\nNOMOR WA KONTAK YANG DIPAKAI DI BAGIAN PENUTUP:\n${getWaCaptionContacts()}`;
-        const response = await fetch("https://api.anthropic.com/v1/messages", {
+        // [FIX] Sebelumnya fetch langsung ke api.anthropic.com dari browser —
+        // selalu gagal (CORS block + tidak ada API key di client) di luar
+        // sandbox artifact claude.ai. Sekarang lewat Edge Function
+        // generate-wa-caption yang menyimpan GEMINI_API_KEY di server
+        // (pola sama dengan CX_OCR_FUNCTION_URL untuk OCR poster).
+        const response = await fetch(WA_CAPTION_FUNCTION_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                model: "claude-sonnet-4-6",
-                max_tokens: 1000,
-                system: WA_CAPTION_SYSTEM_PROMPT,
-                messages: [{ role: "user", content: userMsg }]
-            })
+            body: JSON.stringify({ userMsg })
         });
-        if (!response.ok) throw new Error('Gagal memanggil API (status ' + response.status + ')');
+        if (!response.ok) {
+            let detail = '';
+            try { detail = (await response.json()).error || ''; } catch (e) {}
+            throw new Error(detail || 'Gagal memanggil API (status ' + response.status + ')');
+        }
         const data = await response.json();
-        let result = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+        let result = (data.text || '').trim();
         if (!result) throw new Error('Tidak ada hasil teks dari model.');
         // Jaga-jaga kalau model tetap menulis "Umrah" walau sudah diinstruksikan di system prompt.
         result = normalizeUmrohSpelling(result);
