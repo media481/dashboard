@@ -942,23 +942,44 @@ function renderMaskapaiOptions(selected = '') {
 
 function getAdminLoginBoxHtml() {
     return `
+    <div class="admin-login-wrap">
     <div class="admin-login-box">
         <div class="admin-login-head">
             <div class="admin-login-icon"><i class="fa-solid fa-shield-halved"></i></div>
             <div>
-                <h3>Masuk</h3>
+                <h3>Masuk Dashboard</h3>
                 <p>Admin &middot; User &middot; Guest</p>
             </div>
         </div>
         <div class="admin-login-body">
             <label class="admin-login-label" for="adminEmailInput">Email</label>
-            <input type="email" id="adminEmailInput" placeholder="nama@amiru-dashboard.internal" autocomplete="username" onkeydown="if(event.key==='Enter')checkAdminLogin()">
+            <div class="admin-login-field">
+                <i class="fa-solid fa-envelope field-icon"></i>
+                <input type="email" id="adminEmailInput" placeholder="nama@amiru-dashboard.internal" autocomplete="username" onkeydown="if(event.key==='Enter')checkAdminLogin()">
+            </div>
             <label class="admin-login-label" for="adminPasswordInput">Password</label>
-            <input type="password" id="adminPasswordInput" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')checkAdminLogin()">
+            <div class="admin-login-field has-toggle">
+                <i class="fa-solid fa-lock field-icon"></i>
+                <input type="password" id="adminPasswordInput" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')checkAdminLogin()">
+                <button type="button" class="toggle-pw" onclick="toggleAdminPasswordVisibility()" aria-label="Tampilkan password">
+                    <i class="fa-solid fa-eye" id="adminPwToggleIcon"></i>
+                </button>
+            </div>
             <button onclick="checkAdminLogin()" class="btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Masuk</button>
             <div id="adminLoginError" class="admin-login-error"></div>
+            <p class="admin-login-hint">Lupa password? Hubungi Admin untuk direset.</p>
         </div>
+    </div>
     </div>`;
+}
+
+function toggleAdminPasswordVisibility() {
+    const input = document.getElementById('adminPasswordInput');
+    const icon = document.getElementById('adminPwToggleIcon');
+    if (!input || !icon) return;
+    const showing = input.type === 'text';
+    input.type = showing ? 'password' : 'text';
+    icon.className = showing ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
 }
 
 const ADMIN_SUBTAB_META = {
