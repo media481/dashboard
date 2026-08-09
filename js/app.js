@@ -7132,16 +7132,18 @@ function renderAssetsAdminTable() {
 
     wrap.innerHTML = sortedKeys.map(key => `
         <div class="asset-group">
-            <div class="asset-group-title">${escapeHtml(key)}</div>
+            <div class="asset-group-title">${escapeHtml(key)} <span class="asset-group-count">${groups[key].length}</span></div>
             <div class="asset-cards">
                 ${groups[key].map(a => `
                     <div class="asset-card">
-                        <a href="${escapeHtmlAttr(ensureUrlProtocol(a.url))}" target="_blank" rel="noopener noreferrer" class="asset-card-main" title="Buka link">
-                            <div class="asset-card-icon"><i class="bi bi-link-45deg"></i></div>
+                        <a href="${escapeHtmlAttr(ensureUrlProtocol(a.url))}" target="_blank" rel="noopener noreferrer" class="asset-card-main" title="${escapeHtmlAttr(a.url || '')}">
+                            <div class="asset-card-icon"><i class="bi ${getAssetIcon(a.url)}"></i></div>
                             <div class="asset-card-body">
-                                <div class="asset-card-title">${escapeHtml(a.judul || '-')}</div>
+                                <div class="asset-card-title-row">
+                                    <span class="asset-card-title">${escapeHtml(a.judul || '-')}</span>
+                                    ${a.catatan ? `<span class="asset-card-tag" title="${escapeHtmlAttr(a.catatan)}">${escapeHtml(a.catatan)}</span>` : ''}
+                                </div>
                                 <div class="asset-card-url">${escapeHtml(a.url || '')}</div>
-                                ${a.catatan ? `<div class="asset-card-note">${escapeHtml(a.catatan)}</div>` : ''}
                             </div>
                         </a>
                         <div class="asset-card-actions">
@@ -7162,6 +7164,22 @@ function ensureUrlProtocol(url) {
     if (!u) return '#';
     if (/^https?:\/\//i.test(u)) return u;
     return 'https://' + u;
+}
+
+// Tebak ikon yang relevan dari domain URL, supaya tiap kartu Assets kelihatan
+// beda sekilas (Drive, Canva, YouTube, dsb) tanpa perlu field tambahan di DB.
+function getAssetIcon(url) {
+    const u = (url || '').toLowerCase();
+    if (/drive\.google\.com|docs\.google\.com|sheets\.google\.com|slides\.google\.com/.test(u)) return 'bi-google';
+    if (/canva\.com/.test(u)) return 'bi-palette-fill';
+    if (/youtube\.com|youtu\.be/.test(u)) return 'bi-youtube';
+    if (/figma\.com/.test(u)) return 'bi-vector-pen';
+    if (/notion\.so|notion\.site/.test(u)) return 'bi-journal-text';
+    if (/instagram\.com/.test(u)) return 'bi-instagram';
+    if (/wa\.me|whatsapp\.com/.test(u)) return 'bi-whatsapp';
+    if (/dropbox\.com/.test(u)) return 'bi-dropbox';
+    if (/\.pdf(\?|$)/.test(u)) return 'bi-file-earmark-pdf-fill';
+    return 'bi-link-45deg';
 }
 
 // escapeHtml tapi aman dipakai di dalam atribut href="..." (escape tanda kutip ganda juga)
