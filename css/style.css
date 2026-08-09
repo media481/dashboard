@@ -337,6 +337,24 @@
         }
         .btn-danger:hover { background: #a03226; transform: translateY(-1px); }
 
+        .btn-arsip-semua {
+            background: var(--danger-tint);
+            color: var(--danger);
+            border: none;
+            padding: 5px 11px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all .15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Inter', sans-serif;
+            opacity: .85;
+        }
+        .btn-arsip-semua:hover { opacity: 1; background: #f6cfc9; }
+
         .hamburger-toggle {
             display: none;
             background: none;

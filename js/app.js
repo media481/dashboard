@@ -3460,8 +3460,8 @@ async function loadKbJamaahForProgram(programId) {
 
         const jamaah = data || [];
         const arsipBtnHtml = (canEdit && jamaah.length) ? `
-            <div style="margin-bottom:12px;">
-                <button type="button" class="btn-danger" style="font-size:12px;padding:6px 14px;" onclick="arsipkanSemuaJamaah('${programId}')">
+            <div style="display:flex;justify-content:flex-end;margin-top:10px;">
+                <button type="button" class="btn-arsip-semua" onclick="arsipkanSemuaJamaah('${programId}')" title="Arsipkan semua jamaah di program ini">
                     <i class="bi bi-archive-fill"></i> Arsipkan Semua Jamaah Program Ini
                 </button>
             </div>` : '';
@@ -3537,7 +3537,6 @@ async function loadKbJamaahForProgram(programId) {
         }).length;
 
         container.innerHTML = `
-            ${arsipBtnHtml}
             <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
                 <span class="status-badge available">${jamaah.length} Total Jamaah</span>
                 <span class="status-badge available">${totalLunas} Lunas</span>
@@ -3563,6 +3562,7 @@ async function loadKbJamaahForProgram(programId) {
                     <tbody>${rows}</tbody>
                 </table>
             </div>
+            ${arsipBtnHtml}
         `;
 
     } catch (err) {
