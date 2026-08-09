@@ -451,7 +451,7 @@
 </div>
 
 <!-- ===== TOAST ===== -->
-<div class="toast" id="toast"><i class="bi bi-check-circle-fill"></i> <span id="toastMessage">Berhasil!</span></div>
+<div class="toast-stack" id="toastStack"></div>
 
 <!-- ===== MODAL: JADWAL TAMU ===== -->
 <div class="modal-overlay" id="jadwalModal">
@@ -823,6 +823,11 @@
                         </div>
                         <div id="cicilanHistoryList" class="cicilan-history"></div>
                     </div>
+
+                    <details class="cicilan-section cicilan-activity-section">
+                        <summary class="cicilan-section-title"><i class="bi bi-journal-text"></i> Riwayat Aktivitas Jamaah <span class="cicilan-history-count" id="jamaahActivityCount"></span></summary>
+                        <div id="jamaahActivityList" class="jamaah-activity-list"></div>
+                    </details>
                 </div>
             </div>
         </div>
@@ -904,6 +909,32 @@
             <div class="form-actions" style="border-top:none;padding-top:0;">
                 <button class="btn-danger" id="deleteConfirmBtn" onclick="confirmDeleteAction()" disabled><i class="bi bi-trash-fill"></i> Hapus Permanen</button>
                 <button class="btn-cancel" onclick="closeDeleteConfirmModal()">Batal</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL: KONFIRMASI AKSI (pengganti confirm() bawaan browser) =====
+     Dipakai untuk semua aksi berisiko selain hapus 1 baris data (yang sudah
+     punya modal sendiri di atas): Hapus Semua Program, Restore Backup,
+     Import Data, Restore Snapshot, dan Tutup Form Tanpa Simpan. Aksi paling
+     destruktif (Hapus Semua Program) mewajibkan mengetik kata konfirmasi,
+     sama seperti pola di modal Hapus Data. -->
+<div class="modal-overlay" id="actionConfirmModal">
+    <div class="modal-content" style="max-width:460px;">
+        <div class="modal-header">
+            <h2 id="actionConfirmTitle"><i class="bi bi-question-circle-fill"></i> Konfirmasi</h2>
+            <button class="modal-close" onclick="resolveActionConfirm(false)">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="actionConfirmMessage" class="action-confirm-message"></div>
+            <div class="form-group" id="actionConfirmTypedWrap" style="display:none;">
+                <label>Ketik <strong id="actionConfirmTypedWord"></strong> untuk konfirmasi</label>
+                <input type="text" id="actionConfirmTypedInput" placeholder="Ketik di sini..." oninput="onActionConfirmTypedInput()">
+            </div>
+            <div class="form-actions" style="border-top:none;padding-top:0;">
+                <button class="btn-danger" id="actionConfirmBtn" onclick="resolveActionConfirm(true)"><i class="bi bi-check-lg"></i> <span id="actionConfirmBtnLabel">Ya, Lanjutkan</span></button>
+                <button class="btn-cancel" onclick="resolveActionConfirm(false)">Batal</button>
             </div>
         </div>
     </div>

@@ -128,19 +128,146 @@ function escapeJsAttr(str) {
         .replace(/'/g, "\\'");
 }
 
-function showToast(msg, type = 'success') {
-    const toast = document.getElementById('toast');
-    const msgEl = document.getElementById('toastMessage');
-    const iconEl = toast.querySelector('i');
-    if (iconEl) {
-        const iconMap = { success: 'bi-check-circle-fill', error: 'bi-exclamation-circle-fill', info: 'bi-info-circle-fill' };
-        iconEl.className = 'bi ' + (iconMap[type] || iconMap.success);
+// ============================================================
+// TOAST QUEUE — stack notifikasi (maks 3 tampil bersamaan) supaya toast
+// yang datang cepat berurutan (mis. auto-sync status setelah simpan
+// pembayaran) tidak saling menimpa sebelum sempat terbaca. Kelebihan
+// antrean ditampilkan begitu slot kosong (toast sebelumnya selesai/ditutup).
+// ============================================================
+const TOAST_MAX_VISIBLE = 3;
+const TOAST_DEFAULT_DURATION = 3000;
+let toastPendingQueue = [];
+let toastActiveCount = 0;
+
+// opts: { duration, actionLabel, onAction }
+function showToast(msg, type = 'success', opts = {}) {
+    toastPendingQueue.push({ msg, type, opts });
+    processToastQueue();
+}
+
+// Toast dengan tombol "Urungkan" untuk aksi ringan (bukan hapus) — status
+// jamaah, tipe kamar, dsb — supaya admin bisa cepat membatalkan kalau
+// salah klik, tanpa harus buka lagi form editnya.
+function showUndoToast(msg, onUndo, opts = {}) {
+    showToast(msg, opts.type || 'success', {
+        duration: opts.duration || 5000,
+        actionLabel: opts.actionLabel || 'Urungkan',
+        onAction: onUndo
+    });
+}
+
+function processToastQueue() {
+    const stack = document.getElementById('toastStack');
+    if (!stack) return;
+    while (toastActiveCount < TOAST_MAX_VISIBLE && toastPendingQueue.length) {
+        const next = toastPendingQueue.shift();
+        renderSingleToast(stack, next.msg, next.type, next.opts || {});
     }
-    msgEl.textContent = msg;
-    toast.className = 'toast ' + type;
-    toast.classList.add('show');
-    clearTimeout(toast._timer);
-    toast._timer = setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+function renderSingleToast(stack, msg, type, opts) {
+    const iconMap = { success: 'bi-check-circle-fill', error: 'bi-exclamation-circle-fill', info: 'bi-info-circle-fill' };
+    toastActiveCount++;
+
+    const el = document.createElement('div');
+    el.className = 'toast toast-item ' + type;
+    el.innerHTML = `<i class="bi ${iconMap[type] || iconMap.success}"></i> <span class="toast-msg"></span>`;
+    el.querySelector('.toast-msg').textContent = msg;
+
+    if (opts.actionLabel && typeof opts.onAction === 'function') {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'toast-action-btn';
+        btn.textContent = opts.actionLabel;
+        btn.addEventListener('click', () => {
+            clearTimeout(timer);
+            dismiss();
+            try { opts.onAction(); } catch (err) { console.error('Toast undo action gagal:', err); }
+        });
+        el.appendChild(btn);
+    }
+
+    stack.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('show'));
+
+    let dismissed = false;
+    const dismiss = () => {
+        if (dismissed) return;
+        dismissed = true;
+        el.classList.remove('show');
+        el.classList.add('toast-leaving');
+        setTimeout(() => {
+            el.remove();
+            toastActiveCount--;
+            processToastQueue();
+        }, 220);
+    };
+
+    const timer = setTimeout(dismiss, opts.duration || TOAST_DEFAULT_DURATION);
+}
+
+// ============================================================
+// KONFIRMASI AKSI — pengganti confirm() bawaan browser untuk semua aksi
+// berisiko (Hapus Semua, Restore Backup/Snapshot, Import Data, Tutup Form
+// Tanpa Simpan), supaya tampilannya konsisten dengan modal Hapus Data.
+// Mengembalikan Promise<boolean>: true kalau user menekan tombol lanjut.
+// ============================================================
+let _actionConfirmResolver = null;
+let _actionConfirmTypedWord = null;
+
+// opts: { title, message (boleh HTML sederhana, hanya string internal — jangan
+// pernah isi dari input user tanpa escapeHtml), confirmLabel, danger, requireTypedWord }
+function openActionConfirm(opts = {}) {
+    const {
+        title = 'Konfirmasi',
+        message = '',
+        confirmLabel = 'Ya, Lanjutkan',
+        danger = true,
+        requireTypedWord = null
+    } = opts;
+    return new Promise(resolve => {
+        // Kalau ada modal konfirmasi lain yang masih menggantung (seharusnya
+        // tidak terjadi di alur normal), batalkan yang lama supaya tidak nyangkut.
+        if (_actionConfirmResolver) { try { _actionConfirmResolver(false); } catch (_) {} }
+        _actionConfirmResolver = resolve;
+        _actionConfirmTypedWord = requireTypedWord || null;
+
+        document.getElementById('actionConfirmTitle').innerHTML =
+            `<i class="bi ${danger ? 'bi-exclamation-triangle-fill' : 'bi-question-circle-fill'}"></i> ${escapeHtml(title)}`;
+        document.getElementById('actionConfirmMessage').innerHTML = message;
+        document.getElementById('actionConfirmBtnLabel').textContent = confirmLabel;
+
+        const btn = document.getElementById('actionConfirmBtn');
+        btn.className = danger ? 'btn-danger' : 'btn-submit';
+
+        const typedWrap = document.getElementById('actionConfirmTypedWrap');
+        const typedInput = document.getElementById('actionConfirmTypedInput');
+        typedInput.value = '';
+        if (requireTypedWord) {
+            typedWrap.style.display = '';
+            document.getElementById('actionConfirmTypedWord').textContent = `"${requireTypedWord}"`;
+            btn.disabled = true;
+        } else {
+            typedWrap.style.display = 'none';
+            btn.disabled = false;
+        }
+
+        document.getElementById('actionConfirmModal').classList.add('open');
+        if (requireTypedWord) setTimeout(() => typedInput.focus(), 50);
+    });
+}
+
+function onActionConfirmTypedInput() {
+    const val = document.getElementById('actionConfirmTypedInput').value.trim();
+    document.getElementById('actionConfirmBtn').disabled = val !== _actionConfirmTypedWord;
+}
+
+function resolveActionConfirm(result) {
+    document.getElementById('actionConfirmModal').classList.remove('open');
+    const resolver = _actionConfirmResolver;
+    _actionConfirmResolver = null;
+    _actionConfirmTypedWord = null;
+    if (resolver) resolver(result);
 }
 
 function formatDateToIndonesian(date) {
@@ -1179,11 +1306,20 @@ async function renderAdminPanel() {
 
             ${canEditData ? `
             <div id="adminFormContainer" class="admin-form-card" style="display:none;">
-                <div class="admin-form-head">
-                    <h3><i class="bi bi-file-earmark-richtext-fill"></i> <span id="adminFormTitle">Tambah Program Baru</span></h3>
-                    <div class="admin-form-head-actions">
-                        <button class="btn-submit-sm" onclick="saveAdminProgram()" title="Simpan (Ctrl+Enter)"><i class="bi bi-floppy-fill"></i> <span>Simpan</span></button>
-                        <button class="admin-form-close" onclick="hideAdminForm()" title="Batal (Esc)">&times;</button>
+                <div class="admin-form-stickygroup">
+                    <div class="admin-form-head">
+                        <h3><i class="bi bi-file-earmark-richtext-fill"></i> <span id="adminFormTitle">Tambah Program Baru</span></h3>
+                        <div class="admin-form-head-actions">
+                            <button class="btn-submit-sm" onclick="saveAdminProgram()" title="Simpan (Ctrl+Enter)"><i class="bi bi-floppy-fill"></i> <span>Simpan</span></button>
+                            <button class="admin-form-close" onclick="hideAdminForm()" title="Batal (Esc)">&times;</button>
+                        </div>
+                    </div>
+                    <div class="admin-form-anchor-nav" id="adminFormAnchorNav">
+                        <button type="button" data-target="af-info" onclick="scrollToAdminSection('af-info')"><i class="bi bi-info-circle-fill"></i> Info</button>
+                        <button type="button" data-target="af-harga" onclick="scrollToAdminSection('af-harga')"><i class="bi bi-tags-fill"></i> Harga</button>
+                        <button type="button" data-target="af-akomodasi" onclick="scrollToAdminSection('af-akomodasi')"><i class="bi bi-building-fill"></i> Akomodasi</button>
+                        <button type="button" data-target="af-link" onclick="scrollToAdminSection('af-link')"><i class="bi bi-link-45deg"></i> Link</button>
+                        <button type="button" data-target="af-konten" onclick="scrollToAdminSection('af-konten')"><i class="bi bi-text-left"></i> Konten</button>
                     </div>
                 </div>
                 <div class="admin-form-body">
@@ -1196,7 +1332,7 @@ async function renderAdminPanel() {
                         </div>
                     </details>
 
-                    <div class="admin-fieldset">
+                    <div class="admin-fieldset" id="af-info">
                         <div class="admin-fieldset-title"><i class="bi bi-info-circle-fill"></i> Informasi Program</div>
                         <div class="form-row">
                             <div class="form-group">
@@ -1221,7 +1357,7 @@ async function renderAdminPanel() {
                         </div>
                     </div>
 
-                    <div class="admin-fieldset">
+                    <div class="admin-fieldset" id="af-harga">
                         <div class="admin-fieldset-title"><i class="bi bi-tags-fill"></i> Harga per Kamar</div>
                         <div class="form-row form-row-4">
                             <div class="form-group">
@@ -1243,7 +1379,7 @@ async function renderAdminPanel() {
                         </div>
                     </div>
 
-                    <div class="admin-fieldset">
+                    <div class="admin-fieldset" id="af-akomodasi">
                         <div class="admin-fieldset-title"><i class="bi bi-building-fill"></i> Akomodasi</div>
                         <div class="form-row">
                             <div class="form-group">
@@ -1267,7 +1403,7 @@ async function renderAdminPanel() {
                         </div>
                     </div>
 
-                    <div class="admin-fieldset">
+                    <div class="admin-fieldset" id="af-link">
                         <div class="admin-fieldset-title"><i class="bi bi-link-45deg"></i> Link & Aset</div>
                         <div class="form-row">
                             <div class="form-group">
@@ -1291,7 +1427,7 @@ async function renderAdminPanel() {
                         </div>
                     </div>
 
-                    <div class="admin-fieldset">
+                    <div class="admin-fieldset" id="af-konten">
                         <div class="admin-fieldset-title"><i class="bi bi-text-left"></i> Konten Tambahan</div>
                         <div class="form-group">
                             <label>Fasilitas / Termasuk</label>
@@ -1700,6 +1836,45 @@ async function showAdminForm() {
     document.getElementById('adminFormContainer').style.display = 'block';
     document.getElementById('adminFormContainer').scrollIntoView({ behavior: 'smooth' });
     focusAdminFormAndSnapshot();
+    setupAdminFormAnchorNav();
+}
+
+// ---- Anchor-nav sticky di dalam form Tambah/Edit Program: supaya kalau
+// salah isi di section atas (mis. Harga) user bisa lompat langsung ke situ
+// tanpa scroll manual, dan tombolnya menyorot section mana yang sedang
+// terlihat (via IntersectionObserver) saat user scroll manual. ----
+let _adminAnchorObserver = null;
+const ADMIN_ANCHOR_SECTION_IDS = ['af-info', 'af-harga', 'af-akomodasi', 'af-link', 'af-konten'];
+
+function scrollToAdminSection(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const stickyGroup = document.querySelector('.admin-form-stickygroup');
+    const offset = (stickyGroup ? stickyGroup.offsetHeight : 0) + 12;
+    const top = window.scrollY + el.getBoundingClientRect().top - offset;
+    window.scrollTo({ top, behavior: 'smooth' });
+}
+
+function setupAdminFormAnchorNav() {
+    teardownAdminFormAnchorNav();
+    const nav = document.getElementById('adminFormAnchorNav');
+    if (!nav || typeof IntersectionObserver === 'undefined') return;
+    const sections = ADMIN_ANCHOR_SECTION_IDS.map(id => document.getElementById(id)).filter(Boolean);
+    if (!sections.length) return;
+    _adminAnchorObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (!entry.isIntersecting) return;
+            const btn = nav.querySelector(`[data-target="${entry.target.id}"]`);
+            if (!btn) return;
+            nav.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    }, { root: null, rootMargin: '-110px 0px -70% 0px', threshold: 0 });
+    sections.forEach(s => _adminAnchorObserver.observe(s));
+}
+
+function teardownAdminFormAnchorNav() {
+    if (_adminAnchorObserver) { _adminAnchorObserver.disconnect(); _adminAnchorObserver = null; }
 }
 
 // Simpan "snapshot" nilai form saat dibuka, untuk deteksi perubahan belum tersimpan
@@ -1716,11 +1891,18 @@ function isAdminFormDirty() {
     return JSON.stringify(getAdminFormData()) !== _adminFormSnapshot;
 }
 
-function hideAdminForm(skipConfirm) {
+async function hideAdminForm(skipConfirm) {
     if (!skipConfirm && isAdminFormDirty()) {
-        if (!confirm('Ada perubahan yang belum disimpan. Tutup form dan buang perubahan?')) return;
+        const ok = await openActionConfirm({
+            title: 'Perubahan Belum Disimpan',
+            message: 'Ada perubahan yang belum disimpan. Tutup form dan buang perubahan?',
+            confirmLabel: 'Buang Perubahan',
+            danger: true
+        });
+        if (!ok) return;
     }
     document.getElementById('adminFormContainer').style.display = 'none';
+    teardownAdminFormAnchorNav();
 }
 
 // Shortcut keyboard saat form Tambah/Edit Program terbuka: Esc = batal, Ctrl/Cmd+Enter = simpan
@@ -1954,6 +2136,7 @@ async function editAdminProgram(id) {
     document.getElementById('adminFormContainer').style.display = 'block';
     document.getElementById('adminFormContainer').scrollIntoView({ behavior: 'smooth' });
     focusAdminFormAndSnapshot();
+    setupAdminFormAnchorNav();
 }
 
 async function deleteProgramById(id) {
@@ -1972,7 +2155,18 @@ async function updateProgramById(id, patch) {
 
 async function clearAllAdminData() {
     if (currentRole !== 'admin') { showToast('Halaman Admin hanya untuk Administrator', 'error'); return; }
-    if (!confirm('PERINGATAN: Hapus SEMUA program?')) return;
+    let jumlahProgram = null;
+    try {
+        const { count } = await supabaseClient.from('programs').select('id', { count: 'exact', head: true });
+        jumlahProgram = count;
+    } catch (_) { /* biarkan null kalau gagal hitung, tetap tampilkan konfirmasi */ }
+    const ok = await openActionConfirm({
+        title: 'Hapus SEMUA Program?',
+        message: `Tindakan ini akan menghapus <strong>${jumlahProgram != null ? jumlahProgram + ' program' : 'SEMUA program'}</strong> beserta seluruh datanya secara permanen dan <strong>tidak dapat dibatalkan</strong>. Sebuah snapshot cadangan otomatis akan dibuat sebelum penghapusan.`,
+        confirmLabel: 'Hapus Semua Program',
+        requireTypedWord: 'HAPUS SEMUA'
+    });
+    if (!ok) return;
     await ensureAutoSnapshot('auto-pre-clear', 'Auto sebelum Hapus Semua');
     try {
         const { data } = await supabaseClient.from('programs').select('id');
@@ -2312,7 +2506,12 @@ function importAdminData() {
                         const n = Array.isArray(imported[t]) ? imported[t].length : 0;
                         if (n) counts.push(`${n} ${TABLE_LABEL[t]}`);
                     });
-                    if (!confirm(`Restore backup dari ${new Date(imported._meta.exported_at).toLocaleString('id-ID')}?\n\n• ${counts.join('\n• ')}\n\nData yang ada TIDAK akan dihapus, hanya ditambah/diperbarui.`)) return;
+                    if (!(await openActionConfirm({
+                        title: 'Restore Backup?',
+                        message: `Restore backup dari <strong>${escapeHtml(new Date(imported._meta.exported_at).toLocaleString('id-ID'))}</strong>?<br><br>• ${counts.map(c => escapeHtml(c)).join('<br>• ')}<br><br>Data yang ada <strong>TIDAK</strong> akan dihapus, hanya ditambah/diperbarui.`,
+                        confirmLabel: 'Restore Backup',
+                        danger: false
+                    }))) return;
                     await ensureAutoSnapshot('auto-pre-import', 'Auto sebelum Import');
                     showToast('Mengimport data...');
                     const { ok, failed } = await importProgramList(imported.programs || []);
@@ -2327,7 +2526,12 @@ function importAdminData() {
                     await renderAdminPanel();
                     showImportResult(ok, failed, otherResults);
                 } else if (Array.isArray(imported)) {
-                    if (!confirm(`Import ${imported.length} program?`)) return;
+                    if (!(await openActionConfirm({
+                        title: 'Import Program?',
+                        message: `Import <strong>${imported.length} program</strong> ke database?`,
+                        confirmLabel: 'Import',
+                        danger: false
+                    }))) return;
                     const { ok, failed } = await importProgramList(imported);
                     await loadDataFromSupabase(true);
                     await renderAdminPanel();
@@ -2425,7 +2629,12 @@ async function listSnapshots() {
 
 // Pulihkan seluruh data dari satu snapshot ke semua tabel (upsert by id).
 async function restoreSnapshot(id) {
-    if (!confirm('Pulihkan data dari snapshot ini?\n\nSemua tabel (program, jamaah, jadwal, pendaftaran, pembayaran, unggulan) akan di-update/insert dari snapshot. Baris yang ada di DB tapi tidak ada di snapshot TIDAK dihapus.\n\nLanjutkan?')) return;
+    if (!(await openActionConfirm({
+        title: 'Pulihkan dari Snapshot?',
+        message: 'Semua tabel (program, jamaah, jadwal, pendaftaran, pembayaran, unggulan) akan di-update/insert dari snapshot ini.<br><br>Baris yang ada di DB tapi tidak ada di snapshot <strong>TIDAK</strong> dihapus.',
+        confirmLabel: 'Pulihkan Snapshot',
+        danger: true
+    }))) return;
     try {
         showToast('Memulihkan snapshot...', 'info');
         const { data: snap, error } = await supabaseClient
@@ -3391,6 +3600,10 @@ async function saveKbJamaah(e) {
     e.preventDefault();
     if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menyimpan data jamaah', 'error'); return; }
     const id = document.getElementById('kb_editId').value;
+    // Snapshot nilai SEBELUM diubah (dari cache lokal) supaya bisa ditawarkan
+    // "Urungkan" & dicatat ke riwayat aktivitas kalau field penting berubah.
+    const beforeSnapshot = id ? kbJamaahList.find(item => String(item.id) === String(id)) : null;
+    const beforeCopy = beforeSnapshot ? { ...beforeSnapshot } : null;
     const data = {
         program_id: document.getElementById('kb_program').value,
         nama: document.getElementById('kb_nama').value.trim(),
@@ -3433,15 +3646,140 @@ async function saveKbJamaah(e) {
             }
         }
 
-        showToast(id ? 'Data jamaah berhasil diperbarui' : 'Data jamaah berhasil ditambahkan');
         closeKbModal();
         await loadKbJamaah();
         renderKbProgramSelector();
         updateMetrics();
 
+        if (id && beforeCopy) {
+            // Edit data yang sudah ada: cek field "ringan" mana yang berubah,
+            // catat ke riwayat aktivitas, dan tawarkan Urungkan kalau ada yang berubah.
+            const changedLabels = await logKbJamaahChanges(id, beforeCopy, data);
+            if (changedLabels.length) {
+                offerUndoJamaahEdit(id, beforeCopy, changedLabels);
+            } else {
+                showToast('Data jamaah berhasil diperbarui');
+            }
+        } else {
+            showToast(id ? 'Data jamaah berhasil diperbarui' : 'Data jamaah berhasil ditambahkan');
+        }
+
     } catch (err) {
         console.error('Save keberangkatan error:', err);
         showToast('Gagal menyimpan: ' + err.message, 'error');
+    }
+}
+
+// Field "ringan" yang dilacak ke Riwayat Aktivitas & bisa diurungkan cepat
+// lewat toast (bukan hapus, jadi wajar kalau bisa dibatalkan cepat tanpa
+// buka lagi form edit). Field lain (nama, NIK, dsb) tidak butuh Urungkan
+// secepat ini karena admin biasanya sadar betul saat mengetik ulang teks.
+const JAMAAH_AUDIT_FIELDS = {
+    status: 'Status Pembayaran',
+    tipe_kamar: 'Tipe Kamar',
+    harga_custom: 'Harga Khusus',
+    catatan: 'Catatan'
+};
+
+// Mencatat field yang berubah ke jamaah_audit_log (ledger append-only).
+// Mengembalikan daftar label field yang berubah (dipakai untuk toast Urungkan).
+// Kegagalan di sini TIDAK membatalkan penyimpanan data jamaah — cukup dicatat
+// ke console, supaya UX simpan data tidak terasa rapuh hanya gara-gara audit.
+async function logKbJamaahChanges(jamaahId, before, after) {
+    const changedFields = Object.keys(JAMAAH_AUDIT_FIELDS).filter(field => {
+        const oldVal = (before[field] ?? '').toString();
+        const newVal = (after[field] ?? '').toString();
+        return oldVal !== newVal;
+    });
+    if (!changedFields.length) return [];
+    try {
+        const rows = changedFields.map(field => ({
+            jamaah_id: jamaahId,
+            jamaah_nama: after.nama || before.nama || null,
+            aksi: 'ubah_' + field,
+            field: JAMAAH_AUDIT_FIELDS[field],
+            nilai_lama: (before[field] ?? '').toString() || '-',
+            nilai_baru: (after[field] ?? '').toString() || '-',
+            actor_role: currentRole || 'publik',
+            actor_nama: getPetugasNama() || null
+        }));
+        const { error } = await supabaseClient.from('jamaah_audit_log').insert(rows);
+        if (error) throw error;
+    } catch (err) {
+        console.warn('Gagal mencatat riwayat aktivitas jamaah (non-fatal):', err);
+    }
+    return changedFields.map(f => JAMAAH_AUDIT_FIELDS[f]);
+}
+
+// Toast "Urungkan" (5 detik) untuk perubahan field ringan pada jamaah —
+// mengembalikan field yang berubah ke nilai sebelumnya kalau ditekan.
+function offerUndoJamaahEdit(jamaahId, beforeCopy, changedLabels) {
+    showUndoToast(`${changedLabels.join(', ')} diperbarui`, async () => {
+        try {
+            const restore = {};
+            Object.keys(JAMAAH_AUDIT_FIELDS).forEach(field => { restore[field] = beforeCopy[field] ?? ''; });
+            const { data: currentRow, error: curErr } = await supabaseClient
+                .from('kb_jamaah').select('*').eq('id', jamaahId).single();
+            if (curErr) throw curErr;
+            const { error } = await supabaseClient.from('kb_jamaah').update(restore).eq('id', jamaahId);
+            if (error) throw error;
+            await logKbJamaahChanges(jamaahId, currentRow || {}, restore);
+            await loadKbJamaah();
+            renderKbProgramSelector();
+            updateMetrics();
+            showToast('Perubahan diurungkan');
+        } catch (err) {
+            console.error('Urungkan perubahan jamaah gagal:', err);
+            showToast('Gagal mengurungkan: ' + err.message, 'error');
+        }
+    });
+}
+
+// ---- Riwayat Aktivitas per Jamaah: menampilkan isi jamaah_audit_log untuk
+// 1 jamaah di panel <details> dalam modal Kelola Cicilan. Berguna untuk audit
+// trail personal kalau nanti ada multi-admin (di luar nota_audit_log yang
+// fokus ke kuitansi/nota pembayaran). ----
+const JAMAAH_ACTIVITY_PAGE_SIZE = 20;
+
+async function loadJamaahActivityLog(jamaahId) {
+    const listEl = document.getElementById('jamaahActivityList');
+    const countEl = document.getElementById('jamaahActivityCount');
+    if (!listEl) return;
+    try {
+        const { data, error } = await supabaseClient
+            .from('jamaah_audit_log')
+            .select('*')
+            .eq('jamaah_id', jamaahId)
+            .order('created_at', { ascending: false })
+            .limit(JAMAAH_ACTIVITY_PAGE_SIZE);
+        if (error) throw error;
+
+        const rows = data || [];
+        if (countEl) countEl.textContent = rows.length ? `(${rows.length})` : '';
+        if (!rows.length) {
+            listEl.innerHTML = `<div class="jamaah-activity-empty"><i class="bi bi-journal"></i><p>Belum ada riwayat perubahan tercatat untuk jamaah ini.</p></div>`;
+            return;
+        }
+        listEl.innerHTML = rows.map(r => {
+            const waktu = r.created_at ? new Date(r.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
+            const siapa = r.actor_nama || 'Tidak diketahui';
+            const peran = r.actor_role ? ` (${escapeHtml(r.actor_role)})` : '';
+            return `
+            <div class="jamaah-activity-item">
+                <div class="jamaah-activity-icon"><i class="bi bi-pencil-square"></i></div>
+                <div class="jamaah-activity-body">
+                    <div class="jamaah-activity-line">
+                        <strong>${escapeHtml(r.field || 'Data')}</strong> diubah dari
+                        <span class="jamaah-activity-val">${escapeHtml(r.nilai_lama || '-')}</span> →
+                        <span class="jamaah-activity-val is-new">${escapeHtml(r.nilai_baru || '-')}</span>
+                    </div>
+                    <div class="jamaah-activity-meta">${escapeHtml(waktu)} · oleh ${escapeHtml(siapa)}${peran}</div>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (err) {
+        console.error('Load riwayat aktivitas jamaah error:', err);
+        listEl.innerHTML = `<div style="padding:12px;color:var(--danger);font-size:12px;">Gagal memuat riwayat aktivitas.</div>`;
     }
 }
 
@@ -3458,8 +3796,11 @@ async function openCicilanModal(jamaahId) {
     document.getElementById('cic_tanggal').value = new Date().toISOString().slice(0, 10);
     document.getElementById('cicilanHistoryList').innerHTML = '<div style="padding:12px;color:var(--ink-soft);font-size:12px;">Memuat riwayat...</div>';
     document.getElementById('cicilanRingkasan').innerHTML = '';
+    const activityListEl = document.getElementById('jamaahActivityList');
+    if (activityListEl) activityListEl.innerHTML = '<div style="padding:12px;color:var(--ink-soft);font-size:12px;">Memuat riwayat aktivitas...</div>';
     modal.classList.add('open');
     await loadCicilanHistory(jamaahId);
+    loadJamaahActivityLog(jamaahId); // tidak perlu ditunggu, boleh muncul belakangan
 }
 
 function closeCicilanModal() {
