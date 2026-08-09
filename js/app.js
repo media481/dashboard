@@ -57,6 +57,7 @@ function sortProgramsDefault(list) {
 let kbJamaahList = [], kbSelectedProgram = null, editingKbId = null;
 let cicilanList = [], cicilanJamaahId = null;
 let cicilanJamaahInfo = null, cicilanProgramInfo = null, cicilanHargaProgram = 0;
+let kuitansiJamaahId = null, kuitansiPaymentRecorded = false;
 let notaGenerating = false;
 let dokSelectedProgram = null;
 // type 'copy'   -> dua checkbox terpisah: Fotocopy & Asli (disimpan sbg {key}_fc / {key}_asli)
@@ -3489,6 +3490,9 @@ async function loadKbJamaahForProgram(programId) {
                     <td style="padding:10px 14px;"><span class="status-badge ${statusClass}">${statusLabel}</span></td>
                     <td style="padding:10px 14px;white-space:nowrap;">
                         <div class="row-actions">
+                            <button class="btn-success" style="font-size:11px;padding:5px 10px;" onclick="openKuitansiModal('${j.id}', '${escapeJsAttr(j.nama)}', '${escapeJsAttr(program.nama || '')}')" title="Buat kuitansi pembayaran pertama jamaah ini">
+                                <i class="bi bi-receipt"></i> Kuitansi
+                            </button>
                             <button class="btn-primary btn-pay" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${j.id}')">
                                 <i class="bi bi-cash-stack"></i> Bayar
                             </button>
@@ -5899,10 +5903,18 @@ async function fetchNextKuitansiNomor() {
     }
 }
 
-async function openKuitansiModal() {
+async function openKuitansiModal(jamaahId, namaJamaah, namaProgram) {
     document.getElementById('kuitansiModal').classList.add('open');
     document.getElementById('kuitansiForm').reset();
     await fetchNextKuitansiNomor();
+
+    // Simpan jamaah_id sesi modal ini: dipakai saat "Unduh JPEG"/"Unduh PDF"
+    // untuk mencatat jumlah kuitansi sebagai pembayaran pertama jamaah
+    // tsb ke tabel pembayaran_jamaah (lihat downloadKuitansi()). Dibuka
+    // tanpa jamaahId (mis. dari konteks lain) berarti tidak ada pencatatan
+    // otomatis — kuitansi tetap bisa dicetak seperti biasa.
+    kuitansiJamaahId = jamaahId || null;
+    kuitansiPaymentRecorded = false;
 
     // "Nama Penerima" & "Tempat & Tanggal" dulu kosong tiap modal dibuka
     // (staf harus ketik ulang manual tiap kali, termasu nama sendiri).
@@ -5921,11 +5933,24 @@ async function openKuitansiModal() {
         tempatTanggalField.value = `${kota}, ${tanggalIndonesia(new Date().toISOString().slice(0, 10))}`;
     }
 
+    // Dibuka dari tombol "Kuitansi" per jamaah (kolom aksi tabel Keberangkatan):
+    // prefill "Sudah Terima Dari" dengan nama jamaah & "Untuk Pembayaran"
+    // dengan nama program, supaya staf tidak perlu ketik ulang manual.
+    // Dipakai untuk mencatat pembayaran pertama jamaah (DP/pendaftaran);
+    // pembayaran berikutnya dicatat lewat tombol "Bayar" (Kelola Cicilan).
+    const dariField = document.getElementById('kwt_dari');
+    if (dariField && namaJamaah) dariField.value = namaJamaah;
+
+    const keteranganField = document.getElementById('kwt_keterangan');
+    if (keteranganField && namaProgram) keteranganField.value = `DP Program ${namaProgram}`;
+
     updateKuitansiPreview();
 }
 
 function closeKuitansiModal() {
     document.getElementById('kuitansiModal').classList.remove('open');
+    kuitansiJamaahId = null;
+    kuitansiPaymentRecorded = false;
 }
 
 function readKuitansiFormData() {
@@ -5961,7 +5986,7 @@ async function downloadKuitansi(format = 'jpeg') {
     const kodeVerifikasi = await logNotaAudit({
         jenis: 'kuitansi',
         nomorNotaValue: data.nomor && data.nomor.trim() ? data.nomor.trim() : '(nomor belum diisi)',
-        jamaahId: null,
+        jamaahId: kuitansiJamaahId,
         jamaahNama: data.dari,
         programNama: null,
         jumlah: parseRupiahToNumber(data.jumlah),
@@ -5971,6 +5996,36 @@ async function downloadKuitansi(format = 'jpeg') {
     const exportFn = format === 'pdf' ? exportNotaElementAsPdf : exportNotaElementAsJpeg;
     const ext = format === 'pdf' ? 'pdf' : 'jpg';
     await exportFn(buildKuitansiHTML(data, kodeVerifikasi), `Kuitansi-${namaUntuk}.${ext}`, btn);
+
+    // Kuitansi dibuka dari tombol per jamaah (kolom aksi tabel Keberangkatan):
+    // catat jumlahnya sebagai pembayaran pertama jamaah ke pembayaran_jamaah,
+    // supaya langsung ikut terhitung di status Lunas/DP & Kelola Cicilan —
+    // tidak perlu diinput dobel manual lewat tombol "Bayar". Hanya dicatat
+    // SEKALI per sesi modal (guard kuitansiPaymentRecorded), supaya kalau
+    // staf unduh JPEG lalu PDF dari kuitansi yang sama, jumlahnya tidak
+    // tercatat dobel.
+    if (kuitansiJamaahId && !kuitansiPaymentRecorded) {
+        try {
+            const { error } = await supabaseClient.from('pembayaran_jamaah').insert([{
+                jamaah_id: kuitansiJamaahId,
+                tanggal: new Date().toISOString().slice(0, 10),
+                jumlah: parseRupiahToNumber(data.jumlah),
+                metode: data.metode || null,
+                keterangan: data.keterangan ? `Kuitansi No. ${data.nomor}: ${data.keterangan}` : `Kuitansi No. ${data.nomor}`
+            }]);
+            if (error) throw error;
+
+            kuitansiPaymentRecorded = true;
+            showToast('Pembayaran dari kuitansi ini berhasil dicatat ke sistem');
+
+            await syncJamaahStatus(kuitansiJamaahId);
+            if (kbSelectedProgram) await loadKbJamaahForProgram(kbSelectedProgram);
+            if (adminSubTab === 'pembayaran') await renderPembayaranPanel();
+        } catch (err) {
+            console.error('Gagal mencatat pembayaran dari kuitansi:', err);
+            showToast('Kuitansi berhasil dibuat, tapi gagal mencatat ke sistem pembayaran: ' + err.message, 'error');
+        }
+    }
 }
 
 // ============================================================
