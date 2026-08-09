@@ -2485,7 +2485,7 @@ const TABLE_LABEL = {
 // upsert tidak ditolak Supabase gara-gara kolom yang tidak dikenal.
 const OPTIONAL_TABLE_COLUMNS = {
     jadwal_tamu: ['id', 'nama', 'tgl', 'jam', 'asal', 'jumlah', 'keperluan', 'wa', 'catatan', 'created_at'],
-    kb_jamaah: ['id', 'program_id', 'nama', 'nik', 'paspor', 'wa', 'asal', 'tipe_kamar', 'harga_custom', 'status', 'catatan', 'dokumen', 'created_at', 'jenis_kelamin', 'tempat_lahir', 'tgl_lahir', 'alamat', 'kode_pos', 'telp_rumah', 'ahli_waris_nama', 'ahli_waris_hubungan'],
+    kb_jamaah: ['id', 'program_id', 'nama', 'nik', 'paspor', 'wa', 'asal', 'tipe_kamar', 'harga_custom', 'status', 'catatan', 'dokumen', 'created_at', 'jenis_kelamin', 'tempat_lahir', 'tgl_lahir', 'alamat', 'kode_pos', 'telp_rumah', 'ahli_waris_nama', 'ahli_waris_hubungan', 'pendaftaran_id'],
     pendaftaran: ['id', 'program_id', 'nama', 'wa', 'asal', 'status', 'catatan', 'created_at'],
     featured_programs: ['id', 'program_id', 'created_at']
 };
@@ -2848,6 +2848,17 @@ async function confirmDeleteAction() {
             cicRowSebelumHapus = data || null;
         }
 
+        // Untuk kb_jamaah: ambil dulu pendaftaran_id-nya (kalau jamaah ini
+        // hasil konversi dari Form Pendaftaran) SEBELUM dihapus, supaya
+        // setelah baris jamaah ini hilang, status pendaftaran asalnya bisa
+        // disinkronkan balik ke "Baru" -- tidak nyangkut selamanya di "Deal".
+        let pendaftaranIdSebelumHapus = null;
+        if (finishedTable === 'kb_jamaah') {
+            const { data } = await supabaseClient
+                .from('kb_jamaah').select('pendaftaran_id').eq('id', finishedId).single();
+            pendaftaranIdSebelumHapus = data ? data.pendaftaran_id : null;
+        }
+
         const result = await supabaseClient.from(finishedTable).delete().eq('id', finishedId);
         if (result.error) throw result.error;
 
@@ -2868,6 +2879,25 @@ async function confirmDeleteAction() {
             renderKbProgramSelector();
             renderDokProgramSelector();
             updateMetrics();
+
+            // Sinkron balik: kalau jamaah yang baru dihapus ini tadinya hasil
+            // konversi dan pendaftaran asalnya masih berstatus "Deal", balikin
+            // ke "Baru" supaya lead-nya kelihatan lagi & bisa dikonversi ulang
+            // atau ditindaklanjuti, bukan nyangkut diam-diam sebagai "Deal".
+            if (pendaftaranIdSebelumHapus) {
+                try {
+                    const { error: pErr } = await supabaseClient
+                        .from('pendaftaran').update({ status: 'baru' })
+                        .eq('id', pendaftaranIdSebelumHapus).eq('status', 'deal');
+                    if (!pErr) {
+                        const idx = pendaftaranList.findIndex(p => String(p.id) === String(pendaftaranIdSebelumHapus));
+                        if (idx !== -1 && pendaftaranList[idx].status === 'deal') pendaftaranList[idx].status = 'baru';
+                        renderPendaftaranSection();
+                    }
+                } catch (pErr) {
+                    console.error('Sinkron balik status pendaftaran gagal:', pErr);
+                }
+            }
         } else if (finishedTable === 'pembayaran_jamaah') {
             // Catat jejak penghapusan pakai data yang sudah diambil sebelum delete di atas.
             try {
@@ -3247,7 +3277,7 @@ function renderPendaftaranSection() {
             <td>
                 <div class="pf-actions">
                     ${p.wa ? `<a href="https://wa.me/${p.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(p.nama||'')}%20kami%20dari%20${encodeURIComponent(NOTA_PERUSAHAAN.nama)}" target="_blank" class="pf-btn-wa" title="Hubungi via WhatsApp"><i class="bi bi-whatsapp"></i></a>` : ''}
-                    ${stKey !== 'deal' ? `<button type="button" class="pf-btn-convert" onclick="convertPendaftaranToJamaah('${p.id}')" title="Jadikan Jamaah — langsung buka form Keberangkatan dengan data terisi"><i class="bi bi-person-check-fill"></i></button>` : ''}
+                    ${(stKey !== 'deal' && stKey !== 'batal') ? `<button type="button" class="pf-btn-convert" onclick="convertPendaftaranToJamaah('${p.id}')" title="Jadikan Jamaah — langsung buka form Keberangkatan dengan data terisi"><i class="bi bi-person-check-fill"></i></button>` : ''}
                     <button type="button" class="pf-btn-edit" onclick="openPendaftaranModal('${p.id}')" title="Edit"><i class="bi bi-pencil-fill"></i></button>
                     <button type="button" class="pf-btn-delete" onclick="openDeleteModal('pendaftaran', '${p.id}', '${escapeJsAttr(p.nama)}')" title="Hapus"><i class="bi bi-trash-fill"></i></button>
                 </div>
@@ -3828,14 +3858,27 @@ function renderKbPendaftaranOptions() {
     const sel = document.getElementById('kb_from_pendaftaran');
     if (!sel) return;
     sel.value = '';
-    if (!pendaftaranList || !pendaftaranList.length) {
-        sel.innerHTML = '<option value="">-- Belum ada data pendaftaran --</option>';
+    // Hanya tampilkan pendaftaran berstatus "Baru"/"Dihubungi" -- yang sudah
+    // "Deal" atau "Batal" disembunyikan supaya staf tidak salah pilih lead
+    // yang sudah pernah dikonversi (cegah jamaah duplikat).
+    const eligible = (pendaftaranList || []).filter(p => p.status !== 'deal' && p.status !== 'batal');
+    if (!eligible.length) {
+        sel.innerHTML = '<option value="">-- Tidak ada calon jamaah yang siap dikonversi --</option>';
         return;
     }
-    const statusLabel = { baru: 'Baru', dihubungi: 'Dihubungi', deal: 'Deal', batal: 'Batal' };
-    const sorted = [...pendaftaranList].sort((a, b) => {
-        // Prioritaskan yang sudah "deal" supaya lebih cepat ditemukan
-        if ((a.status === 'deal') !== (b.status === 'deal')) return a.status === 'deal' ? -1 : 1;
+    const statusLabel = { baru: 'Baru', dihubungi: 'Dihubungi' };
+    // Prioritaskan lead dari program yang sedang aktif di form ini dulu, baru
+    // lead program lain -- supaya tidak perlu scroll banyak kalau leadnya
+    // banyak lintas program.
+    const activeProgramId = document.getElementById('kb_program') ? document.getElementById('kb_program').value : '';
+    const sorted = [...eligible].sort((a, b) => {
+        if (activeProgramId) {
+            const aMatch = String(a.program_id) === String(activeProgramId);
+            const bMatch = String(b.program_id) === String(activeProgramId);
+            if (aMatch !== bMatch) return aMatch ? -1 : 1;
+        }
+        // Lalu prioritaskan yang sudah "Dihubungi" (lebih dekat closing) sebelum "Baru"
+        if ((a.status === 'dihubungi') !== (b.status === 'dihubungi')) return a.status === 'dihubungi' ? -1 : 1;
         return (a.nama || '').localeCompare(b.nama || '');
     });
     sel.innerHTML = '<option value="">-- Pilih calon jamaah dari Pendaftaran --</option>' +
@@ -3915,6 +3958,11 @@ async function saveKbJamaah(e) {
     if (!data.nama) { showToast('Nama jamaah wajib diisi', 'error'); return; }
 
     const pendaftaranSourceId = document.getElementById('kb_pendaftaran_source').value;
+    // Simpan link balik permanen ke baris Pendaftaran asal (kalau jamaah ini
+    // hasil konversi) supaya bisa dilacak "jamaah ini dari lead yang mana",
+    // dan supaya statusnya bisa disinkron balik otomatis kalau baris jamaah
+    // ini nanti dihapus (lihat confirmDeleteAction).
+    if (!id && pendaftaranSourceId) data.pendaftaran_id = pendaftaranSourceId;
 
     try {
         let result;
