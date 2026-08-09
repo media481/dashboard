@@ -307,6 +307,26 @@ function waCaptionGaugeColor(pct) {
     return 'var(--danger)';
 }
 
+// Bikin tinggi textarea otomatis mengikuti panjang isinya, jadi admin tidak
+// perlu drag manual (CSS max-height + overflow-y:auto tetap jadi jaring
+// pengaman kalau teksnya sangat panjang -- lihat .wa-autogrow di style.css).
+function autoGrowTextarea(el) {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+}
+
+// Cerminkan isi kotak "Teks Broadcast" (persis apa adanya, tanpa normalisasi)
+// ke kotak referensi di sebelah "Teks WA (Hasil Generate)" supaya admin bisa
+// bandingkan hasil generate vs sumber aslinya tanpa scroll ke atas.
+function syncBroadcastRefBox() {
+    const src = document.getElementById('parseBroadcastInput');
+    const ref = document.getElementById('admin_teks_wa_broadcast_ref');
+    if (!src || !ref) return;
+    ref.value = src.value;
+    autoGrowTextarea(ref);
+}
+
 // Update indikator panjang teks di bawah textarea Teks WA (dipanggil live saat admin ngetik manual juga)
 function updateWaCaptionGauge(text) {
     const el = document.getElementById('waCaptionGauge');
@@ -392,6 +412,8 @@ async function generateCaptionAI() {
 
         teksWaEl.value = result;
         updateWaCaptionGauge(result);
+        autoGrowTextarea(teksWaEl);
+        syncBroadcastRefBox();
         showToast('Caption WA berhasil dibuat dengan AI');
     } catch (err) {
         console.error(err);
@@ -1170,7 +1192,7 @@ async function renderAdminPanel() {
                 <div class="admin-form-body">
                     <details id="parseBroadcastBox" class="admin-broadcast-box">
                         <summary class="label"><i class="bi bi-magic"></i> Auto-isi dari Teks Broadcast <span class="bc-hint">(opsional — klik untuk buka)</span></summary>
-                        <textarea id="parseBroadcastInput" rows="3" placeholder="Paste teks broadcast program umroh di sini..."></textarea>
+                        <textarea id="parseBroadcastInput" rows="3" placeholder="Paste teks broadcast program umroh di sini..." oninput="autoGrowTextarea(this); syncBroadcastRefBox();"></textarea>
                         <div class="bc-actions">
                             <button onclick="parseBroadcastText()"><i class="bi bi-magic"></i> Isi Otomatis</button>
                             <span id="parseStatus" style="font-size:12px;color:var(--success);font-weight:600;display:none;"></span>
@@ -1287,14 +1309,22 @@ async function renderAdminPanel() {
                             <textarea id="admin_catatan_cx" rows="2" placeholder="Catatan internal..." maxlength="500"></textarea>
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
-                            <div class="teks-wa-label-row">
-                                <label style="margin-bottom:0;">Teks WA</label>
-                                <button type="button" class="btn-ai-caption" id="btnGenCaptionAI" onclick="generateCaptionAI()">
-                                    <i class="bi bi-magic"></i> <span id="btnGenCaptionAIText">Generate dengan AI</span>
-                                </button>
+                            <div class="wa-compare-grid">
+                                <div class="wa-compare-col">
+                                    <div class="teks-wa-label-row">
+                                        <label style="margin-bottom:0;">Teks WA (Hasil Generate)</label>
+                                        <button type="button" class="btn-ai-caption" id="btnGenCaptionAI" onclick="generateCaptionAI()">
+                                            <i class="bi bi-magic"></i> <span id="btnGenCaptionAIText">Generate dengan AI</span>
+                                        </button>
+                                    </div>
+                                    <textarea id="admin_teks_wa" class="wa-autogrow" rows="4" placeholder="Kosongkan untuk generate otomatis, atau klik Generate dengan AI" maxlength="5000" oninput="updateWaCaptionGauge(this.value); autoGrowTextarea(this);"></textarea>
+                                    <div id="waCaptionGauge" class="wa-caption-gauge"></div>
+                                </div>
+                                <div class="wa-compare-col">
+                                    <label>Teks Broadcast Asli <span class="bc-hint">(untuk cek manual)</span></label>
+                                    <textarea id="admin_teks_wa_broadcast_ref" class="wa-autogrow wa-broadcast-ref" rows="4" placeholder="Belum ada teks broadcast yang di-paste." readonly tabindex="-1"></textarea>
+                                </div>
                             </div>
-                            <textarea id="admin_teks_wa" rows="4" placeholder="Kosongkan untuk generate otomatis, atau klik Generate dengan AI" maxlength="5000" oninput="updateWaCaptionGauge(this.value)"></textarea>
-                            <div id="waCaptionGauge" class="wa-caption-gauge"></div>
                         </div>
                     </div>
                 </div>
@@ -1655,6 +1685,11 @@ async function showAdminForm() {
     await ensureAdminProgramPageReady();
     editingProgramId = null;
     setAdminFormData({}); // bersihkan sisa data dari sesi edit sebelumnya
+    // Bersihkan juga sisa teks broadcast dari sesi tambah program sebelumnya,
+    // supaya kotak referensi tidak menampilkan broadcast program lain.
+    const bcInput = document.getElementById('parseBroadcastInput');
+    if (bcInput) bcInput.value = '';
+    syncBroadcastRefBox();
     document.getElementById('adminFormTitle').innerText = 'Tambah Program Baru';
     document.getElementById('adminFormContainer').style.display = 'block';
     document.getElementById('adminFormContainer').scrollIntoView({ behavior: 'smooth' });
@@ -1748,6 +1783,7 @@ function setAdminFormData(data) {
     document.getElementById('admin_catatan_cx').value = data.catatan_cx || '';
     document.getElementById('admin_teks_wa').value = data.teks_wa || '';
     updateWaCaptionGauge(data.teks_wa || '');
+    autoGrowTextarea(document.getElementById('admin_teks_wa'));
 }
 
 // Guard: hanya role 'admin' & 'user' yang boleh tambah/edit/hapus data program
@@ -1889,6 +1925,11 @@ async function editAdminProgram(id) {
 
     setAdminFormData(unpacked);
     editingProgramId = id;
+    // Program lama tidak punya teks broadcast asli tersimpan — bersihkan kotak
+    // broadcast & referensinya supaya tidak menampilkan sisa dari program lain.
+    const bcInput = document.getElementById('parseBroadcastInput');
+    if (bcInput) bcInput.value = '';
+    syncBroadcastRefBox();
     document.getElementById('adminFormTitle').innerText = 'Edit Program';
     document.getElementById('adminFormContainer').style.display = 'block';
     document.getElementById('adminFormContainer').scrollIntoView({ behavior: 'smooth' });
@@ -2061,6 +2102,11 @@ function parseBroadcastText() {
     };
     document.getElementById('admin_teks_wa').value = generateAutoWAText(parsedData);
     updateWaCaptionGauge(document.getElementById('admin_teks_wa').value);
+    autoGrowTextarea(document.getElementById('admin_teks_wa'));
+    // Kotak "Teks Broadcast Asli" di sebelah hasil generate mengambil dari
+    // parseBroadcastInput (bukan `raw` yang sudah dinormalisasi) supaya admin
+    // membandingkan hasil generate dengan pesan broadcast persis apa adanya.
+    syncBroadcastRefBox();
 
     const parts = [];
     if (nama) parts.push('Nama');
