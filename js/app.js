@@ -4809,6 +4809,41 @@ function cxNormalizeHarga(str) {
 function cxNormalizeMaskapai(str) {
     return String(str || '').toLowerCase().trim().replace(/\b(airlines?|airways|air)\b/gi, '').replace(/\s+/g, ' ').trim();
 }
+// Ambil "menit jalan kaki" dari teks hotel, mis. "500m 7 menit jalan kaki" -> "7"
+function cxExtractWalkMinutes(str) {
+    const m = String(str || '').match(/(\d+)\s*menit/i);
+    return m ? m[1] : null;
+}
+// Nama hotel di field manual sering lebih detail dari poster, mis.
+//   Manual : "Maysan Al Maqam / Setaraf (6 malam, 500m 7 menit jalan kaki)"
+//   Poster : "Maysan Al Maqam 7 menit"
+// -> keduanya harus dianggap COCOK. Jadi sebelum dibandingkan, buang bagian
+// "(...)" (durasi malam/jarak), bagian setelah "/" (nama hotel alternatif/setaraf),
+// dan keterangan "X menit"/"X m" supaya tersisa nama hotel inti saja.
+function cxNormalizeHotelName(str) {
+    if (!str) return '';
+    let s = String(str);
+    s = s.replace(/\([^)]*\)/g, ' ');           // buang "(6 malam, 500m 7 menit jalan kaki)"
+    s = s.split('/')[0];                         // buang "/ Setaraf" dst — ambil nama sebelum "/"
+    s = s.replace(/\d+\s*menit\b/gi, ' ');        // buang "7 menit"
+    s = s.replace(/\d+\s*m\b/gi, ' ');            // buang "500m"
+    s = s.replace(/jalan\s*kaki/gi, ' ');
+    return s.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+// Cocok kalau nama hotel intinya sama (salah satu bisa jadi ringkasan dari yang
+// lain, jadi dicek saling contains, bukan exact) DAN, kalau kedua sisi sama-sama
+// mencantumkan estimasi menit jalan kaki, angkanya harus sama. Kalau cuma salah
+// satu sisi yang mencantumkan menit (mis. poster tidak menyebut jarak sama sekali),
+// itu tidak dianggap mismatch — poster memang sering lebih ringkas dari data admin.
+function cxHotelValuesMatch(a, b) {
+    const na = cxNormalizeHotelName(a), nb = cxNormalizeHotelName(b);
+    if (!na || !nb) return false;
+    const nameMatch = na === nb || na.includes(nb) || nb.includes(na);
+    if (!nameMatch) return false;
+    const ma = cxExtractWalkMinutes(a), mb = cxExtractWalkMinutes(b);
+    if (ma && mb && ma !== mb) return false;
+    return true;
+}
 function cxValuesMatch(field, a, b) {
     if (!a || !b) return false;
     if (field && field.indexOf('harga') === 0) {
@@ -4819,6 +4854,9 @@ function cxValuesMatch(field, a, b) {
         const na = cxNormalizeMaskapai(a), nb = cxNormalizeMaskapai(b);
         if (!na || !nb) return false;
         return na === nb || na.includes(nb) || nb.includes(na);
+    }
+    if (field === 'hotel_makkah' || field === 'hotel_madinah') {
+        return cxHotelValuesMatch(a, b);
     }
     return a.toLowerCase().trim() === b.toLowerCase().trim();
 }
