@@ -124,13 +124,14 @@
         <div class="topbar">
             <div class="topbar-left">
                 <h1>Dashboard Amiru</h1>
-                <p>Kelola program umroh, jadwal tamu, dan data keberangkatan</p>
             </div>
-            <div class="topbar-actions">
+            <div class="topbar-center">
                 <div class="search-box">
                     <i class="bi bi-search"></i>
                     <input type="text" id="searchInput" placeholder="Cari program, maskapai..." oninput="handleSearchInput(event)">
                 </div>
+            </div>
+            <div class="topbar-actions">
                 <button class="btn-primary" id="btnTambahProgram" onclick="openAdminPanel('program')" style="display:none;">
                     <i class="bi bi-plus-lg"></i> Tambah
                 </button>

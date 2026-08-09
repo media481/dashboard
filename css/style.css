@@ -236,7 +236,6 @@
 
         .topbar {
             display: flex;
-            justify-content: space-between;
             align-items: center;
             margin-bottom: 18px;
             flex-wrap: wrap;
@@ -247,6 +246,8 @@
             align-items: baseline;
             gap: 10px;
             flex-wrap: wrap;
+            flex: 1 1 220px;
+            min-width: 0;
         }
         .topbar-left h1 {
             font-family: 'Space Grotesk';
@@ -258,11 +259,19 @@
             font-size: 12.5px;
             margin-top: 0;
         }
+        .topbar-center {
+            display: flex;
+            justify-content: center;
+            flex: 2 1 320px;
+            min-width: 0;
+        }
         .topbar-actions {
             display: flex;
             gap: 10px;
             align-items: center;
             flex-wrap: wrap;
+            flex: 1 1 220px;
+            justify-content: flex-end;
         }
         .search-box {
             display: flex;
@@ -270,9 +279,10 @@
             gap: 8px;
             background: var(--surface);
             border: 1px solid var(--line);
-            padding: 7px 12px;
+            padding: 9px 14px;
             border-radius: 10px;
-            min-width: 180px;
+            width: 100%;
+            max-width: 560px;
         }
         .search-box i { color: var(--ink-soft); font-size: 14px; }
         .search-box input {
@@ -1926,8 +1936,9 @@
             main { padding: 14px; }
             .topbar { flex-direction: column; align-items: flex-start; }
             .topbar-left { flex-direction: column; gap: 2px; }
+            .topbar-center { width: 100%; }
             .topbar-actions { width: 100%; }
-            .search-box { flex: 1; min-width: auto; }
+            .search-box { width: 100%; max-width: none; }
             .metrics { grid-template-columns: 1fr 1fr; gap: 10px; }
             .tabs-bar { padding: 8px 12px 0; gap: 2px; }
             .tab-btn { padding: 8px 12px; font-size: 12px; }
