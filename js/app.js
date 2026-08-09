@@ -1520,9 +1520,10 @@ async function renderAdminPanel() {
                                     <th>Jumlah</th>
                                     <th>Dicetak Oleh</th>
                                     <th>Kode Verifikasi</th>
+                                    <th>Preview</th>
                                 </tr>
                             </thead>
-                            <tbody id="auditNotaTableBody"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--ink-soft);">Memuat...</td></tr></tbody>
+                            <tbody id="auditNotaTableBody"><tr><td colspan="8" style="text-align:center;padding:24px;color:var(--ink-soft);">Memuat...</td></tr></tbody>
                         </table>
                     </div>
                 </div>
@@ -3877,7 +3878,7 @@ async function loadNotaAuditLog(reset) {
 
     if (reset) {
         auditNotaOffset = 0;
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--ink-soft);">Memuat...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--ink-soft);">Memuat...</td></tr>';
     }
 
     const search = (document.getElementById('auditNotaSearch')?.value || '').trim();
@@ -3906,10 +3907,15 @@ async function loadNotaAuditLog(reset) {
                 <td style="white-space:nowrap;">${r.jumlah != null ? formatRupiah(Number(r.jumlah)) : '-'}</td>
                 <td>${escapeHtml(r.dicetak_oleh_nama || '-')} <span style="color:var(--ink-soft);font-size:11px;">(${escapeHtml(r.dicetak_oleh_role || '-')})</span></td>
                 <td style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;">${escapeHtml(r.kode_verifikasi || '-')}</td>
+                <td style="text-align:center;">
+                    <button type="button" class="row-icon-btn" onclick="previewNotaFromAudit('${r.id}', this)" style="background:var(--brand-tint);color:var(--brand);" title="Preview nota sesuai kode verifikasi ini">
+                        <i class="bi bi-eye-fill"></i>
+                    </button>
+                </td>
             </tr>`).join('');
 
         if (reset) {
-            tbody.innerHTML = rowsHtml || '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--ink-soft);">Belum ada nota yang tercatat.</td></tr>';
+            tbody.innerHTML = rowsHtml || '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--ink-soft);">Belum ada nota yang tercatat.</td></tr>';
         } else {
             tbody.insertAdjacentHTML('beforeend', rowsHtml);
         }
@@ -3919,9 +3925,92 @@ async function loadNotaAuditLog(reset) {
         if (loadMoreBtn) loadMoreBtn.style.display = (count != null && auditNotaOffset < count) ? '' : 'none';
     } catch (err) {
         console.error('loadNotaAuditLog error:', err);
-        if (reset) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--danger);">Gagal memuat log audit: ${escapeHtml(err.message)}. Pastikan migrasi sql/tambah_nota_audit.sql sudah dijalankan di Supabase.</td></tr>`;
+        if (reset) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--danger);">Gagal memuat log audit: ${escapeHtml(err.message)}. Pastikan migrasi sql/tambah_nota_audit.sql sudah dijalankan di Supabase.</td></tr>`;
         showToast('Gagal memuat log audit nota', 'error');
     }
+}
+
+// ---- Preview nota langsung dari 1 baris log Audit Nota, direkonstruksi
+// ulang dari kode_verifikasi & data terkait yang tersimpan di baris log itu
+// (jamaah_id, metadata) — bukan menyimpan salinan HTML nota di DB, supaya
+// ledger-nya tetap ringan. Untuk jenis pembayaran/riwayat, data jamaah &
+// riwayat pembayaran diambil live dari DB (bisa saja beda dari kondisi saat
+// nota itu pertama diterbitkan kalau datanya sudah diedit belakangan — ini
+// murni alat bantu pengecekan/referensi, bukan reproduksi arsip 1:1).
+// Untuk jenis kuitansi, semua data yang dibutuhkan sudah lengkap tersimpan
+// di kolom metadata baris log itu sendiri, jadi tidak perlu query tambahan.
+async function previewNotaFromAudit(logId, btn) {
+    if (btn) btn.disabled = true;
+    try {
+        const { data: row, error } = await supabaseClient.from('nota_audit_log').select('*').eq('id', logId).single();
+        if (error || !row) { showToast('Log audit tidak ditemukan', 'error'); return; }
+
+        const meta = row.metadata || {};
+
+        if (row.jenis === 'kuitansi') {
+            const data = {
+                nomor: row.nomor_nota,
+                tempatTanggal: meta.tempatTanggal || '',
+                dari: row.jamaah_nama || '',
+                jumlah: row.jumlah != null ? String(row.jumlah) : '',
+                metode: meta.metode || '',
+                penerima: meta.penerima || '',
+                keterangan: meta.keterangan || ''
+            };
+            showAuditNotaPreviewInLightbox(buildKuitansiHTML(data, row.kode_verifikasi));
+            return;
+        }
+
+        if (!row.jamaah_id) { showToast('Data jamaah untuk nota ini tidak lengkap, tidak bisa dipreview', 'error'); return; }
+
+        const { data: jamaahRow, error: jErr } = await supabaseClient.from('kb_jamaah').select('*').eq('id', row.jamaah_id).single();
+        if (jErr || !jamaahRow) { showToast('Data jamaah untuk nota ini sudah tidak ada (mungkin sudah dihapus)', 'error'); return; }
+
+        const { data: bayarRows, error: bErr } = await supabaseClient.from('pembayaran_jamaah').select('*').eq('jamaah_id', row.jamaah_id).order('tanggal', { ascending: false });
+        if (bErr) throw bErr;
+
+        // Pakai variabel global yang sama dengan yang dibaca buildNotaHTML() /
+        // buildNotaRiwayatHTML() supaya hasilnya identik dengan preview biasa
+        // di modal Kelola Cicilan.
+        cicilanJamaahInfo = jamaahRow;
+        cicilanProgramInfo = dataUmroh.find(p => String(p.id) === String(jamaahRow.program_id)) || null;
+        cicilanHargaProgram = parseRupiahToNumber(cicilanProgramInfo ? cicilanProgramInfo.harga_quint : 0);
+        cicilanList = bayarRows || [];
+
+        if (row.jenis === 'riwayat') {
+            showAuditNotaPreviewInLightbox(buildNotaRiwayatHTML(row.kode_verifikasi));
+            return;
+        }
+
+        // jenis === 'pembayaran': cari baris cicilan aslinya kalau masih ada
+        // (belum dihapus) supaya keterangan ikut tampil; kalau sudah dihapus,
+        // rekonstruksi seadanya dari data yang tersimpan di log.
+        const cicilan = cicilanList.find(c => String(c.id) === String(meta.cicilanId)) || {
+            id: meta.cicilanId || 'log', jumlah: row.jumlah, metode: meta.metode,
+            tanggal: meta.tanggal, nomor_nota: row.nomor_nota
+        };
+        showAuditNotaPreviewInLightbox(buildNotaHTML(cicilan, row.kode_verifikasi));
+    } catch (err) {
+        console.error('previewNotaFromAudit error:', err);
+        showToast('Gagal memuat preview nota', 'error');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+// Tampilkan HTML nota langsung di lightbox layar penuh yang sama dipakai
+// tombol "Perbesar" pada preview biasa (lihat openNotaLightbox()) — dipakai
+// terpisah di sini karena preview dari Audit Nota tidak melalui panel kecil
+// #notaPreviewContent lebih dulu (baris log bisa dibuka dari mana saja di
+// tabel, tidak terikat ke modal Kelola Cicilan/Kuitansi yang sedang terbuka).
+function showAuditNotaPreviewInLightbox(html) {
+    const stage = document.getElementById('notaLightboxStage');
+    const overlay = document.getElementById('notaLightboxOverlay');
+    if (!stage || !overlay) return;
+    stage.innerHTML = `<div>${html}</div>`;
+    overlay.classList.add('open');
+    document.addEventListener('keydown', handleNotaLightboxKeydown);
+    requestAnimationFrame(fitNotaLightboxScale);
 }
 
 function tanggalIndonesia(isoDate) {
