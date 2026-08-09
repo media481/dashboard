@@ -5986,20 +5986,25 @@ async function loadDokumenForProgram(programId) {
 
         container.innerHTML = `
             <div class="table-container" style="overflow-x:auto;">
-                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <table style="width:100%;min-width:${820 + DOKUMEN_JENIS.filter(d => d.type === 'copy').length * 88}px;border-collapse:collapse;font-size:13px;table-layout:fixed;">
+                    <colgroup>
+                        <col style="width:190px;">
+                        ${DOKUMEN_JENIS.map(d => d.type === 'copy' ? '<col style="width:44px;"><col style="width:44px;">' : '<col style="width:110px;">').join('')}
+                        <col style="width:140px;">
+                    </colgroup>
                     <thead style="background:var(--bg);">
                         <tr>
                             <th rowspan="2" style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);vertical-align:bottom;">Nama</th>
                             ${DOKUMEN_JENIS.map(d => d.type === 'copy'
-                                ? `<th colspan="2" style="padding:8px 10px 4px;text-align:center;font-size:11px;text-transform:uppercase;color:var(--ink-soft);border-left:1px solid var(--line);">${escapeHtml(d.label)}</th>`
-                                : `<th rowspan="2" style="padding:10px 8px;text-align:center;font-size:11px;text-transform:uppercase;color:var(--ink-soft);vertical-align:bottom;border-left:1px solid var(--line);">${escapeHtml(d.label)}</th>`
+                                ? `<th colspan="2" style="padding:8px 4px 4px;text-align:center;font-size:10.5px;line-height:1.25;text-transform:uppercase;color:var(--ink-soft);border-left:1px solid var(--line);word-break:break-word;">${escapeHtml(d.label)}</th>`
+                                : `<th rowspan="2" style="padding:10px 6px;text-align:center;font-size:10.5px;line-height:1.25;text-transform:uppercase;color:var(--ink-soft);vertical-align:bottom;border-left:1px solid var(--line);word-break:break-word;">${escapeHtml(d.label)}</th>`
                             ).join('')}
                             <th rowspan="2" style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);vertical-align:bottom;border-left:1px solid var(--line);">Status</th>
                         </tr>
                         <tr>
                             ${DOKUMEN_JENIS.filter(d => d.type === 'copy').map(() => `
-                                <th style="padding:2px 8px 8px;text-align:center;font-size:10px;font-weight:500;color:var(--ink-soft);">FC</th>
-                                <th style="padding:2px 8px 8px;text-align:center;font-size:10px;font-weight:500;color:var(--ink-soft);">Asli</th>
+                                <th style="padding:2px 2px 8px;text-align:center;font-size:10px;font-weight:500;color:var(--ink-soft);">FC</th>
+                                <th style="padding:2px 2px 8px;text-align:center;font-size:10px;font-weight:500;color:var(--ink-soft);">Asli</th>
                             `).join('')}
                         </tr>
                     </thead>
@@ -6009,19 +6014,19 @@ async function loadDokumenForProgram(programId) {
                             const lengkap = isDokumenLengkap(dok);
                             return `
                             <tr style="border-bottom:1px solid var(--line);">
-                                <td style="padding:10px 14px;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
+                                <td style="padding:10px 14px;overflow:hidden;text-overflow:ellipsis;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
                                 ${DOKUMEN_JENIS.map(d => d.type === 'copy' ? `
-                                    <td style="padding:10px 6px;text-align:center;border-left:1px solid var(--line);">
+                                    <td style="padding:10px 2px;text-align:center;border-left:1px solid var(--line);">
                                         <input type="checkbox" ${dok[d.key + '_fc'] ? 'checked' : ''} ${canEdit ? '' : 'disabled'}
                                             onchange="toggleDokumenJamaah('${j.id}','${d.key}_fc',this.checked)"
                                             style="width:16px;height:16px;cursor:${canEdit ? 'pointer' : 'default'};">
                                     </td>
-                                    <td style="padding:10px 6px;text-align:center;">
+                                    <td style="padding:10px 2px;text-align:center;">
                                         <input type="checkbox" ${dok[d.key + '_asli'] ? 'checked' : ''} ${canEdit ? '' : 'disabled'}
                                             onchange="toggleDokumenJamaah('${j.id}','${d.key}_asli',this.checked)"
                                             style="width:16px;height:16px;cursor:${canEdit ? 'pointer' : 'default'};">
                                     </td>` : `
-                                    <td style="padding:10px 14px;text-align:center;border-left:1px solid var(--line);">
+                                    <td style="padding:10px 6px;text-align:center;border-left:1px solid var(--line);">
                                         <input type="checkbox" ${dok[d.key] ? 'checked' : ''} ${canEdit ? '' : 'disabled'}
                                             onchange="toggleDokumenJamaah('${j.id}','${d.key}',this.checked)"
                                             style="width:16px;height:16px;cursor:${canEdit ? 'pointer' : 'default'};">
