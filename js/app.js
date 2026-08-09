@@ -815,8 +815,7 @@ async function checkAdminLogin() {
 
         loginAttempts = 0;
         setAdminSession(profile.dashboard_role);
-        const petugasNama = document.getElementById('adminPetugasInput')?.value.trim() || '';
-        try { sessionStorage.setItem('admin_petugas_nama', petugasNama); } catch (_) {}
+        try { sessionStorage.setItem('admin_login_email', email); } catch (_) {}
         closeAdminPanel();
         renderSidebarNav();
         showToast('Berhasil login sebagai ' + profile.label);
@@ -880,7 +879,7 @@ async function logoutAdmin() {
     sessionStorage.removeItem('admin_logged_in');
     sessionStorage.removeItem('admin_role');
     sessionStorage.removeItem('admin_login_time');
-    sessionStorage.removeItem('admin_petugas_nama');
+    sessionStorage.removeItem('admin_login_email');
     if (sessionTimeout) clearTimeout(sessionTimeout);
     closeAdminPanel();
     renderSidebarNav();
@@ -952,8 +951,6 @@ function getAdminLoginBoxHtml() {
             </div>
         </div>
         <div class="admin-login-body">
-            <label class="admin-login-label" for="adminPetugasInput">Nama Petugas <span>(opsional)</span></label>
-            <input type="text" id="adminPetugasInput" placeholder="Untuk log audit" maxlength="100" onkeydown="if(event.key==='Enter')checkAdminLogin()">
             <label class="admin-login-label" for="adminEmailInput">Email</label>
             <input type="email" id="adminEmailInput" placeholder="nama@amiru-dashboard.internal" autocomplete="username" onkeydown="if(event.key==='Enter')checkAdminLogin()">
             <label class="admin-login-label" for="adminPasswordInput">Password</label>
@@ -3496,8 +3493,10 @@ async function sha256Hex(text) {
 // = 10 karakter pertama dari hash konten nota. Karena hash-nya deterministik
 // dari data nota (nomor, jamaah, jumlah, tanggal), siapa pun bisa menghitung
 // ulang hash yang sama dari data aslinya untuk mengecek nota itu tidak dipalsukan.
+// dicetak_oleh_nama sekarang otomatis = email akun yang login (bukan input manual
+// lagi) -- lebih akurat untuk audit karena tidak bisa diketik bebas/dipalsukan user.
 function getPetugasNama() {
-    try { return sessionStorage.getItem('admin_petugas_nama') || ''; } catch (_) { return ''; }
+    try { return sessionStorage.getItem('admin_login_email') || ''; } catch (_) { return ''; }
 }
 
 // Mencatat 1 baris ke nota_audit_log (ledger append-only) setelah nota
