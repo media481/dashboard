@@ -1630,7 +1630,7 @@
            berapa persen" bisa dibaca sekilas tanpa menghitung manual. ---- */
         .cicilan-summary { margin-bottom: 18px; }
         .cicilan-summary-card {
-            background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%);
+            background: linear-gradient(135deg, #5b82b0 0%, #3d5f88 100%);
             border-radius: var(--radius);
             padding: 18px 20px;
             color: #fff;
@@ -2014,7 +2014,7 @@
 
         /* ===== MENU PEMBAYARAN: card detail pemasukan + rincian per program ===== */
         .pb-income-hero {
-            background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%);
+            background: linear-gradient(135deg, #5b82b0 0%, #3d5f88 100%);
             border-radius: var(--radius);
             padding: 20px 22px;
             color: #fff;
