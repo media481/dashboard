@@ -1,4 +1,4 @@
-    // ========== CROSSCHECK PANEL ==========
+// ========== CROSSCHECK PANEL ==========
     let cxSelectedProgram = null;
     let cxScanningIds = new Set(); // program id yang sedang di-OCR
     let cxOcrProgress = {}; // {progId: 0..100}
@@ -87,6 +87,60 @@
     function cxNormalizeMaskapai(str) {
         return String(str || '').toLowerCase().trim().replace(/\b(airlines?|airways|air)\b/gi, '').replace(/\s+/g, ' ').trim();
     }
+
+    // ---- Perbandingan khusus field TANGGAL ----
+    // Teks plain biasanya cuma tanggal keberangkatan tunggal ("17 September
+    // 2026"), sedangkan poster sering menuliskan RENTANG tanggal
+    // keberangkatan-kepulangan penuh ("17-26 SEPTEMBER 2026"). Kalau
+    // di-treat sebagai perbandingan string biasa, ini selalu kebaca "beda"
+    // padahal sebenarnya BENAR (tanggal keberangkatannya cocok) -- cuma
+    // poster kasih info tambahan (tanggal pulang) yang layak diingatkan ke
+    // admin untuk dicek juga. cxTglMatchState() membedakan 3 keadaan:
+    //   'match'    - tanggal tunggal & persis sama di keduanya
+    //   'warn'     - tanggal awal cocok, tapi salah satu sisi berupa rentang
+    //                (jadi "benar" tapi perlu dicek ulang oleh admin)
+    //   'mismatch' - tidak ada kecocokan tanggal sama sekali
+    const CX_BULAN = {
+        januari: 1, februari: 2, maret: 3, april: 4, mei: 5, juni: 6,
+        juli: 7, agustus: 8, september: 9, oktober: 10, november: 11, desember: 12
+    };
+    // Ambil komponen tanggal dari teks bebas -- dukung tanggal tunggal
+    // ("17 September 2026"), rentang satu bulan ("17-26 September 2026"),
+    // dan rentang lintas bulan/tahun ("28 Desember 2026 - 3 Januari 2027").
+    function cxParseTglExpr(str) {
+        if (!str) return null;
+        const s = String(str).trim();
+
+        let m = s.match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})\s*[-–]\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/i);
+        if (m) {
+            const bln1 = CX_BULAN[m[2].toLowerCase()], bln2 = CX_BULAN[m[5].toLowerCase()];
+            if (bln1 && bln2) return { day: +m[1], month: bln1, year: +m[3], isRange: true };
+        }
+
+        m = s.match(/(\d{1,2})\s*[-–]\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/i);
+        if (m) {
+            const bln = CX_BULAN[m[3].toLowerCase()];
+            if (bln) return { day: +m[1], month: bln, year: +m[4], isRange: true };
+        }
+
+        m = s.match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/i);
+        if (m) {
+            const bln = CX_BULAN[m[2].toLowerCase()];
+            if (bln) return { day: +m[1], month: bln, year: +m[3], isRange: false };
+        }
+        return null;
+    }
+    function cxTglMatchState(plainStr, posterStr) {
+        const p = cxParseTglExpr(plainStr), q = cxParseTglExpr(posterStr);
+        if (!p || !q) {
+            // Gagal parse salah satu sisi -- fallback perbandingan string apa adanya.
+            return String(plainStr).toLowerCase().trim() === String(posterStr).toLowerCase().trim() ? 'match' : 'mismatch';
+        }
+        const sameStart = p.day === q.day && p.month === q.month && p.year === q.year;
+        if (!sameStart) return 'mismatch';
+        return (p.isRange || q.isRange) ? 'warn' : 'match';
+    }
+
     function cxValuesMatch(field, a, b) {
         if (!a || !b) return false;
         if (field && field.indexOf('harga') === 0) {
@@ -97,6 +151,11 @@
             const na = cxNormalizeMaskapai(a), nb = cxNormalizeMaskapai(b);
             if (!na || !nb) return false;
             return na === nb || na.includes(nb) || nb.includes(na);
+        }
+        if (field === 'tgl') {
+            // 'warn' tetap dihitung "cocok" (bukan mismatch) untuk keperluan
+            // hitung jumlah field tidak-cocok -- lihat cxTglMatchState di atas.
+            return cxTglMatchState(a, b) !== 'mismatch';
         }
         return a.toLowerCase().trim() === b.toLowerCase().trim();
     }
@@ -181,9 +240,13 @@
 
             return rows.map(r => {
                 const hasBoth = r.plain && r.poster;
-                const isMatch = hasBoth && cxValuesMatch(r.field, r.plain, r.poster);
-                const rowClass = hasBoth ? (isMatch ? 'cx-match' : 'cx-mismatch') : '';
-                const pill = hasBoth ? `<span class="cx-match-pill ${isMatch?'ok':'no'}">${isMatch?'✓ Cocok':'✗ Beda'}</span>` : `<span class="cx-match-pill skip">—</span>`;
+                // Field tanggal punya 3 keadaan (match/warn/mismatch), field lain cuma 2 (match/mismatch).
+                const state = hasBoth ? (r.field === 'tgl' ? cxTglMatchState(r.plain, r.poster) : (cxValuesMatch(r.field, r.plain, r.poster) ? 'match' : 'mismatch')) : null;
+                const rowClass = state === 'match' ? 'cx-match' : state === 'warn' ? 'cx-match-warn' : state === 'mismatch' ? 'cx-mismatch' : '';
+                const pill = !hasBoth ? `<span class="cx-match-pill skip">—</span>`
+                    : state === 'match' ? `<span class="cx-match-pill ok">✓ Cocok</span>`
+                    : state === 'warn' ? `<span class="cx-match-pill warn" title="Tanggal awal cocok, tapi poster menampilkan rentang tanggal (keberangkatan-kepulangan) -- cek juga tanggal pulangnya.">⚠ Cocok (cek rentang)</span>`
+                    : `<span class="cx-match-pill no">✗ Beda</span>`;
                 return `<div class="cx-compare-row ${rowClass}">
                     <div class="cx-compare-col">
                         <div class="cx-compare-label"><i class="fas fa-file-text" style="margin-right:3px;font-size:8px;"></i>Teks Plain</div>
