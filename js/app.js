@@ -3318,8 +3318,17 @@ async function confirmDeleteAction() {
             pendaftaranIdSebelumHapus = data ? data.pendaftaran_id : null;
         }
 
-        const result = await supabaseClient.from(finishedTable).delete().eq('id', finishedId);
+        // [FIX] .select('id') ditambahkan supaya bisa dicek betul berapa baris
+        // yang KE-HAPUS SUNGGUHAN. Tanpa ini, kalau RLS menolak (mis. sesi
+        // login kedaluwarsa / role tidak lolos current_dashboard_role()),
+        // Supabase tetap balas "sukses" tanpa error walau 0 baris terhapus --
+        // aplikasi jadi salah menampilkan toast "berhasil dihapus" padahal
+        // datanya masih ada (bug: badge kuota tetap X/45 walau "sudah dihapus").
+        const result = await supabaseClient.from(finishedTable).delete().eq('id', finishedId).select('id');
         if (result.error) throw result.error;
+        if (!result.data || result.data.length === 0) {
+            throw new Error('Data tidak ditemukan / tidak berhasil dihapus. Kemungkinan sesi login sudah kedaluwarsa atau akun tidak punya izin — coba logout lalu login ulang.');
+        }
 
         showToast('Data berhasil dihapus');
         closeDeleteConfirmModal();
