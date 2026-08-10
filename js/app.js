@@ -1785,6 +1785,7 @@ async function renderAdminPanel() {
                     <h4>Daftar Program</h4>
                     <span class="count">${adminPrograms.length} program</span>
                 </div>
+                <div id="adminNoPosterBanner"></div>
                 <div class="admin-table-wrap">
                     <table>
                         <thead>
@@ -2110,13 +2111,33 @@ function renderAdminTable() {
     const canEditData = currentRole === 'admin' || currentRole === 'user';
     const countEl = document.querySelector('.admin-table-head .count');
     if (countEl) countEl.textContent = `${adminPrograms.length} program`;
+
+    // [POSTER] Banner peringatan kuning (gaya sama dengan status bar Crosscheck)
+    // di atas tabel kalau ada program yang belum punya link poster sama sekali
+    // — tanpa poster, OCR & auto-isi field tidak bisa jalan untuk program itu.
+    const noPosterBanner = document.getElementById('adminNoPosterBanner');
+    if (noPosterBanner) {
+        const noPosterCount = adminPrograms.filter(p => !p.link_poster).length;
+        noPosterBanner.innerHTML = noPosterCount > 0
+            ? `<div class="cx-status-bar warn" style="margin:0 0 14px;">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <div>${noPosterCount} program belum punya link poster — OCR tidak bisa membaca/auto-isi data untuk program ini. Program ditandai <span style="color:var(--warn);font-weight:700;">"Belum ada poster"</span> di tabel di bawah.</div>
+                </div>`
+            : '';
+    }
+
     if (!adminPrograms.length) {
         tbody.innerHTML = `<tr><td colspan="${canEditData ? 8 : 7}" style="text-align:center;padding:30px;color:var(--ink-soft);">Belum ada program.${canEditData ? ' Klik "Tambah Program" untuk mulai.' : ''}</td></tr>`;
         return;
     }
-    tbody.innerHTML = adminPrograms.map(p => `
+    tbody.innerHTML = adminPrograms.map(p => {
+        const noPoster = !p.link_poster;
+        return `
         <tr>
-            <td><strong>${escapeHtml(p.nama||'-')}</strong></td>
+            <td>
+                <strong>${escapeHtml(p.nama||'-')}</strong>
+                ${noPoster ? `<span class="cx-status-bar warn" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;"><i class="bi bi-image" style="font-size:10px;"></i>Belum ada poster</span>` : ''}
+            </td>
             <td>${escapeHtml(p.tgl||'-')}</td>
             <td>${escapeHtml(p.durasi||'-')}</td>
             <td>${escapeHtml(p.harga_quad || p.harga_quint || '-')}</td>
@@ -2132,7 +2153,8 @@ function renderAdminTable() {
             </td>
             ` : ''}
         </tr>
-    `).join('');
+    `;
+    }).join('');
 }
 
 // ============================================================
