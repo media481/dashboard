@@ -7249,6 +7249,127 @@ async function saveAsset(e) {
 }
 
 // ============================================================
+// 21b. LOKASI & CUACA DI HEADER
+// ============================================================
+// Ganti judul "Dashboard Amiru" di topbar jadi info lokasi + cuaca hari ini
+// (mis. "MAGETAN, JATIM · 25°C · Cerah"), otomatis mengikuti lokasi device
+// (browser geolocation) dan cuaca terkini dari Open-Meteo (API gratis, tanpa
+// API key). Kalau izin lokasi ditolak / gagal ambil data, teks default
+// "Dashboard Amiru" tetap tampil (tidak ada error yang mengganggu user).
+
+// Kode cuaca WMO (dipakai Open-Meteo) -> label Bahasa Indonesia.
+const WEATHER_CODE_LABEL_ID = {
+    0: 'Cerah', 1: 'Cerah Berawan', 2: 'Berawan', 3: 'Mendung',
+    45: 'Berkabut', 48: 'Berkabut',
+    51: 'Gerimis Ringan', 53: 'Gerimis', 55: 'Gerimis Lebat',
+    56: 'Gerimis Beku', 57: 'Gerimis Beku Lebat',
+    61: 'Hujan Ringan', 63: 'Hujan', 65: 'Hujan Lebat',
+    66: 'Hujan Beku', 67: 'Hujan Beku Lebat',
+    71: 'Salju Ringan', 73: 'Salju', 75: 'Salju Lebat', 77: 'Butiran Salju',
+    80: 'Hujan Lokal Ringan', 81: 'Hujan Lokal', 82: 'Hujan Lokal Lebat',
+    85: 'Salju Lokal Ringan', 86: 'Salju Lokal Lebat',
+    95: 'Badai Petir', 96: 'Badai Petir + Es Ringan', 99: 'Badai Petir + Es Lebat'
+};
+
+// Nama provinsi lengkap (Bahasa Indonesia) -> singkatan umum, biar formatnya
+// pendek seperti "JATIM" bukan "JAWA TIMUR". Provinsi yang tidak ada di daftar
+// ini ditampilkan apa adanya (uppercase).
+const PROVINSI_SINGKATAN = {
+    'ACEH': 'ACEH', 'SUMATERA UTARA': 'SUMUT', 'SUMATERA BARAT': 'SUMBAR',
+    'SUMATERA SELATAN': 'SUMSEL', 'RIAU': 'RIAU', 'KEPULAUAN RIAU': 'KEPRI',
+    'JAMBI': 'JAMBI', 'BENGKULU': 'BENGKULU', 'LAMPUNG': 'LAMPUNG',
+    'KEPULAUAN BANGKA BELITUNG': 'BABEL', 'DKI JAKARTA': 'DKI',
+    'JAWA BARAT': 'JABAR', 'JAWA TENGAH': 'JATENG', 'JAWA TIMUR': 'JATIM',
+    'DAERAH ISTIMEWA YOGYAKARTA': 'DIY', 'BANTEN': 'BANTEN', 'BALI': 'BALI',
+    'NUSA TENGGARA BARAT': 'NTB', 'NUSA TENGGARA TIMUR': 'NTT',
+    'KALIMANTAN BARAT': 'KALBAR', 'KALIMANTAN TENGAH': 'KALTENG',
+    'KALIMANTAN SELATAN': 'KALSEL', 'KALIMANTAN TIMUR': 'KALTIM',
+    'KALIMANTAN UTARA': 'KALTARA', 'SULAWESI UTARA': 'SULUT',
+    'SULAWESI TENGAH': 'SULTENG', 'SULAWESI SELATAN': 'SULSEL',
+    'SULAWESI TENGGARA': 'SULTRA', 'GORONTALO': 'GORONTALO',
+    'SULAWESI BARAT': 'SULBAR', 'MALUKU': 'MALUKU', 'MALUKU UTARA': 'MALUT',
+    'PAPUA': 'PAPUA', 'PAPUA BARAT': 'PABAR'
+};
+
+// Reverse-geocode koordinat -> "KOTA, PROVINSI" pakai BigDataCloud (gratis,
+// tanpa API key, CORS-friendly). Return null kalau gagal (biar caller fallback).
+async function resolveLocationName(lat, lon) {
+    try {
+        const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=id`);
+        if (!res.ok) return null;
+        const data = await res.json();
+        const kota = (data.city || data.locality || '').trim();
+        const provinsiFull = (data.principalSubdivision || '').trim().toUpperCase();
+        const provinsi = PROVINSI_SINGKATAN[provinsiFull] || provinsiFull;
+        if (kota && provinsi) return `${kota.toUpperCase()}, ${provinsi}`;
+        return kota.toUpperCase() || provinsi || null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// Ambil suhu & kondisi cuaca terkini dari Open-Meteo untuk koordinat tertentu.
+async function fetchCurrentWeather(lat, lon) {
+    try {
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+        if (!res.ok) return null;
+        const data = await res.json();
+        const cw = data.current_weather;
+        if (!cw || typeof cw.temperature !== 'number') return null;
+        return {
+            suhu: Math.round(cw.temperature),
+            label: WEATHER_CODE_LABEL_ID[cw.weathercode] ?? 'Cerah'
+        };
+    } catch (e) {
+        return null;
+    }
+}
+
+// Minta lokasi device, lalu update judul topbar jadi "KOTA, PROVINSI · 25°C · Cerah".
+// Hasil disimpan sebentar di localStorage (30 menit) supaya reload halaman tidak
+// selalu minta izin lokasi / panggil API ulang.
+const LOCATION_WEATHER_CACHE_KEY = 'dashAmiru_locationWeather';
+const LOCATION_WEATHER_CACHE_MS = 30 * 60 * 1000; // 30 menit
+
+function loadHeaderLocationWeather() {
+    const el = document.getElementById('topbarLocationWeather');
+    if (!el || !navigator.geolocation) return; // browser tidak support -> biarkan teks default
+
+    try {
+        const cached = JSON.parse(localStorage.getItem(LOCATION_WEATHER_CACHE_KEY) || 'null');
+        if (cached && cached.text && (Date.now() - cached.at) < LOCATION_WEATHER_CACHE_MS) {
+            el.textContent = cached.text;
+            return;
+        }
+    } catch (e) { /* cache korup, abaikan & lanjut fetch baru */ }
+
+    navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+            const { latitude, longitude } = pos.coords;
+            try {
+                const [namaLokasi, cuaca] = await Promise.all([
+                    resolveLocationName(latitude, longitude),
+                    fetchCurrentWeather(latitude, longitude)
+                ]);
+                const parts = [];
+                if (namaLokasi) parts.push(namaLokasi);
+                if (cuaca) parts.push(`${cuaca.suhu}°C`, cuaca.label);
+                if (!parts.length) return; // kedua sumber gagal -> biarkan teks default
+                const text = parts.join(' · ');
+                el.textContent = text;
+                try {
+                    localStorage.setItem(LOCATION_WEATHER_CACHE_KEY, JSON.stringify({ text, at: Date.now() }));
+                } catch (e) { /* localStorage penuh/nonaktif, abaikan */ }
+            } catch (e) {
+                // API lokasi/cuaca gagal -> biarkan teks default "Dashboard Amiru"
+            }
+        },
+        () => { /* izin lokasi ditolak / gagal -> biarkan teks default */ },
+        { timeout: 8000, maximumAge: 15 * 60 * 1000 }
+    );
+}
+
+// ============================================================
 // 22. INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
@@ -7292,6 +7413,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Cek & kirim pengingat Telegram untuk program yang berangkat ≤30 hari lagi (1x/hari)
     setTimeout(() => checkAndSendReminders(), 2000);
+
+    // Update judul topbar jadi info lokasi + cuaca hari ini (non-blocking, ada fallback)
+    loadHeaderLocationWeather();
 });
 
 // ============================================================
