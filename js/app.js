@@ -6724,13 +6724,14 @@ function cxNormalizeHarga(str) {
     if (!str) return '';
     return String(str).replace(/[^0-9]/g, '');
 }
-// --- TANGGAL: dukungan rentang (mis. poster "17-26 SEPTEMBER 2026" vs data
-// admin tanggal tunggal "17 September 2026") -------------------------------
+// --- TANGGAL: dukungan rentang & daftar tanggal terpisah (mis. poster
+// "17-26 SEPTEMBER 2026" atau "4 & 11 OKTOBER 2026" vs data admin tanggal
+// tunggal "17 September 2026" / "4 Oktober 2026") --------------------------
 const CX_BULAN = {'januari':0,'februari':1,'maret':2,'april':3,'mei':4,'juni':5,'juli':6,'agustus':7,'september':8,'oktober':9,'november':10,'desember':11};
 // Cari 1 tanggal tunggal "D Bulan YYYY" di dalam teks (dipakai untuk sisi
-// yang bukan rentang). Beda dengan parseDateFromString() global karena di
-// sini teksnya bisa berisi rentang di sekitarnya, jadi dicari via regex,
-// bukan asumsi seluruh string persis "D Bulan YYYY".
+// yang bukan rentang/daftar). Beda dengan parseDateFromString() global
+// karena di sini teksnya bisa berisi rentang/daftar di sekitarnya, jadi
+// dicari via regex, bukan asumsi seluruh string persis "D Bulan YYYY".
 function cxParseSingleTgl(str) {
     const s = String(str || '');
     const m = s.match(/(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/);
@@ -6739,36 +6740,97 @@ function cxParseSingleTgl(str) {
     if (bulan === undefined) return null;
     return new Date(parseInt(m[3], 10), bulan, parseInt(m[1], 10));
 }
-// Cari rentang tanggal dalam 1 bulan yang sama, mis. "17-26 SEPTEMBER 2026"
-// atau "17 - 26 September 2026" -> {start, end}. Return null kalau bukan
-// pola rentang (berarti tanggal tunggal biasa).
-function cxParseTglRange(str) {
-    const s = String(str || '');
+// Ubah 1 teks tanggal (bebas format -- tunggal, rentang, atau daftar
+// terpisah) jadi representasi "kumpulan tanggal yang dimaksud":
+//   { type: 'single', date: Date }        -> 1 tanggal spesifik
+//   { type: 'list',   dates: Date[] }      -> beberapa tanggal spesifik yang
+//                                             TIDAK berurutan/kontinu, mis.
+//                                             "4 & 11 Oktober 2026",
+//                                             "4, 11, 18 Oktober 2026",
+//                                             "4 dan 11 Oktober 2026"
+//   { type: 'range',  start: Date, end: Date } -> rentang tanggal kontinu,
+//                                             mis. "17-26 SEPTEMBER 2026"
+//                                             atau "28 September - 2 Oktober 2026"
+//   null                                    -> tidak bisa di-parse sama sekali
+// Fungsi ini sengaja generik (bukan daftar format tertutup) supaya format
+// tanggal baru yang mirip pola di atas otomatis ikut tertangani ke depannya,
+// tanpa perlu tambah kasus baru satu-satu.
+function cxParseTglSet(str) {
+    const s = String(str || '').trim();
+    if (!s) return null;
+
+    // 1) Daftar tanggal spesifik dalam 1 bulan yang sama, dipisah "&", ",",
+    //    "/", "dan", atau "atau" -- mis. "4 & 11 OKTOBER 2026". Dicek LEBIH
+    //    DULU daripada pola rentang supaya tidak salah dianggap rentang.
+    const listMatch = s.match(/(\d{1,2}(?:\s*(?:,|&|\/|\bdan\b|\batau\b)\s*\d{1,2})+)\s+([a-zA-Z]+)\s+(\d{4})/i);
+    if (listMatch) {
+        const bulan = CX_BULAN[listMatch[2].toLowerCase()];
+        if (bulan !== undefined) {
+            const tahun = parseInt(listMatch[3], 10);
+            const days = listMatch[1].split(/,|&|\/|dan|atau/i).map(x => parseInt(x.trim(), 10)).filter(n => !isNaN(n));
+            if (days.length >= 2) return { type: 'list', dates: days.map(d => new Date(tahun, bulan, d)) };
+        }
+    }
+
+    // 2) Rentang dalam 1 bulan yang sama, mis. "17-26 SEPTEMBER 2026".
     const sameMonth = s.match(/(\d{1,2})\s*-\s*(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/);
     if (sameMonth) {
         const bulan = CX_BULAN[sameMonth[3].toLowerCase()];
-        if (bulan === undefined) return null;
-        const tahun = parseInt(sameMonth[4], 10);
-        return { start: new Date(tahun, bulan, parseInt(sameMonth[1], 10)), end: new Date(tahun, bulan, parseInt(sameMonth[2], 10)) };
+        if (bulan !== undefined) {
+            const tahun = parseInt(sameMonth[4], 10);
+            return { type: 'range', start: new Date(tahun, bulan, parseInt(sameMonth[1], 10)), end: new Date(tahun, bulan, parseInt(sameMonth[2], 10)) };
+        }
     }
-    // Rentang lintas bulan, mis. "28 September - 2 Oktober 2026"
+
+    // 3) Rentang lintas bulan, mis. "28 September - 2 Oktober 2026".
     const crossMonth = s.match(/(\d{1,2})\s+([a-zA-Z]+)\s*-\s*(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/);
     if (crossMonth) {
         const bulanAwal = CX_BULAN[crossMonth[2].toLowerCase()];
         const bulanAkhir = CX_BULAN[crossMonth[4].toLowerCase()];
-        if (bulanAwal === undefined || bulanAkhir === undefined) return null;
-        const tahun = parseInt(crossMonth[5], 10);
-        return { start: new Date(tahun, bulanAwal, parseInt(crossMonth[1], 10)), end: new Date(tahun, bulanAkhir, parseInt(crossMonth[3], 10)) };
+        if (bulanAwal !== undefined && bulanAkhir !== undefined) {
+            const tahun = parseInt(crossMonth[5], 10);
+            return { type: 'range', start: new Date(tahun, bulanAwal, parseInt(crossMonth[1], 10)), end: new Date(tahun, bulanAkhir, parseInt(crossMonth[3], 10)) };
+        }
     }
+
+    // 4) Tanggal tunggal biasa, mis. "4 Oktober 2026".
+    const single = cxParseSingleTgl(s);
+    if (single) return { type: 'single', date: single };
+
     return null;
 }
+function cxSameDay(a, b) {
+    return !!a && !!b && !isNaN(a) && !isNaN(b)
+        && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+// Apakah tanggal `d` termasuk dalam kumpulan tanggal yang direpresentasikan `set`.
+function cxSetContains(set, d) {
+    if (!set || !d || isNaN(d)) return false;
+    if (set.type === 'single') return cxSameDay(set.date, d);
+    if (set.type === 'list') return set.dates.some(x => cxSameDay(x, d));
+    if (set.type === 'range') return d.getTime() >= set.start.getTime() && d.getTime() <= set.end.getTime();
+    return false;
+}
+// "Multi-value" = kumpulan yang mewakili LEBIH dari 1 kemungkinan tanggal
+// (rentang beda hari, atau daftar >=2 tanggal) -- inilah yang memicu status
+// "benar dengan peringatan", bukan "cocok" polos.
+function cxIsMultiValue(set) {
+    if (!set) return false;
+    if (set.type === 'list') return set.dates.length >= 2;
+    if (set.type === 'range') return set.start.getTime() !== set.end.getTime();
+    return false;
+}
 // Bandingkan field tanggal teks vs poster, hasilnya salah satu dari:
-//  'match'   - sama persis (setelah dirapikan) -> hijau, "Cocok"
-//  'warning' - beda teks, TAPI tanggal tunggal di salah satu sisi masih
-//              termasuk dalam rentang tanggal di sisi lain -> kuning,
-//              dianggap BENAR (bukan dihitung sebagai mismatch) tapi tetap
-//              ditandai supaya staf sadar itu tanggal keberangkatan spesifik
-//              dari rentang keberangkatan yang lebih luas di poster.
+//  'match'   - sama persis (baik secara teks, maupun sama-sama tanggal
+//              tunggal yang jatuh di hari yang sama) -> hijau, "Cocok"
+//  'warning' - salah satu sisi mewakili LEBIH dari 1 kemungkinan tanggal
+//              (rentang seperti "17-26 September" ATAU daftar terpisah
+//              seperti "4 & 11 Oktober"), dan tanggal di sisi lain termasuk
+//              di dalamnya -> kuning, dianggap BENAR (tidak dihitung sebagai
+//              mismatch) tapi tetap ditandai supaya staf sadar itu salah satu
+//              dari beberapa opsi tanggal di poster, bukan tanggal tunggal
+//              yang persis identik. Berlaku untuk format tanggal apa pun
+//              yang bisa diuraikan cxParseTglSet(), bukan cuma pola tertentu.
 //  'mismatch'- benar-benar tidak cocok -> merah
 function cxCompareTgl(a, b) {
     if (!a || !b) return 'mismatch';
@@ -6776,17 +6838,20 @@ function cxCompareTgl(a, b) {
     const nb = String(b).toLowerCase().trim().replace(/\s+/g, ' ');
     if (na === nb) return 'match';
 
-    const rangeA = cxParseTglRange(a), rangeB = cxParseTglRange(b);
-    const singleA = cxParseSingleTgl(a), singleB = cxParseSingleTgl(b);
+    const setA = cxParseTglSet(a), setB = cxParseTglSet(b);
+    if (!setA || !setB) return 'mismatch';
 
-    const inRange = (single, range) => single && range && !isNaN(single) && !isNaN(range.start) && !isNaN(range.end)
-        && single.getTime() >= range.start.getTime() && single.getTime() <= range.end.getTime();
-
-    // Satu sisi rentang, sisi lain tanggal tunggal (atau tanggal awal dari
-    // rentang lain) yang jatuh di dalam rentang tsb -> benar dengan peringatan.
-    if (rangeA && !rangeB && inRange(singleB, rangeA)) return 'warning';
-    if (rangeB && !rangeA && inRange(singleA, rangeB)) return 'warning';
-    if (rangeA && rangeB && (inRange(rangeB.start, rangeA) || inRange(rangeA.start, rangeB))) return 'warning';
+    if (cxIsMultiValue(setA) && setB.type === 'single' && cxSetContains(setA, setB.date)) return 'warning';
+    if (cxIsMultiValue(setB) && setA.type === 'single' && cxSetContains(setB, setA.date)) return 'warning';
+    // Kedua sisi sama-sama multi-value (mis. dua daftar/rentang beda format)
+    // tapi ada tanggal yang beririsan -> tetap dianggap benar dgn peringatan.
+    if (cxIsMultiValue(setA) && cxIsMultiValue(setB)) {
+        const datesB = setB.type === 'list' ? setB.dates : [setB.start, setB.end];
+        if (datesB.some(d => cxSetContains(setA, d))) return 'warning';
+    }
+    // Kedua sisi tanggal tunggal, teksnya beda tapi ternyata hari yang sama
+    // (mis. beda format penulisan) -> tetap dianggap cocok penuh.
+    if (setA.type === 'single' && setB.type === 'single' && cxSameDay(setA.date, setB.date)) return 'match';
 
     return 'mismatch';
 }
