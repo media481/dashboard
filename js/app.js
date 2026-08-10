@@ -609,6 +609,34 @@ function buildRawConceptFromAdminForm() {
     return lines.join('\n');
 }
 
+// [AUTO-FILL] Fallback terakhir kalau kotak "Teks Broadcast" DAN form masih
+// kosong: kalau program yang sedang diedit sudah pernah discan OCR poster-nya
+// (lihat autoScanPosterForProgram), pakai data hasil OCR itu langsung sebagai
+// bahan konsep buat AI. Jadi generate teks WA tetap bisa jalan walau admin
+// belum sempat isi form manual, asal posternya sudah pernah dibaca sistem.
+function buildRawConceptFromPosterData() {
+    if (!editingProgramId) return '';
+    const prog = adminPrograms.find(p => String(p.id) === String(editingProgramId));
+    if (!prog) return '';
+    const adl = (() => { try { return prog.admin_data_lengkap ? (typeof prog.admin_data_lengkap === 'string' ? JSON.parse(prog.admin_data_lengkap) : prog.admin_data_lengkap) : {}; } catch (e) { return {}; } })();
+    const pd = adl.poster_data;
+    if (!pd || !pd.nama) return '';
+
+    const lines = [`*${pd.nama.toUpperCase()}*`];
+    if (pd.durasi) lines.push(`Program ${pd.durasi}`);
+    if (pd.tgl) lines.push(`Tanggal Berangkat: ${pd.tgl}`);
+    if (pd.maskapai) lines.push(`*PESAWAT*\n${pd.maskapai}`);
+    if (pd.hotel_madinah) lines.push(`*HOTEL MADINAH*\n${pd.hotel_madinah}`);
+    if (pd.hotel_makkah) lines.push(`*HOTEL MEKAH*\n${pd.hotel_makkah}`);
+    const hargaLines = [];
+    if (pd.harga_quint) hargaLines.push(`${pd.harga_quint} Quint`);
+    if (pd.harga_quad) hargaLines.push(`${pd.harga_quad} Quad`);
+    if (pd.harga_triple) hargaLines.push(`${pd.harga_triple} Triple`);
+    if (pd.harga_double) hargaLines.push(`${pd.harga_double} Double`);
+    if (hargaLines.length) lines.push(`*BIAYA PROGRAM*\n${hargaLines.join('\n')}`);
+    return lines.join('\n');
+}
+
 // Jaring pengaman format setelah caption dibuat AI — AI kadang lupa ikut
 // instruksi persis (misal tanda bintang di judul kelupaan, atau baris kosong
 // antar section hilang). Fungsi ini merapikan otomatis tanpa mengubah isi:
@@ -650,8 +678,16 @@ async function generateCaptionAI() {
     if (!teksWaEl) return;
 
     let raw = (document.getElementById('parseBroadcastInput')?.value || '').trim();
+    let usedPosterFallback = false;
     if (!raw) raw = buildRawConceptFromAdminForm();
+    if (!raw) {
+        // Kotak Broadcast & form masih kosong -> coba ambil dari hasil OCR
+        // poster (kalau poster program ini sudah pernah discan sebelumnya).
+        raw = buildRawConceptFromPosterData();
+        usedPosterFallback = !!raw;
+    }
     if (!raw) { showToast('Isi dulu Nama Program, atau paste Teks Broadcast', 'error'); return; }
+    if (usedPosterFallback) showToast('Form masih kosong, konsep diambil otomatis dari hasil scan poster');
     // Standarisasi ejaan "Umrah" -> "Umroh" & singkatan "pp" -> "PP" di
     // konsep sebelum dikirim ke AI.
     raw = normalizePpAbbreviation(normalizeUmrohSpelling(raw));
@@ -1603,6 +1639,7 @@ async function renderAdminPanel() {
                             <button class="admin-form-close" onclick="hideAdminForm()" title="Batal (Esc)">&times;</button>
                         </div>
                     </div>
+                    <div id="cxAutofillBanner" class="cx-autofill-note" style="display:none;"></div>
                     <div class="admin-form-anchor-nav" id="adminFormAnchorNav">
                         <button type="button" data-target="af-info" onclick="scrollToAdminSection('af-info')"><i class="bi bi-info-circle-fill"></i> Info</button>
                         <button type="button" data-target="af-harga" onclick="scrollToAdminSection('af-harga')"><i class="bi bi-tags-fill"></i> Harga</button>
@@ -2128,6 +2165,7 @@ async function showAdminForm() {
     await ensureAdminProgramPageReady();
     editingProgramId = null;
     setAdminFormData({}); // bersihkan sisa data dari sesi edit sebelumnya
+    cxClearAutofillHighlight(); // bersihkan sisa highlight kuning dari sesi form sebelumnya
     // Bersihkan juga sisa teks broadcast dari sesi tambah program sebelumnya,
     // supaya kotak referensi tidak menampilkan broadcast program lain.
     const bcInput = document.getElementById('parseBroadcastInput');
@@ -2204,6 +2242,7 @@ async function hideAdminForm(skipConfirm) {
     }
     document.getElementById('adminFormContainer').style.display = 'none';
     teardownAdminFormAnchorNav();
+    cxClearAutofillHighlight();
 }
 
 // Shortcut keyboard saat form Tambah/Edit Program terbuka: Esc = batal, Ctrl/Cmd+Enter = simpan
@@ -2522,6 +2561,11 @@ async function editAdminProgram(id) {
 
     setAdminFormData(unpacked);
     editingProgramId = id;
+    // Kalau program ini masih punya field yang "belum dikonfirmasi" (terisi
+    // otomatis dari OCR poster tapi belum sempat ditinjau/disimpan admin),
+    // tandai kuning lagi di sini supaya tidak kelewat.
+    cxClearAutofillHighlight();
+    if (unpacked.autofilled_fields?.length) cxApplyAutofillHighlight(unpacked.autofilled_fields);
     // Program lama tidak punya teks broadcast asli tersimpan — bersihkan kotak
     // broadcast & referensinya supaya tidak menampilkan sisa dari program lain.
     const bcInput = document.getElementById('parseBroadcastInput');
@@ -6659,6 +6703,67 @@ async function fetchNextKuitansiNomorValue() {
 // ============================================================
 const CX_OCR_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/scan-poster-ocr`;
 
+// [AUTO-FILL] Mapping nama field OCR -> id input form admin. Dipakai bareng
+// oleh autoScanPosterForProgram (isi otomatis + highlight) dan editAdminProgram
+// (tampilkan ulang highlight kalau form dibuka sebelum field sempat disentuh).
+const CX_AUTOFILL_FIELD_TO_INPUT = {
+    nama: 'admin_nama', tgl: 'admin_tgl', durasi: 'admin_durasi', maskapai: 'admin_maskapai',
+    harga_quint: 'admin_harga_quint', harga_quad: 'admin_harga_quad', harga_triple: 'admin_harga_triple',
+    harga_double: 'admin_harga_double', hotel_makkah: 'admin_hotel_makkah', hotel_madinah: 'admin_hotel_madinah',
+};
+
+// Tandai field yang "belum dikonfirmasi" (baru terisi otomatis dari OCR
+// poster, belum pernah disentuh admin) dengan highlight kuning + banner
+// ringkas di atas form. Highlight per-field lepas otomatis begitu admin
+// mengetik di situ (lihat listener 'input' delegasi di bawah); seluruhnya
+// juga otomatis lepas begitu form disimpan, karena admin_data_lengkap
+// dibangun ulang dari nol tiap saveAdminProgram (autofilled_fields lama ikut
+// hilang, lalu autoScanPosterForProgram menandai ulang HANYA field yang
+// masih kosong setelah save itu).
+function cxApplyAutofillHighlight(fieldList) {
+    (Array.isArray(fieldList) ? fieldList : []).forEach(field => {
+        const inputId = CX_AUTOFILL_FIELD_TO_INPUT[field];
+        const el = inputId && document.getElementById(inputId);
+        if (el) el.classList.add('cx-autofill-pending');
+    });
+    cxRefreshAutofillBanner();
+}
+
+// Hapus semua highlight pending (dipanggil saat form ditutup/direset supaya
+// tidak "nempel" ke sesi form berikutnya).
+function cxClearAutofillHighlight() {
+    Object.values(CX_AUTOFILL_FIELD_TO_INPUT).forEach(id => {
+        document.getElementById(id)?.classList.remove('cx-autofill-pending');
+    });
+    cxRefreshAutofillBanner();
+}
+
+// Update banner ringkas "N field belum diperiksa" berdasarkan field mana yang
+// MASIH bertanda kuning saat ini di layar.
+function cxRefreshAutofillBanner() {
+    const banner = document.getElementById('cxAutofillBanner');
+    if (!banner) return;
+    const stillPending = Object.values(CX_AUTOFILL_FIELD_TO_INPUT)
+        .map(id => document.getElementById(id))
+        .filter(el => el && el.classList.contains('cx-autofill-pending'));
+    if (stillPending.length) {
+        banner.style.display = 'block';
+        banner.innerHTML = `<i class="bi bi-magic"></i> ${stillPending.length} field terisi otomatis dari poster (ditandai kuning) — periksa dulu sebelum disimpan.`;
+    } else {
+        banner.style.display = 'none';
+        banner.innerHTML = '';
+    }
+}
+
+// Begitu admin mengetik/memilih di field manapun yang sedang ditandai
+// "pending", lepas highlight-nya — dianggap sudah diperiksa/disentuh admin.
+document.addEventListener('input', function (e) {
+    if (e.target?.classList?.contains('cx-autofill-pending')) {
+        e.target.classList.remove('cx-autofill-pending');
+        cxRefreshAutofillBanner();
+    }
+});
+
 async function cxRunOcr(progId, imageUrl, onProgress) {
     onProgress(20);
     const res = await fetch(CX_OCR_FUNCTION_URL, {
@@ -6711,19 +6816,97 @@ async function autoScanPosterForProgram(progId) {
         Object.keys(parsed).forEach(k => { if (!parsed[k]) delete parsed[k]; });
         parsed._raw_ocr_text = (result.raw_text || '').slice(0, 4000);
 
-        const adl = (() => { try { return prog.admin_data_lengkap ? (typeof prog.admin_data_lengkap === 'string' ? JSON.parse(prog.admin_data_lengkap) : prog.admin_data_lengkap) : {}; } catch(e) { return {}; } })();
+        // [FIX RACE CONDITION] Ambil ulang data program TERBARU dari server
+        // (bukan pakai snapshot `prog` di awal fungsi) sebelum menentukan field
+        // mana yang "masih kosong". OCR ke Gemini butuh beberapa detik — kalau
+        // dalam rentang waktu itu admin sempat isi & simpan manual field yang
+        // sama, snapshot `prog` di awal sudah basi dan auto-fill bisa salah
+        // menimpa data manual yang baru saja disimpan admin. Kalau fetch ulang
+        // ini gagal (mis. koneksi putus), fallback ke snapshot lama supaya
+        // proses tetap jalan (lebih aman dari gagal total, risiko basi tetap
+        // lebih kecil daripada sebelumnya karena sudah dicoba di-refresh).
+        let freshProg = prog;
+        try {
+            const { data: freshRow, error: freshErr } = await supabaseClient
+                .from('programs').select('*').eq('id', progId).single();
+            if (!freshErr && freshRow) freshProg = freshRow;
+        } catch (e) { /* biarkan pakai snapshot lama kalau fetch gagal */ }
+
+        const adl = (() => { try { return freshProg.admin_data_lengkap ? (typeof freshProg.admin_data_lengkap === 'string' ? JSON.parse(freshProg.admin_data_lengkap) : freshProg.admin_data_lengkap) : {}; } catch(e) { return {}; } })();
         adl.poster_data = parsed;
         adl.poster_data_source = 'ocr';
         adl.poster_scanned_at = new Date().toISOString();
 
-        await updateProgramById(progId, { admin_data_lengkap: JSON.stringify(adl) });
+        // [AUTO-FILL] Kalau ada field yang MASIH KOSONG di data program (belum
+        // pernah diisi admin), langsung isi otomatis dari hasil OCR poster —
+        // supaya paket yang sudah punya poster tapi datanya belum lengkap bisa
+        // auto terisi tanpa admin ketik ulang. Field yang SUDAH ada isinya
+        // TIDAK PERNAH ditimpa di sini (itu tetap urusan modul crosscheck di
+        // atas, yang cuma memperingatkan kalau beda, bukan menimpa otomatis).
+        // Cek "kosong atau tidak" pakai freshProg/adl di atas (data TERBARU),
+        // bukan snapshot lama.
+        const topFilled = {};   // kolom top-level tabel programs
+        const adlFilled = {};  // field di dalam admin_data_lengkap
+        const filledLabels = [];
+        const CX_AUTOFILL_MAP = [
+            ['nama', 'top', 'Nama Program'], ['tgl', 'top', 'Tanggal'], ['durasi', 'top', 'Durasi'],
+            ['maskapai', 'top', 'Maskapai'], ['harga_quint', 'top', 'Harga Quint'],
+            ['harga_quad', 'adl', 'Harga Quad'], ['harga_triple', 'adl', 'Harga Triple'],
+            ['harga_double', 'adl', 'Harga Double'], ['hotel_makkah', 'adl', 'Hotel Makkah'],
+            ['hotel_madinah', 'adl', 'Hotel Madinah'],
+        ];
+        CX_AUTOFILL_MAP.forEach(([field, where, label]) => {
+            const ocrVal = parsed[field];
+            if (!ocrVal) return;
+            const currentVal = where === 'top' ? freshProg[field] : adl[field];
+            if (currentVal) return; // sudah ada isinya (termasuk yang baru disimpan admin di tengah proses OCR), jangan ditimpa
+            if (where === 'top') topFilled[field] = ocrVal; else adlFilled[field] = ocrVal;
+            filledLabels.push(label);
+        });
+        Object.assign(adl, adlFilled);
+
+        // [AUTO-FILL] Catat field mana saja yang barusan terisi otomatis di
+        // ronde ini, supaya bisa ditandai kuning "belum dikonfirmasi" di form
+        // — baik sekarang (kalau form sedang terbuka) maupun nanti kalau form
+        // dibuka ulang sebelum admin sempat menyimpan/meninjau perubahan ini.
+        const autofilledKeys = Object.keys({ ...topFilled, ...adlFilled });
+        if (autofilledKeys.length) adl.autofilled_fields = autofilledKeys;
+        else delete adl.autofilled_fields;
+
+        await updateProgramById(progId, { ...topFilled, admin_data_lengkap: JSON.stringify(adl) });
         const idx = adminPrograms.findIndex(p => String(p.id) === String(progId));
-        if (idx >= 0) adminPrograms[idx].admin_data_lengkap = JSON.stringify(adl);
+        if (idx >= 0) Object.assign(adminPrograms[idx], freshProg, topFilled, { admin_data_lengkap: JSON.stringify(adl) });
+
+        // Kalau form Tambah/Edit program ini sedang terbuka, ikut isi field
+        // yang kosong di layar secara langsung (tanpa perlu klik apa-apa),
+        // lalu tandai kuning sebagai "belum dikonfirmasi admin".
+        if (String(editingProgramId) === String(progId) && autofilledKeys.length) {
+            Object.entries({ ...topFilled, ...adlFilled }).forEach(([field, val]) => {
+                const inputId = CX_AUTOFILL_FIELD_TO_INPUT[field];
+                const el = inputId && document.getElementById(inputId);
+                if (el) el.value = val;
+            });
+            ['admin_harga_quint', 'admin_harga_quad', 'admin_harga_triple', 'admin_harga_double'].forEach(id => {
+                formatRupiahInput(document.getElementById(id));
+            });
+            if (topFilled.tgl) {
+                const dateInput = document.getElementById('admin_tgl_date');
+                const parsedTgl = parseDateFromString(topFilled.tgl);
+                if (dateInput && parsedTgl && !isNaN(parsedTgl.getTime())) {
+                    dateInput.value = `${parsedTgl.getFullYear()}-${String(parsedTgl.getMonth() + 1).padStart(2, '0')}-${String(parsedTgl.getDate()).padStart(2, '0')}`;
+                }
+            }
+            cxApplyAutofillHighlight(autofilledKeys);
+        }
+
+        if (filledLabels.length) {
+            showToast(`Data terisi otomatis dari poster: ${filledLabels.join(', ')}`);
+        }
 
         const mismatchCount = cxCountMismatch(progId);
         if (mismatchCount > 0) {
             showToast(`Crosscheck "${prog.nama}": ${mismatchCount} data tidak cocok dengan poster!`, 'error');
-        } else {
+        } else if (!filledLabels.length) {
             showToast(`Crosscheck "${prog.nama}": semua data cocok dengan poster.`);
         }
     } catch (err) {

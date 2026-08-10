@@ -1385,6 +1385,25 @@
         }
         .form-group textarea { resize: vertical; min-height: 60px; }
 
+        /* [AUTO-FILL] Highlight kuning untuk field yang baru terisi otomatis
+           dari hasil OCR poster & belum "disentuh"/dikonfirmasi admin. Hilang
+           begitu admin mengetik di field tsb, atau begitu form disimpan
+           (lihat cxApplyAutofillHighlight & cxClearAutofillHighlight di app.js). */
+        .form-group input.cx-autofill-pending,
+        .form-group select.cx-autofill-pending,
+        .form-group textarea.cx-autofill-pending {
+            border-color: var(--warn);
+            background: var(--warn-tint);
+        }
+        .cx-autofill-note {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--warn);
+            margin-top: 4px;
+        }
+        .cx-autofill-note i { margin-right: 3px; }
+
         /* ===== CUSTOM (NON-NATIVE) DROPDOWN STYLING =====
            Hilangkan tampilan <select> bawaan OS dan ganti dengan caret custom +
            rounded surface konsisten. Select dengan class .cs-native-select milik
