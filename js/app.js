@@ -993,7 +993,7 @@ function buildProgramRowHTML(item, now, nearestIds) {
     // dengan hasil OCR poster (lihat cxIsProgramVerified / cxCountMismatchForProgram).
     const isVerified = cxIsProgramVerified(item);
     const verifiedBadge = isVerified
-        ? ` <span class="verified-badge" title="Data program ini sudah dicek otomatis (OCR) dan cocok 100% dengan poster resmi"><i class="bi bi-patch-check-fill"></i> Verified</span>`
+        ? ` <span class="verified-badge" title="Data program ini sudah dicek otomatis (OCR) dan cocok 100% dengan poster resmi"><i class="bi bi-patch-check-fill"></i></span>`
         : '';
 
     return `<tr class="${isNearest ? 'row-nearest-departure' : ''}">
