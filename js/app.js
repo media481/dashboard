@@ -621,7 +621,38 @@ async function generateCaptionAI() {
         showToast('Caption WA berhasil dibuat dengan AI');
     } catch (err) {
         console.error(err);
-        showToast('Gagal generate caption: ' + err.message, 'error');
+        // Fallback offline: kalau panggilan ke AI gagal (Gemini error/limit
+        // habis/internet putus), tetap hasilkan caption otomatis dari
+        // template lokal (non-AI) supaya admin tidak buntu — bukan sekreatif
+        // versi AI, tapi semua data penting (harga, tanggal, hotel,
+        // termasuk/tidak termasuk, kontak) tetap lengkap tersusun.
+        try {
+            const hasBroadcastText = !!(document.getElementById('parseBroadcastInput')?.value || '').trim();
+            if (hasBroadcastText) {
+                // parseBroadcastText() sudah menangani parsing lengkap + langsung
+                // mengisi admin_teks_wa lewat generateAutoWAText — dipakai ulang
+                // di sini supaya hasilnya konsisten dengan tombol "Isi Otomatis".
+                parseBroadcastText();
+            } else {
+                const g = id => (document.getElementById(id)?.value || '').trim();
+                const data = {
+                    nama: g('admin_nama'), tgl: g('admin_tgl') || g('admin_tgl_date'), durasi: g('admin_durasi'),
+                    maskapai: document.getElementById('admin_maskapai')?.value || '',
+                    hotel_madinah: g('admin_hotel_madinah'), hotel_makkah: g('admin_hotel_makkah'),
+                    harga_quad: g('admin_harga_quad'), harga_triple: g('admin_harga_triple'),
+                    harga_double: g('admin_harga_double'), harga_quint: g('admin_harga_quint'),
+                    termasuk: g('admin_termasuk'), tidak_termasuk: g('admin_tidak_termasuk')
+                };
+                teksWaEl.value = generateAutoWAText(data);
+                updateWaCaptionGauge(teksWaEl.value);
+                autoGrowTextarea(teksWaEl);
+                syncBroadcastRefBox();
+            }
+            showToast('AI gagal (' + err.message + ') — dipakai caption otomatis offline sebagai cadangan', 'error');
+        } catch (fallbackErr) {
+            console.error(fallbackErr);
+            showToast('Gagal generate caption: ' + err.message, 'error');
+        }
     } finally {
         if (btn) btn.disabled = false;
         if (btnText) btnText.textContent = 'Generate dengan AI';
