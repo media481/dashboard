@@ -411,6 +411,68 @@ function toTitleCaseIfAllCaps(str) {
     return str.toLowerCase().replace(/(^|[\s\-\/])([a-z])/g, (m, sep, c) => sep + c.toUpperCase());
 }
 
+// Hash string sederhana (deterministik) -- dipakai untuk memilih kalimat
+// pembuka secara "acak" tapi stabil: program yang sama (nama sama) akan
+// selalu dapat kalimat yang sama tiap di-generate ulang (tidak berubah-ubah
+// tiap klik "Isi Otomatis"), sementara antar program yang beda nama akan
+// cenderung dapat kalimat pembuka yang berbeda -- jadi captionnya bervariasi,
+// tidak template kaku yang sama persis tiap broadcast.
+function hashStringStable(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+    return Math.abs(h);
+}
+
+// Kalimat pembuka generik (dipakai kalau tidak ada kata kunci tema yang cocok
+// di nama/durasi program) -- semua bernada promosi Amiru Tour, siap pakai
+// tanpa perlu embel-embel tambahan.
+const WA_OPENING_GENERIC = [
+    'Wujudkan niat suci ke Tanah Suci bersama pelayanan terbaik Amiru Tour.',
+    'Sempurnakan ibadah Anda di Tanah Suci bersama Amiru Tour, mitra perjalanan umroh terpercaya.',
+    'Saatnya menjawab panggilan-Nya ke Baitullah bersama Amiru Tour.',
+    'Nikmati perjalanan ibadah yang nyaman dan penuh berkah bersama Amiru Tour.',
+    'Rasakan pengalaman umroh terbaik dengan pelayanan penuh dari Amiru Tour.',
+    'Langkahkan kaki menuju Tanah Suci bersama Amiru Tour, insya Allah penuh kemudahan.',
+    'Jadikan momen ibadah ke Tanah Suci lebih berkesan bersama Amiru Tour.',
+    'Percayakan perjalanan suci Anda ke Baitullah bersama pelayanan terbaik Amiru Tour.'
+];
+
+// Kalimat pembuka bertema -- dipilih kalau ada kata kunci relevan di nama
+// program atau info durasinya, supaya kalimat pembuka terasa "nyambung"
+// dengan konteks broadcast asli, bukan sekadar generik.
+const WA_OPENING_THEMED = [
+    { kw: /desember|akhir\s*tahun|nataru|tahun\s*baru/i, lines: [
+        'Tutup akhir tahun dengan ibadah penuh makna ke Tanah Suci bersama Amiru Tour.',
+        'Sambut tahun baru dengan langkah suci ke Baitullah bersama Amiru Tour.',
+        'Isi libur akhir tahun dengan perjalanan ibadah bersama Amiru Tour.'
+    ] },
+    { kw: /liburan|libur\s*sekolah|libur\s*panjang/i, lines: [
+        'Manfaatkan momen liburan dengan ibadah yang penuh berkah bersama Amiru Tour.',
+        'Isi waktu liburan dengan perjalanan suci ke Tanah Suci bersama Amiru Tour.'
+    ] },
+    { kw: /ramadhan|puasa/i, lines: [
+        'Sambut bulan suci Ramadhan dengan ibadah umroh penuh berkah bersama Amiru Tour.',
+        'Raih keberkahan Ramadhan di Tanah Suci bersama Amiru Tour.'
+    ] },
+    { kw: /lebaran|idul\s*fitri/i, lines: [
+        'Rayakan momen kemenangan dengan ibadah ke Tanah Suci bersama Amiru Tour.'
+    ] },
+    { kw: /promo|hemat|diskon/i, lines: [
+        'Kesempatan terbatas beribadah ke Tanah Suci dengan harga bersahabat bersama Amiru Tour.'
+    ] }
+];
+
+// Pilih 1 kalimat pembuka: cari tema yang cocok dari nama+durasi program,
+// kalau tidak ada yang cocok pakai pool generik -- pemilihan dalam pool
+// pakai hash nama supaya stabil (bukan Math.random()).
+function pickWaOpeningSentence(data) {
+    const context = `${data.nama || ''} ${data.durasi || ''}`;
+    const theme = WA_OPENING_THEMED.find(t => t.kw.test(context));
+    const pool = theme ? theme.lines : WA_OPENING_GENERIC;
+    const idx = hashStringStable(data.nama || 'default') % pool.length;
+    return pool[idx];
+}
+
 // ============================================================
 // 4. GENERATE AUTO WA TEXT
 // ============================================================
@@ -422,6 +484,7 @@ function generateAutoWAText(data) {
     const durasi = data.durasi ? data.durasi.replace(/\s*hari/i, '').trim() : '';
     if (durasi && data.tgl) teks += `📅 ${durasi} Hari: ${s(data.tgl)}\n`;
     else if (data.tgl) teks += `📅 ${s(data.tgl)}\n`;
+    teks += `${pickWaOpeningSentence(data)}\n`;
     teks += `\n`;
 
     const fasilitasLines = [];
