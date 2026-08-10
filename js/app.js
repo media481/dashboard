@@ -7145,8 +7145,8 @@ function renderAssetsAdminTable() {
                             </div>
                         </a>
                         <div class="asset-card-actions">
-                            <button type="button" class="pf-btn-edit" onclick="openAssetModal('${a.id}')" title="Edit"><i class="bi bi-pencil-fill"></i></button>
-                            <button type="button" class="pf-btn-delete" onclick="openDeleteModal('assets', '${a.id}', '${escapeJsAttr(a.judul)}')" title="Hapus"><i class="bi bi-trash-fill"></i></button>
+                            <button type="button" class="pf-btn-edit" onclick="openAssetModal('${a.id}')" title="Edit"><i class="bi bi-pencil-fill"></i> Edit</button>
+                            <button type="button" class="pf-btn-delete" onclick="openDeleteModal('assets', '${a.id}', '${escapeJsAttr(a.judul)}')" title="Hapus"><i class="bi bi-trash-fill"></i> Hapus</button>
                         </div>
                     </div>
                 `).join('')}
