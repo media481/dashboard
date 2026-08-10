@@ -15,6 +15,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 // Key custom lagi. Role ditentukan dari tabel dashboard_profiles setelah login berhasil
 // (lihat checkAdminLogin() dan sql/migrate_supabase_auth.sql).
 const ADMIN_CREATE_USER_URL = SUPABASE_URL + '/functions/v1/admin-create-user';
+const ADMIN_RESET_PASSWORD_URL = SUPABASE_URL + '/functions/v1/admin-reset-user-password';
 
 let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
@@ -1340,29 +1341,93 @@ async function loadUserList() {
     if (!body) return;
     const { data, error } = await supabaseClient
         .from('dashboard_profiles')
-        .select('email, label, dashboard_role, created_at')
+        .select('id, email, label, dashboard_role, created_at')
         .order('created_at');
     if (error) {
         const isMissingSetup = /column .*email.* does not exist/i.test(error.message || '');
         body.innerHTML = isMissingSetup
-            ? `<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--danger);">Setup belum lengkap: jalankan <code>sql/tambah_kelola_user.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.</td></tr>`
-            : `<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--danger);">Gagal memuat daftar user: ${escapeHtml(error.message)}</td></tr>`;
+            ? `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--danger);">Setup belum lengkap: jalankan <code>sql/tambah_kelola_user.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.</td></tr>`
+            : `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--danger);">Gagal memuat daftar user: ${escapeHtml(error.message)}</td></tr>`;
         if (countEl) countEl.textContent = '-';
         return;
     }
     const rows = data || [];
     if (countEl) countEl.textContent = rows.length + ' user';
     if (!rows.length) {
-        body.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--ink-soft);">Belum ada data.</td></tr>';
+        body.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--ink-soft);">Belum ada data.</td></tr>';
         return;
     }
     const roleBadge = { admin: '👑 Admin', user: '🎧 User', guest: '👁️ Guest' };
+    const canReset = currentRole === 'admin';
     body.innerHTML = rows.map(u => `<tr>
         <td>${escapeHtml(u.label || '-')}</td>
         <td>${escapeHtml(u.email || '-')}</td>
         <td>${roleBadge[u.dashboard_role] || escapeHtml(u.dashboard_role || '-')}</td>
+        <td style="text-align:right;">
+            ${canReset && u.id ? `<div class="action-btns" style="justify-content:flex-end;">
+                <button onclick="openResetPasswordModal('${escapeJsAttr(u.id)}','${escapeJsAttr(u.label || u.email || '')}')" title="Ganti Password"><i class="bi bi-key-fill"></i></button>
+            </div>` : ''}
+        </td>
     </tr>`).join('');
 }
+
+// ============================================================
+// 12b-2b. GANTI PASSWORD USER (admin only)
+// Password lama TIDAK BISA ditampilkan -- Supabase Auth hanya menyimpan
+// hash-nya, tidak bisa dibalik ke teks asli oleh siapapun. Yang bisa
+// dilakukan admin adalah RESET ke password baru lewat Edge Function
+// admin-reset-user-password (pakai Supabase Auth Admin API).
+// ============================================================
+function openResetPasswordModal(userId, label) {
+    if (currentRole !== 'admin') { showToast('Hanya Admin yang boleh mengganti password user', 'error'); return; }
+    document.getElementById('rp_user_id').value = userId;
+    document.getElementById('rpUserLabel').textContent = label || '-';
+    document.getElementById('rp_new_password').value = '';
+    const statusEl = document.getElementById('rpStatus');
+    if (statusEl) statusEl.innerHTML = '';
+    document.getElementById('resetPasswordModal').classList.add('open');
+    setTimeout(() => document.getElementById('rp_new_password')?.focus(), 100);
+}
+window.openResetPasswordModal = openResetPasswordModal;
+
+function closeResetPasswordModal() {
+    document.getElementById('resetPasswordModal').classList.remove('open');
+}
+window.closeResetPasswordModal = closeResetPasswordModal;
+
+async function submitResetPassword(event) {
+    event.preventDefault();
+    const userId = document.getElementById('rp_user_id')?.value || '';
+    const newPassword = document.getElementById('rp_new_password')?.value || '';
+    const statusEl = document.getElementById('rpStatus');
+    if (!userId) { if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger);font-size:12.5px;">User tidak ditemukan.</span>'; return; }
+    if (newPassword.length < 6) { if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger);font-size:12.5px;">Password minimal 6 karakter.</span>'; return; }
+
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--ink-soft);font-size:12.5px;"><i class="bi bi-hourglass-split"></i> Mengganti password...</span>';
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) throw new Error('Sesi login tidak ditemukan, silakan login ulang.');
+        const resp = await fetch(ADMIN_RESET_PASSWORD_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': 'Bearer ' + session.access_token
+            },
+            body: JSON.stringify({ target_user_id: userId, new_password: newPassword })
+        });
+        const result = await resp.json();
+        if (!resp.ok || !result.ok) throw new Error(result.description || 'Gagal mengganti password');
+
+        showToast('Password berhasil diganti');
+        closeResetPasswordModal();
+    } catch (err) {
+        console.error('submitResetPassword error:', err);
+        if (statusEl) statusEl.innerHTML = `<span style="color:var(--danger);font-size:12.5px;"><i class="bi bi-exclamation-circle-fill"></i> ${escapeHtml(err.message)}</span>`;
+        showToast('Gagal mengganti password', 'error');
+    }
+}
+window.submitResetPassword = submitResetPassword;
 
 // ============================================================
 // 12b-3. AKSES MENU SIDEBAR PER ROLE (admin only) — matrix checkbox
@@ -2039,8 +2104,8 @@ async function renderAdminPanel() {
                     </div>
                     <div class="admin-table-wrap">
                         <table>
-                            <thead><tr><th>Nama</th><th>Email</th><th>Role</th></tr></thead>
-                            <tbody id="usUserListBody"><tr><td colspan="3" style="text-align:center;padding:20px;color:var(--ink-soft);">Memuat...</td></tr></tbody>
+                            <thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Aksi</th></tr></thead>
+                            <tbody id="usUserListBody"><tr><td colspan="4" style="text-align:center;padding:20px;color:var(--ink-soft);">Memuat...</td></tr></tbody>
                         </table>
                     </div>
                 </div>

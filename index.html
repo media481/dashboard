@@ -854,6 +854,36 @@
         </div>
     </div>
 </div>
+<!-- ===== MODAL: GANTI PASSWORD USER (admin only) ===== -->
+<!-- Password lama TIDAK BISA ditampilkan (tersimpan sebagai hash di Supabase Auth,
+     tidak bisa dibalikkan ke teks asli oleh siapapun). Modal ini hanya untuk
+     mengganti ke password baru, lewat Edge Function admin-reset-user-password. -->
+<div class="modal-overlay" id="resetPasswordModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="bi bi-key-fill"></i> Ganti Password</h2>
+            <button class="modal-close" onclick="closeResetPasswordModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-4px;margin-bottom:16px;">
+                Mengganti password untuk <strong id="rpUserLabel">-</strong>. Password lama tidak bisa dilihat
+                (tersimpan terenkripsi) &mdash; ini akan langsung menggantinya dengan password baru.
+            </p>
+            <form id="resetPasswordForm" onsubmit="submitResetPassword(event)">
+                <input type="hidden" id="rp_user_id" value="">
+                <div class="form-group">
+                    <label>Password Baru <span class="required">*</span></label>
+                    <input type="text" id="rp_new_password" placeholder="Minimal 6 karakter" required minlength="6" autocomplete="off">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit"><i class="bi bi-key-fill"></i> Ganti Password</button>
+                    <button type="button" class="btn-cancel" onclick="closeResetPasswordModal()">Batal</button>
+                </div>
+                <div id="rpStatus" style="margin-top:10px;"></div>
+            </form>
+        </div>
+    </div>
+</div>
 <!-- ===== MODAL: KELOLA CICILAN JAMAAH ===== -->
 <!-- [REDESIGN v2] Urutan disusun berdasar prioritas tugas pengguna saat modal
      ini dibuka: (1) langsung lihat status "sisa berapa lagi" lewat kartu
