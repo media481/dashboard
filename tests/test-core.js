@@ -113,10 +113,10 @@ test('"" -> 0', () => assert.strictEqual(T.parseRupiahToNumber(''), 0));
 console.log('\n=== TEST: hitungEstimasi (kolom Estimasi) ===');
 const now = new Date('2026-08-07T12:00:00');
 test('hari ini', () => assert.strictEqual(T.hitungEstimasi(new Date('2026-08-07T12:00:00'), now), 'hari ini'));
-test('1 hari lagi', () => assert.strictEqual(T.hitungEstimasi(new Date('2026-08-08T12:00:00'), now), '1 hari lagi'));
-test('1 bulan 3 hari lagi', () => assert.strictEqual(T.hitungEstimasi(new Date('2026-09-10T12:00:00'), now), '1 bulan 3 hari lagi'));
+test('1hr lagi', () => assert.strictEqual(T.hitungEstimasi(new Date('2026-08-08T12:00:00'), now), '1hr lagi'));
+test('1bln 3hr lagi', () => assert.strictEqual(T.hitungEstimasi(new Date('2026-09-10T12:00:00'), now), '1bln 3hr lagi'));
 test('sudah berangkat (lewat)', () => assert.ok(/sudah berangkat/i.test(T.hitungEstimasi(new Date('2026-08-01T12:00:00'), now))));
-test('2 tahun 1 bulan lagi', () => assert.strictEqual(T.hitungEstimasi(new Date('2028-09-07T12:00:00'), now), '2 tahun 1 bulan lagi'));
+test('2th 1bln lagi', () => assert.strictEqual(T.hitungEstimasi(new Date('2028-09-07T12:00:00'), now), '2th 1bln lagi'));
 
 console.log('\n=== TEST: escapeHtml / escapeJsAttr (XSS) ===');
 test('escape <script>', () => assert.strictEqual(T.escapeHtml('<script>'), '&lt;script&gt;'));

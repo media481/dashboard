@@ -749,7 +749,7 @@ function getNearestDepartureIds(count = 3) {
 }
 
 // Hitung estimasi waktu menuju tanggal keberangkatan dalam Bahasa Indonesia.
-// Hasil contoh: "hari ini", "1 hari lagi", "1 bulan 3 hari lagi", "2 tahun 1 bulan lagi".
+// Hasil contoh: "hari ini", "1hr lagi", "1bln 3hr lagi", "2th 1bln lagi" (singkatan biar hemat ruang kolom).
 // Menggunakan perhitungan kalender (bulan = panjang bulan asli) biar akurat.
 function hitungEstimasi(dateObj, now) {
     if (!dateObj) return '-';
@@ -768,9 +768,9 @@ function hitungEstimasi(dateObj, now) {
     }
     if (months < 0) { years -= 1; months += 12; }
     const parts = [];
-    if (years) parts.push(`${years} tahun`);
-    if (months) parts.push(`${months} bulan`);
-    if (days) parts.push(`${days} hari`);
+    if (years) parts.push(`${years}th`);
+    if (months) parts.push(`${months}bln`);
+    if (days) parts.push(`${days}hr`);
     if (!parts.length) parts.push('hari ini');
     return parts.join(' ') + ' lagi';
 }
