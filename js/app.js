@@ -2635,21 +2635,34 @@ function parseBroadcastText() {
 
     // Tanggal
     let tglISO = '';
+    let tglDisplay = ''; // versi rapi "26 November 2026" -- dipakai di caption WA (baris "📅 ...")
     const BULAN = {
         januari: '01', februari: '02', maret: '03', april: '04',
         mei: '05', juni: '06', juli: '07', agustus: '08',
         september: '09', oktober: '10', november: '11', desember: '12'
     };
+    // Reverse lookup (nomor bulan -> nama bulan dengan kapitalisasi baku),
+    // dipakai supaya tglDisplay konsisten rapi walau broadcast asli menulis
+    // nama bulan dengan huruf kecil semua ("november") atau ALL CAPS.
+    const BULAN_NAMA = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     for (const l of lines) {
         let m = l.match(/(\d{1,2})\s*[-–]\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
         if (m) {
             const bln = BULAN[m[3].toLowerCase()];
-            if (bln) { tglISO = m[4] + '-' + bln + '-' + m[2].padStart(2, '0'); break; }
+            if (bln) {
+                tglISO = m[4] + '-' + bln + '-' + m[2].padStart(2, '0');
+                tglDisplay = `${parseInt(m[2], 10)} ${BULAN_NAMA[parseInt(bln, 10) - 1]} ${m[4]}`;
+                break;
+            }
         }
         m = l.match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
         if (m) {
             const bln = BULAN[m[2].toLowerCase()];
-            if (bln) { tglISO = m[3] + '-' + bln + '-' + m[1].padStart(2, '0'); break; }
+            if (bln) {
+                tglISO = m[3] + '-' + bln + '-' + m[1].padStart(2, '0');
+                tglDisplay = `${parseInt(m[1], 10)} ${BULAN_NAMA[parseInt(bln, 10) - 1]} ${m[3]}`;
+                break;
+            }
         }
     }
 
@@ -2768,7 +2781,7 @@ function parseBroadcastText() {
 
     // Generate teks WA
     const parsedData = {
-        nama, durasi, maskapai, harga_quad, harga_triple, harga_double, harga_quint,
+        nama, durasi, tgl: tglDisplay, maskapai, harga_quad, harga_triple, harga_double, harga_quint,
         hotel_makkah: hotel_makkah_full, hotel_madinah: hotel_madinah_full,
         termasuk: termasuk.join('\n'),
         tidak_termasuk: tidak_termasuk.join('\n')
