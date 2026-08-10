@@ -1,4 +1,4 @@
-// ========== CROSSCHECK PANEL ==========
+    // ========== CROSSCHECK PANEL ==========
     let cxSelectedProgram = null;
     let cxScanningIds = new Set(); // program id yang sedang di-OCR
     let cxOcrProgress = {}; // {progId: 0..100}
