@@ -2607,9 +2607,12 @@ async function exportAdminData() {
     try {
         const headers = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY };
         const res = await fetch(`${SUPABASE_URL}/rest/v1/programs?select=*&order=created_at.asc`, { headers });
+        const rawPrograms = res.ok ? await res.json() : [];
+        // Buang field yang sudah tidak dipakai lagi (mis. link_metaads, link_dokumentasi)
+        // dari hasil backup, meski kolomnya masih ada di database.
         const backup = {
             _meta: { app: 'Dashboard Amiru', exported_at: new Date().toISOString(), version: '2.0' },
-            programs: res.ok ? await res.json() : []
+            programs: rawPrograms.map(p => pickAllowedColumns(p, PROGRAM_COLUMNS))
         };
         // Sertakan juga tabel lain supaya backup bisa dipulihkan utuh (lihat importAdminData).
         for (const tbl of ['jadwal_tamu', 'kb_jamaah', 'pendaftaran', 'featured_programs']) {
@@ -2638,12 +2641,15 @@ function isValidUUID(str) {
 
 // Kolom yang benar-benar ada di tabel `programs` (lihat sql/00_setup_semua_tabel.sql).
 // File backup dari versi/tool lain bisa saja punya field tambahan (mis. field lama
-// yang sudah tidak dipakai seperti "link_form" atau "updated_at" yang memang tidak
-// ada kolomnya di sini) -- field begitu HARUS dibuang sebelum upsert, karena
+// yang sudah tidak dipakai seperti "link_form", "link_metaads", "link_dokumentasi",
+// atau "updated_at") -- field begitu HARUS dibuang sebelum upsert, karena
 // Supabase/PostgREST menolak seluruh request kalau ada kolom yang tidak dikenal.
+// link_metaads & link_dokumentasi sengaja TIDAK dimasukkan lagi di sini (fitur link
+// Meta Ads/Dokumentasi sudah dihapus dari form admin) supaya export/import juga
+// tidak lagi menyertakan/memulihkan data lama di kolom tersebut.
 const PROGRAM_COLUMNS = [
     'id', 'nama', 'tgl', 'durasi', 'maskapai', 'harga_quint',
-    'link_poster', 'link_itinerary', 'link_metaads', 'link_dokumentasi',
+    'link_poster', 'link_itinerary',
     'teks_wa', 'admin_data_lengkap', 'is_active', 'created_at'
 ];
 function pickAllowedColumns(obj, allowed) {
