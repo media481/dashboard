@@ -3379,7 +3379,7 @@ async function confirmDeleteAction() {
         let cicRowSebelumHapus = null;
         if (finishedTable === 'pembayaran_jamaah') {
             const { data } = await supabaseClient
-                .from('pembayaran_jamaah').select('jumlah, tanggal, metode, keterangan').eq('id', finishedId).single();
+                .from('pembayaran_jamaah').select('id, jumlah, tanggal, metode, keterangan, nomor_nota, nomor_kuitansi').eq('id', finishedId).single();
             cicRowSebelumHapus = data || null;
         }
 
@@ -5735,7 +5735,17 @@ function isCicilanPelunasan(cicilan) {
     if (!cicilan || cicilan.id === 'draft') return false;
     if (Number(cicilan.jumlah || 0) < 0) return false; // refund tidak pernah jadi kuitansi
     if (!cicilanHargaProgram || cicilanHargaProgram <= 0) return false;
+    // [FIX] Urutkan berdasar `tanggal` (tanggal transaksi) dulu, BUKAN
+    // `created_at`, supaya konsisten dengan cara buildNotaRiwayatHTML()
+    // menentukan "tanggal pelunasan" (lihat komentar di sana) — kalau dua
+    // fungsi ini beda urutan, bisa terjadi Nota Riwayat bilang lunas di
+    // tanggal X tapi cicilan yang ditandai "KUITANSI" di preview per-baris
+    // malah baris lain. `created_at` cuma dipakai sebagai tiebreaker kalau
+    // ada 2+ transaksi persis di tanggal yang sama.
     const kronologis = [...cicilanList].sort((a, b) => {
+        const da = String(a.tanggal || '');
+        const db = String(b.tanggal || '');
+        if (da !== db) return da.localeCompare(db);
         const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
         const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
         if (ta !== tb) return ta - tb;
@@ -6283,18 +6293,14 @@ function buildNotaRiwayatHTML(kodeVerifikasi) {
     const statusLunas = hargaProgram > 0 && totalDibayar >= hargaProgram;
     const lebihBayar = Math.max(totalDibayar - hargaProgram, 0);
 
-    // Tanggal pelunasan = tanggal transaksi yang PERTAMA KALI membuat akumulasi
-    // pembayaran (urut tanggal, bukan urut input) mencapai/melewati harga
-    // program — dicari dengan menelusuri berjalan (running total), bukan cuma
-    // dipakai tanggal baris terakhir, karena urutan input transaksi bisa saja
-    // tidak sama dengan urutan tanggalnya.
+    // Tanggal pelunasan = tanggal transaksi cicilan yang menutup pelunasan
+    // (lihat isCicilanPelunasan() -- satu sumber logika yang sama dipakai
+    // juga oleh nota per-cicilan, supaya kedua nota tidak pernah beda
+    // pendapat soal transaksi mana yang melunasi).
     let tanggalPelunasan = null;
     if (statusLunas) {
-        let running = 0;
-        for (const c of riwayat) {
-            running += Number(c.jumlah || 0);
-            if (running >= hargaProgram) { tanggalPelunasan = c.tanggal; break; }
-        }
+        const pelunas = riwayat.find(c => isCicilanPelunasan(c));
+        tanggalPelunasan = pelunas ? pelunas.tanggal : null;
     }
 
     const rows = riwayat.length ? riwayat.map((c, i) => `
