@@ -300,6 +300,7 @@
             font-weight: 600;
             letter-spacing: .01em;
             color: var(--ink-soft);
+            padding-left: 4px;
         }
         .topbar-left p {
             color: var(--ink-soft);
