@@ -56,7 +56,7 @@
             <button class="nav-item active" data-tab="umroh" title="Program Umroh">
                 <i class="bi bi-list-ul"></i> <span class="nav-text">Program Umroh</span>
             </button>
-            <button class="nav-item" data-tab="unggulan" title="Unggulan">
+            <button class="nav-item nav-loggedin-only" data-tab="unggulan" style="display:none;" title="Unggulan">
                 <i class="bi bi-star-fill"></i> <span class="nav-text">Unggulan</span>
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="info" style="display:none;" title="Jadwal Tamu">
@@ -181,7 +181,7 @@
                 <button class="tab-btn active" data-tab="umroh">
                     <i class="bi bi-list-ul"></i> <span>Program Umroh</span>
                 </button>
-                <button class="tab-btn" data-tab="unggulan">
+                <button class="tab-btn nav-loggedin-only" data-tab="unggulan" style="display:none;">
                     <i class="bi bi-star-fill"></i> <span>Unggulan</span>
                 </button>
                 <button class="tab-btn nav-loggedin-only" data-tab="info" style="display:none;">
@@ -415,7 +415,7 @@
             <button class="nav-item active" data-tab="umroh" onclick="switchTab('umroh'); toggleMobileSidebar();">
                 <i class="bi bi-list-ul"></i> Program Umroh
             </button>
-            <button class="nav-item" data-tab="unggulan" onclick="switchTab('unggulan'); toggleMobileSidebar();">
+            <button class="nav-item nav-loggedin-only" data-tab="unggulan" style="display:none;" onclick="switchTab('unggulan'); toggleMobileSidebar();">
                 <i class="bi bi-star-fill"></i> Unggulan
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="info" style="display:none;" onclick="switchTab('info'); toggleMobileSidebar();">

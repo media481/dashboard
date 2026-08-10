@@ -997,7 +997,7 @@ function buildProgramRowHTML(item, now, nearestIds) {
         : '';
 
     return `<tr class="${isNearest ? 'row-nearest-departure' : ''}">
-            <td title="${hasPosterHover?'Hover untuk preview poster — ':''}${escapeHtml(item.nama||'')}"><strong${posterHoverAttrs}>${escapeHtml(item.nama||'')}${hasPosterHover?' <i class="bi bi-image-fill" style="margin-left:5px;font-size:10px;color:var(--primary);opacity:.6;"></i>':''}</strong>${verifiedBadge}</td>
+            <td title="${hasPosterHover?'Hover untuk preview poster — ':''}${escapeHtml(item.nama||'')}"><strong${posterHoverAttrs}>${escapeHtml(item.nama||'')}</strong>${verifiedBadge}</td>
             <td>${escapeHtml(hitungEstimasi(item.dateObj, now))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_quad || item.harga_quint))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_triple))}</td>
