@@ -398,6 +398,16 @@ function normalizeUmrohSpelling(text) {
     });
 }
 
+// Standarisasi singkatan "pp" (Pulang-Pergi, umum dipakai di item "Tiket
+// Pesawat ... pp") supaya selalu tampil huruf besar "PP" di caption, apapun
+// kapitalisasi aslinya di broadcast/input admin ("pp", "Pp", "PP" -> "PP").
+// \b...\b memastikan hanya kata "pp" berdiri sendiri yang kena, bukan
+// potongan tengah kata lain.
+function normalizePpAbbreviation(text) {
+    if (!text) return text;
+    return text.replace(/\bpp\b/gi, 'PP');
+}
+
 // Ubah judul yang ditulis SEMUA HURUF BESAR (umum di broadcast WA, misal
 // "UMRAH LIBURAN DESEMBER") jadi Title Case yang lebih rapi untuk field Nama
 // Program ("Umroh Liburan Desember"). Kalau judulnya sudah campuran huruf
@@ -477,7 +487,7 @@ function pickWaOpeningSentence(data) {
 // 4. GENERATE AUTO WA TEXT
 // ============================================================
 function generateAutoWAText(data) {
-    const s = v => normalizeUmrohSpelling((v || '').toString().replace(/javascript:/gi, 'blocked:'));
+    const s = v => normalizePpAbbreviation(normalizeUmrohSpelling((v || '').toString().replace(/javascript:/gi, 'blocked:')));
     const namaUpper = s(data.nama || 'PROGRAM UMROH').toUpperCase();
     let teks = `🕋 *${namaUpper}* 🕋\n`;
 
@@ -501,10 +511,10 @@ function generateAutoWAText(data) {
     if (hargaLines.length) teks += `💰 Biaya Program:\n${hargaLines.join('\n')}\n\n`;
 
     const termasukList = data.termasuk ? data.termasuk.split('\n').map(i => i.trim()).filter(Boolean) : ['Tiket Pesawat PP', 'Visa Umroh', 'Fullboard Hotel'];
-    teks += `✅ Termasuk:\n${termasukList.map(i => `- ${i}`).join('\n')}\n\n`;
+    teks += `✅ Termasuk:\n${termasukList.map(i => `- ${s(i)}`).join('\n')}\n\n`;
 
     const tidakList = data.tidak_termasuk ? data.tidak_termasuk.split('\n').map(i => i.trim()).filter(Boolean) : ['Paspor', 'Vaksin', 'Pengeluaran pribadi'];
-    teks += `❌ Tidak Termasuk:\n${tidakList.map(i => `- ${i}`).join('\n')}\n\n`;
+    teks += `❌ Tidak Termasuk:\n${tidakList.map(i => `- ${s(i)}`).join('\n')}\n\n`;
 
     teks += `📞 Info & Itinerary:\n${(NOTA_PERUSAHAAN.kontak_wa || []).map(n => 'wa.me/' + n).join('\n')}`;
     return teks;
@@ -642,8 +652,9 @@ async function generateCaptionAI() {
     let raw = (document.getElementById('parseBroadcastInput')?.value || '').trim();
     if (!raw) raw = buildRawConceptFromAdminForm();
     if (!raw) { showToast('Isi dulu Nama Program, atau paste Teks Broadcast', 'error'); return; }
-    // Standarisasi ejaan "Umrah" -> "Umroh" di konsep sebelum dikirim ke AI.
-    raw = normalizeUmrohSpelling(raw);
+    // Standarisasi ejaan "Umrah" -> "Umroh" & singkatan "pp" -> "PP" di
+    // konsep sebelum dikirim ke AI.
+    raw = normalizePpAbbreviation(normalizeUmrohSpelling(raw));
 
     if (btn) btn.disabled = true;
     if (btnText) btnText.textContent = 'Menyusun...';
@@ -674,6 +685,8 @@ async function generateCaptionAI() {
         if (!result) throw new Error('Tidak ada hasil teks dari model.');
         // Jaga-jaga kalau model tetap menulis "Umrah" walau sudah diinstruksikan di system prompt.
         result = normalizeUmrohSpelling(result);
+        // Jaga-jaga kalau model menulis singkatan "pp" huruf kecil.
+        result = normalizePpAbbreviation(result);
         // Jaga-jaga kalau model lupa tanda bintang judul / baris kosong antar section.
         result = enforceWaCaptionFormat(result);
 
@@ -2582,9 +2595,10 @@ function parseBroadcastText() {
     const rawInput = document.getElementById('parseBroadcastInput').value.trim();
     if (!rawInput) { showToast('Paste teks broadcast dulu', 'error'); return; }
     // Broadcast dari grup WA sering pakai ejaan "Umrah" -- standarisasi ke "Umroh"
-    // dulu sebelum diparsing, supaya field yang terisi otomatis (nama program, dll)
-    // ikut konsisten pakai ejaan resmi Amiru Tour.
-    const raw = normalizeUmrohSpelling(rawInput);
+    // dan singkatan "pp" (Pulang-Pergi) huruf kecil -- standarisasi ke "PP" --
+    // dulu sebelum diparsing, supaya field yang terisi otomatis (nama program,
+    // termasuk/tidak termasuk, dll) ikut konsisten dengan format resmi Amiru Tour.
+    const raw = normalizePpAbbreviation(normalizeUmrohSpelling(rawInput));
 
     const lines = raw.split('\n').map(l => l.trim()).filter(l => l);
     const clean = s => s.replace(/^\*+|\*+$/g, '').trim();
