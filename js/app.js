@@ -2075,7 +2075,7 @@ async function renderAdminPanel() {
                             <span>Link ke dokumen penting (SOP, kontrak, akun cloud, dsb) — mirip bookmark</span>
                         </div>
                     </div>
-                    <button class="btn-primary btn-sm" onclick="openAssetModal()">
+                    <button class="btn-primary btn-sm" onclick="openAssetModal()" ${canManageAssets() ? '' : 'style="display:none;"'}>
                         <i class="bi bi-plus-lg"></i> Tambah Link
                     </button>
                 </div>
@@ -2346,6 +2346,16 @@ function setAdminFormData(data) {
 // Guard: hanya role 'admin' & 'user' yang boleh tambah/edit/hapus data program
 function canManageProgramData() {
     return adminLoggedIn && (currentRole === 'admin' || currentRole === 'user');
+}
+
+// Guard KHUSUS Assets: berbeda dari canManageProgramData() -- di sini role
+// 'user' (editor) SENGAJA TIDAK diberi izin tambah/edit/hapus walau menu
+// "Assets" boleh diaktifkan untuknya lewat Akses Menu per Role (dia cuma
+// boleh lihat & buka link, bukan mengelola). Hanya 'admin' yang boleh
+// menambah/mengedit/menghapus. Dikunci juga di level RLS (bukan cuma UI
+// ini) -- lihat sql/kunci_assets_admin_saja.sql.
+function canManageAssets() {
+    return adminLoggedIn && currentRole === 'admin';
 }
 
 // Sembunyikan tombol tambah data (Jadwal Tamu, Data Jamaah, Program) dari guest/publik yang belum login
@@ -3341,6 +3351,11 @@ async function confirmDeleteAction() {
     if (!deleteTarget.id || !deleteTarget.table) return;
     if (deleteTarget.table === 'programs' && !canManageProgramData()) {
         showToast('Akun Anda tidak punya izin untuk menghapus program', 'error');
+        closeDeleteConfirmModal();
+        return;
+    }
+    if (deleteTarget.table === 'assets' && !canManageAssets()) {
+        showToast('Hanya Admin yang boleh menghapus Assets', 'error');
         closeDeleteConfirmModal();
         return;
     }
@@ -8064,6 +8079,10 @@ function renderAssetsAdminTable() {
         return a.localeCompare(b);
     });
 
+    // Tombol Edit/Hapus hanya untuk Admin -- role 'user' (editor) cuma boleh
+    // lihat & buka link walau menu Assets ini boleh diaktifkan untuknya
+    // (lihat canManageAssets()).
+    const canManage = canManageAssets();
     wrap.innerHTML = sortedKeys.map(key => `
         <div class="asset-group">
             <div class="asset-group-title">${escapeHtml(key)} <span class="asset-group-count">${groups[key].length}</span></div>
@@ -8080,10 +8099,11 @@ function renderAssetsAdminTable() {
                                 <div class="asset-card-url">${escapeHtml(a.url || '')}</div>
                             </div>
                         </a>
+                        ${canManage ? `
                         <div class="asset-card-actions">
                             <button type="button" class="pf-btn-edit" onclick="openAssetModal('${a.id}')" title="Edit"><i class="bi bi-pencil-fill"></i> Edit</button>
                             <button type="button" class="pf-btn-delete" onclick="openDeleteModal('assets', '${a.id}', '${escapeJsAttr(a.judul)}')" title="Hapus"><i class="bi bi-trash-fill"></i> Hapus</button>
-                        </div>
+                        </div>` : ''}
                     </div>
                 `).join('')}
             </div>
@@ -8122,7 +8142,7 @@ function escapeHtmlAttr(str) {
 }
 
 function openAssetModal(id = null) {
-    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengelola Assets', 'error'); return; }
+    if (!canManageAssets()) { showToast('Hanya Admin yang boleh mengelola Assets', 'error'); return; }
     editingAssetId = id;
     document.getElementById('asset_editId').value = '';
     document.getElementById('assetForm').reset();
@@ -8151,7 +8171,7 @@ function closeAssetModal() {
 
 async function saveAsset(e) {
     if (e) e.preventDefault();
-    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengelola Assets', 'error'); return; }
+    if (!canManageAssets()) { showToast('Hanya Admin yang boleh mengelola Assets', 'error'); return; }
 
     const id = document.getElementById('asset_editId').value;
     const judul = document.getElementById('asset_judul').value.trim();
