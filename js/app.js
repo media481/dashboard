@@ -6734,6 +6734,36 @@ const CX_AUTOFILL_FIELD_TO_INPUT = {
     harga_double: 'admin_harga_double', hotel_makkah: 'admin_hotel_makkah', hotel_madinah: 'admin_hotel_madinah',
 };
 
+// Field mismatch di panel Crosscheck ada di section (fieldset) mana di form
+// Edit Program -- dipakai cxGoToEditField() buat auto-scroll ke section yang
+// tepat begitu form dibuka.
+const CX_FIELD_TO_SECTION = {
+    nama: 'af-info', tgl: 'af-info', durasi: 'af-info', maskapai: 'af-info',
+    harga_quint: 'af-harga', harga_quad: 'af-harga', harga_triple: 'af-harga', harga_double: 'af-harga',
+    hotel_makkah: 'af-akomodasi', hotel_madinah: 'af-akomodasi',
+};
+
+// [CROSSCHECK] Diklik dari baris "data tidak cocok" di panel Crosscheck ->
+// langsung buka modal/form Edit Program terkait, auto-scroll ke section field
+// itu, fokuskan inputnya, dan kasih flash merah sesaat supaya kelihatan jelas
+// field mana yang dimaksud (tanpa admin perlu cari-cari manual di form).
+async function cxGoToEditField(progId, field) {
+    await editAdminProgram(progId);
+    const sectionId = CX_FIELD_TO_SECTION[field];
+    if (sectionId) scrollToAdminSection(sectionId);
+    setTimeout(() => {
+        // Tanggal disimpan di input hidden 'admin_tgl' -- yang kelihatan &
+        // bisa difokuskan admin adalah 'admin_tgl_date'.
+        const inputId = field === 'tgl' ? 'admin_tgl_date' : CX_AUTOFILL_FIELD_TO_INPUT[field];
+        const el = inputId && document.getElementById(inputId);
+        if (!el) return;
+        el.focus();
+        if (typeof el.select === 'function') el.select();
+        el.classList.add('cx-field-flash');
+        setTimeout(() => el.classList.remove('cx-field-flash'), 1300);
+    }, 400); // tunggu form + smooth-scroll section selesai render
+}
+
 // Tandai field yang "belum dikonfirmasi" (baru terisi otomatis dari OCR
 // poster, belum pernah disentuh admin) dengan highlight kuning + banner
 // ringkas di atas form. Highlight per-field lepas otomatis begitu admin
@@ -7269,12 +7299,13 @@ function renderCxPanel(progId) {
             const isWarning = tglStatus === 'warning';
             const isMatch = hasBoth && (tglStatus ? tglStatus === 'match' : cxValuesMatch(r.field, r.plain, r.poster));
             const rowClass = hasBoth ? (isWarning ? 'cx-match-warn' : (isMatch ? 'cx-match' : 'cx-mismatch')) : '';
+            const isMismatchRow = hasBoth && !isWarning && !isMatch;
             const pill = hasBoth
                 ? (isWarning
                     ? `<span class="cx-match-pill warn" title="Tanggal keberangkatan termasuk dalam rentang poster, tapi bukan tanggal yang persis sama"><i class="bi bi-exclamation-triangle-fill"></i> Cocok (Rentang)</span>`
                     : `<span class="cx-match-pill ${isMatch?'ok':'no'}">${isMatch?'<i class="bi bi-check-lg"></i> Cocok':'<i class="bi bi-x-lg"></i> Beda'}</span>`)
                 : `<span class="cx-match-pill skip">—</span>`;
-            return `<div class="cx-compare-row ${rowClass}">
+            return `<div class="cx-compare-row ${rowClass}"${isMismatchRow ? ` onclick="cxGoToEditField('${progId}','${r.field}')" title="Klik untuk langsung edit field ini"` : ''}>
                 <div class="cx-compare-field"><div class="cx-compare-label">${escapeHtml(r.label)}</div>${pill}</div>
                 <div class="cx-compare-col"><div class="cx-compare-label"><i class="bi bi-file-earmark-text-fill"></i> Teks</div><div class="cx-compare-val ${r.plain?'':'empty'}">${r.plain ? escapeHtml(r.plain) : '—'}</div></div>
                 <div class="cx-divider"></div>
