@@ -1686,16 +1686,6 @@ async function renderAdminPanel() {
                                 <input type="text" id="admin_hotel_madinah" placeholder="Nama hotel & bintang" maxlength="100">
                             </div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Makan Makkah</label>
-                                <input type="text" id="admin_makan_makkah" placeholder="3x Sehari / 2x Sehari" maxlength="80">
-                            </div>
-                            <div class="form-group">
-                                <label>Makan Madinah</label>
-                                <input type="text" id="admin_makan_madinah" placeholder="3x Sehari / 2x Sehari" maxlength="80">
-                            </div>
-                        </div>
                     </div>
 
                     <div class="admin-fieldset" id="af-link">
@@ -2237,8 +2227,6 @@ function getAdminFormData() {
         harga_double: document.getElementById('admin_harga_double')?.value || '',
         hotel_makkah: document.getElementById('admin_hotel_makkah')?.value || '',
         hotel_madinah: document.getElementById('admin_hotel_madinah')?.value || '',
-        makan_makkah: document.getElementById('admin_makan_makkah')?.value || '',
-        makan_madinah: document.getElementById('admin_makan_madinah')?.value || '',
         link_poster: document.getElementById('admin_link_poster')?.value || '',
         link_itinerary: document.getElementById('admin_link_itinerary')?.value || '',
         termasuk: document.getElementById('admin_termasuk')?.value || '',
@@ -2276,8 +2264,6 @@ function setAdminFormData(data) {
     });
     document.getElementById('admin_hotel_makkah').value = data.hotel_makkah || '';
     document.getElementById('admin_hotel_madinah').value = data.hotel_madinah || '';
-    document.getElementById('admin_makan_makkah').value = data.makan_makkah || '';
-    document.getElementById('admin_makan_madinah').value = data.makan_madinah || '';
     document.getElementById('admin_link_poster').value = data.link_poster || '';
     document.getElementById('admin_link_itinerary').value = data.link_itinerary || '';
     document.getElementById('admin_termasuk').value = data.termasuk || '';
@@ -2479,7 +2465,7 @@ async function saveAdminProgram() {
     if (!formData.teks_wa) formData.teks_wa = generateAutoWAText(formData);
 
     // Pack admin-only fields
-    const adminOnlyFields = ['harga_quad','harga_triple','harga_double','hotel_makkah','hotel_madinah','makan_makkah','makan_madinah','termasuk','tidak_termasuk','catatan_cx'];
+    const adminOnlyFields = ['harga_quad','harga_triple','harga_double','hotel_makkah','hotel_madinah','termasuk','tidak_termasuk','catatan_cx'];
     const adl = {};
     adminOnlyFields.forEach(f => { if (formData[f]) adl[f] = formData[f]; });
     const saveData = { ...formData };
