@@ -6312,8 +6312,16 @@ async function saveCicilan(e) {
     cicilanSaving = true;
     if (submitBtn) submitBtn.disabled = true;
     try {
-        const { error } = await supabaseClient.from('pembayaran_jamaah').insert([{ jamaah_id: jamaahId, tanggal, jumlah, metode, keterangan }]);
+        // [FIX] .select('id') supaya bisa dipastikan baris pembayaran BENAR-
+        // BENAR tersimpan. Tanpa ini, kalau ditolak RLS (sesi kedaluwarsa dll),
+        // toast tetap bilang "berhasil" padahal uang yang dicatat tidak masuk
+        // ke database sama sekali -- riskan untuk data uang.
+        const { data: insertedRows, error } = await supabaseClient.from('pembayaran_jamaah')
+            .insert([{ jamaah_id: jamaahId, tanggal, jumlah, metode, keterangan }]).select('id');
         if (error) throw error;
+        if (!insertedRows || insertedRows.length === 0) {
+            throw new Error('Pembayaran tidak berhasil tersimpan ke database. Kemungkinan sesi login sudah kedaluwarsa atau akun tidak punya izin — coba logout lalu login ulang, JANGAN dianggap sudah tercatat.');
+        }
 
         showToast(isRefund ? 'Refund berhasil dicatat' : 'Pembayaran berhasil dicatat');
         document.getElementById('cicilanForm').reset();
@@ -6378,7 +6386,17 @@ async function syncJamaahStatus(jamaahId) {
         else statusBaru = 'pending';
 
         if (statusBaru !== jamaahRow.status) {
-            await supabaseClient.from('kb_jamaah').update({ status: statusBaru }).eq('id', jamaahId);
+            // [FIX] cek betul apakah update-nya kena baris (.select('id')) --
+            // total uang di riwayat pembayaran tetap akurat kalau ini gagal,
+            // tapi badge status lunas/DP/pending jamaah bisa nyangkut salah
+            // dan menyesatkan staf soal siapa yang sudah/belum lunas.
+            const { data: updRows, error: updErr } = await supabaseClient
+                .from('kb_jamaah').update({ status: statusBaru }).eq('id', jamaahId).select('id');
+            if (updErr || !updRows || !updRows.length) {
+                console.warn('Sinkron status jamaah gagal tersimpan:', updErr);
+                showToast('Pembayaran sudah tercatat, tapi status lunas/DP jamaah gagal disinkronkan (sesi login mungkin kedaluwarsa) — refresh halaman lalu cek ulang', 'error');
+                return;
+            }
             await loadKbJamaah();
         }
     } catch (err) {
@@ -6426,13 +6444,25 @@ async function syncJamaahStatusForProgram(programId) {
         }
         if (!updates.length) return;
 
-        await Promise.all(updates.map(u => supabaseClient.from('kb_jamaah').update({ status: u.status }).eq('id', u.id)));
+        // [FIX] cek betul berapa baris yang benar-benar ke-update
+        // (.select('id')) -- kalau ada yang ditolak RLS diam-diam (sesi
+        // kedaluwarsa dll), staf perlu tahu badge status jamaah itu masih
+        // status LAMA, bukan diam-diam dianggap sudah tersinkron.
+        const updateResults = await Promise.all(updates.map(u =>
+            supabaseClient.from('kb_jamaah').update({ status: u.status }).eq('id', u.id).select('id')
+        ));
+        const gagalCount = updateResults.filter(r => r.error || !r.data || !r.data.length).length;
+        const suksesCount = updates.length - gagalCount;
 
         await loadKbJamaah();
         if (String(kbSelectedProgram) === String(programId)) await loadKbJamaahForProgram(programId);
         if (adminSubTab === 'pembayaran') await renderPembayaranPanel();
 
-        showToast(`Harga program berubah — status bayar ${updates.length} jamaah disesuaikan otomatis`);
+        if (gagalCount > 0) {
+            showToast(`Harga program berubah — ${suksesCount} status jamaah disesuaikan, TAPI ${gagalCount} gagal disinkronkan (sesi login mungkin kedaluwarsa) — refresh & cek ulang`, 'error');
+        } else {
+            showToast(`Harga program berubah — status bayar ${updates.length} jamaah disesuaikan otomatis`);
+        }
     } catch (err) {
         console.warn('Sync status jamaah per-program gagal (non-fatal):', err);
     }
