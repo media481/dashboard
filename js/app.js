@@ -536,6 +536,39 @@ function buildRawConceptFromAdminForm() {
     return lines.join('\n');
 }
 
+// Jaring pengaman format setelah caption dibuat AI — AI kadang lupa ikut
+// instruksi persis (misal tanda bintang di judul kelupaan, atau baris kosong
+// antar section hilang). Fungsi ini merapikan otomatis tanpa mengubah isi:
+// 1. Pastikan judul di baris "🕋 ... 🕋" diapit tanda bintang (*JUDUL*).
+// 2. Pastikan ada baris kosong sebelum tiap header section standar.
+function enforceWaCaptionFormat(text) {
+    if (!text) return text;
+    let lines = text.split('\n');
+
+    // 1) Judul: kalau baris "🕋 [teks] 🕋" belum punya tanda bintang, tambahkan.
+    lines = lines.map(l => {
+        const m = l.match(/^(🕋\s*)([^🕋]+?)(\s*🕋)$/);
+        if (m && !/^\*.+\*$/.test(m[2].trim())) {
+            return `${m[1]}*${m[2].trim()}*${m[3]}`;
+        }
+        return l;
+    });
+
+    // 2) Baris kosong sebelum header section standar.
+    const sectionHeaders = ['✈️ Fasilitas:', '💰 Biaya Program:', '✅ Termasuk:', '❌ Tidak Termasuk:', '📞 Info & Itinerary:'];
+    const out = [];
+    for (let i = 0; i < lines.length; i++) {
+        const isHeader = sectionHeaders.some(h => lines[i].trim().startsWith(h));
+        const prevLine = out[out.length - 1];
+        if (isHeader && out.length > 0 && prevLine.trim() !== '') {
+            out.push('');
+        }
+        out.push(lines[i]);
+    }
+    // Rapikan kalau ada baris kosong ganda (efek samping dari langkah di atas).
+    return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 // Generate caption WA pakai Claude API — sumber: kotak "Teks Broadcast" kalau diisi, kalau tidak dirangkai dari field form
 async function generateCaptionAI() {
     const btn = document.getElementById('btnGenCaptionAI');
@@ -578,6 +611,8 @@ async function generateCaptionAI() {
         if (!result) throw new Error('Tidak ada hasil teks dari model.');
         // Jaga-jaga kalau model tetap menulis "Umrah" walau sudah diinstruksikan di system prompt.
         result = normalizeUmrohSpelling(result);
+        // Jaga-jaga kalau model lupa tanda bintang judul / baris kosong antar section.
+        result = enforceWaCaptionFormat(result);
 
         teksWaEl.value = result;
         updateWaCaptionGauge(result);
