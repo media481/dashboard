@@ -6606,11 +6606,12 @@ async function loadDokumenForProgram(programId) {
 
         container.innerHTML = `
             <div class="table-container" style="overflow-x:auto;">
-                <table style="width:100%;min-width:${820 + DOKUMEN_JENIS.filter(d => d.type === 'copy').length * 88}px;border-collapse:collapse;font-size:13px;table-layout:fixed;">
+                <table style="width:100%;min-width:${900 + DOKUMEN_JENIS.filter(d => d.type === 'copy').length * 88}px;border-collapse:collapse;font-size:13px;table-layout:fixed;">
                     <colgroup>
                         <col style="width:190px;">
                         ${DOKUMEN_JENIS.map(d => d.type === 'copy' ? '<col style="width:44px;"><col style="width:44px;">' : '<col style="width:110px;">').join('')}
                         <col style="width:140px;">
+                        <col style="width:80px;">
                     </colgroup>
                     <thead style="background:var(--bg);">
                         <tr>
@@ -6620,6 +6621,7 @@ async function loadDokumenForProgram(programId) {
                                 : `<th rowspan="2" style="padding:10px 6px;text-align:center;font-size:10.5px;line-height:1.25;text-transform:uppercase;color:var(--ink-soft);vertical-align:bottom;border-left:1px solid var(--line);word-break:break-word;">${escapeHtml(d.label)}</th>`
                             ).join('')}
                             <th rowspan="2" style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);vertical-align:bottom;border-left:1px solid var(--line);">Status</th>
+                            <th rowspan="2" style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);vertical-align:bottom;border-left:1px solid var(--line);">Aksi</th>
                         </tr>
                         <tr>
                             ${DOKUMEN_JENIS.filter(d => d.type === 'copy').map(() => `
@@ -6654,12 +6656,17 @@ async function loadDokumenForProgram(programId) {
                                 <td style="padding:10px 14px;border-left:1px solid var(--line);">
                                     <span class="status-badge ${lengkap ? 'available' : 'full'}">${lengkap ? '<i class="bi bi-check-circle-fill"></i> Lengkap' : '<i class="bi bi-hourglass-split"></i> Belum Lengkap'}</span>
                                 </td>
+                                <td style="padding:10px 14px;border-left:1px solid var(--line);">
+                                    <div class="action-btns">
+                                        <button onclick="bukaTandaTerimaDokumen('${j.id}', this)" title="Cetak Tanda Terima Dokumen"><i class="bi bi-printer-fill"></i></button>
+                                    </div>
+                                </td>
                             </tr>`;
                         }).join('')}
                     </tbody>
                 </table>
             </div>
-            <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;">${totalDok} jenis dokumen dicek (mengikuti form Tanda Terima Dokumen): ${DOKUMEN_JENIS.map(d => d.label).join(', ')}. Untuk KTP–Kartu Vaksin, centang Fotocopy dan/atau Asli sesuai yang diserahkan jamaah.</p>
+            <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;">${totalDok} jenis dokumen dicek (mengikuti form Tanda Terima Dokumen): ${DOKUMEN_JENIS.map(d => d.label).join(', ')}. Untuk KTP–Kartu Vaksin, centang Fotocopy dan/atau Asli sesuai yang diserahkan jamaah. Klik <i class="bi bi-printer-fill"></i> untuk mencetak Tanda Terima Dokumen jamaah tersebut.</p>
         `;
 
     } catch (err) {
@@ -6699,6 +6706,164 @@ async function toggleDokumenJamaah(jamaahId, key, checked) {
         if (dokSelectedProgram) await loadDokumenForProgram(dokSelectedProgram);
     }
 }
+
+// ---- NOTA "TANDA TERIMA DOKUMEN" per jamaah ----
+// Dokumen bukti resmi penyerahan berkas persyaratan (KTP, KK, Paspor, dst)
+// dari jamaah ke kantor, dengan kop & identitas visual yang SAMA persis
+// dengan Nota Pembayaran (pakai ulang NOTA_TEMA, buildNotaHeaderHTML,
+// buildNotaTitleBarHTML, buildNotaWatermarkHTML, buildNotaSignatureHTML —
+// lihat bagian "19C/19D. NOTA PEMBAYARAN"). Bedanya dari Nota Pembayaran:
+// bukan dokumen finansial, jadi TIDAK dicatat ke nota_audit_log & tidak
+// pakai Kode Verifikasi (sistem itu khusus dokumen pembayaran/kuitansi).
+let dokTandaTerimaPending = null; // { jamaah, program, html }
+
+// Nomor dokumen dibuat deterministik dari id jamaah (bukan sequence
+// database) — sengaja SELALU sama tiap kali dicetak ulang untuk jamaah yang
+// sama, supaya tidak perlu migrasi SQL baru hanya untuk dokumen non-finansial ini.
+function nomorTandaTerimaDokumen(jamaah) {
+    const idPart = String(jamaah?.id || '').replace(/-/g, '').slice(0, 8).toUpperCase();
+    return `TTD/${new Date().getFullYear()}/${idPart || '00000000'}`;
+}
+
+function buildDokumenTandaTerimaHTML(jamaah, program) {
+    const dok = jamaah.dokumen || {};
+    const totalDok = DOKUMEN_JENIS.length;
+    const totalLengkap = DOKUMEN_JENIS.filter(d => d.type === 'copy'
+        ? !!(dok[d.key + '_fc'] || dok[d.key + '_asli'])
+        : !!dok[d.key]).length;
+    const overallLengkap = totalLengkap === totalDok;
+
+    const STATUS_WARNA = { ok: '#279E70', partial: NOTA_TEMA.gold, none: NOTA_TEMA.stampRed };
+
+    // Baris status per jenis dokumen: hijau (lengkap), gold (sebagian —
+    // khusus dokumen bertipe 'copy' yang baru diserahkan salah satu dari
+    // Fotocopy/Asli), atau merah (belum diserahkan sama sekali).
+    const rows = DOKUMEN_JENIS.map((d, i) => {
+        let label, warna;
+        if (d.type === 'copy') {
+            const fc = !!dok[d.key + '_fc'];
+            const asli = !!dok[d.key + '_asli'];
+            if (fc && asli) { label = '✓ Fotocopy &amp; Asli'; warna = STATUS_WARNA.ok; }
+            else if (fc) { label = '✓ Fotocopy saja'; warna = STATUS_WARNA.partial; }
+            else if (asli) { label = '✓ Asli saja'; warna = STATUS_WARNA.partial; }
+            else { label = 'Belum diserahkan'; warna = STATUS_WARNA.none; }
+        } else {
+            const sudah = !!dok[d.key];
+            label = sudah ? '✓ Sudah diserahkan' : 'Belum diserahkan';
+            warna = sudah ? STATUS_WARNA.ok : STATUS_WARNA.none;
+        }
+        return `
+        <tr style="background:${i % 2 === 0 ? '#fff' : NOTA_TEMA.tint};">
+            <td style="padding:7px 8px;border-bottom:1px solid ${NOTA_TEMA.line};text-align:center;color:${NOTA_TEMA.inkSoft};font-size:10px;">${i + 1}</td>
+            <td style="padding:7px 8px;border-bottom:1px solid ${NOTA_TEMA.line};font-size:10.5px;font-weight:600;">${escapeHtml(d.label)}</td>
+            <td style="padding:7px 8px;border-bottom:1px solid ${NOTA_TEMA.line};font-size:10px;font-weight:700;color:${warna};">${label}</td>
+        </tr>`;
+    }).join('');
+
+    const baris = (label, value, opts = {}) => `
+        <tr>
+            <td style="padding:2.5px 0;font-size:10px;color:${NOTA_TEMA.inkSoft};width:110px;vertical-align:top;">${label}</td>
+            <td style="padding:2.5px 0;font-size:10px;color:#1a1a1a;vertical-align:top;${opts.bold ? 'font-weight:700;' : ''}">: ${value}</td>
+        </tr>`;
+
+    const rekapItem = (label, value, opts = {}) => `
+        <div style="flex:1;">
+            <div style="font-size:8.5px;color:${NOTA_TEMA.inkSoft};text-transform:uppercase;letter-spacing:.04em;">${label}</div>
+            <div style="font-size:12px;font-weight:700;margin-top:2px;${opts.color ? 'color:' + opts.color + ';' : ''}">${value}</div>
+        </div>`;
+
+    // Sama seperti Nota Riwayat: lebar dikunci 794px (identik Nota
+    // Pembayaran), tinggi dibiarkan menyesuaikan jumlah baris jenis dokumen.
+    return `
+    <div style="position:relative;width:794px;background:#fff;font-family:'Inter',Arial,sans-serif;color:#1a1a1a;padding:22px 28px;box-sizing:border-box;border:1px solid ${NOTA_TEMA.line};overflow:hidden;">
+        ${buildNotaWatermarkHTML()}
+
+        <div style="position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border-bottom:1.5px solid ${NOTA_TEMA.navy};padding-bottom:9px;margin-bottom:12px;">
+            ${buildNotaHeaderHTML()}
+            ${buildNotaTitleBarHTML('TANDA TERIMA DOKUMEN', [
+                `No. ${escapeHtml(nomorTandaTerimaDokumen(jamaah))}`,
+                `${escapeHtml(tanggalIndonesia(new Date().toISOString().slice(0, 10)))}`
+            ])}
+        </div>
+
+        <div style="position:relative;z-index:1;">
+            <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
+                ${baris('Nama Jamaah', escapeHtml(jamaah.nama || '-'), { bold: true })}
+                ${baris('Program Umroh', `${escapeHtml(program?.nama || '-')}${program?.tgl ? ' (' + escapeHtml(program.tgl) + ')' : ''}`)}
+            </table>
+
+            <table style="width:100%;border-collapse:collapse;margin-bottom:12px;border:1px solid ${NOTA_TEMA.line};">
+                <thead>
+                    <tr style="background:${NOTA_TEMA.navy};">
+                        <th style="padding:8px 6px;text-align:center;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">No</th>
+                        <th style="padding:8px 6px;text-align:left;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">Jenis Dokumen</th>
+                        <th style="padding:8px 6px;text-align:left;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;color:#fff;font-weight:700;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+
+            <div style="display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-top:1px solid ${NOTA_TEMA.line};border-bottom:1px solid ${NOTA_TEMA.line};margin-bottom:12px;">
+                ${rekapItem('Jenis Dokumen', `${totalDok} jenis`)}
+                ${rekapItem('Dokumen Diterima', `${totalLengkap} dari ${totalDok}`)}
+                ${rekapItem('Status Keseluruhan', overallLengkap ? 'LENGKAP' : 'BELUM LENGKAP', { color: overallLengkap ? STATUS_WARNA.ok : STATUS_WARNA.partial })}
+            </div>
+
+            ${buildNotaSignatureHTML(jamaah.nama || 'Jamaah / Penyerah', getPetugasDisplayName())}
+        </div>
+
+        <div style="position:relative;z-index:1;text-align:left;font-size:8px;color:${NOTA_TEMA.inkSoft};margin-top:8px;padding-top:6px;border-top:1px solid ${NOTA_TEMA.line};">
+            <div style="color:#a0a8b3;">
+                Dokumen ini dicetak otomatis oleh sistem sebagai bukti resmi penyerahan dokumen persyaratan program umroh dari jamaah kepada ${escapeHtml(NOTA_PERUSAHAAN.brand)}. Berkas fisik yang diserahkan tetap disimpan oleh ${escapeHtml(NOTA_PERUSAHAAN.brand)} untuk keperluan keberangkatan.
+            </div>
+        </div>
+    </div>`;
+}
+
+async function bukaTandaTerimaDokumen(jamaahId, btn) {
+    const originalIcon = btn ? btn.innerHTML : null;
+    if (btn) { btn.innerHTML = '<i class="bi bi-arrow-repeat bi-spin"></i>'; btn.disabled = true; }
+    try {
+        const { data: jamaah, error } = await supabaseClient.from('kb_jamaah').select('*').eq('id', jamaahId).single();
+        if (error || !jamaah) throw error || new Error('Data jamaah tidak ditemukan');
+        const program = dataUmroh.find(p => String(p.id) === String(jamaah.program_id)) || null;
+
+        const html = buildDokumenTandaTerimaHTML(jamaah, program);
+        dokTandaTerimaPending = { jamaah, program, html };
+
+        const modal = document.getElementById('dokTandaTerimaModal');
+        renderScaledNotaInto(document.getElementById('dokTandaTerimaPreviewContent'), html);
+        modal.classList.add('open');
+    } catch (err) {
+        console.error('Buka Tanda Terima Dokumen error:', err);
+        showToast('Gagal memuat data jamaah: ' + (err?.message || err), 'error');
+    } finally {
+        if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
+    }
+}
+
+function tutupTandaTerimaModal() {
+    const modal = document.getElementById('dokTandaTerimaModal');
+    if (modal) modal.classList.remove('open');
+    const content = document.getElementById('dokTandaTerimaPreviewContent');
+    if (content) content.innerHTML = '';
+    dokTandaTerimaPending = null;
+    closeNotaLightbox();
+}
+
+async function unduhTandaTerimaDokumen(format, btn) {
+    if (!dokTandaTerimaPending) return;
+    const { jamaah, html } = dokTandaTerimaPending;
+    const namaJamaah = (jamaah?.nama || 'Jamaah').replace(/[^a-zA-Z0-9]+/g, '-');
+    const exportFn = format === 'pdf' ? exportNotaElementAsPdf : exportNotaElementAsJpeg;
+    const ext = format === 'pdf' ? 'pdf' : 'jpg';
+    await exportFn(html, `Tanda-Terima-Dokumen-${namaJamaah}.${ext}`, btn);
+}
+
+window.addEventListener('resize', () => {
+    const dokModal = document.getElementById('dokTandaTerimaModal');
+    if (dokModal && dokModal.classList.contains('open')) fitScaleInto(document.getElementById('dokTandaTerimaPreviewContent'));
+});
 
 // ============================================================
 // 20. KUITANSI — sejak digabung ke alur "Bayar" (lihat buildNotaHTML() dan

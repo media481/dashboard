@@ -1037,6 +1037,37 @@
     </div>
 </div>
 
+<!-- Modal "Tanda Terima Dokumen" per jamaah — dibuka dari tombol Cetak di tab
+     Kelengkapan Dokumen. Struktur & kop disamakan persis dengan modal preview
+     Nota Pembayaran (lihat js/app.js -> buildDokumenTandaTerimaHTML) supaya
+     satu identitas visual, tapi berdiri sendiri (bukan bagian dari modal
+     Kelola Cicilan) karena dipicu dari tab yang berbeda. -->
+<div class="modal-overlay" id="dokTandaTerimaModal">
+    <div class="modal-content cicilan-modal-1col" style="max-width:640px;">
+        <div class="modal-header">
+            <h2><i class="bi bi-file-earmark-check-fill"></i> Tanda Terima Dokumen</h2>
+            <button class="modal-close" onclick="tutupTandaTerimaModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="cicilan-modal-preview" style="position:static;width:100%;max-width:none;margin-top:0;">
+                <div class="cicilan-preview-head">
+                    <h4><i class="bi bi-file-earmark-text-fill"></i> Preview</h4>
+                    <div class="cicilan-preview-head-actions">
+                        <button type="button" class="btn-nota-expand" onclick="openNotaLightbox('dokTandaTerimaPreviewContent')" title="Perbesar preview (layar penuh)"><i class="bi bi-arrows-fullscreen"></i></button>
+                        <button type="button" class="modal-close" onclick="tutupTandaTerimaModal()" title="Tutup preview">&times;</button>
+                    </div>
+                </div>
+                <div id="dokTandaTerimaPreviewContent" class="nota-preview-content"></div>
+                <div class="nota-preview-actions">
+                    <button type="button" class="btn-cancel" onclick="tutupTandaTerimaModal()">Tutup</button>
+                    <button type="button" class="btn-download-jpeg" onclick="unduhTandaTerimaDokumen('jpeg', this)"><i class="bi bi-image-fill"></i> Unduh JPEG</button>
+                    <button type="button" class="btn-download-pdf" onclick="unduhTandaTerimaDokumen('pdf', this)"><i class="bi bi-file-earmark-pdf-fill"></i> Unduh PDF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Lightbox "Perbesar" Preview Nota: tampilkan nota di ukuran semaksimal
      mungkin (nyaris layar penuh) untuk pengecekan detail sebelum diunduh. -->
 <div class="nota-lightbox-overlay" id="notaLightboxOverlay" onclick="if(event.target===this) closeNotaLightbox()">
