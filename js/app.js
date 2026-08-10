@@ -404,31 +404,31 @@ function normalizeUmrohSpelling(text) {
 function generateAutoWAText(data) {
     const s = v => normalizeUmrohSpelling((v || '').toString().replace(/javascript:/gi, 'blocked:'));
     const namaUpper = s(data.nama || 'PROGRAM UMROH').toUpperCase();
-    let teks = `🌟 *${namaUpper}* 🌟\n    Bersama Amiru Tour\n`;
+    let teks = `🕋 *${namaUpper}* 🕋\n`;
 
     const durasi = data.durasi ? data.durasi.replace(/\s*hari/i, '').trim() : '';
-    if (data.tgl && durasi) teks += `📅 Berangkat ${s(data.tgl)} (${durasi} Hari)\n`;
-    else if (data.tgl) teks += `📅 Berangkat ${s(data.tgl)}\n`;
+    if (durasi && data.tgl) teks += `📅 ${durasi} Hari: ${s(data.tgl)}\n`;
+    else if (data.tgl) teks += `📅 ${s(data.tgl)}\n`;
+    teks += `\n`;
 
-    if (data.maskapai) teks += `✈️ ${s(data.maskapai)}\n`;
-
-    const hotelLines = [];
-    if (data.hotel_madinah) hotelLines.push(`* Madinah: ${s(data.hotel_madinah)}`);
-    if (data.hotel_makkah) hotelLines.push(`* Mekah: ${s(data.hotel_makkah)}`);
-    if (hotelLines.length) teks += `🏨 Hotel:\n${hotelLines.join('\n')}\n`;
+    const fasilitasLines = [];
+    if (data.maskapai) fasilitasLines.push(`✅ ${s(data.maskapai)}`);
+    if (data.hotel_madinah) fasilitasLines.push(`✅ Hotel Madinah: ${s(data.hotel_madinah)}`);
+    if (data.hotel_makkah) fasilitasLines.push(`✅ Hotel Makkah: ${s(data.hotel_makkah)}`);
+    if (fasilitasLines.length) teks += `✈️ Fasilitas:\n${fasilitasLines.join('\n')}\n\n`;
 
     const hargaLines = [];
     if (data.harga_quad) hargaLines.push(`* Quad: ${s(data.harga_quad)}`);
     if (data.harga_triple) hargaLines.push(`* Triple: ${s(data.harga_triple)}`);
     if (data.harga_double) hargaLines.push(`* Double: ${s(data.harga_double)}`);
     if (!hargaLines.length && data.harga_quint) hargaLines.push(`* Quint: ${s(data.harga_quint)}`);
-    if (hargaLines.length) teks += `💰 Biaya:\n${hargaLines.join('\n')}\n`;
+    if (hargaLines.length) teks += `💰 Biaya Program:\n${hargaLines.join('\n')}\n\n`;
 
     const termasukList = data.termasuk ? data.termasuk.split('\n').map(i => i.trim()).filter(Boolean) : ['Tiket Pesawat PP', 'Visa Umroh', 'Fullboard Hotel'];
-    teks += `✅ Termasuk: ${termasukList.join(', ')}\n`;
+    teks += `✅ Termasuk:\n${termasukList.map(i => `- ${i}`).join('\n')}\n\n`;
 
     const tidakList = data.tidak_termasuk ? data.tidak_termasuk.split('\n').map(i => i.trim()).filter(Boolean) : ['Paspor', 'Vaksin', 'Pengeluaran pribadi'];
-    teks += `❌ Tidak termasuk: ${tidakList.join(', ')}\n`;
+    teks += `❌ Tidak Termasuk:\n${tidakList.map(i => `- ${i}`).join('\n')}\n\n`;
 
     teks += `📞 Info & Itinerary:\n${(NOTA_PERUSAHAAN.kontak_wa || []).map(n => 'wa.me/' + n).join('\n')}`;
     return teks;
@@ -1569,7 +1569,7 @@ async function renderAdminPanel() {
                         </div>
                         <div class="form-group">
                             <label>Catatan Tambahan Admin</label>
-                            <textarea id="admin_catatan_cx" rows="2" placeholder="Catatan internal..." maxlength="500"></textarea>
+                            <textarea id="admin_catatan_cx" rows="2" placeholder="Contoh: Biaya dan jadwal sewaktu-waktu dapat berubah mengikuti ketentuan Saudi, Maskapai serta kenaikan kurs Dolar dan Riyal." maxlength="500"></textarea>
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
                             <div class="wa-compare-grid">

@@ -90,7 +90,7 @@
                     <div class="admin-form-group"><label style="color:#7c3aed;">Makan Madinah</label><input type="text" id="admin_makan_madinah" placeholder="3x Sehari / 2x Sehari" maxlength="80"></div>
                     <div class="admin-form-group admin-full-width"><label style="color:#7c3aed;">Fasilitas / Termasuk</label><textarea id="admin_termasuk" rows="4" placeholder="Tiket pesawat PP&#10;Visa umroh&#10;Hotel bintang 4&#10;Muthawwif berpengalaman" maxlength="2000" style="background:#fff;"></textarea></div>
                     <div class="admin-form-group admin-full-width"><label style="color:#7c3aed;">Tidak Termasuk</label><textarea id="admin_tidak_termasuk" rows="3" placeholder="Airport tax&#10;Biaya pengurusan paspor&#10;Pengeluaran pribadi" maxlength="1000" style="background:#fff;"></textarea></div>
-                    <div class="admin-form-group admin-full-width"><label style="color:#7c3aed;">Catatan Tambahan Admin</label><textarea id="admin_catatan_cx" rows="2" placeholder="Catatan internal untuk crosscheck..." maxlength="500" style="background:#fff;"></textarea></div>
+                    <div class="admin-form-group admin-full-width"><label style="color:#7c3aed;">Catatan Tambahan Admin</label><textarea id="admin_catatan_cx" rows="2" placeholder="Contoh: Biaya dan jadwal sewaktu-waktu dapat berubah mengikuti ketentuan Saudi, Maskapai serta kenaikan kurs Dolar dan Riyal." maxlength="500" style="background:#fff;"></textarea></div>
                 </div>
                 <div class="form-actions">
                     <button class="admin-btn admin-btn-primary" onclick="saveAdminProgram()"><i class="fas fa-save"></i> Simpan</button>
