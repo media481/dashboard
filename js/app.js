@@ -2521,6 +2521,17 @@ async function saveAdminProgram() {
     // memicu syncJamaahStatusForProgram() di bawah (lihat komentar di sana).
     const oldProgramForPriceCheck = editingProgramId ? dataUmroh.find(p => String(p.id) === String(editingProgramId)) : null;
     const oldHargaQuint = oldProgramForPriceCheck ? (oldProgramForPriceCheck.harga_quint || '') : '';
+    // [FIX BUG] Sebelumnya deteksi "harga berubah" cuma bandingkan harga_quint
+    // (field lama/legacy) -- padahal getHargaKamarJamaah() sekarang prioritas
+    // ke harga_quad, dan admin bisa ubah harga_triple/harga_double sendiri-
+    // sendiri. Kalau admin cuma ubah salah satu dari 3 field itu tanpa
+    // sentuh harga_quint, syncJamaahStatusForProgram() TIDAK ke-trigger,
+    // padahal tagihan jamaah sudah berubah -- badge Lunas/DP/Belum Bayar
+    // jadi nyangkut (stale) sampai ada transaksi pembayaran baru. Sekarang
+    // bandingkan KEEMPAT field harga sekaligus.
+    const oldHargaQuad = oldProgramForPriceCheck ? (oldProgramForPriceCheck.harga_quad || '') : '';
+    const oldHargaTriple = oldProgramForPriceCheck ? (oldProgramForPriceCheck.harga_triple || '') : '';
+    const oldHargaDouble = oldProgramForPriceCheck ? (oldProgramForPriceCheck.harga_double || '') : '';
 
     // Validate URLs
     const urlFields = ['link_poster', 'link_itinerary'];
@@ -2561,7 +2572,12 @@ async function saveAdminProgram() {
         // status bayar (lunas/dp/pending) semua jamaah di program ini —
         // dijalankan SETELAH loadDataFromSupabase supaya dataUmroh yang
         // dipakai syncJamaahStatusForProgram() sudah berisi harga terbaru.
-        if (isEdit && editingProgramId && formData.harga_quint !== oldHargaQuint) {
+        if (isEdit && editingProgramId && (
+            formData.harga_quint !== oldHargaQuint ||
+            formData.harga_quad !== oldHargaQuad ||
+            formData.harga_triple !== oldHargaTriple ||
+            formData.harga_double !== oldHargaDouble
+        )) {
             await syncJamaahStatusForProgram(editingProgramId);
         }
 
@@ -4813,6 +4829,15 @@ function renderPembayaranIncomeSummary(jamaahAll, totalPerJamaah) {
     const countEl = document.getElementById('pbBreakdownCount');
     if (!heroEl || !gridEl) return;
 
+    // [FIX BUG] Sebelumnya jamaah berstatus "Batal" ikut dihitung ke tagihan
+    // (target) di kartu hero & rincian per program -- padahal di tabel
+    // bawahnya jamaah batal sudah punya badge terpisah & sengaja dikeluarkan
+    // dari hitungan Lunas/Cicilan/Belum Bayar. Akibatnya "Sisa Belum
+    // Terbayar" total selalu lebih besar dari kenyataan karena ikut
+    // menghitung tagihan booking yang sudah dibatalkan (dan tidak akan
+    // pernah dilunasi). Exclude di sini juga supaya konsisten dengan tabel.
+    jamaahAll = jamaahAll.filter(j => j.status !== 'batal');
+
     // Kelompokkan per program
     const byProgram = {};
     jamaahAll.forEach(j => {
@@ -4961,8 +4986,12 @@ async function renderPembayaranPanel() {
         // Prioritaskan yang masih punya sisa tagihan terbesar supaya admin gampang follow-up
         rowsData.sort((a, b) => b.sisa - a.sisa);
 
-        const grandTagihan = rowsData.reduce((s, r) => s + r.hargaProgram, 0);
-        const grandDibayar = rowsData.reduce((s, r) => s + r.dibayar, 0);
+        // [FIX BUG] Sama seperti renderPembayaranIncomeSummary(): tagihan &
+        // sisa di stats bar ini exclude jamaah "Batal" supaya "Sisa Belum
+        // Terbayar" tidak digembungkan oleh booking yang sudah dibatalkan.
+        const rowsDataAktif = rowsData.filter(r => r.status !== 'batal');
+        const grandTagihan = rowsDataAktif.reduce((s, r) => s + r.hargaProgram, 0);
+        const grandDibayar = rowsDataAktif.reduce((s, r) => s + r.dibayar, 0);
         const grandSisa = Math.max(grandTagihan - grandDibayar, 0);
         const totalLunas = rowsData.filter(r => r.status === 'lunas').length;
         const totalBelum = rowsData.filter(r => r.status === 'belum').length;
@@ -5685,6 +5714,44 @@ function buildNotaSignatureHTML(kiriLabel, kananLabel) {
         </div>`;
 }
 
+// [FIX BUG] Menentukan APAKAH satu baris cicilan tertentu yang benar-benar
+// "menutup pelunasan" (bukan cuma "status jamaah saat ini kebetulan lunas").
+// Sebelumnya isKuitansi dihitung dari status agregat SAAT INI saja
+// (totalDibayarSemua >= hargaProgram) -- akibatnya kalau jamaah sudah lunas
+// lewat cicilan belakangan, lalu staf reprint/preview NOTA cicilan LAMA
+// (mis. DP pertama, waktu itu belum lunas), dokumen itu ikut berubah jadi
+// "KUITANSI" + dapat nomor kuitansi permanen sendiri -- padahal baris itu
+// bukan yang melunasi. Bisa berujung banyak "kuitansi lunas" dobel untuk
+// satu jamaah yang sama.
+//
+// Fix: urutkan SEMUA cicilan jamaah ini secara KRONOLOGIS (pakai created_at,
+// urutan transaksi benar-benar terjadi -- bukan `tanggal` yang bisa diisi
+// bebas/back-date oleh staf, dan bukan urutan tampil cicilanList yang di-
+// sort tanggal DESC untuk riwayat), lalu jumlahkan berjalan (running total).
+// Baris ini dianggap "pelunasan" HANYA kalau: sebelum baris ini running
+// total < harga (belum lunas), dan SESUDAH baris ini running total >= harga
+// (jadi lunas) -- persis satu baris saja per jamaah yang bisa true.
+function isCicilanPelunasan(cicilan) {
+    if (!cicilan || cicilan.id === 'draft') return false;
+    if (Number(cicilan.jumlah || 0) < 0) return false; // refund tidak pernah jadi kuitansi
+    if (!cicilanHargaProgram || cicilanHargaProgram <= 0) return false;
+    const kronologis = [...cicilanList].sort((a, b) => {
+        const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+        if (ta !== tb) return ta - tb;
+        return String(a.id).localeCompare(String(b.id));
+    });
+    let running = 0;
+    for (const c of kronologis) {
+        const sebelumLunas = running >= cicilanHargaProgram;
+        running += Number(c.jumlah || 0);
+        if (String(c.id) === String(cicilan.id)) {
+            return !sebelumLunas && running >= cicilanHargaProgram;
+        }
+    }
+    return false;
+}
+
 function buildNotaHTML(cicilan, kodeVerifikasi) {
     const jamaah = cicilanJamaahInfo || {};
     const program = cicilanProgramInfo || {};
@@ -5697,12 +5764,12 @@ function buildNotaHTML(cicilan, kodeVerifikasi) {
     const lebihBayar = Math.max(totalDibayarSemua - hargaProgram, 0);
 
     // Judul & nomor dokumen ditentukan OTOMATIS oleh sistem, bukan dipilih
-    // manual staf: kalau pembayaran ini membuat jamaah berstatus LUNAS (baik
-    // lunas sekali bayar, maupun cicilan terakhir yang menutup pelunasan),
-    // dokumennya berjudul "KUITANSI" & pakai seri nomor kuitansi terpisah
-    // (nomorKuitansiTampilan). Selama masih ada sisa tagihan (DP/cicilan),
-    // tetap "NOTA PEMBAYARAN" dengan nomor nota biasa (nomorNota).
-    const isKuitansi = statusLunas && Number(cicilan.jumlah || 0) >= 0;
+    // manual staf: kalau baris pembayaran INI SENDIRI yang menutup pelunasan
+    // (lihat isCicilanPelunasan di atas), dokumennya berjudul "KUITANSI" &
+    // pakai seri nomor kuitansi terpisah (nomorKuitansiTampilan). Selain itu
+    // (termasuk cicilan lama yang di-reprint setelah jamaah lunas lewat
+    // pembayaran belakangan), tetap "NOTA PEMBAYARAN" dengan nomor nota biasa.
+    const isKuitansi = isCicilanPelunasan(cicilan);
     const judulDokumen = isKuitansi ? 'KUITANSI' : 'NOTA PEMBAYARAN';
     const nomorDokumen = isKuitansi ? nomorKuitansiTampilan(cicilan) : nomorNota(cicilan);
 
@@ -6156,11 +6223,12 @@ async function downloadNotaPembayaran(cicilanId, btn, format = 'jpeg') {
     const namaJamaah = (cicilanJamaahInfo && cicilanJamaahInfo.nama ? cicilanJamaahInfo.nama : 'Jamaah').replace(/[^a-zA-Z0-9]+/g, '-');
 
     // Sama seperti buildNotaHTML: dokumen ini "KUITANSI" (seri nomor
-    // terpisah, dikunci permanen ke baris pembayaran ini) kalau pembayaran
-    // ini membuat jamaah LUNAS, selain itu tetap "NOTA PEMBAYARAN" biasa.
-    const totalDibayarSemua = cicilanList.reduce((sum, c) => sum + Number(c.jumlah || 0), 0);
-    const statusLunas = cicilanHargaProgram > 0 && totalDibayarSemua >= cicilanHargaProgram;
-    const isKuitansi = statusLunas && Number(cicilan.jumlah || 0) >= 0;
+    // terpisah, dikunci permanen ke baris pembayaran ini) HANYA kalau baris
+    // pembayaran INI SENDIRI yang menutup pelunasan (lihat isCicilanPelunasan
+    // -- [FIX BUG] sebelumnya dicek dari status agregat SEKARANG, jadi
+    // reprint cicilan lama sesudah jamaah lunas belakangan bisa salah dapat
+    // nomor kuitansi sendiri). Selain itu tetap "NOTA PEMBAYARAN" biasa.
+    const isKuitansi = isCicilanPelunasan(cicilan);
 
     let nomor;
     if (isKuitansi) {
