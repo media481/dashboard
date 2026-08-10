@@ -78,8 +78,9 @@ ATURAN KETAT:
 4. Baris "💰 Biaya Program:" SELALU pakai bullet tanda bintang ("* Kategori: Rp ..."), bukan tanda lain.
 5. Kalimat pembuka harus terasa ditulis khusus untuk program ini, bukan template kosong seperti "kesempatan langka beribadah di tanah suci" jika tidak relevan dengan isi konsep.
 6. Jika konsep tidak menyebutkan info tertentu (misal tidak ada kereta cepat, atau jarak hotel tidak disebutkan), jangan ditulis sama sekali — jangan mengarang.
-7. Output HANYA berupa teks caption final. JANGAN ada kalimat pembuka/penutup dari kamu, JANGAN ada markdown code fence, JANGAN ada penjelasan tambahan.
-8. Selalu gunakan ejaan "Umroh" (bukan "Umrah") di seluruh teks caption, walau konsep/input dari user memakai ejaan "Umrah".
+7. Kalimat disclaimer umum seperti "biaya dan jadwal sewaktu-waktu dapat berubah mengikuti ketentuan Saudi/Maskapai/kurs Dolar-Riyal" BUKAN poin "Tidak Termasuk" — itu catatan kebijakan, bukan item yang dikecualikan dari harga. Jika kalimat semacam ini ada di konsep, JANGAN dimasukkan ke list Tidak Termasuk maupun ke bagian mana pun di caption; abaikan saja dari output caption (catatan itu urusan internal admin, bukan konsumsi publik).
+8. Output HANYA berupa teks caption final. JANGAN ada kalimat pembuka/penutup dari kamu, JANGAN ada markdown code fence, JANGAN ada penjelasan tambahan.
+9. Selalu gunakan ejaan "Umroh" (bukan "Umrah") di seluruh teks caption, walau konsep/input dari user memakai ejaan "Umrah".
 
 ATURAN PANJANG TEKS (PALING PENTING):
 WhatsApp memotong tampilan caption gambar di sekitar 1024 karakter. Target panjang caption final HARUS di bawah 900 karakter total, TANPA menghilangkan satu pun poin penting (tanggal, harga per kategori kamar, hotel, termasuk/tidak termasuk, kontak). Caranya memadatkan, bukan memotong info:

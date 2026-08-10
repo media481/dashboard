@@ -398,6 +398,19 @@ function normalizeUmrohSpelling(text) {
     });
 }
 
+// Ubah judul yang ditulis SEMUA HURUF BESAR (umum di broadcast WA, misal
+// "UMRAH LIBURAN DESEMBER") jadi Title Case yang lebih rapi untuk field Nama
+// Program ("Umroh Liburan Desember"). Kalau judulnya sudah campuran huruf
+// besar/kecil (bukan all-caps), dibiarkan apa adanya supaya tidak merusak
+// penulisan yang memang disengaja (misal singkatan/akronim di tengah nama).
+function toTitleCaseIfAllCaps(str) {
+    if (!str) return str;
+    const lettersOnly = str.replace(/[^A-Za-z]/g, '');
+    const isAllCaps = lettersOnly.length > 0 && lettersOnly === lettersOnly.toUpperCase();
+    if (!isAllCaps) return str;
+    return str.toLowerCase().replace(/(^|[\s\-\/])([a-z])/g, (m, sep, c) => sep + c.toUpperCase());
+}
+
 // ============================================================
 // 4. GENERATE AUTO WA TEXT
 // ============================================================
@@ -2454,6 +2467,9 @@ function parseBroadcastText() {
         if (/^\*.+\*$/.test(l)) { nama = clean(l); break; }
     }
     if (!nama) nama = clean(lines[0]);
+    // Broadcast biasanya nulis judul ALL CAPS ("UMROH LIBURAN DESEMBER") --
+    // rapikan ke Title Case ("Umroh Liburan Desember") untuk field Nama Program.
+    nama = toTitleCaseIfAllCaps(nama);
 
     // Durasi
     let durasi = '';
@@ -2509,19 +2525,75 @@ function parseBroadcastText() {
     }
 
     // Hotel
+    // Dukung 2 format broadcast:
+    // 1) Inline: "Hotel Madinah: Al Ansar Platinum" (satu baris, ada titik dua)
+    // 2) Header terpisah: "HOTEL MADINAH 3HR" lalu baris berikutnya = nama hotel,
+    //    lalu baris berikutnya lagi (opsional) = jarak dalam kurung, misal
+    //    "(200m 3 menit jalan kaki)" — format ini yang sebelumnya tidak kebaca.
     let hotel_makkah = '', hotel_madinah = '';
-    for (const l of lines) {
+    let hotel_makkah_hari = '', hotel_madinah_hari = '';
+    let hotel_makkah_jarak = '', hotel_madinah_jarak = '';
+    const isMakkahHeader = s => /hotel\s*m[ae]k+ah/i.test(s) && !/[:\-]/.test(s);
+    const isMadinahHeader = s => /hotel\s*mad[iy]nah/i.test(s) && !/[:\-]/.test(s);
+    const parseJarak = (txt) => {
+        const m = txt.match(/\(([^)]*(?:m|km|meter)[^)]*)\)/i) || txt.match(/(\d+\s*m[^,\n]*(?:jalan|menit)[^,\n]*)/i);
+        return m ? m[1].trim() : '';
+    };
+    const parseHariHotel = (txt) => {
+        const m = txt.match(/(\d+)\s*[Hh]/);
+        return m ? m[1] : '';
+    };
+    for (let i = 0; i < lines.length; i++) {
+        const l = lines[i];
+        const lc = cleanAll(l).toLowerCase();
         const mMakkah = l.match(/hotel\s*m[ae]k+ah[^:]*[:\-]\s*(.+)/i);
-        if (mMakkah && !hotel_makkah) { hotel_makkah = cleanAll(mMakkah[2]); }
+        if (mMakkah && !hotel_makkah) { hotel_makkah = cleanAll(mMakkah[1]); continue; }
         const mMadinah = l.match(/hotel\s*mad[iy]nah[^:]*[:\-]\s*(.+)/i);
-        if (mMadinah && !hotel_madinah) { hotel_madinah = cleanAll(mMadinah[2]); }
+        if (mMadinah && !hotel_madinah) { hotel_madinah = cleanAll(mMadinah[1]); continue; }
+        // Header baris terpisah (tanpa titik dua): baris berikutnya = nama hotel
+        if (isMakkahHeader(lc) && !hotel_makkah && i + 1 < lines.length) {
+            hotel_makkah_hari = parseHariHotel(lc);
+            hotel_makkah = cleanAll(lines[i + 1]);
+            if (i + 2 < lines.length) hotel_makkah_jarak = parseJarak(lines[i + 2]);
+            continue;
+        }
+        if (isMadinahHeader(lc) && !hotel_madinah && i + 1 < lines.length) {
+            hotel_madinah_hari = parseHariHotel(lc);
+            hotel_madinah = cleanAll(lines[i + 1]);
+            if (i + 2 < lines.length) hotel_madinah_jarak = parseJarak(lines[i + 2]);
+            continue;
+        }
+        // Baris jarak standalone yang belum kepasang (jaga-jaga kalau bukan persis baris i+2)
+        if (hotel_makkah && !hotel_makkah_jarak) { const j = parseJarak(l); if (j) hotel_makkah_jarak = j; }
+        if (hotel_madinah && !hotel_madinah_jarak) { const j = parseJarak(l); if (j) hotel_madinah_jarak = j; }
     }
+    // Gabung nama hotel + malam + jarak jadi satu string siap pakai di field
+    // Akomodasi Hotel & caption, format: "Nama Hotel (X malam, jarak)".
+    const combineHotel = (nama, hari, jarak) => {
+        if (!nama) return '';
+        const detail = [];
+        if (hari) detail.push(hari + ' malam');
+        if (jarak) detail.push(jarak);
+        return detail.length ? `${nama} (${detail.join(', ')})` : nama;
+    };
+    const hotel_makkah_full = combineHotel(hotel_makkah, hotel_makkah_hari, hotel_makkah_jarak);
+    const hotel_madinah_full = combineHotel(hotel_madinah, hotel_madinah_hari, hotel_madinah_jarak);
 
     // Termasuk & Tidak Termasuk
     let termasuk = [], tidak_termasuk = [];
     let mode = null;
+    // Baris disclaimer umum (harga/jadwal sewaktu-waktu berubah, dsb) BUKAN item
+    // "Tidak Termasuk" — kalau ketemu, hentikan mode capture & simpan ke Catatan Admin
+    // supaya tidak ikut tersapu jadi item termasuk/tidak termasuk.
+    let catatan_admin = '';
+    const isDisclaimerLine = s => /sewaktu[\s-]*waktu.*berubah|berubah.*sewaktu[\s-]*waktu|kurs\s*(dolar|usd|riyal|sar)|ketentuan\s*(saudi|pemerintah|maskapai)/i.test(s);
     for (const l of lines) {
         const lc = cleanAll(l).toLowerCase();
+        if (isDisclaimerLine(lc)) {
+            if (!catatan_admin) catatan_admin = cleanAll(l).replace(/^\*+/, '').replace(/^[-•✓]\s*/, '').trim();
+            mode = null;
+            continue;
+        }
         if (/tidak\s*termasuk|belum\s*termasuk/i.test(lc)) { mode = 'tidak'; continue; }
         if (/sudah\s*termasuk|biaya\s*termasuk|^termasuk$|include|fasilitas/i.test(lc)) { mode = 'termasuk'; continue; }
         if (!mode) continue;
@@ -2546,10 +2618,11 @@ function parseBroadcastText() {
     ['admin_harga_quint', 'admin_harga_quad', 'admin_harga_triple', 'admin_harga_double'].forEach(id => {
         formatRupiahInput(document.getElementById(id));
     });
-    setVal('admin_hotel_makkah', hotel_makkah);
-    setVal('admin_hotel_madinah', hotel_madinah);
+    setVal('admin_hotel_makkah', hotel_makkah_full);
+    setVal('admin_hotel_madinah', hotel_madinah_full);
     if (termasuk.length) setVal('admin_termasuk', termasuk.join('\n'));
     if (tidak_termasuk.length) setVal('admin_tidak_termasuk', tidak_termasuk.join('\n'));
+    if (catatan_admin) setVal('admin_catatan_cx', catatan_admin);
 
     if (tglISO) {
         const tglInput = document.getElementById('admin_tgl_date');
@@ -2567,7 +2640,7 @@ function parseBroadcastText() {
     // Generate teks WA
     const parsedData = {
         nama, durasi, maskapai, harga_quad, harga_triple, harga_double, harga_quint,
-        hotel_makkah, hotel_madinah,
+        hotel_makkah: hotel_makkah_full, hotel_madinah: hotel_madinah_full,
         termasuk: termasuk.join('\n'),
         tidak_termasuk: tidak_termasuk.join('\n')
     };

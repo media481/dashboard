@@ -154,9 +154,19 @@
         // === FASILITAS TERMASUK & TIDAK TERMASUK ===
         // Format broadcast: item diawali "*" (bukan bullet), header "Biaya Sudah Termasuk" / "BIAYA BELUM TERMASUK"
         let termasuk = [], tidak_termasuk = [];
+        let catatan_admin = '';
         let mode = null;
+        // Baris disclaimer umum (harga/jadwal sewaktu-waktu berubah, dsb) BUKAN item
+        // "Tidak Termasuk" — kalau ketemu di tengah list, hentikan mode capture supaya
+        // tidak ikut tersapu ke termasuk/tidak_termasuk, dan simpan ke Catatan Admin.
+        const isDisclaimerLine = s => /sewaktu[\s-]*waktu.*berubah|berubah.*sewaktu[\s-]*waktu|kurs\s*(dolar|usd|riyal|sar)|ketentuan\s*(saudi|pemerintah|maskapai)/i.test(s);
         for (const l of lines) {
             const lc = cleanAll(l).toLowerCase();
+            if (isDisclaimerLine(lc)) {
+                if (!catatan_admin) catatan_admin = cleanAll(l).replace(/^\*+/, '').replace(/^[-•✓]\s*/, '').trim();
+                mode = null;
+                continue;
+            }
             // Deteksi header section — cek "tidak termasuk" dulu (lebih spesifik)
             if (/tidak\s*termasuk|belum\s*termasuk|not\s*include/i.test(lc)) { mode = 'tidak'; continue; }
             if (/sudah\s*termasuk|biaya\s*termasuk|^termasuk$|include|fasilitas/i.test(lc)) { mode = 'termasuk'; continue; }
@@ -216,6 +226,7 @@
         setVal('admin_makan_madinah', makan_madinah);
         if (termasuk.length) setVal('admin_termasuk', termasuk.join('\n'));
         if (tidak_termasuk.length) setVal('admin_tidak_termasuk', tidak_termasuk.join('\n'));
+        if (catatan_admin) setVal('admin_catatan_cx', catatan_admin);
 
         // Status
         const parts = [];
@@ -230,6 +241,7 @@
         if (hotel_madinah) parts.push('Hotel Madinah');
         if (tglISO) parts.push('Tanggal');
         if (termasuk.length) parts.push('Fasilitas (' + termasuk.length + ' item)');
+        if (catatan_admin) parts.push('Catatan Admin');
 
         const status = document.getElementById('parseStatus');
         status.textContent = '\u2713 Terisi: ' + parts.join(', ');
