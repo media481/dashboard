@@ -6715,6 +6715,72 @@ function cxNormalizeHarga(str) {
     if (!str) return '';
     return String(str).replace(/[^0-9]/g, '');
 }
+// --- TANGGAL: dukungan rentang (mis. poster "17-26 SEPTEMBER 2026" vs data
+// admin tanggal tunggal "17 September 2026") -------------------------------
+const CX_BULAN = {'januari':0,'februari':1,'maret':2,'april':3,'mei':4,'juni':5,'juli':6,'agustus':7,'september':8,'oktober':9,'november':10,'desember':11};
+// Cari 1 tanggal tunggal "D Bulan YYYY" di dalam teks (dipakai untuk sisi
+// yang bukan rentang). Beda dengan parseDateFromString() global karena di
+// sini teksnya bisa berisi rentang di sekitarnya, jadi dicari via regex,
+// bukan asumsi seluruh string persis "D Bulan YYYY".
+function cxParseSingleTgl(str) {
+    const s = String(str || '');
+    const m = s.match(/(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/);
+    if (!m) return null;
+    const bulan = CX_BULAN[m[2].toLowerCase()];
+    if (bulan === undefined) return null;
+    return new Date(parseInt(m[3], 10), bulan, parseInt(m[1], 10));
+}
+// Cari rentang tanggal dalam 1 bulan yang sama, mis. "17-26 SEPTEMBER 2026"
+// atau "17 - 26 September 2026" -> {start, end}. Return null kalau bukan
+// pola rentang (berarti tanggal tunggal biasa).
+function cxParseTglRange(str) {
+    const s = String(str || '');
+    const sameMonth = s.match(/(\d{1,2})\s*-\s*(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/);
+    if (sameMonth) {
+        const bulan = CX_BULAN[sameMonth[3].toLowerCase()];
+        if (bulan === undefined) return null;
+        const tahun = parseInt(sameMonth[4], 10);
+        return { start: new Date(tahun, bulan, parseInt(sameMonth[1], 10)), end: new Date(tahun, bulan, parseInt(sameMonth[2], 10)) };
+    }
+    // Rentang lintas bulan, mis. "28 September - 2 Oktober 2026"
+    const crossMonth = s.match(/(\d{1,2})\s+([a-zA-Z]+)\s*-\s*(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/);
+    if (crossMonth) {
+        const bulanAwal = CX_BULAN[crossMonth[2].toLowerCase()];
+        const bulanAkhir = CX_BULAN[crossMonth[4].toLowerCase()];
+        if (bulanAwal === undefined || bulanAkhir === undefined) return null;
+        const tahun = parseInt(crossMonth[5], 10);
+        return { start: new Date(tahun, bulanAwal, parseInt(crossMonth[1], 10)), end: new Date(tahun, bulanAkhir, parseInt(crossMonth[3], 10)) };
+    }
+    return null;
+}
+// Bandingkan field tanggal teks vs poster, hasilnya salah satu dari:
+//  'match'   - sama persis (setelah dirapikan) -> hijau, "Cocok"
+//  'warning' - beda teks, TAPI tanggal tunggal di salah satu sisi masih
+//              termasuk dalam rentang tanggal di sisi lain -> kuning,
+//              dianggap BENAR (bukan dihitung sebagai mismatch) tapi tetap
+//              ditandai supaya staf sadar itu tanggal keberangkatan spesifik
+//              dari rentang keberangkatan yang lebih luas di poster.
+//  'mismatch'- benar-benar tidak cocok -> merah
+function cxCompareTgl(a, b) {
+    if (!a || !b) return 'mismatch';
+    const na = String(a).toLowerCase().trim().replace(/\s+/g, ' ');
+    const nb = String(b).toLowerCase().trim().replace(/\s+/g, ' ');
+    if (na === nb) return 'match';
+
+    const rangeA = cxParseTglRange(a), rangeB = cxParseTglRange(b);
+    const singleA = cxParseSingleTgl(a), singleB = cxParseSingleTgl(b);
+
+    const inRange = (single, range) => single && range && !isNaN(single) && !isNaN(range.start) && !isNaN(range.end)
+        && single.getTime() >= range.start.getTime() && single.getTime() <= range.end.getTime();
+
+    // Satu sisi rentang, sisi lain tanggal tunggal (atau tanggal awal dari
+    // rentang lain) yang jatuh di dalam rentang tsb -> benar dengan peringatan.
+    if (rangeA && !rangeB && inRange(singleB, rangeA)) return 'warning';
+    if (rangeB && !rangeA && inRange(singleA, rangeB)) return 'warning';
+    if (rangeA && rangeB && (inRange(rangeB.start, rangeA) || inRange(rangeA.start, rangeB))) return 'warning';
+
+    return 'mismatch';
+}
 function cxNormalizeMaskapai(str) {
     return String(str || '').toLowerCase().trim().replace(/\b(airlines?|airways|air)\b/gi, '').replace(/\s+/g, ' ').trim();
 }
@@ -6755,6 +6821,12 @@ function cxHotelValuesMatch(a, b) {
 }
 function cxValuesMatch(field, a, b) {
     if (!a || !b) return false;
+    if (field === 'tgl') {
+        // 'warning' (tanggal tunggal termasuk dalam rentang poster) dianggap
+        // BENAR di sini -- tidak dihitung sebagai mismatch/error. Tampilan
+        // kuning "peringatan"-nya ditangani terpisah di buildCompareRows().
+        return cxCompareTgl(a, b) !== 'mismatch';
+    }
     if (field && field.indexOf('harga') === 0) {
         const na = cxNormalizeHarga(a), nb = cxNormalizeHarga(b);
         return na !== '' && na === nb;
@@ -6876,15 +6948,37 @@ function renderCxPanel(progId) {
         // Urutkan: yang beda (mismatch) paling atas supaya langsung kelihatan yang perlu dibenerin
         const visibleRows = rows.filter(r => r.plain || r.poster);
         visibleRows.sort((a, b) => {
-            const rank = r => { const hasBoth = r.plain && r.poster; if (hasBoth && !cxValuesMatch(r.field, r.plain, r.poster)) return 0; if (!hasBoth) return 1; return 2; };
+            // Urutan: 0 = benar-benar mismatch (paling urgent), 1 = belum ada
+            // salah satu sisi data, 2 = cocok dengan peringatan (rentang
+            // tanggal), 3 = cocok penuh.
+            const rank = r => {
+                const hasBoth = r.plain && r.poster;
+                if (!hasBoth) return 1;
+                if (r.field === 'tgl') {
+                    const status = cxCompareTgl(r.plain, r.poster);
+                    if (status === 'mismatch') return 0;
+                    if (status === 'warning') return 2;
+                    return 3;
+                }
+                return cxValuesMatch(r.field, r.plain, r.poster) ? 3 : 0;
+            };
             return rank(a) - rank(b);
         });
         if (!visibleRows.length) return '<div class="cx-empty" style="padding:20px;"><p>Belum ada data untuk dibandingkan.</p></div>';
         return visibleRows.map(r => {
             const hasBoth = r.plain && r.poster;
-            const isMatch = hasBoth && cxValuesMatch(r.field, r.plain, r.poster);
-            const rowClass = hasBoth ? (isMatch ? 'cx-match' : 'cx-mismatch') : '';
-            const pill = hasBoth ? `<span class="cx-match-pill ${isMatch?'ok':'no'}">${isMatch?'<i class="bi bi-check-lg"></i> Cocok':'<i class="bi bi-x-lg"></i> Beda'}</span>` : `<span class="cx-match-pill skip">—</span>`;
+            // Field 'tgl' punya status ke-3: 'warning' -- tanggal tunggal
+            // masih termasuk rentang tanggal poster, dianggap benar tapi
+            // ditandai kuning supaya staf sadar itu bukan tanggal persis sama.
+            const tglStatus = (hasBoth && r.field === 'tgl') ? cxCompareTgl(r.plain, r.poster) : null;
+            const isWarning = tglStatus === 'warning';
+            const isMatch = hasBoth && (tglStatus ? tglStatus === 'match' : cxValuesMatch(r.field, r.plain, r.poster));
+            const rowClass = hasBoth ? (isWarning ? 'cx-match-warn' : (isMatch ? 'cx-match' : 'cx-mismatch')) : '';
+            const pill = hasBoth
+                ? (isWarning
+                    ? `<span class="cx-match-pill warn" title="Tanggal keberangkatan termasuk dalam rentang poster, tapi bukan tanggal yang persis sama"><i class="bi bi-exclamation-triangle-fill"></i> Cocok (Rentang)</span>`
+                    : `<span class="cx-match-pill ${isMatch?'ok':'no'}">${isMatch?'<i class="bi bi-check-lg"></i> Cocok':'<i class="bi bi-x-lg"></i> Beda'}</span>`)
+                : `<span class="cx-match-pill skip">—</span>`;
             return `<div class="cx-compare-row ${rowClass}">
                 <div class="cx-compare-field"><div class="cx-compare-label">${escapeHtml(r.label)}</div>${pill}</div>
                 <div class="cx-compare-col"><div class="cx-compare-label"><i class="bi bi-file-earmark-text-fill"></i> Teks</div><div class="cx-compare-val ${r.plain?'':'empty'}">${r.plain ? escapeHtml(r.plain) : '—'}</div></div>
@@ -6925,7 +7019,7 @@ function renderCxPanel(progId) {
     </div>`}
     ${adl.poster_data ? `
     <div class="cx-section-title" style="margin-top:20px;"><i class="bi bi-arrow-left-right"></i> Perbandingan: Data Teks vs Poster</div>
-    <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Hijau = cocok &nbsp;·&nbsp; Merah = tidak sesuai${posterSource==='ocr' ? ' &nbsp;·&nbsp; Hasil OCR bisa salah baca, koreksi via Input Manual.' : ''}</div>
+    <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Hijau = cocok &nbsp;·&nbsp; Kuning = tanggal termasuk rentang poster (benar, tapi bukan tanggal persis sama) &nbsp;·&nbsp; Merah = tidak sesuai${posterSource==='ocr' ? ' &nbsp;·&nbsp; Hasil OCR bisa salah baca, koreksi via Input Manual.' : ''}</div>
     ${buildCompareRows()}` : ''}
     `;
 }
