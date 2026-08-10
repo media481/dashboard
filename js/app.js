@@ -3455,9 +3455,14 @@ async function confirmDeleteAction() {
             // Catat jejak penghapusan pakai data yang sudah diambil sebelum delete di atas.
             try {
                 if (cicRowSebelumHapus) {
+                    // Kalau baris yang dihapus ini sudah pernah diunduh sebagai
+                    // KUITANSI (nomor_kuitansi terisi), pakai nomor kuitansi itu
+                    // di log audit -- itulah nomor dokumen resmi yang benar-benar
+                    // ada di tangan jamaah, bukan nomor_nota biasa.
+                    const nomorAsli = cicRowSebelumHapus.nomor_kuitansi || nomorNota(cicRowSebelumHapus);
                     await logNotaAudit({
                         jenis: 'hapus',
-                        nomorNotaValue: `HAPUS/${nomorNota(cicRowSebelumHapus)}`,
+                        nomorNotaValue: `HAPUS/${nomorAsli}`,
                         jamaahId: cicilanJamaahId,
                         jamaahNama: cicilanJamaahInfo?.nama,
                         programNama: cicilanProgramInfo?.nama,
