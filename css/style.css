@@ -295,6 +295,12 @@
             font-size: 19px;
             font-weight: 700;
         }
+        .topbar-left h1.topbar-location-weather {
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: .01em;
+            color: var(--ink-soft);
+        }
         .topbar-left p {
             color: var(--ink-soft);
             font-size: 12.5px;

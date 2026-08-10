@@ -7291,6 +7291,22 @@ const PROVINSI_SINGKATAN = {
     'PAPUA': 'PAPUA', 'PAPUA BARAT': 'PABAR'
 };
 
+// Kode ISO 3166-2:ID (mis. "ID-JI" = Jawa Timur) -> singkatan provinsi.
+// Dipakai sebagai sumber UTAMA karena kode ISO ini tetap (fixed), tidak seperti
+// nama provinsi teks dari API reverse-geocode yang kadang terpotong/tidak
+// lengkap untuk lokasi pedesaan/kecamatan kecil (mis. "Jawa" bukan "Jawa Timur").
+const PROVINSI_KODE_ISO = {
+    'ID-AC': 'ACEH', 'ID-SU': 'SUMUT', 'ID-SB': 'SUMBAR', 'ID-RI': 'RIAU',
+    'ID-KR': 'KEPRI', 'ID-JA': 'JAMBI', 'ID-SS': 'SUMSEL', 'ID-BB': 'BABEL',
+    'ID-BE': 'BENGKULU', 'ID-LA': 'LAMPUNG', 'ID-JK': 'DKI', 'ID-JB': 'JABAR',
+    'ID-JT': 'JATENG', 'ID-JI': 'JATIM', 'ID-YO': 'DIY', 'ID-BT': 'BANTEN',
+    'ID-BA': 'BALI', 'ID-NB': 'NTB', 'ID-NT': 'NTT', 'ID-KB': 'KALBAR',
+    'ID-KT': 'KALTENG', 'ID-KS': 'KALSEL', 'ID-KI': 'KALTIM', 'ID-KU': 'KALTARA',
+    'ID-SA': 'SULUT', 'ID-ST': 'SULTENG', 'ID-SN': 'SULSEL', 'ID-SG': 'SULTRA',
+    'ID-GO': 'GORONTALO', 'ID-SR': 'SULBAR', 'ID-MA': 'MALUKU', 'ID-MU': 'MALUT',
+    'ID-PA': 'PAPUA', 'ID-PB': 'PABAR'
+};
+
 // Reverse-geocode koordinat -> "KOTA, PROVINSI" pakai BigDataCloud (gratis,
 // tanpa API key, CORS-friendly). Return null kalau gagal (biar caller fallback).
 async function resolveLocationName(lat, lon) {
@@ -7299,8 +7315,14 @@ async function resolveLocationName(lat, lon) {
         if (!res.ok) return null;
         const data = await res.json();
         const kota = (data.city || data.locality || '').trim();
-        const provinsiFull = (data.principalSubdivision || '').trim().toUpperCase();
-        const provinsi = PROVINSI_SINGKATAN[provinsiFull] || provinsiFull;
+        // Coba dari kode ISO dulu (paling akurat & tidak pernah terpotong).
+        // Kalau tidak ada / tidak dikenal, baru fallback ke nama teks provinsi.
+        const kodeIso = (data.principalSubdivisionCode || '').trim().toUpperCase();
+        let provinsi = PROVINSI_KODE_ISO[kodeIso];
+        if (!provinsi) {
+            const provinsiFull = (data.principalSubdivision || '').trim().toUpperCase();
+            provinsi = PROVINSI_SINGKATAN[provinsiFull] || provinsiFull;
+        }
         if (kota && provinsi) return `${kota.toUpperCase()}, ${provinsi}`;
         return kota.toUpperCase() || provinsi || null;
     } catch (e) {
@@ -7328,7 +7350,7 @@ async function fetchCurrentWeather(lat, lon) {
 // Minta lokasi device, lalu update judul topbar jadi "KOTA, PROVINSI · 25°C · Cerah".
 // Hasil disimpan sebentar di localStorage (30 menit) supaya reload halaman tidak
 // selalu minta izin lokasi / panggil API ulang.
-const LOCATION_WEATHER_CACHE_KEY = 'dashAmiru_locationWeather';
+const LOCATION_WEATHER_CACHE_KEY = 'dashAmiru_locationWeather_v2';
 const LOCATION_WEATHER_CACHE_MS = 30 * 60 * 1000; // 30 menit
 
 function loadHeaderLocationWeather() {
