@@ -988,8 +988,16 @@ function buildProgramRowHTML(item, now, nearestIds) {
         ? ` data-poster="${escapeHtml(item.link_poster)}" data-nama="${escapeHtml(item.nama||'')}" onmouseenter="showPosterPopup(event,this)" onmouseleave="hidePosterPopup()" style="cursor:pointer;"`
         : '';
 
+    // [VERIFIED BADGE] Badge hijau "Verified" tampil di tampilan depan hanya kalau
+    // poster program itu sudah discan OCR dan semua data teks plain cocok 100%
+    // dengan hasil OCR poster (lihat cxIsProgramVerified / cxCountMismatchForProgram).
+    const isVerified = cxIsProgramVerified(item);
+    const verifiedBadge = isVerified
+        ? ` <span class="verified-badge" title="Data program ini sudah dicek otomatis (OCR) dan cocok 100% dengan poster resmi"><i class="bi bi-patch-check-fill"></i> Verified</span>`
+        : '';
+
     return `<tr class="${isNearest ? 'row-nearest-departure' : ''}">
-            <td title="${hasPosterHover?'Hover untuk preview poster — ':''}${escapeHtml(item.nama||'')}"><strong${posterHoverAttrs}>${escapeHtml(item.nama||'')}${hasPosterHover?' <i class="bi bi-image-fill" style="margin-left:5px;font-size:10px;color:var(--primary);opacity:.6;"></i>':''}</strong></td>
+            <td title="${hasPosterHover?'Hover untuk preview poster — ':''}${escapeHtml(item.nama||'')}"><strong${posterHoverAttrs}>${escapeHtml(item.nama||'')}${hasPosterHover?' <i class="bi bi-image-fill" style="margin-left:5px;font-size:10px;color:var(--primary);opacity:.6;"></i>':''}</strong>${verifiedBadge}</td>
             <td>${escapeHtml(hitungEstimasi(item.dateObj, now))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_quad || item.harga_quint))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_triple))}</td>
@@ -7167,8 +7175,13 @@ function cxValuesMatch(field, a, b) {
     return a.toLowerCase().trim() === b.toLowerCase().trim();
 }
 
-function cxCountMismatch(progId) {
-    const prog = adminPrograms.find(p => String(p.id) === String(progId));
+// [REFACTOR] Logika inti hitung mismatch dipisah dari lookup by-id supaya bisa
+// dipakai langsung dengan objek program apa saja (adminPrograms ATAU dataUmroh
+// yang dipakai tabel publik "Program Umroh" di tampilan depan). Sebelumnya
+// cxCountMismatch selalu mencari ke adminPrograms, yang KOSONG selama admin
+// belum login — akibatnya badge verified di tampilan depan tidak pernah bisa
+// dihitung dengan benar kalau dipaksa lewat cxCountMismatch(id).
+function cxCountMismatchForProgram(prog) {
     if (!prog) return 0;
     const adl = (() => { try { return prog.admin_data_lengkap ? (typeof prog.admin_data_lengkap === 'string' ? JSON.parse(prog.admin_data_lengkap) : prog.admin_data_lengkap) : {}; } catch(e) { return {}; } })();
     const pd = adl.poster_data || {};
@@ -7180,14 +7193,32 @@ function cxCountMismatch(progId) {
     return pairs.filter(([field, a, b]) => a && b && !cxValuesMatch(field, a, b)).length;
 }
 
-// Hitung status crosscheck 1 program: dipakai bareng oleh stats bar & pill selector
+function cxCountMismatch(progId) {
+    const prog = adminPrograms.find(p => String(p.id) === String(progId));
+    return cxCountMismatchForProgram(prog);
+}
+
+// Hitung status crosscheck 1 program: dipakai bareng oleh stats bar & pill
+// selector (admin) DAN badge "Verified" di tabel publik Program Umroh
+// (tampilan depan). Menerima objek program langsung (bukan id) supaya jalan
+// baik untuk item dari adminPrograms maupun dataUmroh.
 function cxGetProgramStatus(p) {
     const adl = (() => { try { return p.admin_data_lengkap ? (typeof p.admin_data_lengkap === 'string' ? JSON.parse(p.admin_data_lengkap) : p.admin_data_lengkap) : null; } catch(e) { return null; } })();
     const hasData = !!(adl && Object.keys(adl).length > 0);
-    const mismatchCount = adl && adl.poster_data ? cxCountMismatch(p.id) : 0;
+    const mismatchCount = adl && adl.poster_data ? cxCountMismatchForProgram(p) : 0;
     // priority: 0 = ada yang tidak cocok (paling urgent), 1 = belum ada data lengkap, 2 = aman
     const priority = mismatchCount > 0 ? 0 : (!hasData ? 1 : 2);
     return { adl, hasData, mismatchCount, priority };
+}
+
+// Program dianggap "Verified" (lulus OCR) kalau: sudah pernah di-scan OCR poster
+// (ada poster_data hasil OCR), DAN semua field yang dibandingkan (nama, tanggal,
+// durasi, maskapai, harga, hotel) antara teks plain vs hasil OCR poster cocok
+// semua (tidak ada mismatch). Dipakai buildProgramRowHTML utk badge di tampilan depan.
+function cxIsProgramVerified(p) {
+    const adl = (() => { try { return p && p.admin_data_lengkap ? (typeof p.admin_data_lengkap === 'string' ? JSON.parse(p.admin_data_lengkap) : p.admin_data_lengkap) : null; } catch(e) { return null; } })();
+    if (!adl || !adl.poster_data) return false; // belum pernah discan OCR
+    return cxCountMismatchForProgram(p) === 0;
 }
 
 function renderCxStatsBar() {
