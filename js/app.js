@@ -3341,6 +3341,12 @@ async function confirmDeleteAction() {
             renderKbProgramSelector();
             renderDokProgramSelector();
             updateMetrics();
+            // Badge kuota "X/45 Tersedia" di tabel Program Umroh (dan tab
+            // Unggulan) dihitung ulang dari kbJamaahList setiap kali ditampilkan
+            // (lihat buildProgramRowHTML), jadi tabelnya harus di-render ulang
+            // di sini juga -- bukan cuma nunggu ganti tab / reload halaman.
+            if (currentData && currentData.length) renderTable(currentData);
+            renderFeaturedSection();
 
             // Sinkron balik: kalau jamaah yang baru dihapus ini tadinya hasil
             // konversi dan pendaftaran asalnya masih berstatus "Deal", balikin
@@ -4454,6 +4460,12 @@ async function saveKbJamaah(e) {
         await loadKbJamaah();
         renderKbProgramSelector();
         updateMetrics();
+        // Sama seperti di confirmDeleteAction: badge kuota "X/45 Tersedia" di
+        // tabel Program Umroh & Unggulan dihitung dari kbJamaahList saat
+        // render, jadi tabelnya perlu di-render ulang begitu jamaah
+        // ditambah/diedit -- bukan cuma nunggu ganti tab / reload halaman.
+        if (currentData && currentData.length) renderTable(currentData);
+        renderFeaturedSection();
 
         if (id && beforeCopy) {
             // Edit data yang sudah ada: cek field "ringan" mana yang berubah,
