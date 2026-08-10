@@ -719,10 +719,10 @@ async function loadDataFromSupabase(forceRefresh = false) {
     }
 }
 
-// Tombol kecil di kolom Aksi tabel Program Umroh untuk buka salah satu dari 4
-// link aset program (Poster/Itinerary/Meta Ads/Dokumentasi) di tab baru.
+// Tombol kecil di kolom Aksi tabel Program Umroh untuk buka salah satu link
+// aset program (Poster/Itinerary) di tab baru.
 // Kalau link belum diisi, tombol tetap tampil tapi non-aktif (abu-abu) supaya
-// urutan/posisi 4 tombolnya konsisten di setiap baris.
+// urutan/posisi tombolnya konsisten di setiap baris.
 function renderProgramLinkBtn(url, label, iconClass) {
     const safeUrl = (url || '').trim();
     if (!safeUrl) {
@@ -811,8 +811,6 @@ function buildProgramRowHTML(item, now, nearestIds) {
                     <button onclick="openDetailModal('${item.id}')" title="Detail"><i class="bi bi-eye-fill"></i></button>
                     ${renderProgramLinkBtn(item.link_poster, 'Link Poster', 'bi-image-fill')}
                     ${renderProgramLinkBtn(item.link_itinerary, 'Link Itinerary', 'bi-signpost-2-fill')}
-                    ${renderProgramLinkBtn(item.link_metaads, 'Link Meta Ads', 'bi-megaphone-fill')}
-                    ${renderProgramLinkBtn(item.link_dokumentasi, 'Link Dokumentasi', 'bi-images')}
                 </div>
             </td>
             <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
@@ -1557,16 +1555,6 @@ async function renderAdminPanel() {
                                 <input type="url" id="admin_link_itinerary" placeholder="https://...">
                             </div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Link Meta Ads</label>
-                                <input type="url" id="admin_link_metaads" placeholder="https://...">
-                            </div>
-                            <div class="form-group">
-                                <label>Link Dokumentasi</label>
-                                <input type="url" id="admin_link_dokumentasi" placeholder="https://...">
-                            </div>
-                        </div>
                     </div>
 
                     <div class="admin-fieldset" id="af-konten">
@@ -2098,8 +2086,6 @@ function getAdminFormData() {
         makan_madinah: document.getElementById('admin_makan_madinah')?.value || '',
         link_poster: document.getElementById('admin_link_poster')?.value || '',
         link_itinerary: document.getElementById('admin_link_itinerary')?.value || '',
-        link_metaads: document.getElementById('admin_link_metaads')?.value || '',
-        link_dokumentasi: document.getElementById('admin_link_dokumentasi')?.value || '',
         termasuk: document.getElementById('admin_termasuk')?.value || '',
         tidak_termasuk: document.getElementById('admin_tidak_termasuk')?.value || '',
         catatan_cx: document.getElementById('admin_catatan_cx')?.value || '',
@@ -2139,8 +2125,6 @@ function setAdminFormData(data) {
     document.getElementById('admin_makan_madinah').value = data.makan_madinah || '';
     document.getElementById('admin_link_poster').value = data.link_poster || '';
     document.getElementById('admin_link_itinerary').value = data.link_itinerary || '';
-    document.getElementById('admin_link_metaads').value = data.link_metaads || '';
-    document.getElementById('admin_link_dokumentasi').value = data.link_dokumentasi || '';
     document.getElementById('admin_termasuk').value = data.termasuk || '';
     document.getElementById('admin_tidak_termasuk').value = data.tidak_termasuk || '';
     document.getElementById('admin_catatan_cx').value = data.catatan_cx || '';
@@ -2329,7 +2313,7 @@ async function saveAdminProgram() {
     const oldHargaQuint = oldProgramForPriceCheck ? (oldProgramForPriceCheck.harga_quint || '') : '';
 
     // Validate URLs
-    const urlFields = ['link_poster', 'link_itinerary', 'link_metaads', 'link_dokumentasi'];
+    const urlFields = ['link_poster', 'link_itinerary'];
     for (const field of urlFields) {
         if (formData[field] && !isValidUrl(formData[field])) {
             alert(`Link ${field.replace('_',' ')} tidak valid!`);
