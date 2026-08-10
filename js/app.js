@@ -2112,16 +2112,16 @@ async function renderAdminPanel() {
             </div>
 
             <div class="admin-subtab-panel" id="adminSubTab-snapshot" style="display:none;">
-                <div class="snap-header">
-                    <div class="snap-header-title">
-                        <i class="bi bi-camera2"></i>
+                <div class="ssx-hero">
+                    <div class="ssx-hero-left">
+                        <div class="ssx-hero-icon"><i class="bi bi-camera2"></i></div>
                         <div>
                             <h4>Snapshot / Backup</h4>
-                            <span>Maks 10 · tertua otomatis terhapus · tidak bisa dihapus manual</span>
+                            <span>Cadangan otomatis 1x sehari &middot; kapasitas 10 slot (FIFO) &middot; tidak bisa dihapus manual</span>
                         </div>
                     </div>
-                    <button class="btn-primary btn-sm" onclick="takeSnapshot('Manual ' + new Date().toLocaleDateString('id-ID'), 'manual').then(() => renderSnapshotAdminTable());">
-                        <i class="bi bi-camera-fill"></i> Ambil
+                    <button class="btn-primary btn-sm" id="ssxTakeBtn" onclick="uiTakeManualSnapshot(this);">
+                        <i class="bi bi-camera-fill"></i> Ambil Snapshot
                     </button>
                 </div>
                 <div id="snapshotTableWrap"></div>
@@ -3224,12 +3224,14 @@ async function takeSnapshot(label = 'Snapshot', trigger = 'manual') {
     try {
         showToast('Membuat snapshot...', 'info');
         const payload = await collectAllUmrohData();
-        const totalRows = SNAPSHOT_TABLES.reduce((s, t) => s + (payload[t] ? payload[t].length : 0), 0);
+        const perTable = {};
+        SNAPSHOT_TABLES.forEach(t => { perTable[t] = payload[t] ? payload[t].length : 0; });
+        const totalRows = SNAPSHOT_TABLES.reduce((s, t) => s + perTable[t], 0);
         const { error } = await supabaseClient.from('snapshot_backup').insert([{
             label: String(label).slice(0, 80),
             trigger: String(trigger).slice(0, 40),
             data: payload,
-            meta: { total_rows: totalRows, tables: SNAPSHOT_TABLES }
+            meta: { total_rows: totalRows, tables: SNAPSHOT_TABLES, per_table: perTable }
         }]);
         if (error) throw error;
 
@@ -3311,43 +3313,189 @@ async function restoreSnapshot(id) {
 }
 
 const SNAPSHOT_TRIGGER_LABEL = {
-    'manual': { text: 'Manual', color: '#1a355b', tint: '#dbe4ee' },
-    'auto-daily': { text: 'Harian', color: '#279E70', tint: '#E1F5EC' },
-    'auto-pre-clear': { text: 'Auto · sebelum hapus', color: '#C0392B', tint: '#FBE3E0' },
-    'auto-pre-import': { text: 'Auto · sebelum import', color: '#E07B2E', tint: '#FBEBD9' }
+    'manual': { text: 'Manual', color: '#1a355b', tint: '#dbe4ee', icon: 'bi-camera-fill' },
+    'auto-daily': { text: 'Otomatis harian', color: '#279E70', tint: '#E1F5EC', icon: 'bi-calendar2-check-fill' },
+    'auto-pre-clear': { text: 'Sebelum hapus', color: '#C0392B', tint: '#FBE3E0', icon: 'bi-exclamation-triangle-fill' },
+    'auto-pre-import': { text: 'Sebelum import', color: '#E07B2E', tint: '#FBEBD9', icon: 'bi-cloud-arrow-up-fill' }
 };
+const SNAPSHOT_TABLE_LABEL = {
+    programs: 'Program', kb_jamaah: 'Jamaah', jadwal_tamu: 'Jadwal',
+    pendaftaran: 'Pendaftaran', pembayaran_jamaah: 'Pembayaran', featured_programs: 'Unggulan'
+};
+
+// Format waktu relatif ringkas ala "5 menit lalu" untuk daftar snapshot.
+function ssxRelativeTime(date) {
+    if (!date || isNaN(date)) return '-';
+    const diffSec = Math.round((Date.now() - date.getTime()) / 1000);
+    if (diffSec < 45) return 'Baru saja';
+    if (diffSec < 3600) return Math.round(diffSec / 60) + ' menit lalu';
+    if (diffSec < 86400) return Math.round(diffSec / 3600) + ' jam lalu';
+    if (diffSec < 172800) return 'Kemarin';
+    if (diffSec < 604800) return Math.round(diffSec / 86400) + ' hari lalu';
+    return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// Label header grup tanggal ("Hari ini", "Kemarin", atau tanggal penuh).
+function ssxDateGroupLabel(date) {
+    if (!date || isNaN(date)) return 'Tidak diketahui';
+    const now = new Date();
+    const startOf = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const diffDays = Math.round((startOf(now) - startOf(date)) / 86400000);
+    if (diffDays === 0) return 'Hari ini';
+    if (diffDays === 1) return 'Kemarin';
+    return date.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+// Tombol "Ambil Snapshot" manual dengan status loading di tombolnya sendiri,
+// supaya admin dapat feedback jelas tanpa harus melihat toast saja.
+async function uiTakeManualSnapshot(btn) {
+    const original = btn ? btn.innerHTML : null;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-arrow-repeat bi-spin"></i> Menyimpan...'; }
+    try {
+        await takeSnapshot('Manual ' + new Date().toLocaleDateString('id-ID'), 'manual');
+        await renderSnapshotAdminTable();
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = original; }
+    }
+}
+
+// Buka/tutup rincian per-tabel pada satu kartu snapshot.
+function ssxToggleDetail(id) {
+    const el = document.getElementById('ssxDetail-' + id);
+    const chevron = document.getElementById('ssxChevron-' + id);
+    if (!el) return;
+    const open = el.style.display !== 'none';
+    el.style.display = open ? 'none' : 'block';
+    if (chevron) chevron.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
+}
 
 function renderSnapshotAdminTable() {
     const wrap = document.getElementById('snapshotTableWrap');
     if (!wrap) return;
-    wrap.innerHTML = '<div style="text-align:center;padding:18px;color:var(--ink-soft);font-size:12px;"><i class="bi bi-arrow-repeat bi-spin"></i> Memuat...</div>';
-    listSnapshots().then(rows => {
-        const pct = Math.min(100, Math.round((rows.length / MAX_SNAPSHOTS) * 100));
+    wrap.innerHTML = `
+        <div class="ssx-stats-row">
+            ${['-', '-', '-', '-'].map(() => '<div class="ssx-stat-card ssx-skel"></div>').join('')}
+        </div>
+        <div class="ssx-loading"><i class="bi bi-arrow-repeat bi-spin"></i> Memuat riwayat snapshot...</div>`;
+
+    return listSnapshots().then(rows => {
+        const filled = Math.min(rows.length, MAX_SNAPSHOTS);
+
+        // ---- Strip kapasitas (10 slot, terisi dari snapshot terlama -> terbaru) ----
+        const chronological = rows.slice().reverse();
+        const segmentsHtml = Array.from({ length: MAX_SNAPSHOTS }).map((_, i) => {
+            const r = chronological[i];
+            if (!r) return '<span class="ssx-seg ssx-seg-empty"></span>';
+            const trig = SNAPSHOT_TRIGGER_LABEL[r.trigger] || { color: '#64758A', text: r.trigger || 'manual' };
+            const d = new Date(r.created_at);
+            const tt = (isNaN(d) ? '' : d.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })) + ' · ' + escapeHtml(trig.text);
+            return `<span class="ssx-seg" style="background:${trig.color};" title="${escapeHtml(r.label || 'Snapshot')} — ${tt}"></span>`;
+        }).join('');
 
         if (!rows.length) {
             wrap.innerHTML = `
-                <div class="snap-progress-wrap"><div class="snap-progress-track"><div class="snap-progress-fill" style="width:0%;"></div></div><span class="snap-progress-label">0/${MAX_SNAPSHOTS}</span></div>
-                <div class="snap-empty"><i class="bi bi-camera2"></i><span>Belum ada snapshot. Klik <b>Ambil</b> untuk cadangan pertama.</span></div>`;
+                <div class="ssx-stats-row">
+                    <div class="ssx-stat-card"><span class="ssx-stat-label">Total Snapshot</span><span class="ssx-stat-value">0<small>/${MAX_SNAPSHOTS}</small></span></div>
+                    <div class="ssx-stat-card"><span class="ssx-stat-label">Terakhir Diambil</span><span class="ssx-stat-value ssx-stat-value-sm">Belum ada</span></div>
+                    <div class="ssx-stat-card"><span class="ssx-stat-label">Baris Terpantau</span><span class="ssx-stat-value">-</span></div>
+                    <div class="ssx-stat-card"><span class="ssx-stat-label">Auto-Harian</span><span class="ssx-stat-value ssx-stat-value-sm">Menunggu</span></div>
+                </div>
+                <div class="ssx-capacity">
+                    <div class="ssx-capacity-track">${segmentsHtml}</div>
+                    <span class="ssx-capacity-label">0/${MAX_SNAPSHOTS} slot terpakai</span>
+                </div>
+                <div class="ssx-empty">
+                    <i class="bi bi-camera2"></i>
+                    <h5>Belum ada snapshot</h5>
+                    <span>Klik <b>Ambil Snapshot</b> di atas untuk membuat cadangan pertama secara manual, atau tunggu snapshot otomatis harian.</span>
+                </div>`;
             return;
         }
 
-        const itemsHtml = rows.map(r => {
-            const d = new Date(r.created_at);
-            const tstr = isNaN(d) ? '-' : d.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-            const total = (r.meta && r.meta.total_rows != null) ? r.meta.total_rows : '-';
-            const trig = SNAPSHOT_TRIGGER_LABEL[r.trigger] || { text: r.trigger || 'manual', color: '#64758A', tint: '#F4F7FB' };
-            return `
-            <div class="snap-row">
-                <span class="snap-dot" style="background:${trig.color};" title="${escapeHtml(trig.text)}"></span>
-                <span class="snap-row-label" title="${escapeHtml(r.label || 'Snapshot')}">${escapeHtml(r.label || 'Snapshot')}</span>
-                <span class="snap-row-meta">${tstr} · ${total} baris</span>
-                <button class="btn-icon-ghost btn-xs" title="Pulihkan snapshot ini" onclick="restoreSnapshot('${r.id}')"><i class="bi bi-arrow-counterclockwise"></i></button>
-            </div>`;
-        }).join('');
+        // ---- Kartu statistik ringkas ----
+        const latest = rows[0];
+        const latestDate = new Date(latest.created_at);
+        const latestTotal = (latest.meta && latest.meta.total_rows != null) ? latest.meta.total_rows : '-';
+        const lastDaily = rows.find(r => r.trigger === 'auto-daily');
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const dailyOk = lastDaily && !isNaN(new Date(lastDaily.created_at)) && new Date(lastDaily.created_at).toISOString().slice(0, 10) === todayStr;
 
-        wrap.innerHTML = `
-            <div class="snap-progress-wrap"><div class="snap-progress-track"><div class="snap-progress-fill" style="width:${pct}%;"></div></div><span class="snap-progress-label">${rows.length}/${MAX_SNAPSHOTS}</span></div>
-            <div class="snap-list">${itemsHtml}</div>`;
+        const statsHtml = `
+            <div class="ssx-stats-row">
+                <div class="ssx-stat-card">
+                    <span class="ssx-stat-label">Total Snapshot</span>
+                    <span class="ssx-stat-value">${filled}<small>/${MAX_SNAPSHOTS}</small></span>
+                </div>
+                <div class="ssx-stat-card">
+                    <span class="ssx-stat-label">Terakhir Diambil</span>
+                    <span class="ssx-stat-value ssx-stat-value-sm" title="${escapeHtml(latestDate.toLocaleString('id-ID'))}">${escapeHtml(ssxRelativeTime(latestDate))}</span>
+                </div>
+                <div class="ssx-stat-card">
+                    <span class="ssx-stat-label">Baris Terpantau</span>
+                    <span class="ssx-stat-value">${latestTotal}</span>
+                </div>
+                <div class="ssx-stat-card">
+                    <span class="ssx-stat-label">Auto-Harian</span>
+                    <span class="ssx-stat-value ssx-stat-value-sm ${dailyOk ? 'ssx-ok' : 'ssx-pending'}">
+                        <i class="bi ${dailyOk ? 'bi-check-circle-fill' : 'bi-clock-history'}"></i> ${dailyOk ? 'Sudah hari ini' : 'Menunggu'}
+                    </span>
+                </div>
+            </div>
+            <div class="ssx-capacity">
+                <div class="ssx-capacity-track">${segmentsHtml}</div>
+                <span class="ssx-capacity-label">${filled}/${MAX_SNAPSHOTS} slot terpakai${filled >= MAX_SNAPSHOTS ? ' — slot penuh, tertua akan digantikan' : ''}</span>
+            </div>`;
+
+        // ---- Kelompokkan per tanggal ----
+        const groups = [];
+        let curLabel = null, curArr = null;
+        rows.forEach(r => {
+            const d = new Date(r.created_at);
+            const label = ssxDateGroupLabel(d);
+            if (label !== curLabel) { curLabel = label; curArr = []; groups.push({ label, items: curArr }); }
+            curArr.push(r);
+        });
+
+        const groupsHtml = groups.map(g => `
+            <div class="ssx-date-group">
+                <div class="ssx-date-group-label">${escapeHtml(g.label)}</div>
+                <div class="ssx-card-list">
+                    ${g.items.map(r => {
+                        const d = new Date(r.created_at);
+                        const tstr = isNaN(d) ? '-' : d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                        const total = (r.meta && r.meta.total_rows != null) ? r.meta.total_rows : '-';
+                        const trig = SNAPSHOT_TRIGGER_LABEL[r.trigger] || { text: r.trigger || 'manual', color: '#64758A', tint: '#F4F7FB', icon: 'bi-camera2' };
+                        const perTable = (r.meta && r.meta.per_table) || null;
+                        const tables = (r.meta && r.meta.tables) || SNAPSHOT_TABLES;
+                        const detailChips = tables.map(t => {
+                            const cnt = perTable ? (perTable[t] != null ? perTable[t] : '-') : '-';
+                            return `<span class="ssx-chip"><span class="ssx-chip-label">${escapeHtml(SNAPSHOT_TABLE_LABEL[t] || t)}</span><span class="ssx-chip-count">${cnt}</span></span>`;
+                        }).join('');
+                        return `
+                        <div class="ssx-card">
+                            <div class="ssx-card-main">
+                                <span class="ssx-card-icon" style="background:${trig.tint};color:${trig.color};"><i class="bi ${trig.icon}"></i></span>
+                                <div class="ssx-card-body">
+                                    <div class="ssx-card-toprow">
+                                        <span class="ssx-card-label" title="${escapeHtml(r.label || 'Snapshot')}">${escapeHtml(r.label || 'Snapshot')}</span>
+                                        <span class="ssx-badge" style="background:${trig.tint};color:${trig.color};">${escapeHtml(trig.text)}</span>
+                                    </div>
+                                    <div class="ssx-card-meta">${tstr} &middot; ${total} baris data</div>
+                                </div>
+                                <div class="ssx-card-actions">
+                                    <button class="btn-icon-ghost btn-xs" title="Lihat rincian tabel" onclick="ssxToggleDetail('${r.id}')">
+                                        <i class="bi bi-chevron-down" id="ssxChevron-${r.id}" style="display:inline-block;transition:transform .15s ease;"></i>
+                                    </button>
+                                    <button class="btn-icon-ghost btn-xs" title="Pulihkan snapshot ini" onclick="restoreSnapshot('${r.id}')"><i class="bi bi-arrow-counterclockwise"></i></button>
+                                </div>
+                            </div>
+                            <div class="ssx-card-detail" id="ssxDetail-${r.id}" style="display:none;">${detailChips}</div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>`).join('');
+
+        wrap.innerHTML = statsHtml + `<div class="ssx-timeline">${groupsHtml}</div>`;
     }).catch(err => {
         wrap.innerHTML = '<div style="text-align:center;padding:18px;color:var(--danger);font-size:12px;">Gagal memuat: ' + escapeHtml(err.message || err) + '</div>';
     });
