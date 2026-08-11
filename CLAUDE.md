@@ -163,6 +163,26 @@ satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
   Kedua pengecekan ini sengaja hard block (bukan cuma warning) karena Arsip
   bersifat irreversible dan setelah diarsipkan jamaah hilang dari tab Status
   Kepulangan (tapi tetap terlihat read-only di tab Arsip Jamaah).
+- Label menu "Keberangkatan" & "Dokumen" di UI diganti jadi "Data Jamaah" &
+  "Kelengkapan Dokumen" (lebih deskriptif) — tab id di kode (`keberangkatan`,
+  `dokumen`) TIDAK diubah supaya tidak perlu migrasi `role_menu_access` lama.
+  Sidebar dikelompokkan visual pakai label baru "Siklus Jamaah" (class CSS
+  `nav-group-label`, ditangani terpisah di `renderSidebarNav()` dari
+  `nav-admin-only` karena berlaku untuk semua role yang login, bukan cuma admin).
+- Badge angka merah di menu "Kelengkapan Dokumen" & "Status Kepulangan"
+  (elemen `.nav-badge`, id `badgeDokumen*`/`badgeKepulangan*` x3 tempat:
+  sidebar desktop/mobile/tab-bar) dihitung dari `kbJamaahList` lewat
+  `renderNavBadges()` — dipanggil ulang tiap `loadKbJamaah()`,
+  `toggleDokumenJamaah()`, & `updateKepulanganField()` supaya selalu real-time
+  tanpa query tambahan. Badge Kepulangan sengaja HANYA menghitung status
+  `sudah_berangkat` (bukan `belum_berangkat`) karena itu yang paling butuh
+  perhatian admin.
+- `SIDEBAR_MENU_REGISTRY` (dipakai panel Pengaturan User > Akses Menu
+  Sidebar) HARUS disinkronkan manual tiap kali menambah tab sidebar baru —
+  lupa menambahkannya berarti role `user`/`guest` tidak akan pernah bisa
+  diberi akses ke tab itu meski nav-item-nya sudah ada di index.html (bug ini
+  sempat terjadi untuk `kepulangan`, sudah diperbaiki, jangan diulang kalau
+  nambah tab lagi).
 
 ## Kalau menambah/mengubah fitur
 

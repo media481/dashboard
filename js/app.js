@@ -2819,8 +2819,9 @@ function applyRoleUIVisibility() {
 const SIDEBAR_MENU_REGISTRY = [
     { key: 'info', label: 'Jadwal Tamu', group: 'Navigasi' },
     { key: 'pendaftaran', label: 'Pendaftaran', group: 'Navigasi' },
-    { key: 'keberangkatan', label: 'Keberangkatan', group: 'Navigasi' },
-    { key: 'dokumen', label: 'Dokumen', group: 'Navigasi' },
+    { key: 'keberangkatan', label: 'Data Jamaah', group: 'Navigasi' },
+    { key: 'dokumen', label: 'Kelengkapan Dokumen', group: 'Navigasi' },
+    { key: 'kepulangan', label: 'Status Kepulangan', group: 'Navigasi' },
     { key: 'arsip', label: 'Arsip Jamaah', group: 'Navigasi' },
     { key: 'program', label: 'Tambah Program', group: 'Manajemen' },
     { key: 'pembayaran', label: 'Pembayaran', group: 'Manajemen' },
@@ -2829,7 +2830,7 @@ const SIDEBAR_MENU_REGISTRY = [
     { key: 'assets', label: 'Assets', group: 'Manajemen' },
     { key: 'crosscheck', label: 'Crosscheck', group: 'System' },
     { key: 'telegram', label: 'Telegram', group: 'System' },
-    { key: 'usersettings', label: 'Userman', group: 'System' },
+    { key: 'usersettings', label: 'Pengaturan User', group: 'System' },
     { key: 'snapshot', label: 'Snapshot', group: 'System' },
     { key: 'profil', label: 'Perusahaan', group: 'System' }
 ];
@@ -2933,6 +2934,21 @@ async function renderSidebarNav() {
         labelEl.style.display = anyVisible ? '' : 'none';
     });
 
+    // Label pengelompokan non-admin (mis. "Siklus Jamaah", "Arsip") --
+    // pakai logika sama seperti nav-admin-only di atas (sembunyikan kalau
+    // semua item nav di bawahnya, sampai label berikutnya, ternyata
+    // tersembunyi), tapi TANPA gating peran admin karena label ini juga
+    // dipakai role user/guest.
+    document.querySelectorAll('.nav-label.nav-group-label').forEach(labelEl => {
+        let sibling = labelEl.nextElementSibling;
+        let anyVisible = false;
+        while (sibling && !sibling.classList.contains('nav-label') && !sibling.classList.contains('nav-login-area')) {
+            if (sibling.classList.contains('nav-item') && sibling.style.display !== 'none') { anyVisible = true; break; }
+            sibling = sibling.nextElementSibling;
+        }
+        labelEl.style.display = anyVisible ? '' : 'none';
+    });
+
     document.querySelectorAll('.login-btn').forEach(el => { el.style.display = loggedIn ? 'none' : ''; });
     document.querySelectorAll('.logout-btn').forEach(el => { el.style.display = loggedIn ? '' : 'none'; });
 
@@ -2946,7 +2962,7 @@ async function renderSidebarNav() {
     // kembalikan ke tab "Program Umroh" supaya tidak nyangkut di halaman kosong.
     if (!loggedIn) {
         const activePanel = document.querySelector('.tab-panel.active');
-        const loggedinOnlyIds = ['tab-info', 'tab-pendaftaran', 'tab-keberangkatan', 'tab-dokumen'];
+        const loggedinOnlyIds = ['tab-info', 'tab-pendaftaran', 'tab-keberangkatan', 'tab-dokumen', 'tab-kepulangan', 'tab-arsip'];
         if (activePanel && loggedinOnlyIds.includes(activePanel.id)) {
             switchTab('umroh');
         }
@@ -4525,6 +4541,35 @@ async function loadKbJamaah() {
         kbJamaahList = [];
         showToast('Gagal memuat data jamaah — periksa koneksi internet', 'error');
     }
+    renderNavBadges();
+}
+
+// Badge angka kecil di menu sidebar/tab-bar (Kelengkapan Dokumen & Status
+// Kepulangan) -- dihitung langsung dari kbJamaahList (sudah terfilter
+// diarsipkan=false) supaya tidak perlu query tambahan ke Supabase. Dipanggil
+// ulang tiap kali kbJamaahList berubah: sesudah loadKbJamaah(), sesudah
+// centang dokumen (toggleDokumenJamaah), dan sesudah ubah status kepulangan
+// (updateKepulanganField).
+function renderNavBadges() {
+    const dokBelumLengkap = (kbJamaahList || []).filter(j => !isDokumenLengkap(j.dokumen)).length;
+    // Sengaja hanya hitung "sudah_berangkat" (bukan "belum_berangkat") --
+    // itu yang paling butuh perhatian admin karena jamaahnya sedang di
+    // perjalanan tapi belum ditandai pulang, sedangkan "belum_berangkat"
+    // memang wajar untuk program yang belum jalan.
+    const belumPulang = (kbJamaahList || []).filter(j => (j.status_kepulangan || 'belum_berangkat') === 'sudah_berangkat').length;
+
+    ['badgeDokumenDesktop', 'badgeDokumenMobile', 'badgeDokumenTabbar'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = dokBelumLengkap > 99 ? '99+' : String(dokBelumLengkap);
+        el.classList.toggle('show', dokBelumLengkap > 0);
+    });
+    ['badgeKepulanganDesktop', 'badgeKepulanganMobile', 'badgeKepulanganTabbar'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = belumPulang > 99 ? '99+' : String(belumPulang);
+        el.classList.toggle('show', belumPulang > 0);
+    });
 }
 
 let arsipJamaahList = [], arsipSelectedProgram = null;
@@ -7351,6 +7396,7 @@ async function toggleDokumenJamaah(jamaahId, key, checked) {
 
         const idx = kbJamaahList.findIndex(j => j.id === jamaahId);
         if (idx > -1) kbJamaahList[idx].dokumen = dokBaru;
+        renderNavBadges();
 
         if (dokSelectedProgram) await loadDokumenForProgram(dokSelectedProgram);
 
@@ -7518,6 +7564,7 @@ async function updateKepulanganField(jamaahId, field, value) {
 
         const idx = kbJamaahList.findIndex(j => j.id === jamaahId);
         if (idx > -1) kbJamaahList[idx][field] = payload[field];
+        renderNavBadges();
 
         showToast('Status kepulangan diperbarui', 'success');
         if (kepulanganSelectedProgram) await loadKepulanganForProgram(kepulanganSelectedProgram);
