@@ -398,6 +398,8 @@
             font-family: 'Inter', sans-serif;
         }
         .btn-primary:hover { background: var(--brand-deep); transform: translateY(-1px); box-shadow: var(--shadow); }
+        .btn-tambah-cepat { background: #C0392B; border-color: #C0392B; }
+        .btn-tambah-cepat:hover { background: #A5301F; border-color: #A5301F; }
 
         .btn-success {
             background: var(--success);
