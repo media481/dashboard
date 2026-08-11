@@ -1,14 +1,12 @@
 {
-  "name": "dashboard-amiru",
-  "version": "1.0.0",
-  "description": "Dashboard Amiru — PWA manajemen program Umroh (vanilla JS + Supabase).",
+  "name": "merdeka-build-tools",
   "private": true,
+  "version": "1.0.0",
+  "description": "Tool build lokal untuk regenerate js/app.bundle.min.js, icons/lucide-icons.local.min.js, dan style.min.css. Situs tetap dideploy sebagai file statis biasa (lihat wrangler.jsonc) — ini cuma dijalankan manual sebelum push/deploy.",
   "scripts": {
-    "test": "node tests/test-core.js",
-    "test:ci": "node tests/test-core.js"
+    "build": "node build.js"
   },
-  "engines": {
-    "node": ">=18"
-  },
-  "license": "UNLICENSED"
+  "devDependencies": {
+    "esbuild": "^0.28.1"
+  }
 }

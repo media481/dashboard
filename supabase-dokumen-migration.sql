@@ -1,0 +1,14 @@
+-- ============================================================
+-- MIGRASI: kolom `dokumen` di tabel kt_settings
+-- Untuk fitur baru "Surat & Dokumen" (Surat Undangan Kegiatan,
+-- Proposal Kegiatan, Form Absensi) yang bisa dicetak/disimpan
+-- sebagai PDF, mirip halaman LPJ yang sudah ada.
+--
+-- Disimpan sebagai jsonb per event_id (sama seperti hadiah_budget),
+-- supaya fleksibel menampung draft teks (nomor surat, latar
+-- belakang proposal, dst) tanpa perlu bikin tabel/kolom baru lagi
+-- tiap kali ada jenis dokumen baru.
+--
+-- Aman dijalankan berkali-kali (idempotent).
+-- ============================================================
+alter table kt_settings add column if not exists dokumen jsonb not null default '{}'::jsonb;
