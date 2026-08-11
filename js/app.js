@@ -2077,6 +2077,7 @@ async function renderAdminPanel() {
                     <span class="count">${adminPrograms.length} program</span>
                 </div>
                 <div id="adminNoPosterBanner"></div>
+                <div id="adminNoCaptionBanner"></div>
                 <div class="admin-table-wrap">
                     <table>
                         <thead>
@@ -2417,6 +2418,24 @@ function renderAdminTable() {
             : '';
     }
 
+    // [CAPTION] Banner peringatan kuning kalau ada program yang Teks WA-nya
+    // kosong atau terdeteksi belum lengkap (lihat getProgramsMissingCaption /
+    // getProgramsIncompleteCaption / isTeksWaBelumLengkap) -- sama gaya dengan
+    // banner "Belum ada poster" di atas, supaya konsisten & gampang dilihat
+    // sekilas ada berapa program yang captionnya perlu ditindaklanjuti.
+    const noCaptionBanner = document.getElementById('adminNoCaptionBanner');
+    if (noCaptionBanner) {
+        const kosongCount = getProgramsMissingCaption().length;
+        const belumLengkapCount = getProgramsIncompleteCaption().length;
+        const totalBermasalah = kosongCount + belumLengkapCount;
+        noCaptionBanner.innerHTML = totalBermasalah > 0
+            ? `<div class="cx-status-bar warn" style="margin:0 0 14px;">
+                    <i class="bi bi-chat-square-text-fill"></i>
+                    <div>${kosongCount > 0 ? `${kosongCount} program Teks WA-nya masih kosong` : ''}${kosongCount > 0 && belumLengkapCount > 0 ? ', dan ' : ''}${belumLengkapCount > 0 ? `${belumLengkapCount} program Teks WA-nya belum lengkap (section wajib ada yang hilang)` : ''} — ditandai <span style="color:var(--warn);font-weight:700;">"Caption kosong/belum lengkap"</span> di tabel di bawah. Pakai tombol "Caption Kosong" / "Caption Belum Lengkap" di atas untuk generate massal, atau klik badge-nya untuk perbaiki satu per satu.</div>
+                </div>`
+            : '';
+    }
+
     if (!adminPrograms.length) {
         tbody.innerHTML = `<tr><td colspan="${canEditData ? 8 : 7}" style="text-align:center;padding:30px;color:var(--ink-soft);">Belum ada program.${canEditData ? ' Klik "Tambah Program" untuk mulai.' : ''}</td></tr>`;
         return;
@@ -2428,11 +2447,27 @@ function renderAdminTable() {
                 ? `<button type="button" class="poster-missing-badge" onclick="quickAddPosterLink('${p.id}')" title="Klik untuk langsung tambahkan link poster program ini"><i class="bi bi-image"></i>Belum ada poster<i class="bi bi-plus-lg"></i></button>`
                 : `<span class="cx-status-bar warn" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;"><i class="bi bi-image" style="font-size:10px;"></i>Belum ada poster</span>`)
             : '';
+
+        // [CAPTION] Badge "Caption kosong" / "Caption belum lengkap" per baris --
+        // pola & style sama dengan posterBadge di atas supaya konsisten secara visual.
+        const teksWaKosong = !p.teks_wa || !p.teks_wa.trim();
+        const teksWaBelumLengkap = !teksWaKosong && isTeksWaBelumLengkap(p);
+        let captionBadge = '';
+        if (teksWaKosong) {
+            captionBadge = canEditData
+                ? `<button type="button" class="poster-missing-badge" onclick="quickFixCaption('${p.id}')" title="Klik untuk langsung isi/generate Teks WA program ini"><i class="bi bi-chat-square-text"></i>Caption kosong<i class="bi bi-plus-lg"></i></button>`
+                : `<span class="cx-status-bar warn" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;"><i class="bi bi-chat-square-text" style="font-size:10px;"></i>Caption kosong</span>`;
+        } else if (teksWaBelumLengkap) {
+            captionBadge = canEditData
+                ? `<button type="button" class="poster-missing-badge" onclick="quickFixCaption('${p.id}')" title="Klik untuk periksa & lengkapi Teks WA program ini"><i class="bi bi-chat-square-text"></i>Caption belum lengkap<i class="bi bi-plus-lg"></i></button>`
+                : `<span class="cx-status-bar warn" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;"><i class="bi bi-chat-square-text" style="font-size:10px;"></i>Caption belum lengkap</span>`;
+        }
         return `
         <tr>
             <td>
                 <strong>${escapeHtml(p.nama||'-')}</strong>
                 ${posterBadge}
+                ${captionBadge}
             </td>
             <td>${escapeHtml(p.tgl||'-')}</td>
             <td>${escapeHtml(p.durasi||'-')}</td>
@@ -3007,6 +3042,14 @@ async function editAdminProgram(id, focusFieldId) {
 function quickAddPosterLink(id) {
     editAdminProgram(id, 'admin_link_poster');
     showToast('Tempel link poster program ini, lalu klik Simpan');
+}
+
+// Shortcut dari badge "Caption kosong" / "Caption belum lengkap" di tabel:
+// buka form edit program ini & langsung lompat+fokus ke kotak Teks WA, supaya
+// admin bisa langsung klik "Generate dengan AI" atau isi manual tanpa cari-cari.
+function quickFixCaption(id) {
+    editAdminProgram(id, 'admin_teks_wa');
+    showToast('Klik "Generate dengan AI" atau lengkapi Teks WA manual, lalu Simpan');
 }
 
 // Scroll ke section (fieldset) yang menaungi sebuah field form, lalu fokuskan
