@@ -7663,6 +7663,260 @@ window.addEventListener('resize', () => {
 });
 
 // ============================================================
+// 19F. ROOMING LIST — bagi jamaah 1 program ke kamar hotel per tipe kamar
+// (Quad/Triple/Double), otomatis atau geser manual, lalu simpan ke DB
+// (kolom kb_jamaah.nomor_kamar, lihat sql/tambah_nomor_kamar_kb_jamaah.sql)
+// dan bisa diunduh sebagai dokumen (format grid kamar, bukan tabel per-orang
+// seperti Manifest). Beda dari Manifest: modal ini INTERAKTIF, ada state
+// kerja sementara (roomingWorking) yang baru ditulis ke DB saat "Simpan
+// Perubahan" ditekan.
+// ============================================================
+const ROOM_KAPASITAS = { quad: 4, triple: 3, double: 2 };
+const ROOM_TIPE_URUT = ['quad', 'triple', 'double'];
+let roomingProgram = null;
+let roomingWorking = []; // copy kerja kb_jamaah [{id, nama, tipe_kamar, nomor_kamar, status}, ...]
+let roomingDirty = false;
+
+async function bukaRoomingList(btn) {
+    if (!kbSelectedProgram) { showToast('Pilih program dulu', 'error'); return; }
+    const originalIcon = btn ? btn.innerHTML : null;
+    if (btn) { btn.innerHTML = '<i class="bi bi-arrow-repeat bi-spin"></i>'; btn.disabled = true; }
+    try {
+        roomingProgram = dataUmroh.find(p => String(p.id) === String(kbSelectedProgram)) || null;
+        const { data, error } = await supabaseClient.from('kb_jamaah')
+            .select('id, nama, tipe_kamar, nomor_kamar, status')
+            .eq('program_id', kbSelectedProgram).eq('diarsipkan', false).neq('status', 'batal')
+            .order('nama', { ascending: true });
+        if (error) throw error;
+
+        roomingWorking = (data || []).map(j => ({ ...j, tipe_kamar: j.tipe_kamar || 'quad' }));
+        roomingDirty = false;
+        renderRoomingListBody();
+        document.getElementById('roomingModal').classList.add('open');
+    } catch (err) {
+        console.error('Buka Rooming List error:', err);
+        showToast('Gagal memuat data jamaah: ' + (err?.message || err), 'error');
+    } finally {
+        if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
+    }
+}
+
+function tutupRoomingModal() {
+    if (roomingDirty && !confirm('Ada perubahan yang belum disimpan. Tutup tanpa menyimpan?')) return;
+    document.getElementById('roomingModal').classList.remove('open');
+    roomingProgram = null;
+    roomingWorking = [];
+    roomingDirty = false;
+}
+
+// Hitung jumlah kamar terpakai (max nomor_kamar yang sudah keisi, atau
+// perkiraan dari kapasitas kalau belum ada yang dikelompokkan sama sekali)
+// untuk satu tipe kamar -- dipakai buat batas atas pilihan di dropdown.
+function roomingJumlahKamar(tipe) {
+    const anggota = roomingWorking.filter(j => j.tipe_kamar === tipe);
+    const maxTerisi = anggota.reduce((m, j) => Math.max(m, j.nomor_kamar || 0), 0);
+    const perkiraan = Math.ceil(anggota.length / (ROOM_KAPASITAS[tipe] || 4)) || 1;
+    return Math.max(maxTerisi, perkiraan);
+}
+
+// Isi otomatis nomor_kamar SEMUA jamaah (menimpa pengelompokan manual yang
+// sudah ada) berdasarkan urutan nama & kapasitas per tipe kamar. Sengaja
+// "ulang total" biar hasilnya konsisten & tidak ada kamar bolong-bolong --
+// kalau admin sudah pernah geser manual dan ingin dipertahankan, jangan
+// pakai tombol ini lagi setelah geser.
+function autoBagiKamar() {
+    ROOM_TIPE_URUT.forEach(tipe => {
+        const anggota = roomingWorking.filter(j => j.tipe_kamar === tipe).sort((a, b) => (a.nama || '').localeCompare(b.nama || '', 'id'));
+        const kap = ROOM_KAPASITAS[tipe] || 4;
+        anggota.forEach((j, i) => { j.nomor_kamar = Math.floor(i / kap) + 1; });
+    });
+    roomingDirty = true;
+    renderRoomingListBody();
+    showToast('Kamar dibagi otomatis — klik "Simpan Perubahan" untuk menyimpan');
+}
+
+function pindahKamarJamaah(jamaahId, rawValue) {
+    const j = roomingWorking.find(x => String(x.id) === String(jamaahId));
+    if (!j) return;
+    j.nomor_kamar = rawValue === '' ? null : parseInt(rawValue, 10);
+    roomingDirty = true;
+    renderRoomingListBody();
+}
+
+const TIPE_KAMAR_LABEL_ROOMING = { quad: 'Quad (4 orang/kamar)', triple: 'Triple (3 orang/kamar)', double: 'Double (2 orang/kamar)' };
+
+function renderRoomingListBody() {
+    const wrap = document.getElementById('roomingListBody');
+    if (!wrap) return;
+
+    if (!roomingWorking.length) {
+        wrap.innerHTML = `<div class="kb-no-program"><i class="bi bi-person-dash-fill"></i><p>Belum ada jamaah aktif di program ini.</p></div>`;
+        return;
+    }
+
+    const sections = ROOM_TIPE_URUT.map(tipe => {
+        const anggota = roomingWorking.filter(j => j.tipe_kamar === tipe);
+        if (!anggota.length) return '';
+        const jumlahKamar = roomingJumlahKamar(tipe);
+        const belumDikelompokkan = anggota.filter(j => !j.nomor_kamar);
+
+        const roomOptionsHtml = (selected) => {
+            let opts = `<option value="">— Belum dikelompokkan —</option>`;
+            for (let n = 1; n <= jumlahKamar + 1; n++) {
+                opts += `<option value="${n}" ${Number(selected) === n ? 'selected' : ''}>Kamar ${n}</option>`;
+            }
+            return opts;
+        };
+
+        const roomBlocks = [];
+        for (let n = 1; n <= jumlahKamar; n++) {
+            const isi = anggota.filter(j => j.nomor_kamar === n);
+            if (!isi.length) continue;
+            const kap = ROOM_KAPASITAS[tipe] || 4;
+            const penuh = isi.length > kap;
+            roomBlocks.push(`
+                <div style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:200px;flex:1;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <b style="font-size:12.5px;">Kamar ${n}</b>
+                        <span style="font-size:10.5px;color:${penuh ? 'var(--danger)' : 'var(--ink-soft)'};font-weight:${penuh ? 700 : 400};">${isi.length}/${kap} orang${penuh ? ' — kelebihan!' : ''}</span>
+                    </div>
+                    ${isi.map(j => `
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:4px 0;border-top:1px dashed var(--line);">
+                            <span style="font-size:12px;">${escapeHtml(j.nama)}</span>
+                            <select style="font-size:11px;padding:3px 5px;border-radius:6px;border:1px solid var(--line);" onchange="pindahKamarJamaah('${j.id}', this.value)">
+                                ${roomOptionsHtml(j.nomor_kamar)}
+                            </select>
+                        </div>
+                    `).join('')}
+                </div>`);
+        }
+
+        return `
+            <div style="margin-bottom:18px;">
+                <div style="font-size:12.5px;font-weight:700;color:var(--brand);margin-bottom:8px;">${TIPE_KAMAR_LABEL_ROOMING[tipe]} — ${anggota.length} jamaah</div>
+                <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:${belumDikelompokkan.length ? '10px' : '0'};">${roomBlocks.join('') || '<span style="font-size:11.5px;color:var(--ink-soft);">Belum ada yang dikelompokkan.</span>'}</div>
+                ${belumDikelompokkan.length ? `
+                <div style="border:1px dashed var(--warn);border-radius:10px;padding:10px 12px;background:var(--warn-tint);">
+                    <div style="font-size:11px;font-weight:700;color:var(--warn);margin-bottom:6px;"><i class="bi bi-exclamation-triangle-fill"></i> Belum Dikelompokkan (${belumDikelompokkan.length})</div>
+                    ${belumDikelompokkan.map(j => `
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;">
+                            <span style="font-size:12px;">${escapeHtml(j.nama)}</span>
+                            <select style="font-size:11px;padding:3px 5px;border-radius:6px;border:1px solid var(--line);" onchange="pindahKamarJamaah('${j.id}', this.value)">
+                                ${roomOptionsHtml(j.nomor_kamar)}
+                            </select>
+                        </div>
+                    `).join('')}
+                </div>` : ''}
+            </div>`;
+    }).join('');
+
+    wrap.innerHTML = sections || `<div class="kb-no-program"><p>Tidak ada data untuk ditampilkan.</p></div>`;
+}
+
+async function simpanRoomingList(btn) {
+    if (!roomingWorking.length) { showToast('Tidak ada data untuk disimpan', 'error'); return; }
+    const originalIcon = btn ? btn.innerHTML : null;
+    if (btn) { btn.innerHTML = '<i class="bi bi-arrow-repeat bi-spin"></i>'; btn.disabled = true; }
+    try {
+        const updates = roomingWorking.map(j =>
+            supabaseClient.from('kb_jamaah').update({ nomor_kamar: j.nomor_kamar }).eq('id', j.id)
+        );
+        const results = await Promise.all(updates);
+        const gagal = results.filter(r => r.error);
+        if (gagal.length) throw gagal[0].error;
+
+        roomingDirty = false;
+        showToast('Rooming list berhasil disimpan');
+    } catch (err) {
+        console.error('Simpan rooming list error:', err);
+        showToast('Gagal menyimpan: ' + (err?.message || err) + ' — jalankan sql/tambah_nomor_kamar_kb_jamaah.sql kalau kolom belum ada', 'error');
+    } finally {
+        if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
+    }
+}
+
+// Dokumen rooming list untuk diunduh -- format grid kamar (bukan tabel
+// per-orang seperti Manifest), lebih mudah dibaca hotel: per kamar, siapa
+// saja isinya. Jamaah yang belum dikelompokkan ikut ditampilkan di bagian
+// bawah supaya tidak ada yang kelewat.
+function buildRoomingListHTML(program, jamaahList) {
+    const tglGenerate = tanggalIndonesia(new Date().toISOString().slice(0, 10));
+
+    const sectionsHtml = ROOM_TIPE_URUT.map(tipe => {
+        const anggota = jamaahList.filter(j => j.tipe_kamar === tipe);
+        if (!anggota.length) return '';
+        const kap = ROOM_KAPASITAS[tipe] || 4;
+        const byRoom = {};
+        const belum = [];
+        anggota.forEach(j => {
+            if (j.nomor_kamar) { (byRoom[j.nomor_kamar] = byRoom[j.nomor_kamar] || []).push(j); }
+            else belum.push(j);
+        });
+        const roomNums = Object.keys(byRoom).map(Number).sort((a, b) => a - b);
+
+        const rows = roomNums.map(n => {
+            const isi = byRoom[n];
+            const namaCols = Array.from({ length: kap }, (_, i) => isi[i] ? escapeHtml(isi[i].nama) : '<span style="color:#c3c9d2;">-</span>');
+            return `
+                <tr style="background:${n % 2 === 0 ? NOTA_TEMA.tint : '#fff'};">
+                    <td style="padding:6px 8px;border-bottom:1px solid ${NOTA_TEMA.line};text-align:center;font-weight:700;">${n}</td>
+                    ${namaCols.map(nc => `<td style="padding:6px 8px;border-bottom:1px solid ${NOTA_TEMA.line};">${nc}</td>`).join('')}
+                </tr>`;
+        }).join('');
+
+        const belumHtml = belum.length ? `
+            <div style="margin-top:6px;font-size:9px;color:${NOTA_TEMA.gold};"><b>Belum dikelompokkan:</b> ${belum.map(j => escapeHtml(j.nama)).join(', ')}</div>` : '';
+
+        return `
+            <div style="margin-bottom:14px;">
+                <div style="font-size:11px;font-weight:700;color:${NOTA_TEMA.navy};margin-bottom:6px;">${TIPE_KAMAR_LABEL_ROOMING[tipe]} — ${anggota.length} jamaah, ${roomNums.length} kamar</div>
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead>
+                        <tr style="background:${NOTA_TEMA.navy};">
+                            <th style="padding:6px 8px;text-align:center;font-size:8.5px;text-transform:uppercase;color:#fff;width:50px;">Kamar</th>
+                            ${Array.from({ length: kap }, (_, i) => `<th style="padding:6px 8px;text-align:left;font-size:8.5px;text-transform:uppercase;color:#fff;">Nama ${i + 1}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>${rows || `<tr><td colspan="${kap + 1}" style="padding:10px;text-align:center;color:${NOTA_TEMA.inkSoft};font-size:9.5px;">Belum ada kamar terisi</td></tr>`}</tbody>
+                </table>
+                ${belumHtml}
+            </div>`;
+    }).join('');
+
+    return `
+    <div style="position:relative;width:900px;background:#fff;font-family:'Inter',Arial,sans-serif;color:#1a1a1a;padding:26px 32px;box-sizing:border-box;border:1px solid ${NOTA_TEMA.line};overflow:hidden;">
+        ${buildNotaWatermarkHTML()}
+
+        <div style="position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border-bottom:1.5px solid ${NOTA_TEMA.navy};padding-bottom:9px;margin-bottom:14px;">
+            ${buildNotaHeaderHTML()}
+            ${buildNotaTitleBarHTML('ROOMING LIST', [
+                `${escapeHtml(program?.nama || '-')}`,
+                `${program?.tgl ? escapeHtml(program.tgl) : ''}`,
+                `Dicetak ${escapeHtml(tglGenerate)}`
+            ])}
+        </div>
+
+        <div style="position:relative;z-index:1;">
+            ${sectionsHtml || `<p style="font-size:11px;color:${NOTA_TEMA.inkSoft};">Belum ada data jamaah.</p>`}
+        </div>
+
+        <div style="position:relative;z-index:1;text-align:left;font-size:7.5px;color:${NOTA_TEMA.inkSoft};margin-top:6px;padding-top:6px;border-top:1px solid ${NOTA_TEMA.line};">
+            Rooming list ini dibuat otomatis dari data pembagian kamar yang tersimpan di sistem ${escapeHtml(NOTA_PERUSAHAAN.brand)} pada tanggal cetak di atas.
+        </div>
+    </div>`;
+}
+
+async function unduhRoomingList(format, btn) {
+    if (!roomingWorking.length) { showToast('Tidak ada data untuk diunduh', 'error'); return; }
+    if (roomingDirty) { showToast('Ada perubahan belum disimpan — klik "Simpan Perubahan" dulu', 'error'); return; }
+    const html = buildRoomingListHTML(roomingProgram, roomingWorking);
+    const namaProgram = (roomingProgram?.nama || 'Program').replace(/[^a-zA-Z0-9]+/g, '-');
+    const exportFn = format === 'pdf' ? exportNotaElementAsPdf : exportNotaElementAsJpeg;
+    const ext = format === 'pdf' ? 'pdf' : 'jpg';
+    await exportFn(html, `Rooming-List-${namaProgram}.${ext}`, btn);
+}
+
+// ============================================================
 // 20. KUITANSI — sejak digabung ke alur "Bayar" (lihat buildNotaHTML() dan
 // downloadNotaPembayaran() di bagian "19C/19D. NOTA PEMBAYARAN / AUDIT
 // NOTA"), tidak ada lagi tombol/modal Kuitansi manual terpisah. Fungsi di
