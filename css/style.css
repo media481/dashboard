@@ -2804,3 +2804,52 @@
 .ms-edit-hero-status.st-dihubungi { background: var(--warn-tint); color: var(--warn); }
 .ms-edit-hero-status.st-deal { background: var(--success-tint); color: #1b6b48; }
 .ms-edit-hero-status.st-batal { background: var(--danger-tint); color: var(--danger); }
+
+/* ===== TABEL STATUS KEPULANGAN: field inline (dropdown/tanggal/catatan) =====
+   Dropdown status sebelumnya <select> polos tanpa styling sama sekali,
+   jadi tampil sebagai dropdown bawaan browser (beda gaya dgn kolom
+   tanggal/catatan di sampingnya). Dibuat custom: appearance native
+   dimatikan, panah diganti ikon sendiri, dan warnanya mengikuti warna
+   status (sama seperti .status-badge) supaya sekali lihat langsung
+   kebaca tanpa perlu buka dropdown-nya. .kp-field dipakai bersama di
+   kolom tanggal & catatan biar satu baris konsisten gaya & tingginya. */
+.kp-field {
+    width: 100%;
+    padding: 7px 11px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: var(--surface);
+    transition: border-color .15s, box-shadow .15s;
+}
+.kp-field:focus {
+    outline: none;
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px var(--brand-tint);
+}
+.kp-field:disabled { background: var(--bg); color: var(--ink-soft); cursor: not-allowed; }
+
+.kp-select-wrap { position: relative; min-width: 168px; }
+.kp-select-wrap i {
+    position: absolute;
+    right: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    pointer-events: none;
+    color: var(--ink-soft);
+}
+.kp-status-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 30px;
+    cursor: pointer;
+    font-weight: 600;
+}
+.kp-status-select.badge-batal { background: #e5e7eb; border-color: #d5d9e0; color: #4b5563; }
+.kp-status-select.badge-limited { background: var(--warn-tint); border-color: #f3d4a3; color: #A5541A; }
+.kp-status-select.badge-available { background: var(--success-tint); border-color: #bfe3cf; color: var(--success); }
+.kp-status-select.badge-full { background: var(--danger-tint); border-color: #f1c3bd; color: var(--danger); }

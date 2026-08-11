@@ -7718,6 +7718,16 @@ function kepulanganStatusInfo(value) {
     return KEPULANGAN_STATUS_OPSI.find(s => s.value === value) || KEPULANGAN_STATUS_OPSI[0];
 }
 
+// [STYLING] Dropdown status kepulangan diwarnai sesuai status terpilih
+// (sama palet dgn .status-badge). Dipanggil onchange supaya warnanya ikut
+// berubah live begitu admin ganti status, tanpa perlu render ulang tabel.
+function kpRecolorStatusSelect(selectEl) {
+    if (!selectEl) return;
+    const info = kepulanganStatusInfo(selectEl.value);
+    selectEl.className = selectEl.className.replace(/\bbadge-\S+/g, '').trim();
+    selectEl.classList.add('badge-' + info.badge);
+}
+
 function renderKepulanganProgramSelector() {
     const select = document.getElementById('kepulanganProgramSelect');
     if (!select) return;
@@ -7809,20 +7819,23 @@ async function loadKepulanganForProgram(programId) {
                                 <td style="padding:10px 14px;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
                                 <td style="padding:8px 14px;border-left:1px solid var(--line);">
                                     ${canEdit ? `
-                                    <select data-cs-inline="1" style="min-width:150px;" onchange="updateKepulanganField('${j.id}','status_kepulangan',this.value)">
-                                        ${KEPULANGAN_STATUS_OPSI.map(s => `<option value="${s.value}" ${s.value === status ? 'selected' : ''}>${s.label}</option>`).join('')}
-                                    </select>` : `<span class="status-badge ${info.badge}">${info.label}</span>`}
+                                    <div class="kp-select-wrap">
+                                        <select class="kp-field kp-status-select badge-${info.badge}" onchange="updateKepulanganField('${j.id}','status_kepulangan',this.value); kpRecolorStatusSelect(this);">
+                                            ${KEPULANGAN_STATUS_OPSI.map(s => `<option value="${s.value}" ${s.value === status ? 'selected' : ''}>${s.label}</option>`).join('')}
+                                        </select>
+                                        <i class="bi bi-chevron-down"></i>
+                                    </div>` : `<span class="status-badge ${info.badge}">${info.label}</span>`}
                                 </td>
                                 <td style="padding:8px 14px;border-left:1px solid var(--line);">
-                                    <input type="date" value="${j.tgl_berangkat_aktual || ''}" ${canEdit ? '' : 'disabled'}
+                                    <input type="date" class="kp-field" value="${j.tgl_berangkat_aktual || ''}" ${canEdit ? '' : 'disabled'}
                                         onchange="updateKepulanganField('${j.id}','tgl_berangkat_aktual',this.value)" style="min-width:140px;">
                                 </td>
                                 <td style="padding:8px 14px;border-left:1px solid var(--line);">
-                                    <input type="date" value="${j.tgl_pulang_aktual || ''}" ${canEdit ? '' : 'disabled'}
+                                    <input type="date" class="kp-field" value="${j.tgl_pulang_aktual || ''}" ${canEdit ? '' : 'disabled'}
                                         onchange="updateKepulanganField('${j.id}','tgl_pulang_aktual',this.value)" style="min-width:140px;">
                                 </td>
                                 <td style="padding:8px 14px;border-left:1px solid var(--line);">
-                                    <input type="text" value="${escapeHtml(j.catatan_kepulangan || '')}" placeholder="Opsional" ${canEdit ? '' : 'disabled'}
+                                    <input type="text" class="kp-field" value="${escapeHtml(j.catatan_kepulangan || '')}" placeholder="Opsional" ${canEdit ? '' : 'disabled'}
                                         onchange="updateKepulanganField('${j.id}','catatan_kepulangan',this.value)" style="width:100%;min-width:160px;">
                                 </td>
                             </tr>`;
