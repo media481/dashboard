@@ -1069,6 +1069,7 @@ function switchTab(tabId) {
     if (tabId === 'pendaftaran') renderPendaftaranSection();
     if (tabId === 'keberangkatan') renderKbProgramSelector();
     if (tabId === 'dokumen') renderDokProgramSelector();
+    if (tabId === 'kepulangan') renderKepulanganProgramSelector();
     if (tabId === 'arsip') { loadArsipJamaah().then(renderArsipProgramSelector); }
 }
 
@@ -4744,7 +4745,7 @@ async function arsipkanSemuaJamaah(programId) {
         // Cek ulang langsung ke database (bukan cache), status HARUS lunas
         // atau batal untuk semua jamaah program ini sebelum boleh diarsipkan.
         const { data: jamaahProgram, error } = await supabaseClient
-            .from('kb_jamaah').select('id, nama, status').eq('program_id', programId).eq('diarsipkan', false);
+            .from('kb_jamaah').select('id, nama, status, status_kepulangan').eq('program_id', programId).eq('diarsipkan', false);
         if (error) throw error;
 
         if (!jamaahProgram || jamaahProgram.length === 0) {
@@ -4755,6 +4756,20 @@ async function arsipkanSemuaJamaah(programId) {
         const belumLunas = jamaahProgram.filter(j => j.status !== 'lunas' && j.status !== 'batal');
         if (belumLunas.length > 0) {
             showToast(`Tidak bisa arsipkan — masih ada ${belumLunas.length} jamaah yang belum lunas (${belumLunas.slice(0, 3).map(j => j.nama).join(', ')}${belumLunas.length > 3 ? ', ...' : ''}).`, 'error');
+            return;
+        }
+
+        // Selain lunas, jamaah juga HARUS sudah berstatus "Sudah Pulang" (atau
+        // "Batal/No-show" kalau memang tidak jadi berangkat) sebelum program
+        // boleh diarsipkan -- supaya progres kepulangan tidak pernah tertutup
+        // arsip saat masih ada jamaah yang belum tercatat pulang (lihat tab
+        // "Status Kepulangan").
+        const belumPulang = jamaahProgram.filter(j => {
+            const sk = j.status_kepulangan || 'belum_berangkat';
+            return sk !== 'sudah_pulang' && sk !== 'batal';
+        });
+        if (belumPulang.length > 0) {
+            showToast(`Tidak bisa arsipkan — masih ada ${belumPulang.length} jamaah yang belum tercatat "Sudah Pulang" di tab Status Kepulangan (${belumPulang.slice(0, 3).map(j => j.nama).join(', ')}${belumPulang.length > 3 ? ', ...' : ''}).`, 'error');
             return;
         }
 
@@ -4869,18 +4884,22 @@ async function loadArsipJamaahForProgram(programId) {
         return;
     }
 
-    const rows = jamaah.map(j => `
+    const rows = jamaah.map(j => {
+        const info = kepulanganStatusInfo(j.status_kepulangan || 'belum_berangkat');
+        return `
         <tr style="border-bottom:1px solid var(--line);">
             <td style="padding:10px 14px;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
             <td style="padding:10px 14px;">${j.nik || '-'}</td>
             <td style="padding:10px 14px;">${j.paspor || '-'}</td>
+            <td style="padding:10px 14px;"><span class="status-badge ${info.badge}">${info.label}</span>${j.tgl_pulang_aktual ? `<br><span style="font-size:11px;color:var(--ink-soft);">Pulang: ${new Date(j.tgl_pulang_aktual).toLocaleDateString('id-ID')}</span>` : ''}</td>
             <td style="padding:10px 14px;">${j.diarsipkan_at ? new Date(j.diarsipkan_at).toLocaleDateString('id-ID') : '-'}</td>
             <td style="padding:10px 14px;white-space:nowrap;">
                 <button class="btn-primary" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${j.id}')">
                     <i class="bi bi-eye-fill"></i> Lihat Riwayat & Kuitansi
                 </button>
             </td>
-        </tr>`).join('');
+        </tr>`;
+    }).join('');
 
     container.innerHTML = `
         <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
@@ -4893,6 +4912,7 @@ async function loadArsipJamaahForProgram(programId) {
                         <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Nama</th>
                         <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">NIK</th>
                         <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Paspor</th>
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Status Kepulangan</th>
                         <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Tgl Diarsipkan</th>
                         <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Aksi</th>
                     </tr>
@@ -7338,6 +7358,174 @@ async function toggleDokumenJamaah(jamaahId, key, checked) {
         console.error('Update dokumen jamaah error:', err);
         showToast('Gagal menyimpan status dokumen: ' + err.message, 'error');
         if (dokSelectedProgram) await loadDokumenForProgram(dokSelectedProgram);
+    }
+}
+
+// ============================================================
+// 19D2. STATUS KEPULANGAN JAMAAH
+// Melacak progres jamaah per program dari belum berangkat sampai sudah
+// pulang -- terpisah dari status pembayaran (lunas/dp/pending). Disimpan
+// di 4 kolom kb_jamaah: status_kepulangan, tgl_berangkat_aktual,
+// tgl_pulang_aktual, catatan_kepulangan (lihat
+// sql/tambah_status_kepulangan_kb_jamaah.sql). Guest hanya bisa lihat,
+// user & admin bisa ubah langsung dari tabel (sama pola dengan
+// Kelengkapan Dokumen di atas).
+// ============================================================
+let kepulanganSelectedProgram = null;
+
+const KEPULANGAN_STATUS_OPSI = [
+    { value: 'belum_berangkat', label: 'Belum Berangkat', badge: 'batal' },
+    { value: 'sudah_berangkat', label: 'Sudah Berangkat', badge: 'limited' },
+    { value: 'sudah_pulang',    label: 'Sudah Pulang',    badge: 'available' },
+    { value: 'batal',           label: 'Batal / No-show', badge: 'full' },
+];
+
+function kepulanganStatusInfo(value) {
+    return KEPULANGAN_STATUS_OPSI.find(s => s.value === value) || KEPULANGAN_STATUS_OPSI[0];
+}
+
+function renderKepulanganProgramSelector() {
+    const select = document.getElementById('kepulanganProgramSelect');
+    if (!select) return;
+
+    if (!dataUmroh || dataUmroh.length === 0) {
+        select.innerHTML = '<option value="">-- Belum ada program --</option>';
+        return;
+    }
+
+    // Sama seperti selector Dokumen: hanya tampilkan program yang sudah
+    // punya jamaah terdaftar.
+    const programsWithJamaah = dataUmroh.filter(p =>
+        (kbJamaahList || []).some(j => String(j.program_id) === String(p.id))
+    );
+
+    if (programsWithJamaah.length === 0) {
+        select.innerHTML = '<option value="">-- Belum ada jamaah terdaftar --</option>';
+        loadKepulanganForProgram('');
+        return;
+    }
+
+    const currentVal = select.value;
+    select.innerHTML = '<option value="">-- Pilih Program --</option>' +
+        programsWithJamaah.map(p => `<option value="${p.id}">${escapeHtml(p.nama)} (${escapeHtml(p.tgl || '-')})</option>`).join('');
+    select.value = (currentVal && programsWithJamaah.some(p => String(p.id) === String(currentVal))) ? currentVal : '';
+
+    loadKepulanganForProgram(select.value);
+}
+
+function selectKepulanganProgram(id) {
+    document.getElementById('kepulanganProgramSelect').value = id;
+    loadKepulanganForProgram(id);
+}
+
+async function loadKepulanganForProgram(programId) {
+    kepulanganSelectedProgram = programId || null;
+    const container = document.getElementById('kepulanganContent');
+    const summaryEl = document.getElementById('kepulanganSummary');
+    summaryEl.innerHTML = '';
+
+    if (!programId) {
+        container.innerHTML = `<div class="kb-no-program"><i class="bi bi-house-door-fill"></i><p>Pilih program di atas untuk melihat & mengubah status kepulangan jamaah.</p></div>`;
+        return;
+    }
+
+    try {
+        const { data, error } = await withRetry(
+            () => supabaseClient.from('kb_jamaah').select('*').eq('program_id', programId).eq('diarsipkan', false).order('nama', { ascending: true }),
+            { label: 'Muat data jamaah' }
+        );
+        if (error) throw error;
+        const jamaah = data || [];
+
+        if (!jamaah.length) {
+            container.innerHTML = `<div class="kb-no-program"><i class="bi bi-person-dash-fill"></i><p>Belum ada jamaah terdaftar untuk program ini.</p></div>`;
+            return;
+        }
+
+        const hitung = (val) => jamaah.filter(j => (j.status_kepulangan || 'belum_berangkat') === val).length;
+        summaryEl.innerHTML = `
+            <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+                <span class="status-badge available">${jamaah.length} Total Jamaah</span>
+                <span class="status-badge available">${hitung('sudah_pulang')} Sudah Pulang</span>
+                <span class="status-badge limited">${hitung('sudah_berangkat')} Sudah Berangkat</span>
+                <span class="status-badge batal">${hitung('belum_berangkat')} Belum Berangkat</span>
+                ${hitung('batal') > 0 ? `<span class="status-badge full">${hitung('batal')} Batal/No-show</span>` : ''}
+            </div>`;
+
+        const canEdit = canManageProgramData();
+
+        container.innerHTML = `
+            <div class="table-container" style="overflow-x:auto;">
+                <table style="width:100%;min-width:900px;border-collapse:collapse;font-size:13px;">
+                    <thead style="background:var(--bg);">
+                        <tr>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Nama</th>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);border-left:1px solid var(--line);">Status</th>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);border-left:1px solid var(--line);">Tgl Berangkat Aktual</th>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);border-left:1px solid var(--line);">Tgl Pulang Aktual</th>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);border-left:1px solid var(--line);">Catatan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${jamaah.map(j => {
+                            const status = j.status_kepulangan || 'belum_berangkat';
+                            const info = kepulanganStatusInfo(status);
+                            return `
+                            <tr style="border-bottom:1px solid var(--line);">
+                                <td style="padding:10px 14px;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
+                                <td style="padding:8px 14px;border-left:1px solid var(--line);">
+                                    ${canEdit ? `
+                                    <select data-cs-inline="1" style="min-width:150px;" onchange="updateKepulanganField('${j.id}','status_kepulangan',this.value)">
+                                        ${KEPULANGAN_STATUS_OPSI.map(s => `<option value="${s.value}" ${s.value === status ? 'selected' : ''}>${s.label}</option>`).join('')}
+                                    </select>` : `<span class="status-badge ${info.badge}">${info.label}</span>`}
+                                </td>
+                                <td style="padding:8px 14px;border-left:1px solid var(--line);">
+                                    <input type="date" value="${j.tgl_berangkat_aktual || ''}" ${canEdit ? '' : 'disabled'}
+                                        onchange="updateKepulanganField('${j.id}','tgl_berangkat_aktual',this.value)" style="min-width:140px;">
+                                </td>
+                                <td style="padding:8px 14px;border-left:1px solid var(--line);">
+                                    <input type="date" value="${j.tgl_pulang_aktual || ''}" ${canEdit ? '' : 'disabled'}
+                                        onchange="updateKepulanganField('${j.id}','tgl_pulang_aktual',this.value)" style="min-width:140px;">
+                                </td>
+                                <td style="padding:8px 14px;border-left:1px solid var(--line);">
+                                    <input type="text" value="${escapeHtml(j.catatan_kepulangan || '')}" placeholder="Opsional" ${canEdit ? '' : 'disabled'}
+                                        onchange="updateKepulanganField('${j.id}','catatan_kepulangan',this.value)" style="width:100%;min-width:160px;">
+                                </td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+            <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;">Ubah status langsung dari dropdown/kolom di atas -- tersimpan otomatis begitu berpindah field (blur/change), tidak perlu tombol Simpan terpisah.</p>
+        `;
+
+    } catch (err) {
+        console.error('Load status kepulangan error:', err);
+        container.innerHTML = `<div class="kb-no-program" style="color:var(--danger);">
+            <i class="bi bi-exclamation-circle-fill"></i>
+            <p>Gagal memuat data status kepulangan — periksa koneksi internet.</p>
+        </div>`;
+    }
+}
+
+async function updateKepulanganField(jamaahId, field, value) {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengubah data ini', 'error'); return; }
+    const izinkanKosong = ['tgl_berangkat_aktual', 'tgl_pulang_aktual', 'catatan_kepulangan'];
+    const payload = { [field]: (value === '' && izinkanKosong.includes(field)) ? null : value };
+    try {
+        const { error } = await supabaseClient.from('kb_jamaah').update(payload).eq('id', jamaahId);
+        if (error) throw error;
+
+        const idx = kbJamaahList.findIndex(j => j.id === jamaahId);
+        if (idx > -1) kbJamaahList[idx][field] = payload[field];
+
+        showToast('Status kepulangan diperbarui', 'success');
+        if (kepulanganSelectedProgram) await loadKepulanganForProgram(kepulanganSelectedProgram);
+
+    } catch (err) {
+        console.error('Update status kepulangan error:', err);
+        showToast('Gagal menyimpan: ' + err.message, 'error');
+        if (kepulanganSelectedProgram) await loadKepulanganForProgram(kepulanganSelectedProgram);
     }
 }
 

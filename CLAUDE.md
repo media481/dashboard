@@ -156,6 +156,13 @@ satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
   kalau diambil sesudahnya baris itu sudah tidak ada lagi dan audit gagal
   tercatat tanpa pesan error (bug lama yang sudah diperbaiki, jangan diulang
   kalau refactor bagian ini).
+- "Arsipkan Semua Jamaah" (tombol di tab Keberangkatan) diblokir kalau ada
+  jamaah yang: (1) belum berstatus `lunas`/`batal` di pembayaran, ATAU
+  (2) `status_kepulangan` belum `sudah_pulang`/`batal` (lihat tab "Status
+  Kepulangan", kolom `kb_jamaah.status_kepulangan` — sql/tambah_status_kepulangan_kb_jamaah.sql).
+  Kedua pengecekan ini sengaja hard block (bukan cuma warning) karena Arsip
+  bersifat irreversible dan setelah diarsipkan jamaah hilang dari tab Status
+  Kepulangan (tapi tetap terlihat read-only di tab Arsip Jamaah).
 
 ## Kalau menambah/mengubah fitur
 

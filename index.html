@@ -71,6 +71,9 @@
             <button class="nav-item nav-loggedin-only" data-tab="dokumen" style="display:none;" title="Dokumen">
                 <i class="bi bi-file-earmark-check-fill"></i> <span class="nav-text">Dokumen</span>
             </button>
+            <button class="nav-item nav-loggedin-only" data-tab="kepulangan" style="display:none;" title="Status Kepulangan">
+                <i class="bi bi-house-door-fill"></i> <span class="nav-text">Status Kepulangan</span>
+            </button>
             <button class="nav-item nav-loggedin-only" data-tab="arsip" style="display:none;" title="Arsip Jamaah">
                 <i class="bi bi-archive-fill"></i> <span class="nav-text">Arsip Jamaah</span>
             </button>
@@ -196,6 +199,9 @@
                 </button>
                 <button class="tab-btn nav-loggedin-only" data-tab="dokumen" style="display:none;">
                     <i class="bi bi-file-earmark-check-fill"></i> <span>Kelengkapan Dokumen</span>
+                </button>
+                <button class="tab-btn nav-loggedin-only" data-tab="kepulangan" style="display:none;">
+                    <i class="bi bi-house-door-fill"></i> <span>Status Kepulangan</span>
                 </button>
                 <button class="tab-btn nav-loggedin-only" data-tab="arsip" style="display:none;">
                     <i class="bi bi-archive-fill"></i> <span>Arsip Jamaah</span>
@@ -390,6 +396,22 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- TAB: Status Kepulangan -->
+                <div class="tab-panel" id="tab-kepulangan">
+                    <div class="kb-program-selector" id="kepulanganProgramSelector">
+                        <select id="kepulanganProgramSelect" class="searchable-select" data-cs-inline="1" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." onchange="selectKepulanganProgram(this.value)">
+                            <option value="">-- Pilih Program --</option>
+                        </select>
+                    </div>
+                    <div id="kepulanganSummary"></div>
+                    <div id="kepulanganContent">
+                        <div class="kb-no-program">
+                            <i class="bi bi-house-door-fill"></i>
+                            <p>Pilih program di atas untuk melihat & mengubah status kepulangan jamaah.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -435,6 +457,9 @@
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="dokumen" style="display:none;" onclick="switchTab('dokumen'); toggleMobileSidebar();">
                 <i class="bi bi-file-earmark-check-fill"></i> Dokumen
+            </button>
+            <button class="nav-item nav-loggedin-only" data-tab="kepulangan" style="display:none;" onclick="switchTab('kepulangan'); toggleMobileSidebar();">
+                <i class="bi bi-house-door-fill"></i> Status Kepulangan
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="arsip" style="display:none;" onclick="switchTab('arsip'); toggleMobileSidebar();">
                 <i class="bi bi-archive-fill"></i> Arsip Jamaah
