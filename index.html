@@ -353,9 +353,6 @@
                         <select id="kbProgramSelect" class="searchable-select" data-cs-inline="1" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." onchange="selectKbProgram(this.value)">
                             <option value="">-- Pilih Program --</option>
                         </select>
-                        <button class="btn-primary" id="btnTambahJamaah" onclick="openKbModal()" style="font-size:12px;padding:6px 14px;">
-                            <i class="bi bi-person-plus-fill"></i> Tambah Jamaah
-                        </button>
                         <button class="btn-primary" id="btnCetakManifest" onclick="bukaManifestProgram(this)" style="font-size:12px;padding:6px 14px;background:var(--brand-deep);">
                             <i class="bi bi-file-earmark-spreadsheet-fill"></i> Cetak Manifest
                         </button>
@@ -604,6 +601,11 @@
         <div class="modal-body">
             <form id="pendaftaranForm" onsubmit="savePendaftaran(event)">
                 <input type="hidden" id="p_editId" value="">
+                <div id="pfFromJamaahLamaBox" style="display:none;background:#fef3e2;padding:14px;border-radius:12px;margin-bottom:18px;border:1px solid #fbd9a3;">
+                    <label style="font-size:12px;font-weight:700;color:#b8935a;margin-bottom:0;display:flex;align-items:center;gap:6px;"><i class="bi bi-person-vcard-fill"></i> Daftarkan Ulang Jamaah Lama <span style="font-weight:500;color:var(--ink-soft);font-size:11px;">(opsional — cari kalau ini pelanggan lama)</span></label>
+                    <input type="text" id="pf_cari_jamaah_lama" placeholder="Ketik nama / NIK / paspor jamaah lama..." autocomplete="off" oninput="renderPfJamaahLamaOptions(this.value)" style="width:100%;padding:9px 12px;border:1px solid #fbd9a3;border-radius:8px;font-size:12.5px;font-family:inherit;background:#fff;margin-top:10px;">
+                    <div id="pfJamaahLamaResults" style="margin-top:8px;max-height:160px;overflow-y:auto;display:none;"></div>
+                </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label>Tanggal Pendaftaran</label>
@@ -761,27 +763,15 @@
 <div class="modal-overlay" id="kbModal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2><i class="bi bi-person-plus-fill"></i> <span id="kbModalTitle">Tambah Data Jamaah</span></h2>
+            <h2><i class="bi bi-pencil-fill"></i> <span id="kbModalTitle">Edit Data Jamaah</span></h2>
             <button class="modal-close" onclick="closeKbModal()">&times;</button>
         </div>
         <div class="modal-body">
             <form id="kbForm" onsubmit="saveKbJamaah(event)">
                 <input type="hidden" id="kb_editId" value="">
-                <input type="hidden" id="kb_pendaftaran_source" value="">
-                <div id="kbFromPendaftaranBox" style="display:none;background:var(--success-tint);padding:14px;border-radius:12px;margin-bottom:12px;border:1px solid #bbf7d0;">
-                    <label style="font-size:12px;font-weight:700;color:var(--success);margin-bottom:0;display:flex;align-items:center;gap:6px;"><i class="bi bi-clipboard-check-fill"></i> Ambil dari Form Pendaftaran <span style="font-weight:500;color:var(--ink-soft);font-size:11px;">(opsional)</span></label>
-                    <select id="kb_from_pendaftaran" onchange="fillKbFromPendaftaran(this.value)" style="width:100%;padding:9px 12px;border:1px solid #86efac;border-radius:8px;font-size:12.5px;font-family:inherit;background:#fff;margin-top:10px;">
-                        <option value="">-- Pilih calon jamaah dari Pendaftaran --</option>
-                    </select>
-                </div>
-                <div id="kbFromJamaahLamaBox" style="display:none;background:#fef3e2;padding:14px;border-radius:12px;margin-bottom:18px;border:1px solid #fbd9a3;">
-                    <label style="font-size:12px;font-weight:700;color:#b8935a;margin-bottom:0;display:flex;align-items:center;gap:6px;"><i class="bi bi-person-vcard-fill"></i> Jamaah Lama Daftar Program Baru <span style="font-weight:500;color:var(--ink-soft);font-size:11px;">(opsional — cari kalau ini pelanggan lama)</span></label>
-                    <input type="text" id="kb_cari_jamaah_lama" placeholder="Ketik nama / NIK / paspor jamaah lama..." autocomplete="off" oninput="renderKbJamaahLamaOptions(this.value)" style="width:100%;padding:9px 12px;border:1px solid #fbd9a3;border-radius:8px;font-size:12.5px;font-family:inherit;background:#fff;margin-top:10px;">
-                    <div id="kbJamaahLamaResults" style="margin-top:8px;max-height:160px;overflow-y:auto;display:none;"></div>
-                </div>
                 <div class="form-group">
                     <label>Program Keberangkatan <span class="required">*</span></label>
-                    <select id="kb_program" class="searchable-select" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." onchange="if (document.getElementById('kbFromPendaftaranBox').style.display !== 'none') renderKbPendaftaranOptions();" required></select>
+                    <select id="kb_program" class="searchable-select" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." required></select>
                 </div>
                 <div class="form-group">
                     <label>Nama Lengkap <span class="required">*</span></label>

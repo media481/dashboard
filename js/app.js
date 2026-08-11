@@ -2864,10 +2864,8 @@ function canManageAssets() {
 function applyRoleUIVisibility() {
     const canEdit = canManageProgramData();
     const btnJadwal = document.getElementById('btnTambahJadwal');
-    const btnJamaah = document.getElementById('btnTambahJamaah');
     const btnProgram = document.getElementById('btnTambahProgram');
     if (btnJadwal) btnJadwal.style.display = canEdit ? '' : 'none';
-    if (btnJamaah) btnJamaah.style.display = canEdit ? '' : 'none';
     if (btnProgram) btnProgram.style.display = canEdit ? '' : 'none';
 }
 
@@ -4500,7 +4498,7 @@ function renderPendaftaranSection() {
             <td>
                 <div class="pf-actions">
                     ${p.wa ? `<a href="https://wa.me/${p.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(p.nama||'')}%20kami%20dari%20${encodeURIComponent(NOTA_PERUSAHAAN.nama)}" target="_blank" class="pf-btn-wa" title="Hubungi via WhatsApp"><i class="bi bi-whatsapp"></i></a>` : ''}
-                    ${(stKey !== 'deal' && stKey !== 'batal') ? `<button type="button" class="pf-btn-convert" onclick="convertPendaftaranToJamaah('${p.id}')" title="Jadikan Jamaah — langsung buka form Keberangkatan dengan data terisi"><i class="bi bi-person-check-fill"></i></button>` : ''}
+                    ${(stKey !== 'deal' && stKey !== 'batal') ? `<button type="button" class="pf-btn-convert" onclick="convertPendaftaranToJamaah('${p.id}')" title="Tandai Deal — otomatis masuk Data Jamaah"><i class="bi bi-person-check-fill"></i></button>` : ''}
                     <button type="button" class="pf-btn-edit" onclick="openPendaftaranModal('${p.id}')" title="Edit"><i class="bi bi-pencil-fill"></i></button>
                     <button type="button" class="pf-btn-delete" onclick="openDeleteModal('pendaftaran', '${p.id}', '${escapeJsAttr(p.nama)}')" title="Hapus"><i class="bi bi-trash-fill"></i></button>
                 </div>
@@ -4511,16 +4509,31 @@ function renderPendaftaranSection() {
     renderPfPagination(filtered.length);
 }
 
-// Shortcut dari baris Form Pendaftaran: loncat langsung ke tab Keberangkatan,
-// buka modal Tambah Jamaah, dan otomatis isi datanya dari pendaftaran ini —
-// tanpa staf harus cari nama lagi di dropdown "Ambil dari Form Pendaftaran".
-function convertPendaftaranToJamaah(pendaftaranId) {
-    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menambah data jamaah', 'error'); return; }
-    switchTab('keberangkatan');
-    openKbModal();
-    const sel = document.getElementById('kb_from_pendaftaran');
-    if (sel) sel.value = pendaftaranId;
-    fillKbFromPendaftaran(pendaftaranId);
+// Shortcut dari baris Form Pendaftaran: langsung tandai status "Deal" &
+// otomatis masuk Data Jamaah di background (lihat autoConvertPendaftaranToJamaah)
+// -- tidak perlu buka form apa pun lagi, karena menu "Tambah Jamaah" manual
+// di tab Data Jamaah sudah ditiadakan.
+async function convertPendaftaranToJamaah(pendaftaranId) {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menandai jamaah', 'error'); return; }
+    const p = pendaftaranList.find(item => String(item.id) === String(pendaftaranId));
+    if (!p) { showToast('Data pendaftaran tidak ditemukan', 'error'); return; }
+    if (!p.program_id) {
+        showToast('⚠️ Pilih program keberangkatan dulu lewat Edit sebelum menandai "Deal"', 'error');
+        openPendaftaranModal(pendaftaranId);
+        return;
+    }
+    if (!confirm(`Tandai "${p.nama}" sebagai Deal & pindahkan ke Data Jamaah?`)) return;
+
+    try {
+        const { error } = await supabaseClient.from('pendaftaran').update({ status: 'deal' }).eq('id', pendaftaranId);
+        if (error) throw error;
+        p.status = 'deal';
+        renderPendaftaranSection();
+        await autoConvertPendaftaranToJamaah(p);
+    } catch (err) {
+        console.error('Convert pendaftaran error:', err);
+        showToast('Gagal menandai Deal: ' + err.message, 'error');
+    }
 }
 
 function openPendaftaranModal(id = null) {
@@ -4534,9 +4547,12 @@ function openPendaftaranModal(id = null) {
     programSelect.innerHTML = '<option value="">-- Belum Ditentukan --</option>' +
         (dataUmroh || []).map(prog => `<option value="${prog.id}">${escapeHtml(prog.nama)}</option>`).join('');
 
+    const jamaahLamaBox = document.getElementById('pfFromJamaahLamaBox');
+
     if (id) {
         const p = pendaftaranList.find(item => item.id === id);
         if (!p) { showToast('Data tidak ditemukan', 'error'); return; }
+        if (jamaahLamaBox) jamaahLamaBox.style.display = 'none';
         document.getElementById('pendaftaranModalTitle').textContent = 'Edit Pendaftaran';
         document.getElementById('p_editId').value = p.id;
         document.getElementById('pf_tanggal').value = p.tanggal_daftar || '';
@@ -4559,6 +4575,11 @@ function openPendaftaranModal(id = null) {
         document.getElementById('pendaftaranModalTitle').textContent = 'Tambah Pendaftaran';
         document.getElementById('pf_tanggal').value = new Date().toISOString().slice(0, 10);
         document.getElementById('pf_status').value = 'baru';
+        if (jamaahLamaBox) jamaahLamaBox.style.display = '';
+        const cariInput = document.getElementById('pf_cari_jamaah_lama');
+        if (cariInput) cariInput.value = '';
+        const resultsBox = document.getElementById('pfJamaahLamaResults');
+        if (resultsBox) { resultsBox.innerHTML = ''; resultsBox.style.display = 'none'; }
     }
 
     modal.classList.add('open');
@@ -4592,24 +4613,88 @@ async function savePendaftaran(e) {
     };
 
     if (!data.nama) { showToast('Nama calon jamaah wajib diisi', 'error'); return; }
+    // Begitu status ditandai "Deal", baris ini otomatis dipindah ke Data
+    // Jamaah (lihat autoConvertPendaftaranToJamaah) -- makanya program
+    // keberangkatan wajib sudah dipilih dulu, supaya jamaah tidak "nyasar"
+    // tanpa program.
+    if (data.status === 'deal' && !data.program_id) {
+        showToast('⚠️ Pilih program keberangkatan dulu sebelum menandai status "Deal"', 'error');
+        return;
+    }
 
     try {
         let result;
         if (id) {
             result = await supabaseClient.from('pendaftaran').update(data).eq('id', id);
         } else {
-            result = await supabaseClient.from('pendaftaran').insert([data]);
+            result = await supabaseClient.from('pendaftaran').insert([data]).select();
         }
         if (result.error) throw result.error;
+
+        const savedId = id || (result.data && result.data[0] && result.data[0].id);
 
         showToast(id ? 'Pendaftaran berhasil diperbarui' : 'Pendaftaran berhasil ditambahkan');
         closePendaftaranModal();
         await loadPendaftaran();
         renderPendaftaranSection();
 
+        // Otomatis jadi Data Jamaah -- menu "Tambah Jamaah" manual di tab
+        // Data Jamaah sudah ditiadakan, jamaah hanya masuk lewat jalur ini.
+        if (data.status === 'deal' && savedId) {
+            await autoConvertPendaftaranToJamaah({ ...data, id: savedId });
+        }
+
     } catch (err) {
         console.error('Save pendaftaran error:', err);
         showToast('Gagal menyimpan: ' + err.message, 'error');
+    }
+}
+
+// Otomatis membuat baris Data Jamaah begitu status Pendaftaran ditandai
+// "Deal" -- staf tidak perlu lagi buka form Tambah Jamaah & mengetik ulang
+// data yang sudah ada di Pendaftaran. Field spesifik jamaah (No. Paspor,
+// tipe kamar, dll) dilengkapi belakangan lewat tombol Edit di Data Jamaah.
+async function autoConvertPendaftaranToJamaah(p) {
+    // Jaga-jaga dobel konversi, mis. pendaftaran lama yang statusnya sudah
+    // "Deal" dari sebelum fitur otomatis ini ada, lalu disimpan ulang tanpa
+    // ganti status.
+    if ((kbJamaahList || []).some(j => String(j.pendaftaran_id) === String(p.id))) return;
+    if (!p.program_id) return;
+
+    const entry = {
+        program_id: p.program_id,
+        nama: p.nama || '',
+        nik: p.ktp || '',
+        wa: p.wa || '',
+        asal: p.asal || '',
+        tipe_kamar: 'quad',
+        status: 'pending',
+        catatan: p.catatan || '',
+        jenis_kelamin: p.jenis_kelamin || null,
+        tempat_lahir: p.tempat_lahir || null,
+        tgl_lahir: p.tgl_lahir || null,
+        alamat: p.alamat || null,
+        kode_pos: p.kode_pos || null,
+        telp_rumah: p.telp_rumah || null,
+        ahli_waris_nama: p.ahli_waris_nama || null,
+        ahli_waris_hubungan: p.ahli_waris_hubungan || null,
+        pendaftaran_id: p.id
+    };
+
+    try {
+        const { error } = await supabaseClient.from('kb_jamaah').insert([entry]);
+        if (error) throw error;
+        await loadKbJamaah();
+        renderKbProgramSelector();
+        updateMetrics();
+        // Badge kuota "X/45 Tersedia" di tabel Program & Unggulan dihitung
+        // dari kbJamaahList saat render, jadi perlu di-render ulang.
+        if (currentData && currentData.length) renderTable(currentData);
+        renderFeaturedSection();
+        showToast('🕋 "' + (p.nama || '') + '" otomatis masuk Data Jamaah — lengkapi No. Paspor & data lain lewat Edit');
+    } catch (err) {
+        console.error('Auto convert pendaftaran ke jamaah error:', err);
+        showToast('⚠️ Pendaftaran tersimpan, tapi gagal otomatis masuk Data Jamaah: ' + err.message, 'error');
     }
 }
 
@@ -5067,146 +5152,52 @@ async function loadArsipJamaahForProgram(programId) {
         </div>`;
 }
 
-function openKbModal(id = null) {
-    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menambah data jamaah', 'error'); return; }
+// Modal ini SEKARANG khusus untuk Edit saja -- jamaah baru hanya dibuat
+// otomatis lewat Pendaftaran yang ditandai "Deal" (lihat
+// autoConvertPendaftaranToJamaah), jadi menu "Tambah Jamaah" manual di tab
+// Data Jamaah sudah ditiadakan.
+function openKbModal(id) {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengedit data jamaah', 'error'); return; }
+    if (!id) return;
+    const j = kbJamaahList.find(item => item.id === id);
+    if (!j) { showToast('Data tidak ditemukan', 'error'); return; }
+
     const modal = document.getElementById('kbModal');
     const form = document.getElementById('kbForm');
     form.reset();
-    document.getElementById('kb_editId').value = '';
-    document.getElementById('kb_pendaftaran_source').value = '';
 
     // Jaga-jaga: pastikan dropdown program di modal sudah terisi (mis. kalau
     // modal ini dibuka sebelum data program sempat dimuat / sinkron ulang).
     renderKbProgramSelector();
 
-    // Pre-select program from selector
-    const programSelect = document.getElementById('kbProgramSelect');
-    const modalProgramSelect = document.getElementById('kb_program');
-    if (programSelect.value) {
-        modalProgramSelect.value = programSelect.value;
-    }
-
-    const fromPendaftaranBox = document.getElementById('kbFromPendaftaranBox');
-
-    if (id) {
-        const j = kbJamaahList.find(item => item.id === id);
-        if (!j) { showToast('Data tidak ditemukan', 'error'); return; }
-        fromPendaftaranBox.style.display = 'none';
-        const fromJamaahLamaBoxEdit = document.getElementById('kbFromJamaahLamaBox');
-        if (fromJamaahLamaBoxEdit) fromJamaahLamaBoxEdit.style.display = 'none';
-        document.getElementById('kbModalTitle').textContent = 'Edit Data Jamaah';
-        document.getElementById('kb_editId').value = j.id;
-        document.getElementById('kb_program').value = j.program_id || '';
-        document.getElementById('kb_nama').value = j.nama || '';
-        document.getElementById('kb_nik').value = j.nik || '';
-        document.getElementById('kb_paspor').value = j.paspor || '';
-        document.getElementById('kb_paspor_exp').value = j.paspor_exp || '';
-        document.getElementById('kb_visa_status').value = j.visa_status || 'belum_diajukan';
-        document.getElementById('kb_wa').value = j.wa || '';
-        document.getElementById('kb_asal').value = j.asal || '';
-        document.getElementById('kb_tipe_kamar').value = j.tipe_kamar || 'quad';
-        document.getElementById('kb_harga_custom').value = j.harga_custom || '';
-        document.getElementById('kb_status').value = j.status || 'pending';
-        document.getElementById('kb_catatan').value = j.catatan || '';
-        document.getElementById('kb_jenis_kelamin').value = j.jenis_kelamin || '';
-        document.getElementById('kb_tempat_lahir').value = j.tempat_lahir || '';
-        document.getElementById('kb_tgl_lahir').value = j.tgl_lahir || '';
-        document.getElementById('kb_alamat').value = j.alamat || '';
-        document.getElementById('kb_kode_pos').value = j.kode_pos || '';
-        document.getElementById('kb_telp_rumah').value = j.telp_rumah || '';
-        document.getElementById('kb_ahli_waris_nama').value = j.ahli_waris_nama || '';
-        document.getElementById('kb_ahli_waris_hubungan').value = j.ahli_waris_hubungan || '';
-        // Buka otomatis kalau salah satu field F4 sudah terisi, biar kelihatan tanpa perlu klik
-        const hasF4 = j.jenis_kelamin || j.tempat_lahir || j.tgl_lahir || j.alamat || j.kode_pos || j.telp_rumah || j.ahli_waris_nama || j.ahli_waris_hubungan;
-        const f4Details = document.getElementById('kbF4Details');
-        if (f4Details) f4Details.open = !!hasF4;
-    } else {
-        document.getElementById('kbModalTitle').textContent = 'Tambah Data Jamaah';
-        document.getElementById('kb_tipe_kamar').value = 'quad';
-        document.getElementById('kb_harga_custom').value = '';
-        document.getElementById('kb_status').value = 'pending';
-        const f4Details = document.getElementById('kbF4Details');
-        if (f4Details) f4Details.open = false;
-        renderKbPendaftaranOptions();
-        fromPendaftaranBox.style.display = '';
-        const fromJamaahLamaBox = document.getElementById('kbFromJamaahLamaBox');
-        if (fromJamaahLamaBox) fromJamaahLamaBox.style.display = '';
-        const cariJamaahLamaInput = document.getElementById('kb_cari_jamaah_lama');
-        if (cariJamaahLamaInput) cariJamaahLamaInput.value = '';
-        const jamaahLamaResults = document.getElementById('kbJamaahLamaResults');
-        if (jamaahLamaResults) { jamaahLamaResults.innerHTML = ''; jamaahLamaResults.style.display = 'none'; }
-    }
-
-    modal.classList.add('open');
-}
-
-// Isi dropdown "Ambil dari Form Pendaftaran" dengan daftar calon jamaah yang
-// sudah masuk lewat menu Form Pendaftaran, supaya tidak perlu ketik ulang.
-function renderKbPendaftaranOptions() {
-    const sel = document.getElementById('kb_from_pendaftaran');
-    if (!sel) return;
-    sel.value = '';
-    // Hanya tampilkan pendaftaran berstatus "Baru"/"Dihubungi" -- yang sudah
-    // "Deal" atau "Batal" disembunyikan supaya staf tidak salah pilih lead
-    // yang sudah pernah dikonversi (cegah jamaah duplikat).
-    const eligible = (pendaftaranList || []).filter(p => p.status !== 'deal' && p.status !== 'batal');
-    if (!eligible.length) {
-        sel.innerHTML = '<option value="">-- Tidak ada calon jamaah yang siap dikonversi --</option>';
-        return;
-    }
-    const statusLabel = { baru: 'Baru', dihubungi: 'Dihubungi' };
-    // Prioritaskan lead dari program yang sedang aktif di form ini dulu, baru
-    // lead program lain -- supaya tidak perlu scroll banyak kalau leadnya
-    // banyak lintas program.
-    const activeProgramId = document.getElementById('kb_program') ? document.getElementById('kb_program').value : '';
-    const sorted = [...eligible].sort((a, b) => {
-        if (activeProgramId) {
-            const aMatch = String(a.program_id) === String(activeProgramId);
-            const bMatch = String(b.program_id) === String(activeProgramId);
-            if (aMatch !== bMatch) return aMatch ? -1 : 1;
-        }
-        // Lalu prioritaskan yang sudah "Dihubungi" (lebih dekat closing) sebelum "Baru"
-        if ((a.status === 'dihubungi') !== (b.status === 'dihubungi')) return a.status === 'dihubungi' ? -1 : 1;
-        return (a.nama || '').localeCompare(b.nama || '');
-    });
-    sel.innerHTML = '<option value="">-- Pilih calon jamaah dari Pendaftaran --</option>' +
-        sorted.map(p => {
-            const program = dataUmroh.find(x => String(x.id) === String(p.program_id));
-            const progName = program ? program.nama : 'Belum ditentukan program';
-            const st = statusLabel[p.status] || 'Baru';
-            return `<option value="${escapeHtml(String(p.id))}">${escapeHtml(p.nama || '-')} — ${escapeHtml(progName)} (${st})</option>`;
-        }).join('');
-}
-
-// Salin data dari record Pendaftaran terpilih ke form Tambah Data Jamaah.
-function fillKbFromPendaftaran(pendaftaranId) {
-    if (!pendaftaranId) return;
-    const p = pendaftaranList.find(item => String(item.id) === String(pendaftaranId));
-    if (!p) { showToast('Data pendaftaran tidak ditemukan', 'error'); return; }
-
-    if (p.program_id) document.getElementById('kb_program').value = p.program_id;
-    document.getElementById('kb_nama').value = p.nama || '';
-    document.getElementById('kb_nik').value = p.ktp || '';
-    document.getElementById('kb_wa').value = p.wa || '';
-    document.getElementById('kb_asal').value = p.asal || '';
-    if (p.catatan) document.getElementById('kb_catatan').value = p.catatan;
-    document.getElementById('kb_pendaftaran_source').value = p.id;
-
-    // Ikut salin data lengkap F4 supaya tidak perlu diketik ulang manual
-    // nanti saat dibutuhkan untuk dokumen visa/manifest.
-    document.getElementById('kb_jenis_kelamin').value = p.jenis_kelamin || '';
-    document.getElementById('kb_tempat_lahir').value = p.tempat_lahir || '';
-    document.getElementById('kb_tgl_lahir').value = p.tgl_lahir || '';
-    document.getElementById('kb_alamat').value = p.alamat || '';
-    document.getElementById('kb_kode_pos').value = p.kode_pos || '';
-    document.getElementById('kb_telp_rumah').value = p.telp_rumah || '';
-    document.getElementById('kb_ahli_waris_nama').value = p.ahli_waris_nama || '';
-    document.getElementById('kb_ahli_waris_hubungan').value = p.ahli_waris_hubungan || '';
+    document.getElementById('kbModalTitle').textContent = 'Edit Data Jamaah';
+    document.getElementById('kb_editId').value = j.id;
+    document.getElementById('kb_program').value = j.program_id || '';
+    document.getElementById('kb_nama').value = j.nama || '';
+    document.getElementById('kb_nik').value = j.nik || '';
+    document.getElementById('kb_paspor').value = j.paspor || '';
+    document.getElementById('kb_paspor_exp').value = j.paspor_exp || '';
+    document.getElementById('kb_visa_status').value = j.visa_status || 'belum_diajukan';
+    document.getElementById('kb_wa').value = j.wa || '';
+    document.getElementById('kb_asal').value = j.asal || '';
+    document.getElementById('kb_tipe_kamar').value = j.tipe_kamar || 'quad';
+    document.getElementById('kb_harga_custom').value = j.harga_custom || '';
+    document.getElementById('kb_status').value = j.status || 'pending';
+    document.getElementById('kb_catatan').value = j.catatan || '';
+    document.getElementById('kb_jenis_kelamin').value = j.jenis_kelamin || '';
+    document.getElementById('kb_tempat_lahir').value = j.tempat_lahir || '';
+    document.getElementById('kb_tgl_lahir').value = j.tgl_lahir || '';
+    document.getElementById('kb_alamat').value = j.alamat || '';
+    document.getElementById('kb_kode_pos').value = j.kode_pos || '';
+    document.getElementById('kb_telp_rumah').value = j.telp_rumah || '';
+    document.getElementById('kb_ahli_waris_nama').value = j.ahli_waris_nama || '';
+    document.getElementById('kb_ahli_waris_hubungan').value = j.ahli_waris_hubungan || '';
+    // Buka otomatis kalau salah satu field F4 sudah terisi, biar kelihatan tanpa perlu klik
+    const hasF4 = j.jenis_kelamin || j.tempat_lahir || j.tgl_lahir || j.alamat || j.kode_pos || j.telp_rumah || j.ahli_waris_nama || j.ahli_waris_hubungan;
     const f4Details = document.getElementById('kbF4Details');
-    const hasF4 = p.jenis_kelamin || p.tempat_lahir || p.tgl_lahir || p.alamat || p.kode_pos || p.telp_rumah || p.ahli_waris_nama || p.ahli_waris_hubungan;
     if (f4Details) f4Details.open = !!hasF4;
 
-    showToast('Data diisi dari pendaftaran "' + (p.nama || '') + '" — lengkapi No. Paspor & status pembayaran lalu Simpan');
+    modal.classList.add('open');
 }
 
 function closeKbModal() {
@@ -5214,20 +5205,19 @@ function closeKbModal() {
 }
 
 // Cari jamaah lama (dari program-program sebelumnya) berdasarkan nama/NIK/paspor,
-// untuk kasus pelanggan lama yang mau daftar ke program baru -- supaya data
-// pribadinya (NIK, paspor, alamat, ahli waris, dll) tidak perlu diketik ulang
-// dari nol. Beda dengan fillKbFromPendaftaran: sumbernya kb_jamaah (bukan
-// pendaftaran), dan field per-trip (program, tipe kamar, harga, status,
-// catatan) SENGAJA tidak ikut disalin karena itu spesifik ke keberangkatan baru.
-function renderKbJamaahLamaOptions(query) {
-    const resultsBox = document.getElementById('kbJamaahLamaResults');
+// untuk kasus pelanggan lama yang mau "Daftarkan Ulang" ke program baru --
+// supaya data pribadinya (NIK, alamat, ahli waris, dll) tidak perlu diketik
+// ulang dari nol lewat Form Pendaftaran. Field per-trip (program, status)
+// SENGAJA tidak ikut disalin karena itu spesifik ke pendaftaran baru --
+// begitu pendaftaran ini ditandai "Deal", jamaah baru otomatis dibuat lagi
+// lewat autoConvertPendaftaranToJamaah.
+function renderPfJamaahLamaOptions(query) {
+    const resultsBox = document.getElementById('pfJamaahLamaResults');
     if (!resultsBox) return;
     const q = String(query || '').trim().toLowerCase();
     if (q.length < 2) { resultsBox.innerHTML = ''; resultsBox.style.display = 'none'; return; }
 
-    const editingId = document.getElementById('kb_editId').value;
     const matches = (kbJamaahList || []).filter(j => {
-        if (editingId && String(j.id) === String(editingId)) return false;
         const nama = (j.nama || '').toLowerCase();
         const nik = (j.nik || '').toLowerCase();
         const paspor = (j.paspor || '').toLowerCase();
@@ -5247,7 +5237,7 @@ function renderKbJamaahLamaOptions(query) {
 
     if (!unique.length) {
         resultsBox.style.display = '';
-        resultsBox.innerHTML = '<div style="padding:8px 10px;font-size:12px;color:var(--ink-soft);">Tidak ada jamaah lama yang cocok — lanjutkan isi manual sebagai jamaah baru.</div>';
+        resultsBox.innerHTML = '<div style="padding:8px 10px;font-size:12px;color:var(--ink-soft);">Tidak ada jamaah lama yang cocok — lanjutkan isi manual sebagai pendaftaran baru.</div>';
         return;
     }
     resultsBox.style.display = '';
@@ -5255,46 +5245,38 @@ function renderKbJamaahLamaOptions(query) {
         const program = dataUmroh.find(x => String(x.id) === String(j.program_id));
         const progName = program ? program.nama : 'Program tidak diketahui';
         const identitas = [j.nik ? 'NIK ' + j.nik : '', j.paspor ? 'Paspor ' + j.paspor : ''].filter(Boolean).join(' · ');
-        return `<div class="kb-jamaah-lama-item" onclick="fillKbFromJamaahLama('${j.id}')" style="padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;border:1px solid transparent;" onmouseover="this.style.background='#fff';this.style.borderColor='#fbd9a3';" onmouseout="this.style.background='transparent';this.style.borderColor='transparent';">
+        return `<div class="kb-jamaah-lama-item" onclick="fillPfFromJamaahLama('${j.id}')" style="padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;border:1px solid transparent;" onmouseover="this.style.background='#fff';this.style.borderColor='#fbd9a3';" onmouseout="this.style.background='transparent';this.style.borderColor='transparent';">
             <div style="font-weight:600;color:var(--ink);">${escapeHtml(j.nama || '-')}</div>
             <div style="color:var(--ink-soft);">${escapeHtml(identitas || 'Identitas belum lengkap')} · terakhir ikut ${escapeHtml(progName)}</div>
         </div>`;
     }).join('');
 }
 
-// Salin data pribadi dari jamaah lama terpilih ke form -- program, tipe kamar,
-// harga, status pembayaran, dan catatan SENGAJA dikosongkan karena itu milik
-// keberangkatan baru, bukan riwayat lama.
-function fillKbFromJamaahLama(jamaahId) {
+// Salin data pribadi dari jamaah lama terpilih ke Form Pendaftaran -- program
+// & status SENGAJA dikosongkan/direset karena itu milik pendaftaran baru.
+function fillPfFromJamaahLama(jamaahId) {
     const j = (kbJamaahList || []).find(item => String(item.id) === String(jamaahId));
     if (!j) { showToast('Data jamaah lama tidak ditemukan', 'error'); return; }
 
-    document.getElementById('kb_nama').value = j.nama || '';
-    document.getElementById('kb_nik').value = j.nik || '';
-    document.getElementById('kb_paspor').value = j.paspor || '';
-    document.getElementById('kb_paspor_exp').value = j.paspor_exp || '';
-    document.getElementById('kb_wa').value = j.wa || '';
-    document.getElementById('kb_asal').value = j.asal || '';
-    document.getElementById('kb_jenis_kelamin').value = j.jenis_kelamin || '';
-    document.getElementById('kb_tempat_lahir').value = j.tempat_lahir || '';
-    document.getElementById('kb_tgl_lahir').value = j.tgl_lahir || '';
-    document.getElementById('kb_alamat').value = j.alamat || '';
-    document.getElementById('kb_kode_pos').value = j.kode_pos || '';
-    document.getElementById('kb_telp_rumah').value = j.telp_rumah || '';
-    document.getElementById('kb_ahli_waris_nama').value = j.ahli_waris_nama || '';
-    document.getElementById('kb_ahli_waris_hubungan').value = j.ahli_waris_hubungan || '';
-    // Visa status SENGAJA tidak disalin (biasanya perlu diajukan ulang per
-    // keberangkatan), tapi paspor_exp tetap dipakai selama belum kadaluarsa.
-    const f4Details = document.getElementById('kbF4Details');
-    const hasF4 = j.jenis_kelamin || j.tempat_lahir || j.tgl_lahir || j.alamat || j.kode_pos || j.telp_rumah || j.ahli_waris_nama || j.ahli_waris_hubungan;
-    if (f4Details) f4Details.open = !!hasF4;
+    document.getElementById('pf_nama').value = j.nama || '';
+    document.getElementById('pf_ktp').value = j.nik || '';
+    document.getElementById('pf_wa').value = j.wa || '';
+    document.getElementById('pf_asal').value = j.asal || '';
+    document.getElementById('pf_gender').value = j.jenis_kelamin || '';
+    document.getElementById('pf_tempat_lahir').value = j.tempat_lahir || '';
+    document.getElementById('pf_tgl_lahir').value = j.tgl_lahir || '';
+    document.getElementById('pf_alamat').value = j.alamat || '';
+    document.getElementById('pf_kodepos').value = j.kode_pos || '';
+    document.getElementById('pf_telp_rumah').value = j.telp_rumah || '';
+    document.getElementById('pf_ahli_waris_nama').value = j.ahli_waris_nama || '';
+    document.getElementById('pf_ahli_waris_hubungan').value = j.ahli_waris_hubungan || '';
 
-    const resultsBox = document.getElementById('kbJamaahLamaResults');
+    const resultsBox = document.getElementById('pfJamaahLamaResults');
     if (resultsBox) { resultsBox.innerHTML = ''; resultsBox.style.display = 'none'; }
-    const input = document.getElementById('kb_cari_jamaah_lama');
+    const input = document.getElementById('pf_cari_jamaah_lama');
     if (input) input.value = j.nama || '';
 
-    showToast('Data pribadi disalin dari riwayat "' + (j.nama || '') + '" — pilih program baru & status pembayaran, lalu Simpan');
+    showToast('Data pribadi disalin dari riwayat "' + (j.nama || '') + '" — pilih program baru, lalu Simpan');
 }
 
 async function saveKbJamaah(e) {
@@ -5331,12 +5313,10 @@ async function saveKbJamaah(e) {
     if (!data.program_id) { showToast('Silakan pilih program terlebih dahulu', 'error'); return; }
     if (!data.nama) { showToast('Nama jamaah wajib diisi', 'error'); return; }
 
-    const pendaftaranSourceId = document.getElementById('kb_pendaftaran_source').value;
-    // Simpan link balik permanen ke baris Pendaftaran asal (kalau jamaah ini
-    // hasil konversi) supaya bisa dilacak "jamaah ini dari lead yang mana",
-    // dan supaya statusnya bisa disinkron balik otomatis kalau baris jamaah
-    // ini nanti dihapus (lihat confirmDeleteAction).
-    if (!id && pendaftaranSourceId) data.pendaftaran_id = pendaftaranSourceId;
+    // Modal ini sekarang khusus Edit -- jamaah baru dibuat otomatis lewat
+    // Pendaftaran yang ditandai "Deal" (lihat autoConvertPendaftaranToJamaah),
+    // jadi id di sini selalu terisi.
+    const pendaftaranSourceId = null;
 
     try {
         let result;
