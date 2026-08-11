@@ -7798,7 +7798,26 @@ async function loadKepulanganForProgram(programId) {
 
         const canEdit = canManageProgramData();
 
+        // [BULK] Panel ubah status massal untuk seluruh rombongan/program yang
+        // sedang dipilih. Hanya field status_kepulangan yang diubah massal --
+        // tanggal aktual & catatan tetap per jamaah karena wajar berbeda-beda.
+        // Setelah diterapkan massal, admin tetap bisa override status jamaah
+        // tertentu satu-satu lewat dropdown di masing-masing baris tabel.
+        const bulkPanelHtml = canEdit ? `
+            <div class="kp-bulk-panel" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);">
+                <i class="bi bi-people-fill" style="color:var(--ink-soft);"></i>
+                <span style="font-size:12.5px;color:var(--ink-soft);">Ubah status untuk <strong>semua jamaah</strong> di program ini:</span>
+                <select id="kpBulkStatusSelect" class="kp-field" style="min-width:170px;">
+                    ${KEPULANGAN_STATUS_OPSI.map(s => `<option value="${s.value}">${s.label}</option>`).join('')}
+                </select>
+                <button type="button" class="btn-submit" style="padding:6px 14px;font-size:12.5px;" onclick="bulkUpdateKepulangan()">
+                    <i class="bi bi-check2-all"></i> Terapkan ke Semua Jamaah
+                </button>
+                <span style="font-size:11px;color:var(--ink-soft);width:100%;">Jamaah tertentu tetap bisa diubah satu-satu lewat dropdown di tabel setelahnya.</span>
+            </div>` : '';
+
         container.innerHTML = `
+            ${bulkPanelHtml}
             <div class="table-container" style="overflow-x:auto;">
                 <table style="width:100%;min-width:900px;border-collapse:collapse;font-size:13px;">
                     <thead style="background:var(--bg);">
@@ -7874,6 +7893,55 @@ async function updateKepulanganField(jamaahId, field, value) {
         console.error('Update status kepulangan error:', err);
         showToast('Gagal menyimpan: ' + err.message, 'error');
         if (kepulanganSelectedProgram) await loadKepulanganForProgram(kepulanganSelectedProgram);
+    }
+}
+
+// [BULK] Terapkan satu status_kepulangan ke SEMUA jamaah aktif (belum
+// diarsipkan) dalam program/rombongan yang sedang dipilih di tab Status
+// Kepulangan. Dipakai lewat panel di atas tabel (lihat loadKepulanganForProgram).
+// Setelah ini jalan, admin masih bisa override status jamaah tertentu satu-satu
+// lewat dropdown per-baris seperti biasa -- aksi massal ini cuma titik awal.
+async function bulkUpdateKepulangan() {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengubah data ini', 'error'); return; }
+    if (!kepulanganSelectedProgram) { showToast('Pilih program terlebih dahulu', 'error'); return; }
+
+    const select = document.getElementById('kpBulkStatusSelect');
+    if (!select) return;
+    const status = select.value;
+    const info = kepulanganStatusInfo(status);
+
+    const jumlah = (kbJamaahList || []).filter(j =>
+        String(j.program_id) === String(kepulanganSelectedProgram) && !j.diarsipkan
+    ).length;
+
+    const ok = await openActionConfirm({
+        title: 'Ubah Status Massal',
+        message: `Set status kepulangan <strong>SEMUA jamaah (${jumlah} orang)</strong> di program ini menjadi <strong>"${escapeHtml(info.label)}"</strong>?<br><br>Tanggal aktual &amp; catatan tidak ikut berubah. Anda tetap bisa mengubah jamaah tertentu satu-satu setelah ini.`,
+        confirmLabel: 'Ya, Terapkan ke Semua',
+        danger: false
+    });
+    if (!ok) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('kb_jamaah')
+            .update({ status_kepulangan: status })
+            .eq('program_id', kepulanganSelectedProgram)
+            .eq('diarsipkan', false);
+        if (error) throw error;
+
+        (kbJamaahList || []).forEach(j => {
+            if (String(j.program_id) === String(kepulanganSelectedProgram)) j.status_kepulangan = status;
+        });
+        renderNavBadges();
+
+        showToast('Status kepulangan seluruh jamaah diperbarui', 'success');
+        await loadKepulanganForProgram(kepulanganSelectedProgram);
+
+    } catch (err) {
+        console.error('Bulk update status kepulangan error:', err);
+        showToast('Gagal menyimpan: ' + err.message, 'error');
+        await loadKepulanganForProgram(kepulanganSelectedProgram);
     }
 }
 
