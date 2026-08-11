@@ -8096,6 +8096,148 @@ window.addEventListener('resize', () => {
 });
 
 // ============================================================
+// 19E2. EXPORT EXCEL — Data Jamaah per program (.xlsx via SheetJS).
+// Beda dari Manifest/Rooming List (yang untuk dicetak/dibagikan sebagai
+// dokumen final): ini untuk kebutuhan olah data lanjutan admin di Excel
+// (rekap manual, dikirim ke pihak lain, dsb) -- semua kolom mentah + kolom
+// hitungan (tagihan/dibayar/sisa) disertakan, bukan cuma yang tampil di tabel.
+// ============================================================
+async function exportJamaahExcel(btn) {
+    if (!kbSelectedProgram) { showToast('Pilih program dulu', 'error'); return; }
+    if (typeof XLSX === 'undefined') { showToast('Modul Excel belum siap, coba lagi sebentar', 'error'); return; }
+    const originalIcon = btn ? btn.innerHTML : null;
+    if (btn) { btn.innerHTML = '<i class="bi bi-arrow-repeat bi-spin"></i>'; btn.disabled = true; }
+    try {
+        const program = dataUmroh.find(p => String(p.id) === String(kbSelectedProgram)) || null;
+        const { data: jamaah, error } = await supabaseClient.from('kb_jamaah')
+            .select('*').eq('program_id', kbSelectedProgram).eq('diarsipkan', false).order('nama', { ascending: true });
+        if (error) throw error;
+        if (!jamaah || !jamaah.length) { showToast('Belum ada jamaah untuk program ini', 'error'); return; }
+
+        const jamaahIds = jamaah.map(j => j.id);
+        const { data: bayarData, error: bErr } = await supabaseClient
+            .from('pembayaran_jamaah').select('jamaah_id, jumlah').in('jamaah_id', jamaahIds);
+        if (bErr) throw bErr;
+        const totalPerJamaah = {};
+        (bayarData || []).forEach(b => { totalPerJamaah[b.jamaah_id] = (totalPerJamaah[b.jamaah_id] || 0) + Number(b.jumlah || 0); });
+
+        const kepulanganLabel = { belum_berangkat: 'Belum Berangkat', sudah_berangkat: 'Sudah Berangkat', sudah_pulang: 'Sudah Pulang', batal: 'Batal / No-show' };
+
+        const rows = jamaah.map(j => {
+            const hargaProgram = parseRupiahToNumber(j.harga_custom) > 0 ? parseRupiahToNumber(j.harga_custom) : parseRupiahToNumber(program ? program.harga_quint : 0);
+            const dibayar = totalPerJamaah[j.id] || 0;
+            const sisa = Math.max(hargaProgram - dibayar, 0);
+            let statusBayar;
+            if (j.status === 'batal') statusBayar = 'Batal';
+            else if (hargaProgram > 0 && dibayar >= hargaProgram) statusBayar = 'Lunas';
+            else if (dibayar > 0) statusBayar = 'Cicilan';
+            else statusBayar = 'Belum Bayar';
+
+            return {
+                'Nama': j.nama || '',
+                'NIK': j.nik || '',
+                'No. Paspor': j.paspor || '',
+                'Berlaku Paspor s/d': j.paspor_exp || '',
+                'Jenis Kelamin': j.jenis_kelamin === 'L' ? 'Laki-laki' : (j.jenis_kelamin === 'P' ? 'Perempuan' : ''),
+                'Tempat Lahir': j.tempat_lahir || '',
+                'Tgl Lahir': j.tgl_lahir || '',
+                'Alamat': j.alamat || '',
+                'Kode Pos': j.kode_pos || '',
+                'Asal Kota': j.asal || '',
+                'No. WhatsApp': j.wa || '',
+                'Telp Rumah': j.telp_rumah || '',
+                'Nama Ahli Waris': j.ahli_waris_nama || '',
+                'Hubungan Ahli Waris': j.ahli_waris_hubungan || '',
+                'Tipe Kamar': TIPE_KAMAR_LABEL[j.tipe_kamar] || 'Quad',
+                'No. Kamar': j.nomor_kamar || '',
+                'Harga Program (Rp)': hargaProgram,
+                'Total Dibayar (Rp)': dibayar,
+                'Sisa Tagihan (Rp)': sisa,
+                'Status Pembayaran': statusBayar,
+                'Status Visa': (VISA_STATUS_LABEL[j.visa_status || 'belum_diajukan'] || {}).label || '',
+                'Status Kepulangan': kepulanganLabel[j.status_kepulangan || 'belum_berangkat'] || '',
+                'Catatan': j.catatan || ''
+            };
+        });
+
+        const ws = XLSX.utils.json_to_sheet(rows);
+        ws['!cols'] = Object.keys(rows[0]).map(k => ({ wch: Math.min(Math.max(k.length, 12), 30) }));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Data Jamaah');
+
+        const namaProgram = (program?.nama || 'Program').replace(/[^a-zA-Z0-9]+/g, '-').slice(0, 60);
+        XLSX.writeFile(wb, `Data-Jamaah-${namaProgram}.xlsx`);
+        showToast(`✅ Export Excel berhasil — ${rows.length} jamaah`);
+    } catch (err) {
+        console.error('exportJamaahExcel error:', err);
+        showToast('Gagal export Excel: ' + (err?.message || err), 'error');
+    } finally {
+        if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
+    }
+}
+
+// Export Excel — Riwayat Pembayaran & Cicilan per program. Beda dari
+// exportJamaahExcel (satu baris = satu jamaah, angka sudah dijumlah): ini
+// satu baris = satu transaksi bayar/cicil (dari pembayaran_jamaah), supaya
+// bisa dicek histori tanggal & metode bayarnya satu-satu, bukan cuma total.
+async function exportPembayaranExcel(btn) {
+    if (!kbSelectedProgram) { showToast('Pilih program dulu', 'error'); return; }
+    if (typeof XLSX === 'undefined') { showToast('Modul Excel belum siap, coba lagi sebentar', 'error'); return; }
+    const originalIcon = btn ? btn.innerHTML : null;
+    if (btn) { btn.innerHTML = '<i class="bi bi-arrow-repeat bi-spin"></i>'; btn.disabled = true; }
+    try {
+        const program = dataUmroh.find(p => String(p.id) === String(kbSelectedProgram)) || null;
+        const { data: jamaah, error } = await supabaseClient.from('kb_jamaah')
+            .select('id, nama, nik').eq('program_id', kbSelectedProgram).eq('diarsipkan', false).order('nama', { ascending: true });
+        if (error) throw error;
+        if (!jamaah || !jamaah.length) { showToast('Belum ada jamaah untuk program ini', 'error'); return; }
+
+        const jamaahById = {};
+        jamaah.forEach(j => { jamaahById[j.id] = j; });
+        const jamaahIds = jamaah.map(j => j.id);
+
+        const { data: bayar, error: bErr } = await supabaseClient
+            .from('pembayaran_jamaah').select('*').in('jamaah_id', jamaahIds).order('tanggal', { ascending: true });
+        if (bErr) throw bErr;
+        if (!bayar || !bayar.length) { showToast('Belum ada transaksi pembayaran untuk program ini', 'error'); return; }
+
+        const rows = bayar.map(b => {
+            const j = jamaahById[b.jamaah_id] || {};
+            return {
+                'Nama Jamaah': j.nama || '(jamaah tidak ditemukan)',
+                'NIK': j.nik || '',
+                'Tanggal Bayar': b.tanggal || '',
+                'Jumlah (Rp)': Number(b.jumlah || 0),
+                'Metode': b.metode || '',
+                'No. Kuitansi': b.nomor_kuitansi || '',
+                'No. Nota': b.nomor_nota || '',
+                'Keterangan': b.keterangan || '',
+                'Dicatat Pada': b.created_at ? new Date(b.created_at).toLocaleString('id-ID') : ''
+            };
+        });
+        const totalSemua = rows.reduce((s, r) => s + Number(r['Jumlah (Rp)'] || 0), 0);
+        rows.push({
+            'Nama Jamaah': '', 'NIK': '', 'Tanggal Bayar': '', 'Jumlah (Rp)': totalSemua, 'Metode': '',
+            'No. Kuitansi': '', 'No. Nota': '', 'Keterangan': 'TOTAL SEMUA TRANSAKSI', 'Dicatat Pada': ''
+        });
+
+        const ws = XLSX.utils.json_to_sheet(rows);
+        ws['!cols'] = Object.keys(rows[0]).map(k => ({ wch: Math.min(Math.max(k.length, 12), 28) }));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Pembayaran & Cicilan');
+
+        const namaProgram = (program?.nama || 'Program').replace(/[^a-zA-Z0-9]+/g, '-').slice(0, 60);
+        XLSX.writeFile(wb, `Pembayaran-Cicilan-${namaProgram}.xlsx`);
+        showToast(`✅ Export Pembayaran berhasil — ${bayar.length} transaksi`);
+    } catch (err) {
+        console.error('exportPembayaranExcel error:', err);
+        showToast('Gagal export pembayaran: ' + (err?.message || err), 'error');
+    } finally {
+        if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
+    }
+}
+
+// ============================================================
 // 19F. ROOMING LIST — bagi jamaah 1 program ke kamar hotel per tipe kamar
 // (Quad/Triple/Double), otomatis atau geser manual, lalu simpan ke DB
 // (kolom kb_jamaah.nomor_kamar, lihat sql/tambah_nomor_kamar_kb_jamaah.sql)

@@ -31,6 +31,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -360,6 +361,12 @@
                         </button>
                         <button class="btn-primary" id="btnRoomingList" onclick="bukaRoomingList(this)" style="font-size:12px;padding:6px 14px;background:var(--gold, #b8935a);">
                             <i class="bi bi-door-closed-fill"></i> Rooming List
+                        </button>
+                        <button class="btn-primary" id="btnExportJamaahExcel" onclick="exportJamaahExcel(this)" style="font-size:12px;padding:6px 14px;background:#1a7a4c;">
+                            <i class="bi bi-file-earmark-excel-fill"></i> Export Excel
+                        </button>
+                        <button class="btn-primary" id="btnExportPembayaranExcel" onclick="exportPembayaranExcel(this)" style="font-size:12px;padding:6px 14px;background:#0f5e8c;">
+                            <i class="bi bi-cash-coin"></i> Export Pembayaran
                         </button>
                     </div>
                     <div id="kbJamaahContent">
