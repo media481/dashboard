@@ -4760,7 +4760,7 @@ function renderNavBadges() {
     // itu yang paling butuh perhatian admin karena jamaahnya sedang di
     // perjalanan tapi belum ditandai pulang, sedangkan "belum_berangkat"
     // memang wajar untuk program yang belum jalan.
-    const belumPulang = (kbJamaahList || []).filter(j => (j.status_kepulangan || 'belum_berangkat') === 'sudah_berangkat').length;
+    const belumPulang = (kbJamaahList || []).filter(j => efektifStatusKepulangan(j) === 'sudah_berangkat').length;
 
     ['badgeDokumenDesktop', 'badgeDokumenMobile', 'badgeDokumenTabbar'].forEach(id => {
         const el = document.getElementById(id);
@@ -5015,13 +5015,21 @@ async function arsipkanSemuaJamaah(programId) {
             return;
         }
 
+        // Status kepulangan sekarang defaultnya per program -- ambil status
+        // program terbaru langsung dari database (bukan cache) untuk jadi
+        // fallback jamaah yang belum di-override satu-satu.
+        const { data: progFresh, error: progErr } = await supabaseClient
+            .from('programs').select('status_kepulangan').eq('id', programId).single();
+        if (progErr) throw progErr;
+        const programStatusFresh = (progFresh && progFresh.status_kepulangan) || 'belum_berangkat';
+
         // Selain lunas, jamaah juga HARUS sudah berstatus "Sudah Pulang" (atau
         // "Batal/No-show" kalau memang tidak jadi berangkat) sebelum program
         // boleh diarsipkan -- supaya progres kepulangan tidak pernah tertutup
         // arsip saat masih ada jamaah yang belum tercatat pulang (lihat tab
         // "Status Kepulangan").
         const belumPulang = jamaahProgram.filter(j => {
-            const sk = j.status_kepulangan || 'belum_berangkat';
+            const sk = j.status_kepulangan || programStatusFresh;
             return sk !== 'sudah_pulang' && sk !== 'batal';
         });
         if (belumPulang.length > 0) {
@@ -7677,14 +7685,19 @@ async function toggleDokumenJamaah(jamaahId, key, checked) {
 }
 
 // ============================================================
-// 19D2. STATUS KEPULANGAN JAMAAH
-// Melacak progres jamaah per program dari belum berangkat sampai sudah
-// pulang -- terpisah dari status pembayaran (lunas/dp/pending). Disimpan
-// di 4 kolom kb_jamaah: status_kepulangan, tgl_berangkat_aktual,
-// tgl_pulang_aktual, catatan_kepulangan (lihat
-// sql/tambah_status_kepulangan_kb_jamaah.sql). Guest hanya bisa lihat,
-// user & admin bisa ubah langsung dari tabel (sama pola dengan
-// Kelengkapan Dokumen di atas).
+// 19D2. STATUS KEPULANGAN
+// Melacak progres jamaah dari belum berangkat sampai sudah pulang --
+// terpisah dari status pembayaran (lunas/dp/pending). Defaultnya PER
+// PROGRAM/ROMBONGAN (kolom programs.status_kepulangan, lihat
+// sql/tambah_status_kepulangan_program.sql): satu status yang mewakili
+// seluruh jamaah di program itu, karena pada umumnya satu rombongan
+// berangkat & pulang bersamaan.
+//
+// Kalau ada jamaah tertentu yang bedanya sendiri dari rombongan (mis.
+// tertinggal, pulang duluan, atau batal), statusnya bisa DI-OVERRIDE
+// satu-satu lewat dropdown di baris jamaah itu -- disimpan di
+// kb_jamaah.status_kepulangan (NULL = ikut status program, terisi =
+// override). Guest hanya bisa lihat, user & admin bisa ubah.
 // ============================================================
 let kepulanganSelectedProgram = null;
 
@@ -7697,6 +7710,20 @@ const KEPULANGAN_STATUS_OPSI = [
 
 function kepulanganStatusInfo(value) {
     return KEPULANGAN_STATUS_OPSI.find(s => s.value === value) || KEPULANGAN_STATUS_OPSI[0];
+}
+
+// Status kepulangan program (rombongan) dari cache dataUmroh. Fallback ke
+// 'belum_berangkat' kalau kolomnya belum ada (program lama / cache lama).
+function statusKepulanganProgram(programId) {
+    const p = (dataUmroh || []).find(pr => String(pr.id) === String(programId));
+    return (p && p.status_kepulangan) || 'belum_berangkat';
+}
+
+// Status efektif seorang jamaah: pakai override kalau ada, kalau tidak
+// ikut status program (rombongan)nya.
+function efektifStatusKepulangan(jamaah) {
+    if (!jamaah) return 'belum_berangkat';
+    return jamaah.status_kepulangan || statusKepulanganProgram(jamaah.program_id);
 }
 
 // [STYLING] Dropdown status kepulangan diwarnai sesuai status terpilih
@@ -7750,7 +7777,7 @@ async function loadKepulanganForProgram(programId) {
     summaryEl.innerHTML = '';
 
     if (!programId) {
-        container.innerHTML = `<div class="kb-no-program"><i class="bi bi-house-door-fill"></i><p>Pilih program di atas untuk melihat & mengubah status kepulangan jamaah.</p></div>`;
+        container.innerHTML = `<div class="kb-no-program"><i class="bi bi-house-door-fill"></i><p>Pilih program di atas untuk melihat & mengubah status kepulangan.</p></div>`;
         return;
     }
 
@@ -7767,7 +7794,9 @@ async function loadKepulanganForProgram(programId) {
             return;
         }
 
-        const hitung = (val) => jamaah.filter(j => (j.status_kepulangan || 'belum_berangkat') === val).length;
+        const programStatus = statusKepulanganProgram(programId);
+        const jumlahOverride = jamaah.filter(j => !!j.status_kepulangan).length;
+        const hitung = (val) => jamaah.filter(j => efektifStatusKepulangan(j) === val).length;
         summaryEl.innerHTML = `
             <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
                 <span class="status-badge available">${jamaah.length} Total Jamaah</span>
@@ -7775,30 +7804,33 @@ async function loadKepulanganForProgram(programId) {
                 <span class="status-badge limited">${hitung('sudah_berangkat')} Sudah Berangkat</span>
                 <span class="status-badge batal">${hitung('belum_berangkat')} Belum Berangkat</span>
                 ${hitung('batal') > 0 ? `<span class="status-badge full">${hitung('batal')} Batal/No-show</span>` : ''}
+                ${jumlahOverride > 0 ? `<span class="status-badge limited"><i class="bi bi-pencil-square"></i> ${jumlahOverride} Override Manual</span>` : ''}
             </div>`;
 
         const canEdit = canManageProgramData();
+        const infoProgram = kepulanganStatusInfo(programStatus);
 
-        // [BULK] Panel ubah status massal untuk seluruh rombongan/program yang
-        // sedang dipilih. Hanya field status_kepulangan yang diubah massal --
-        // tanggal aktual & catatan tetap per jamaah karena wajar berbeda-beda.
-        // Setelah diterapkan massal, admin tetap bisa override status jamaah
-        // tertentu satu-satu lewat dropdown di masing-masing baris tabel.
-        const bulkPanelHtml = canEdit ? `
-            <div class="kp-bulk-panel" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);">
-                <i class="bi bi-people-fill" style="color:var(--ink-soft);"></i>
-                <span style="font-size:12.5px;color:var(--ink-soft);">Ubah status untuk <strong>semua jamaah</strong> di program ini:</span>
-                <select id="kpBulkStatusSelect" class="kp-field" style="min-width:170px;">
-                    ${KEPULANGAN_STATUS_OPSI.map(s => `<option value="${s.value}">${s.label}</option>`).join('')}
-                </select>
-                <button type="button" class="btn-submit" style="padding:6px 14px;font-size:12.5px;" onclick="bulkUpdateKepulangan()">
-                    <i class="bi bi-check2-all"></i> Terapkan ke Semua Jamaah
-                </button>
-                <span style="font-size:11px;color:var(--ink-soft);width:100%;">Jamaah tertentu tetap bisa diubah satu-satu lewat dropdown di tabel setelahnya.</span>
-            </div>` : '';
+        // Status kepulangan PROGRAM (rombongan) -- inilah default untuk semua
+        // jamaah di program ini yang belum di-override satu-satu. Mengubah
+        // dropdown ini langsung mengubah status seluruh jamaah yang belum
+        // di-override, tanpa perlu menyentuh baris mereka satu-satu.
+        const programPanelHtml = `
+            <div class="kp-program-panel" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);">
+                <i class="bi bi-flag-fill" style="color:var(--ink-soft);"></i>
+                <span style="font-size:12.5px;color:var(--ink-soft);">Status Kepulangan Program (default untuk semua jamaah):</span>
+                ${canEdit ? `
+                <div class="kp-select-wrap">
+                    <select id="kpProgramStatusSelect" class="kp-field kp-status-select badge-${infoProgram.badge}"
+                        onchange="updateStatusKepulanganProgram(this.value); kpRecolorStatusSelect(this);">
+                        ${KEPULANGAN_STATUS_OPSI.map(s => `<option value="${s.value}" ${s.value === programStatus ? 'selected' : ''}>${s.label}</option>`).join('')}
+                    </select>
+                    <i class="bi bi-chevron-down"></i>
+                </div>` : `<span class="status-badge ${infoProgram.badge}">${infoProgram.label}</span>`}
+                <span style="font-size:11px;color:var(--ink-soft);width:100%;">Jamaah yang belum "pulang" sendiri (tertinggal, batal, dsb) bisa di-override satu-satu lewat dropdown di tabel di bawah.</span>
+            </div>`;
 
         container.innerHTML = `
-            ${bulkPanelHtml}
+            ${programPanelHtml}
             <div class="table-container" style="overflow-x:auto;">
                 <table style="width:100%;min-width:900px;border-collapse:collapse;font-size:13px;">
                     <thead style="background:var(--bg);">
@@ -7812,7 +7844,8 @@ async function loadKepulanganForProgram(programId) {
                     </thead>
                     <tbody>
                         ${jamaah.map(j => {
-                            const status = j.status_kepulangan || 'belum_berangkat';
+                            const isOverride = !!j.status_kepulangan;
+                            const status = efektifStatusKepulangan(j);
                             const info = kepulanganStatusInfo(status);
                             return `
                             <tr style="border-bottom:1px solid var(--line);">
@@ -7821,10 +7854,11 @@ async function loadKepulanganForProgram(programId) {
                                     ${canEdit ? `
                                     <div class="kp-select-wrap">
                                         <select class="kp-field kp-status-select badge-${info.badge}" onchange="updateKepulanganField('${j.id}','status_kepulangan',this.value); kpRecolorStatusSelect(this);">
-                                            ${KEPULANGAN_STATUS_OPSI.map(s => `<option value="${s.value}" ${s.value === status ? 'selected' : ''}>${s.label}</option>`).join('')}
+                                            <option value="" ${!isOverride ? 'selected' : ''}>↳ Ikuti Status Program</option>
+                                            ${KEPULANGAN_STATUS_OPSI.map(s => `<option value="${s.value}" ${isOverride && s.value === status ? 'selected' : ''}>${s.label} (override)</option>`).join('')}
                                         </select>
                                         <i class="bi bi-chevron-down"></i>
-                                    </div>` : `<span class="status-badge ${info.badge}">${info.label}</span>`}
+                                    </div>` : `<span class="status-badge ${info.badge}">${info.label}</span>${isOverride ? ` <span style="font-size:10px;color:var(--ink-soft);">(override)</span>` : ''}`}
                                 </td>
                                 <td style="padding:8px 14px;border-left:1px solid var(--line);">
                                     <input type="date" class="kp-field" value="${j.tgl_berangkat_aktual || ''}" ${canEdit ? '' : 'disabled'}
@@ -7843,7 +7877,7 @@ async function loadKepulanganForProgram(programId) {
                     </tbody>
                 </table>
             </div>
-            <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;">Ubah status langsung dari dropdown/kolom di atas -- tersimpan otomatis begitu berpindah field (blur/change), tidak perlu tombol Simpan terpisah.</p>
+            <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;">Status program jadi default seluruh jamaah. Pilih status di dropdown baris jamaah untuk override individual, atau "Ikuti Status Program" untuk membatalkan override -- tersimpan otomatis begitu berpindah field, tidak perlu tombol Simpan terpisah.</p>
         `;
 
     } catch (err) {
@@ -7855,9 +7889,39 @@ async function loadKepulanganForProgram(programId) {
     }
 }
 
+// Ubah status kepulangan PROGRAM (rombongan) -- ini yang jadi default untuk
+// semua jamaah di program ini yang belum di-override satu-satu. Cukup ubah
+// 1 baris di tabel programs, tidak perlu menulis ulang tiap baris kb_jamaah.
+async function updateStatusKepulanganProgram(status) {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengubah data ini', 'error'); return; }
+    if (!kepulanganSelectedProgram) { showToast('Pilih program terlebih dahulu', 'error'); return; }
+
+    try {
+        const { error } = await supabaseClient
+            .from('programs')
+            .update({ status_kepulangan: status })
+            .eq('id', kepulanganSelectedProgram);
+        if (error) throw error;
+
+        const p = (dataUmroh || []).find(pr => String(pr.id) === String(kepulanganSelectedProgram));
+        if (p) p.status_kepulangan = status;
+        renderNavBadges();
+
+        showToast('Status kepulangan program diperbarui', 'success');
+        await loadKepulanganForProgram(kepulanganSelectedProgram);
+
+    } catch (err) {
+        console.error('Update status kepulangan program error:', err);
+        showToast('Gagal menyimpan: ' + err.message, 'error');
+        await loadKepulanganForProgram(kepulanganSelectedProgram);
+    }
+}
+
+// Ubah field kepulangan seorang jamaah. Untuk field status_kepulangan,
+// value kosong ('') artinya "hapus override -> ikuti status program".
 async function updateKepulanganField(jamaahId, field, value) {
     if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengubah data ini', 'error'); return; }
-    const izinkanKosong = ['tgl_berangkat_aktual', 'tgl_pulang_aktual', 'catatan_kepulangan'];
+    const izinkanKosong = ['status_kepulangan', 'tgl_berangkat_aktual', 'tgl_pulang_aktual', 'catatan_kepulangan'];
     const payload = { [field]: (value === '' && izinkanKosong.includes(field)) ? null : value };
     try {
         const { error } = await supabaseClient.from('kb_jamaah').update(payload).eq('id', jamaahId);
@@ -7874,55 +7938,6 @@ async function updateKepulanganField(jamaahId, field, value) {
         console.error('Update status kepulangan error:', err);
         showToast('Gagal menyimpan: ' + err.message, 'error');
         if (kepulanganSelectedProgram) await loadKepulanganForProgram(kepulanganSelectedProgram);
-    }
-}
-
-// [BULK] Terapkan satu status_kepulangan ke SEMUA jamaah aktif (belum
-// diarsipkan) dalam program/rombongan yang sedang dipilih di tab Status
-// Kepulangan. Dipakai lewat panel di atas tabel (lihat loadKepulanganForProgram).
-// Setelah ini jalan, admin masih bisa override status jamaah tertentu satu-satu
-// lewat dropdown per-baris seperti biasa -- aksi massal ini cuma titik awal.
-async function bulkUpdateKepulangan() {
-    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengubah data ini', 'error'); return; }
-    if (!kepulanganSelectedProgram) { showToast('Pilih program terlebih dahulu', 'error'); return; }
-
-    const select = document.getElementById('kpBulkStatusSelect');
-    if (!select) return;
-    const status = select.value;
-    const info = kepulanganStatusInfo(status);
-
-    const jumlah = (kbJamaahList || []).filter(j =>
-        String(j.program_id) === String(kepulanganSelectedProgram) && !j.diarsipkan
-    ).length;
-
-    const ok = await openActionConfirm({
-        title: 'Ubah Status Massal',
-        message: `Set status kepulangan <strong>SEMUA jamaah (${jumlah} orang)</strong> di program ini menjadi <strong>"${escapeHtml(info.label)}"</strong>?<br><br>Tanggal aktual &amp; catatan tidak ikut berubah. Anda tetap bisa mengubah jamaah tertentu satu-satu setelah ini.`,
-        confirmLabel: 'Ya, Terapkan ke Semua',
-        danger: false
-    });
-    if (!ok) return;
-
-    try {
-        const { error } = await supabaseClient
-            .from('kb_jamaah')
-            .update({ status_kepulangan: status })
-            .eq('program_id', kepulanganSelectedProgram)
-            .eq('diarsipkan', false);
-        if (error) throw error;
-
-        (kbJamaahList || []).forEach(j => {
-            if (String(j.program_id) === String(kepulanganSelectedProgram)) j.status_kepulangan = status;
-        });
-        renderNavBadges();
-
-        showToast('Status kepulangan seluruh jamaah diperbarui', 'success');
-        await loadKepulanganForProgram(kepulanganSelectedProgram);
-
-    } catch (err) {
-        console.error('Bulk update status kepulangan error:', err);
-        showToast('Gagal menyimpan: ' + err.message, 'error');
-        await loadKepulanganForProgram(kepulanganSelectedProgram);
     }
 }
 
@@ -8275,6 +8290,7 @@ async function exportJamaahExcel(btn) {
         (bayarData || []).forEach(b => { totalPerJamaah[b.jamaah_id] = (totalPerJamaah[b.jamaah_id] || 0) + Number(b.jumlah || 0); });
 
         const kepulanganLabel = { belum_berangkat: 'Belum Berangkat', sudah_berangkat: 'Sudah Berangkat', sudah_pulang: 'Sudah Pulang', batal: 'Batal / No-show' };
+        const programStatusKepulangan = (program && program.status_kepulangan) || 'belum_berangkat';
 
         const rows = jamaah.map(j => {
             const hargaProgram = parseRupiahToNumber(j.harga_custom) > 0 ? parseRupiahToNumber(j.harga_custom) : parseRupiahToNumber(program ? program.harga_quint : 0);
@@ -8308,7 +8324,7 @@ async function exportJamaahExcel(btn) {
                 'Sisa Tagihan (Rp)': sisa,
                 'Status Pembayaran': statusBayar,
                 'Status Visa': (VISA_STATUS_LABEL[j.visa_status || 'belum_diajukan'] || {}).label || '',
-                'Status Kepulangan': kepulanganLabel[j.status_kepulangan || 'belum_berangkat'] || '',
+                'Status Kepulangan': kepulanganLabel[j.status_kepulangan || programStatusKepulangan] || '',
                 'Catatan': j.catatan || ''
             };
         });
