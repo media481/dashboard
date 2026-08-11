@@ -5149,13 +5149,14 @@ async function loadArsipJamaahForProgram(programId) {
     }
 
     const rows = jamaah.map(j => {
-        const info = kepulanganStatusInfo(j.status_kepulangan || 'belum_berangkat');
+        const info = kepulanganStatusInfo(efektifStatusKepulangan(j));
+        const tglPulangEfektif = efektifTglKepulangan(j, 'tgl_pulang_aktual');
         return `
         <tr style="border-bottom:1px solid var(--line);">
             <td style="padding:10px 14px;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
             <td style="padding:10px 14px;">${j.nik || '-'}</td>
             <td style="padding:10px 14px;">${j.paspor || '-'}</td>
-            <td style="padding:10px 14px;"><span class="status-badge ${info.badge}">${info.label}</span>${j.tgl_pulang_aktual ? `<br><span style="font-size:11px;color:var(--ink-soft);">Pulang: ${new Date(j.tgl_pulang_aktual).toLocaleDateString('id-ID')}</span>` : ''}</td>
+            <td style="padding:10px 14px;"><span class="status-badge ${info.badge}">${info.label}</span>${tglPulangEfektif ? `<br><span style="font-size:11px;color:var(--ink-soft);">Pulang: ${new Date(tglPulangEfektif).toLocaleDateString('id-ID')}</span>` : ''}</td>
             <td style="padding:10px 14px;">${j.diarsipkan_at ? new Date(j.diarsipkan_at).toLocaleDateString('id-ID') : '-'}</td>
             <td style="padding:10px 14px;white-space:nowrap;">
                 <button class="btn-primary" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${j.id}')">
@@ -7719,11 +7720,26 @@ function statusKepulanganProgram(programId) {
     return (p && p.status_kepulangan) || 'belum_berangkat';
 }
 
+// Tanggal berangkat/pulang aktual program (rombongan) dari cache dataUmroh.
+// field: 'tgl_berangkat_aktual' | 'tgl_pulang_aktual'.
+function tglKepulanganProgram(programId, field) {
+    const p = (dataUmroh || []).find(pr => String(pr.id) === String(programId));
+    return (p && p[field]) || '';
+}
+
 // Status efektif seorang jamaah: pakai override kalau ada, kalau tidak
 // ikut status program (rombongan)nya.
 function efektifStatusKepulangan(jamaah) {
     if (!jamaah) return 'belum_berangkat';
     return jamaah.status_kepulangan || statusKepulanganProgram(jamaah.program_id);
+}
+
+// Tanggal efektif seorang jamaah untuk field tgl_berangkat_aktual /
+// tgl_pulang_aktual: pakai override kalau ada, kalau tidak ikut tanggal
+// program (rombongan)nya.
+function efektifTglKepulangan(jamaah, field) {
+    if (!jamaah) return '';
+    return jamaah[field] || tglKepulanganProgram(jamaah.program_id, field);
 }
 
 // [STYLING] Dropdown status kepulangan diwarnai sesuai status terpilih
@@ -7809,15 +7825,17 @@ async function loadKepulanganForProgram(programId) {
 
         const canEdit = canManageProgramData();
         const infoProgram = kepulanganStatusInfo(programStatus);
+        const programTglBerangkat = tglKepulanganProgram(programId, 'tgl_berangkat_aktual');
+        const programTglPulang = tglKepulanganProgram(programId, 'tgl_pulang_aktual');
 
-        // Status kepulangan PROGRAM (rombongan) -- inilah default untuk semua
-        // jamaah di program ini yang belum di-override satu-satu. Mengubah
-        // dropdown ini langsung mengubah status seluruh jamaah yang belum
-        // di-override, tanpa perlu menyentuh baris mereka satu-satu.
+        // Status & tanggal kepulangan PROGRAM (rombongan) -- inilah default
+        // untuk semua jamaah di program ini yang belum di-override satu-satu.
+        // Mengubah salah satu di sini langsung berlaku untuk seluruh jamaah
+        // yang belum di-override, tanpa perlu menyentuh baris mereka satu-satu.
         const programPanelHtml = `
             <div class="kp-program-panel" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);">
                 <i class="bi bi-flag-fill" style="color:var(--ink-soft);"></i>
-                <span style="font-size:12.5px;color:var(--ink-soft);">Status Kepulangan Program (default untuk semua jamaah):</span>
+                <span style="font-size:12.5px;color:var(--ink-soft);">Status Program:</span>
                 ${canEdit ? `
                 <div class="kp-select-wrap">
                     <select id="kpProgramStatusSelect" class="kp-field kp-status-select badge-${infoProgram.badge}"
@@ -7826,7 +7844,16 @@ async function loadKepulanganForProgram(programId) {
                     </select>
                     <i class="bi bi-chevron-down"></i>
                 </div>` : `<span class="status-badge ${infoProgram.badge}">${infoProgram.label}</span>`}
-                <span style="font-size:11px;color:var(--ink-soft);width:100%;">Jamaah yang belum "pulang" sendiri (tertinggal, batal, dsb) bisa di-override satu-satu lewat dropdown di tabel di bawah.</span>
+
+                <span style="font-size:12.5px;color:var(--ink-soft);margin-left:8px;">Tgl Berangkat:</span>
+                <input type="date" class="kp-field" value="${programTglBerangkat}" ${canEdit ? '' : 'disabled'}
+                    onchange="updateTanggalKepulanganProgram('tgl_berangkat_aktual', this.value)" style="min-width:140px;">
+
+                <span style="font-size:12.5px;color:var(--ink-soft);margin-left:8px;">Tgl Pulang:</span>
+                <input type="date" class="kp-field" value="${programTglPulang}" ${canEdit ? '' : 'disabled'}
+                    onchange="updateTanggalKepulanganProgram('tgl_pulang_aktual', this.value)" style="min-width:140px;">
+
+                <span style="font-size:11px;color:var(--ink-soft);width:100%;">Ini jadi default untuk semua jamaah di program ini. Jamaah yang bedanya sendiri dari rombongan (tertinggal, pulang duluan, batal, dsb) bisa di-override satu-satu lewat kolom di tabel di bawah.</span>
             </div>`;
 
         container.innerHTML = `
@@ -7847,6 +7874,10 @@ async function loadKepulanganForProgram(programId) {
                             const isOverride = !!j.status_kepulangan;
                             const status = efektifStatusKepulangan(j);
                             const info = kepulanganStatusInfo(status);
+                            const tglBerangkatOverride = !!j.tgl_berangkat_aktual;
+                            const tglPulangOverride = !!j.tgl_pulang_aktual;
+                            const tglBerangkatEfektif = efektifTglKepulangan(j, 'tgl_berangkat_aktual');
+                            const tglPulangEfektif = efektifTglKepulangan(j, 'tgl_pulang_aktual');
                             return `
                             <tr style="border-bottom:1px solid var(--line);">
                                 <td style="padding:10px 14px;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
@@ -7861,12 +7892,18 @@ async function loadKepulanganForProgram(programId) {
                                     </div>` : `<span class="status-badge ${info.badge}">${info.label}</span>${isOverride ? ` <span style="font-size:10px;color:var(--ink-soft);">(override)</span>` : ''}`}
                                 </td>
                                 <td style="padding:8px 14px;border-left:1px solid var(--line);">
-                                    <input type="date" class="kp-field" value="${j.tgl_berangkat_aktual || ''}" ${canEdit ? '' : 'disabled'}
-                                        onchange="updateKepulanganField('${j.id}','tgl_berangkat_aktual',this.value)" style="min-width:140px;">
+                                    <div style="display:flex;align-items:center;gap:4px;">
+                                        <input type="date" class="kp-field" value="${tglBerangkatEfektif}" ${canEdit ? '' : 'disabled'}
+                                            onchange="updateKepulanganField('${j.id}','tgl_berangkat_aktual',this.value)" style="min-width:140px;${tglBerangkatOverride ? 'border-color:var(--brand);' : ''}">
+                                        ${canEdit && tglBerangkatOverride ? `<button type="button" title="Override -- klik untuk ikuti tanggal program lagi" onclick="updateKepulanganField('${j.id}','tgl_berangkat_aktual','')" style="border:none;background:none;color:var(--ink-soft);cursor:pointer;padding:2px;"><i class="bi bi-arrow-counterclockwise"></i></button>` : ''}
+                                    </div>
                                 </td>
                                 <td style="padding:8px 14px;border-left:1px solid var(--line);">
-                                    <input type="date" class="kp-field" value="${j.tgl_pulang_aktual || ''}" ${canEdit ? '' : 'disabled'}
-                                        onchange="updateKepulanganField('${j.id}','tgl_pulang_aktual',this.value)" style="min-width:140px;">
+                                    <div style="display:flex;align-items:center;gap:4px;">
+                                        <input type="date" class="kp-field" value="${tglPulangEfektif}" ${canEdit ? '' : 'disabled'}
+                                            onchange="updateKepulanganField('${j.id}','tgl_pulang_aktual',this.value)" style="min-width:140px;${tglPulangOverride ? 'border-color:var(--brand);' : ''}">
+                                        ${canEdit && tglPulangOverride ? `<button type="button" title="Override -- klik untuk ikuti tanggal program lagi" onclick="updateKepulanganField('${j.id}','tgl_pulang_aktual','')" style="border:none;background:none;color:var(--ink-soft);cursor:pointer;padding:2px;"><i class="bi bi-arrow-counterclockwise"></i></button>` : ''}
+                                    </div>
                                 </td>
                                 <td style="padding:8px 14px;border-left:1px solid var(--line);">
                                     <input type="text" class="kp-field" value="${escapeHtml(j.catatan_kepulangan || '')}" placeholder="Opsional" ${canEdit ? '' : 'disabled'}
@@ -7877,7 +7914,7 @@ async function loadKepulanganForProgram(programId) {
                     </tbody>
                 </table>
             </div>
-            <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;">Status program jadi default seluruh jamaah. Pilih status di dropdown baris jamaah untuk override individual, atau "Ikuti Status Program" untuk membatalkan override -- tersimpan otomatis begitu berpindah field, tidak perlu tombol Simpan terpisah.</p>
+            <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;">Status & tanggal program jadi default untuk seluruh jamaah (kolom bergaris ungu = sudah di-override). Ubah dropdown/tanggal di baris jamaah untuk override individual, atau klik <i class="bi bi-arrow-counterclockwise"></i> / pilih "Ikuti Status Program" untuk membatalkan override -- tersimpan otomatis begitu berpindah field, tidak perlu tombol Simpan terpisah.</p>
         `;
 
     } catch (err) {
@@ -7912,6 +7949,34 @@ async function updateStatusKepulanganProgram(status) {
 
     } catch (err) {
         console.error('Update status kepulangan program error:', err);
+        showToast('Gagal menyimpan: ' + err.message, 'error');
+        await loadKepulanganForProgram(kepulanganSelectedProgram);
+    }
+}
+
+// Ubah tanggal berangkat/pulang aktual PROGRAM (rombongan) -- default untuk
+// semua jamaah di program ini yang belum di-override satu-satu tanggalnya.
+// field: 'tgl_berangkat_aktual' | 'tgl_pulang_aktual'.
+async function updateTanggalKepulanganProgram(field, value) {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengubah data ini', 'error'); return; }
+    if (!kepulanganSelectedProgram) { showToast('Pilih program terlebih dahulu', 'error'); return; }
+
+    try {
+        const payload = { [field]: value || null };
+        const { error } = await supabaseClient
+            .from('programs')
+            .update(payload)
+            .eq('id', kepulanganSelectedProgram);
+        if (error) throw error;
+
+        const p = (dataUmroh || []).find(pr => String(pr.id) === String(kepulanganSelectedProgram));
+        if (p) p[field] = payload[field];
+
+        showToast('Tanggal program diperbarui', 'success');
+        await loadKepulanganForProgram(kepulanganSelectedProgram);
+
+    } catch (err) {
+        console.error('Update tanggal kepulangan program error:', err);
         showToast('Gagal menyimpan: ' + err.message, 'error');
         await loadKepulanganForProgram(kepulanganSelectedProgram);
     }
