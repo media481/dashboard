@@ -1863,6 +1863,12 @@ function switchAdminSubTab(name) {
         }
         renderCxProgramSelector();
         if (cxSelectedProgram) renderCxPanel(cxSelectedProgram);
+        // Muat data referensi Hotel Saudi Arabia di background lalu render ulang
+        // panel supaya badge "dikenali/tidak dikenali" di baris Hotel Makkah/
+        // Madinah (lihat buildCompareRows -> cxHotelRefLine) langsung muncul.
+        if (!hotelSaudiLoaded) {
+            ensureHotelReferenceLoaded().then(() => { if (cxSelectedProgram) renderCxPanel(cxSelectedProgram); });
+        }
     }
     if (name === 'telegram') { renderTgRecipients(); }
     if (name === 'auditnota') { loadNotaAuditLog(true); }
@@ -2008,11 +2014,13 @@ async function renderAdminPanel() {
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Hotel Makkah</label>
-                                <input type="text" id="admin_hotel_makkah" placeholder="Nama hotel & bintang" maxlength="100">
+                                <input type="text" id="admin_hotel_makkah" placeholder="Nama hotel & bintang" maxlength="100" oninput="handleHotelRefInput('admin_hotel_makkah','hotelRefHint_makkah','makkah')">
+                                <div class="hotel-ref-hint" id="hotelRefHint_makkah"></div>
                             </div>
                             <div class="form-group">
                                 <label>Hotel Madinah</label>
-                                <input type="text" id="admin_hotel_madinah" placeholder="Nama hotel & bintang" maxlength="100">
+                                <input type="text" id="admin_hotel_madinah" placeholder="Nama hotel & bintang" maxlength="100" oninput="handleHotelRefInput('admin_hotel_madinah','hotelRefHint_madinah','madinah')">
+                                <div class="hotel-ref-hint" id="hotelRefHint_madinah"></div>
                             </div>
                         </div>
                     </div>
@@ -2550,6 +2558,9 @@ async function showAdminForm() {
     editingProgramId = null;
     setAdminFormData({}); // bersihkan sisa data dari sesi edit sebelumnya
     cxClearAutofillHighlight(); // bersihkan sisa highlight kuning dari sesi form sebelumnya
+    // Muat data referensi Hotel Saudi Arabia di background (non-blocking) supaya
+    // hint di field Hotel Makkah/Madinah sudah siap begitu admin mulai mengetik.
+    ensureHotelReferenceLoaded();
     // Bersihkan juga sisa teks broadcast dari sesi tambah program sebelumnya,
     // supaya kotak referensi tidak menampilkan broadcast program lain.
     const bcInput = document.getElementById('parseBroadcastInput');
@@ -3047,6 +3058,12 @@ async function editAdminProgram(id, focusFieldId) {
     // tandai kuning lagi di sini supaya tidak kelewat.
     cxClearAutofillHighlight();
     if (unpacked.autofilled_fields?.length) cxApplyAutofillHighlight(unpacked.autofilled_fields);
+    // Muat data referensi Hotel Saudi Arabia di background, lalu tampilkan
+    // hint untuk nilai Hotel Makkah/Madinah yang sudah tersimpan di program ini.
+    ensureHotelReferenceLoaded().then(() => {
+        updateHotelRefHint('admin_hotel_makkah', 'hotelRefHint_makkah', 'makkah');
+        updateHotelRefHint('admin_hotel_madinah', 'hotelRefHint_madinah', 'madinah');
+    });
     // Program lama tidak punya teks broadcast asli tersimpan — bersihkan kotak
     // broadcast & referensinya supaya tidak menampilkan sisa dari program lain.
     const bcInput = document.getElementById('parseBroadcastInput');
@@ -3322,6 +3339,11 @@ function parseBroadcastText() {
     });
     setVal('admin_hotel_makkah', hotel_makkah_full);
     setVal('admin_hotel_madinah', hotel_madinah_full);
+    // Validasi otomatis vs data referensi Hotel Saudi Arabia (lihat 21c) --
+    // pakai nama hotel murni (hotel_makkah/hotel_madinah, sebelum digabung
+    // dengan malam & jarak) supaya pencocokan lebih akurat.
+    if (hotel_makkah) { ensureHotelReferenceLoaded().then(() => updateHotelRefHint('admin_hotel_makkah', 'hotelRefHint_makkah', 'makkah')); }
+    if (hotel_madinah) { ensureHotelReferenceLoaded().then(() => updateHotelRefHint('admin_hotel_madinah', 'hotelRefHint_madinah', 'madinah')); }
     if (termasuk.length) setVal('admin_termasuk', termasuk.join('\n'));
     if (tidak_termasuk.length) setVal('admin_tidak_termasuk', tidak_termasuk.join('\n'));
     if (catatan_admin) setVal('admin_catatan_cx', catatan_admin);
@@ -8062,6 +8084,28 @@ function renderCxPanel(progId) {
     const hasAdl = Object.keys(adl).length > 0;
     const hasPoster = !!prog.link_poster;
 
+    // [REFERENSI HOTEL] Untuk baris Hotel Makkah/Madinah, kasih badge kecil
+    // yang menandai apakah nama hotel di sisi Teks & Poster dikenali di data
+    // referensi Hotel Saudi Arabia (lihat 21c) -- berguna khusus buat baris
+    // yang "Beda" (mismatch): kalau salah satu sisi TIDAK dikenali sama sekali,
+    // itu petunjuk kuat sisi itu salah baca OCR / typo, bukan cuma beda versi.
+    const cxHotelRefLine = (field, plainVal, posterVal) => {
+        if (field !== 'hotel_makkah' && field !== 'hotel_madinah') return '';
+        if (!hotelSaudiLoaded || !hotelSaudiList.length) return '';
+        const cityKeyword = field === 'hotel_makkah' ? 'makkah' : 'madinah';
+        const describe = (val) => {
+            if (!val) return null;
+            const m = findBestHotelMatch(val, cityKeyword);
+            if (m && m.score >= HOTEL_REF_MATCH_THRESHOLD) return { ok: true, text: 'dikenali' };
+            if (m && m.score >= HOTEL_REF_SUGGEST_THRESHOLD) return { ok: false, text: `mirip "${m.hotel.hotel_name}"?` };
+            return { ok: false, text: 'tidak dikenali' };
+        };
+        const dPlain = describe(plainVal), dPoster = describe(posterVal);
+        if (!dPlain && !dPoster) return '';
+        const chip = (label, d) => !d ? '' : `<span class="cx-ref-chip ${d.ok ? 'ok' : 'warn'}">${label}: ${escapeHtml(d.text)}</span>`;
+        return `<div class="cx-ref-line"><i class="bi bi-building"></i> Referensi Hotel Saudi Arabia — ${chip('Teks', dPlain)} ${chip('Poster', dPoster)}</div>`;
+    };
+
     const buildCompareRows = () => {
         const rows = [
             { label: 'Nama Program',  plain: prog.nama,        poster: null, field: 'nama' },
@@ -8118,6 +8162,7 @@ function renderCxPanel(progId) {
                 <div class="cx-compare-col"><div class="cx-compare-label"><i class="bi bi-file-earmark-text-fill"></i> Teks</div><div class="cx-compare-val ${r.plain?'':'empty'}">${r.plain ? escapeHtml(r.plain) : '—'}</div></div>
                 <div class="cx-divider"></div>
                 <div class="cx-compare-col"><div class="cx-compare-label"><i class="bi bi-image-fill"></i> Poster</div><div class="cx-compare-val ${r.poster?'':'empty'}">${r.poster ? escapeHtml(r.poster) : '—'}</div></div>
+                ${cxHotelRefLine(r.field, r.plain, r.poster)}
             </div>`;
         }).join('');
     };
@@ -8665,7 +8710,126 @@ function escapeHtmlAttr(str) {
 // Tidak ada tambah/edit/hapus lewat UI -- kalau perlu diperbarui, import
 // ulang lewat SQL Editor (lihat sql/tambah_hotel_saudi_arabia.sql &
 // sql/import_hotel_saudi_arabia.sql).
+//
+// Data yang sama juga dipakai sebagai REFERENSI (bukan cuma ditampilkan di
+// sub-tab-nya sendiri) di dua tempat lain:
+//   - Form Tambah/Edit Program (field Hotel Makkah/Madinah) & Parse
+//     Broadcast -> kasih hint kalau nama hotel yang diketik/di-parse mirip
+//     atau tidak dikenali dibanding data referensi (lihat handleHotelRefInput).
+//   - Panel Crosscheck (poster vs data teks) -> kasih badge "dikenali di
+//     referensi" / "tidak dikenali" di baris Hotel Makkah & Madinah (lihat
+//     cxHotelRefBadge, dipanggil dari buildCompareRows).
 // ============================================================
+
+// ---- Fuzzy match nama hotel vs tabel referensi (dice coefficient bigram) ----
+// Dipakai bareng oleh hint form Program & badge Crosscheck. Tidak butuh
+// library luar -- cukup ringan buat ~300 kandidat (Makkah+Madinah).
+
+let hotelRefLoadPromise = null;
+// Muat data referensi di background (idempotent -- aman dipanggil berkali-kali
+// dari tempat berbeda). Dipakai supaya form Program & panel Crosscheck bisa
+// langsung kasih hint begitu admin buka form, tanpa harus mampir dulu ke
+// menu Assets > Hotel Saudi Arabia.
+function ensureHotelReferenceLoaded() {
+    if (hotelSaudiLoaded) return Promise.resolve();
+    if (!hotelRefLoadPromise) {
+        hotelRefLoadPromise = loadHotelSaudiArabia().finally(() => { hotelRefLoadPromise = null; });
+    }
+    return hotelRefLoadPromise;
+}
+
+// Buang "(3 malam, 200m jalan kaki)" dkk dari string gabungan hasil
+// combineHotel() di parseBroadcastText, supaya yang dicocokkan cuma nama
+// hotel murni.
+function stripHotelExtras(s) {
+    return (s || '').replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function normalizeHotelNameForMatch(s) {
+    return stripHotelExtras(s)
+        .toLowerCase()
+        .replace(/[^a-z0-9\u0600-\u06FF\s]/g, ' ') // buang tanda baca, sisakan huruf/angka (termasuk Arab)
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function bigramSet(s) {
+    const set = new Map();
+    for (let i = 0; i < s.length - 1; i++) {
+        const bg = s.substring(i, i + 2);
+        set.set(bg, (set.get(bg) || 0) + 1);
+    }
+    return set;
+}
+
+// Dice coefficient berbasis bigram karakter -- cukup toleran terhadap typo
+// ringan & urutan kata yang beda, tanpa perlu library tambahan.
+function diceSimilarity(a, b) {
+    const na = normalizeHotelNameForMatch(a), nb = normalizeHotelNameForMatch(b);
+    if (!na || !nb) return 0;
+    if (na === nb) return 1;
+    const ba = bigramSet(na), bb = bigramSet(nb);
+    let intersect = 0;
+    ba.forEach((count, bg) => { if (bb.has(bg)) intersect += Math.min(count, bb.get(bg)); });
+    const totalA = [...ba.values()].reduce((s, c) => s + c, 0);
+    const totalB = [...bb.values()].reduce((s, c) => s + c, 0);
+    if (totalA + totalB === 0) return 0;
+    return (2 * intersect) / (totalA + totalB);
+}
+
+// Cari hotel referensi paling mirip di kota tertentu ('makkah'/'madinah',
+// cocok substring ke kolom city di hotel_saudi_arabia yang isinya lowercase).
+function findBestHotelMatch(name, cityKeyword) {
+    const clean = stripHotelExtras(name);
+    if (!clean || !hotelSaudiLoaded || !hotelSaudiList.length) return null;
+    const candidates = hotelSaudiList.filter(h => (h.city || '').toLowerCase().includes(cityKeyword));
+    let best = null, bestScore = 0;
+    candidates.forEach(h => {
+        const score = diceSimilarity(clean, h.hotel_name || '');
+        if (score > bestScore) { bestScore = score; best = h; }
+    });
+    return best ? { hotel: best, score: bestScore } : null;
+}
+
+const HOTEL_REF_MATCH_THRESHOLD = 0.72; // dianggap "cocok"
+const HOTEL_REF_SUGGEST_THRESHOLD = 0.4; // dianggap "mirip, mungkin typo"
+
+// Dipanggil dari oninput field Hotel Makkah/Madinah di form Program, DAN
+// dari parseBroadcastText() setelah field terisi otomatis dari broadcast WA.
+let hotelRefHintDebounce = {};
+function handleHotelRefInput(inputId, hintId, cityKeyword) {
+    clearTimeout(hotelRefHintDebounce[inputId]);
+    hotelRefHintDebounce[inputId] = setTimeout(() => updateHotelRefHint(inputId, hintId, cityKeyword), 350);
+}
+
+function updateHotelRefHint(inputId, hintId, cityKeyword) {
+    const input = document.getElementById(inputId);
+    const hintEl = document.getElementById(hintId);
+    if (!input || !hintEl) return;
+    const val = input.value.trim();
+    if (!val) { hintEl.className = 'hotel-ref-hint'; hintEl.innerHTML = ''; return; }
+
+    if (!hotelSaudiLoaded) {
+        hintEl.className = 'hotel-ref-hint loading';
+        hintEl.innerHTML = '<i class="bi bi-arrow-repeat bi-spin"></i> Memeriksa data referensi...';
+        ensureHotelReferenceLoaded().then(() => updateHotelRefHint(inputId, hintId, cityKeyword));
+        return;
+    }
+    if (!hotelSaudiList.length) { hintEl.className = 'hotel-ref-hint'; hintEl.innerHTML = ''; return; }
+
+    const match = findBestHotelMatch(val, cityKeyword);
+    if (!match || match.score < HOTEL_REF_SUGGEST_THRESHOLD) {
+        hintEl.className = 'hotel-ref-hint unknown';
+        hintEl.innerHTML = `<i class="bi bi-question-circle-fill"></i> Tidak ditemukan di data referensi — cek ejaan, atau memang hotel baru`;
+    } else if (match.score < HOTEL_REF_MATCH_THRESHOLD) {
+        hintEl.className = 'hotel-ref-hint suggest';
+        hintEl.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> Mirip: <b>${escapeHtml(match.hotel.hotel_name)}</b> — cek lagi ejaannya, mungkin typo`;
+    } else {
+        const scoreTxt = match.hotel.score != null ? ` &middot; skor ${escapeHtml(String(match.hotel.score))}` : '';
+        hintEl.className = 'hotel-ref-hint ok';
+        hintEl.innerHTML = `<i class="bi bi-check-circle-fill"></i> Cocok dengan data referensi${scoreTxt}`;
+    }
+}
 
 function switchAssetsInnerTab(tab) {
     document.querySelectorAll('.assets-inner-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.innerTab === tab));
