@@ -769,86 +769,122 @@
         <div class="modal-body">
             <form id="kbForm" onsubmit="saveKbJamaah(event)">
                 <input type="hidden" id="kb_editId" value="">
-                <div class="form-group">
-                    <label>Program Keberangkatan <span class="required">*</span></label>
-                    <select id="kb_program" class="searchable-select" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." required></select>
-                </div>
-                <div class="form-group">
-                    <label>Nama Lengkap <span class="required">*</span></label>
-                    <input type="text" id="kb_nama" placeholder="Sesuai paspor" required maxlength="150">
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>No. NIK / KTP</label>
-                        <input type="text" id="kb_nik" placeholder="16 digit NIK" maxlength="20">
-                    </div>
-                    <div class="form-group">
-                        <label>No. Paspor</label>
-                        <input type="text" id="kb_paspor" placeholder="Contoh: A1234567" maxlength="20">
+
+                <!-- [REDESIGN] Header ringkas: inisial + nama + program, biar
+                     admin langsung yakin sedang edit data siapa tanpa perlu
+                     lihat lagi ke tabel di belakang modal. Update otomatis
+                     lewat kbSyncEditHero() saat nama/program diketik/dipilih. -->
+                <div class="kb-edit-hero">
+                    <div class="kb-edit-hero-avatar" id="kbHeroAvatar">–</div>
+                    <div class="kb-edit-hero-text">
+                        <div class="kb-edit-hero-name" id="kbHeroName">Jamaah baru</div>
+                        <div class="kb-edit-hero-sub" id="kbHeroSub">Belum ada program dipilih</div>
                     </div>
                 </div>
-                <div class="form-row">
+
+                <!-- Kartu 1: Program & Status -- ini yang paling sering diubah
+                     admin (ganti status pembayaran, tipe kamar), jadi ditaruh
+                     paling atas supaya tidak perlu scroll. -->
+                <div class="kb-card">
+                    <div class="kb-card-title"><i class="bi bi-airplane-engines-fill"></i> Program &amp; Status</div>
                     <div class="form-group">
-                        <label>Tgl Kadaluarsa Paspor</label>
-                        <input type="date" id="kb_paspor_exp">
-                        <small style="display:block;margin-top:4px;font-size:11px;color:var(--ink-soft);">Syarat 2026: minimal berlaku 6–7 bulan dari tanggal keberangkatan. Diisi supaya sistem bisa memperingatkan otomatis kalau mepet.</small>
+                        <label>Program Keberangkatan <span class="required">*</span></label>
+                        <select id="kb_program" class="searchable-select" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." required onchange="kbSyncEditHero(); kbUpdatePasporBadge();"></select>
                     </div>
-                    <div class="form-group">
-                        <label>Status Visa</label>
-                        <select id="kb_visa_status">
-                            <option value="belum_diajukan">Belum Diajukan</option>
-                            <option value="diproses">Diproses</option>
-                            <option value="terbit">Terbit</option>
-                            <option value="ditolak">Ditolak</option>
-                        </select>
-                        <small style="display:block;margin-top:4px;font-size:11px;color:var(--ink-soft);">Pencatatan manual oleh admin, bukan cek langsung ke sistem visa Saudi.</small>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tipe Kamar</label>
+                            <select id="kb_tipe_kamar">
+                                <option value="quad">Quad (4 orang)</option>
+                                <option value="triple">Triple (3 orang)</option>
+                                <option value="double">Double (2 orang)</option>
+                            </select>
+                            <small style="display:block;margin-top:4px;font-size:11px;color:var(--ink-soft);">Menentukan harga acuan tagihan (ambil dari harga Quad/Triple/Double program).</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Status Pembayaran</label>
+                            <select id="kb_status">
+                                <option value="lunas">Lunas</option>
+                                <option value="dp">DP / Cicilan</option>
+                                <option value="pending">Pending</option>
+                                <option value="batal">Batal</option>
+                            </select>
+                            <small style="display:block;margin-top:4px;font-size:11px;color:var(--ink-soft);">Status "Batal" dikunci — tidak diubah otomatis walau ada pembayaran/refund baru.</small>
+                        </div>
                     </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>No. WhatsApp</label>
-                        <input type="tel" id="kb_wa" placeholder="628xxxxxxxxxx" maxlength="20">
-                    </div>
-                    <div class="form-group">
-                        <label>Asal Daerah</label>
-                        <input type="text" id="kb_asal" placeholder="Kota/Kabupaten">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Tipe Kamar</label>
-                        <select id="kb_tipe_kamar">
-                            <option value="quad">Quad (4 orang)</option>
-                            <option value="triple">Triple (3 orang)</option>
-                            <option value="double">Double (2 orang)</option>
-                        </select>
-                        <small style="display:block;margin-top:4px;font-size:11px;color:var(--ink-soft);">Menentukan harga acuan tagihan jamaah ini (ambil dari harga Quad/Triple/Double program).</small>
-                    </div>
-                    <div class="form-group">
-                        <label>Harga Khusus <span style="font-weight:500;color:var(--ink-soft);">(opsional)</span></label>
-                        <input type="text" id="kb_harga_custom" placeholder="Kosongkan kalau ikut harga tipe kamar">
-                        <small style="display:block;margin-top:4px;font-size:11px;color:var(--ink-soft);">Isi kalau jamaah ini punya harga nego/khusus. Kalau diisi, ini akan dipakai sebagai acuan tagihan — mengabaikan harga Tipe Kamar di atas.</small>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Status Pembayaran</label>
-                        <select id="kb_status">
-                            <option value="lunas">Lunas</option>
-                            <option value="dp">DP / Cicilan</option>
-                            <option value="pending">Pending</option>
-                            <option value="batal">Batal</option>
-                        </select>
-                        <small style="display:block;margin-top:4px;font-size:11px;color:var(--ink-soft);">Status "Batal" dikunci — tidak akan diubah otomatis oleh sistem walau ada pembayaran/refund baru.</small>
-                    </div>
-                    <div class="form-group">
-                        <label>Catatan</label>
-                        <input type="text" id="kb_catatan" placeholder="Catatan tambahan...">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Harga Khusus <span style="font-weight:500;color:var(--ink-soft);">(opsional)</span></label>
+                            <input type="text" id="kb_harga_custom" placeholder="Kosongkan kalau ikut harga tipe kamar">
+                        </div>
+                        <div class="form-group">
+                            <label>Catatan</label>
+                            <input type="text" id="kb_catatan" placeholder="Catatan tambahan...">
+                        </div>
                     </div>
                 </div>
-                <details id="kbF4Details" style="margin:4px 0 18px;border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:2px 14px;">
-                    <summary style="cursor:pointer;padding:10px 0;font-size:12.5px;font-weight:700;color:var(--ink-soft);"><i class="bi bi-file-earmark-text-fill"></i> Data Lengkap (sesuai F4) <span style="font-weight:500;">— opsional, untuk dokumen visa/manifest</span></summary>
-                    <div style="padding-bottom:14px;">
+
+                <!-- Kartu 2: Identitas & Dokumen Perjalanan -- paspor & visa
+                     digabung di sini karena ini data operasional penting utk
+                     urus visa/manifest, bukan sekadar data pelengkap. -->
+                <div class="kb-card">
+                    <div class="kb-card-title"><i class="bi bi-person-vcard-fill"></i> Identitas &amp; Dokumen Perjalanan</div>
+                    <div class="form-group">
+                        <label>Nama Lengkap <span class="required">*</span></label>
+                        <input type="text" id="kb_nama" placeholder="Sesuai paspor" required maxlength="150" oninput="kbSyncEditHero()">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>No. NIK / KTP</label>
+                            <input type="text" id="kb_nik" placeholder="16 digit NIK" maxlength="20">
+                        </div>
+                        <div class="form-group">
+                            <label>No. Paspor</label>
+                            <input type="text" id="kb_paspor" placeholder="Contoh: A1234567" maxlength="20">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tgl Kadaluarsa Paspor</label>
+                            <input type="date" id="kb_paspor_exp" oninput="kbUpdatePasporBadge()">
+                            <div class="kb-field-with-badge">
+                                <span class="kb-badge is-kosong" id="kbPasporBadge"><i class="bi bi-dash-circle"></i> Belum diisi</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Status Visa</label>
+                            <select id="kb_visa_status">
+                                <option value="belum_diajukan">Belum Diajukan</option>
+                                <option value="diproses">Diproses</option>
+                                <option value="terbit">Terbit</option>
+                                <option value="ditolak">Ditolak</option>
+                            </select>
+                            <small style="display:block;margin-top:4px;font-size:11px;color:var(--ink-soft);">Pencatatan manual, bukan cek langsung ke sistem visa Saudi.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kartu 3: Kontak -->
+                <div class="kb-card">
+                    <div class="kb-card-title"><i class="bi bi-telephone-fill"></i> Kontak</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>No. WhatsApp</label>
+                            <input type="tel" id="kb_wa" placeholder="628xxxxxxxxxx" maxlength="20">
+                        </div>
+                        <div class="form-group">
+                            <label>Asal Daerah</label>
+                            <input type="text" id="kb_asal" placeholder="Kota/Kabupaten">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data tambahan sesuai formulir F4 -- tetap dilipat spt
+                     sebelumnya karena jarang diedit, tapi header & chevron-nya
+                     kini konsisten dgn pola accordion yg dipakai di modal lain. -->
+                <details class="kb-extra-section" id="kbF4Details">
+                    <summary class="kb-card-title"><i class="bi bi-file-earmark-text-fill"></i> Data Tambahan (sesuai F4) <span class="kb-extra-section-hint">— untuk dokumen visa/manifest</span></summary>
+                    <div class="kb-extra-section-body">
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Jenis Kelamin</label>
@@ -892,6 +928,7 @@
                         </div>
                     </div>
                 </details>
+
                 <div class="form-actions">
                     <button type="submit" class="btn-submit"><i class="bi bi-floppy-fill"></i> Simpan</button>
                     <button type="button" class="btn-cancel" onclick="closeKbModal()">Batal</button>

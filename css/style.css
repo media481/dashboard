@@ -2649,3 +2649,109 @@
     color: var(--ink-soft);
     font-size: 13px;
 }
+
+/* ===== MODAL: EDIT DATA JAMAAH (kbModal) — redesign tampilan =====
+   Form lama satu blok panjang tanpa pengelompokan visual. Dipecah jadi
+   "kartu" per topik (Program & Status, Identitas & Dokumen, Kontak) supaya
+   admin bisa scan cepat field mana yang mau diedit, plus badge otomatis
+   utk masa berlaku paspor. Field yang jarang diedit (alamat, ahli waris,
+   dst) tetap dilipat di bagian bawah spt sebelumnya. Semua id field TIDAK
+   berubah -- ini murni penataan ulang tampilan. */
+.kb-card {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 18px 18px;
+    margin-bottom: 16px;
+}
+.kb-card-title {
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    color: var(--ink-soft);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.kb-card-title i { color: var(--brand); font-size: 13px; }
+.kb-card .form-group:last-child,
+.kb-card .form-row:last-child .form-group { margin-bottom: 0; }
+.kb-card .form-row:last-child { margin-bottom: 0; }
+.kb-card .form-group { margin-bottom: 12px; }
+.kb-card .form-row { margin-bottom: 12px; }
+
+/* Header ringkas: nama + program muncul besar di atas supaya jelas
+   sedang mengedit siapa, tanpa perlu baca ulang tabel di belakang modal. */
+.kb-edit-hero {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 2px 16px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--line);
+}
+.kb-edit-hero-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--brand-tint);
+    color: var(--brand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 15px;
+    font-family: 'Space Grotesk';
+    flex-shrink: 0;
+}
+.kb-edit-hero-text { min-width: 0; }
+.kb-edit-hero-name { font-weight: 700; font-size: 15.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kb-edit-hero-sub { font-size: 12px; color: var(--ink-soft); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Badge status paspor -- dihitung otomatis dari tanggal kadaluarsa vs.
+   tanggal keberangkatan program yang dipilih (syarat 2026: min. 6-7 bulan). */
+.kb-field-with-badge { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.kb-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.kb-badge.is-aman { background: var(--success-tint); color: #1b6b48; }
+.kb-badge.is-mepet { background: var(--warn-tint); color: var(--warn); }
+.kb-badge.is-kadaluarsa { background: var(--danger-tint); color: var(--danger); }
+.kb-badge.is-kosong { background: var(--line); color: var(--ink-soft); }
+
+/* Bagian "Data Tambahan" -- dilipat spt sebelumnya, dgn header + chevron
+   memakai pola yg sama dgn .cicilan-activity-section supaya konsisten. */
+.kb-extra-section {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 4px 16px;
+    margin-bottom: 4px;
+}
+.kb-extra-section > summary.kb-card-title {
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    padding: 12px 0;
+    margin-bottom: 0;
+}
+.kb-extra-section > summary.kb-card-title::-webkit-details-marker { display: none; }
+.kb-extra-section > summary.kb-card-title::after {
+    content: '\f282'; /* bootstrap-icons chevron-down */
+    font-family: 'bootstrap-icons';
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--ink-soft);
+    transition: transform .15s;
+}
+.kb-extra-section[open] > summary.kb-card-title::after { transform: rotate(180deg); }
+.kb-extra-section-body { padding: 2px 0 16px; }
+.kb-extra-section-hint { font-weight: 500; text-transform: none; color: var(--ink-soft); letter-spacing: 0; font-size: 11px; }

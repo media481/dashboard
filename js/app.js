@@ -5197,11 +5197,72 @@ function openKbModal(id) {
     const f4Details = document.getElementById('kbF4Details');
     if (f4Details) f4Details.open = !!hasF4;
 
+    kbSyncEditHero();
+    kbUpdatePasporBadge();
+
     modal.classList.add('open');
 }
 
 function closeKbModal() {
     document.getElementById('kbModal').classList.remove('open');
+}
+
+// [REDESIGN] Header ringkas di modal Edit Data Jamaah -- inisial + nama +
+// nama program, diperbarui live saat nama diketik / program dipilih supaya
+// admin selalu yakin sedang mengedit data siapa.
+function kbSyncEditHero() {
+    const nameEl = document.getElementById('kb_nama');
+    const programSel = document.getElementById('kb_program');
+    const avatarEl = document.getElementById('kbHeroAvatar');
+    const nameOut = document.getElementById('kbHeroName');
+    const subOut = document.getElementById('kbHeroSub');
+    if (!nameEl || !avatarEl || !nameOut || !subOut) return;
+
+    const nama = (nameEl.value || '').trim();
+    nameOut.textContent = nama || 'Jamaah baru';
+    avatarEl.textContent = nama ? nama.trim().charAt(0).toUpperCase() : '–';
+
+    const programId = programSel ? programSel.value : '';
+    const program = programId ? (dataUmroh || []).find(p => String(p.id) === String(programId)) : null;
+    subOut.textContent = program ? (program.nama || 'Program tanpa nama') : 'Belum ada program dipilih';
+}
+
+// [REDESIGN] Badge otomatis utk masa berlaku paspor. Syarat 2026: minimal
+// berlaku 6 bulan dari tanggal keberangkatan. Dihitung terhadap tanggal
+// keberangkatan program yang dipilih kalau ada datanya, kalau tidak
+// dihitung terhadap hari ini supaya tetap ada sinyal kasar.
+function kbUpdatePasporBadge() {
+    const badge = document.getElementById('kbPasporBadge');
+    const expInput = document.getElementById('kb_paspor_exp');
+    const programSel = document.getElementById('kb_program');
+    if (!badge || !expInput) return;
+
+    const expVal = expInput.value;
+    if (!expVal) {
+        badge.className = 'kb-badge is-kosong';
+        badge.innerHTML = '<i class="bi bi-dash-circle"></i> Belum diisi';
+        return;
+    }
+
+    const expDate = new Date(expVal + 'T00:00:00');
+    const programId = programSel ? programSel.value : '';
+    const program = programId ? (dataUmroh || []).find(p => String(p.id) === String(programId)) : null;
+    const refDate = (program && program.dateObj instanceof Date && !isNaN(program.dateObj)) ? program.dateObj : new Date();
+
+    if (expDate < refDate) {
+        badge.className = 'kb-badge is-kadaluarsa';
+        badge.innerHTML = '<i class="bi bi-exclamation-octagon-fill"></i> Sudah/akan kadaluarsa';
+        return;
+    }
+
+    const monthsLeft = (expDate.getFullYear() - refDate.getFullYear()) * 12 + (expDate.getMonth() - refDate.getMonth());
+    if (monthsLeft < 6) {
+        badge.className = 'kb-badge is-mepet';
+        badge.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> Mepet, kurang dari 6 bulan';
+    } else {
+        badge.className = 'kb-badge is-aman';
+        badge.innerHTML = '<i class="bi bi-check-circle-fill"></i> Aman';
+    }
 }
 
 // Cari jamaah lama (dari program-program sebelumnya) berdasarkan nama/NIK/paspor,
