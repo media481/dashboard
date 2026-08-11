@@ -453,6 +453,27 @@
         }
         .btn-arsip-semua:hover { opacity: 1; background: #f6cfc9; }
 
+        /* Tombol export di bawah tabel Data Jamaah -- sengaja dibuat TIDAK
+           mencolok (netral, bukan warna solid) karena cuma aksi sekunder,
+           beda dgn tombol utama (Cetak Manifest/Rooming List) di header. */
+        .btn-export-subtle {
+            background: var(--surface);
+            color: var(--ink-soft);
+            border: 1px solid var(--line);
+            padding: 6px 13px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 11.5px;
+            cursor: pointer;
+            transition: all .15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Inter', sans-serif;
+        }
+        .btn-export-subtle:hover { background: var(--bg); color: var(--ink); border-color: var(--ink-soft); }
+        .btn-export-subtle:disabled { opacity: .6; cursor: not-allowed; }
+
         .hamburger-toggle {
             display: none;
             background: none;

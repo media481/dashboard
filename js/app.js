@@ -4864,11 +4864,20 @@ async function loadKbJamaahForProgram(programId) {
         if (error) throw error;
 
         const jamaah = data || [];
+        const exportBtnsHtml = (jamaah.length) ? `
+            <button type="button" class="btn-export-subtle" id="btnExportJamaahExcel" onclick="exportJamaahExcel(this)" title="Export data jamaah ke Excel">
+                <i class="bi bi-file-earmark-excel-fill"></i> Export Excel
+            </button>
+            <button type="button" class="btn-export-subtle" id="btnExportPembayaranExcel" onclick="exportPembayaranExcel(this)" title="Export riwayat pembayaran & cicilan ke Excel">
+                <i class="bi bi-cash-coin"></i> Export Pembayaran
+            </button>` : '';
         const arsipBtnHtml = (canEdit && jamaah.length) ? `
-            <div style="display:flex;justify-content:flex-end;margin-top:10px;">
-                <button type="button" class="btn-arsip-semua" onclick="arsipkanSemuaJamaah('${programId}')" title="Arsipkan semua jamaah di program ini">
-                    <i class="bi bi-archive-fill"></i> Arsipkan Semua Jamaah Program Ini
-                </button>
+            <button type="button" class="btn-arsip-semua" onclick="arsipkanSemuaJamaah('${programId}')" title="Arsipkan semua jamaah di program ini">
+                <i class="bi bi-archive-fill"></i> Arsipkan Semua Jamaah Program Ini
+            </button>` : '';
+        const bottomActionsHtml = (exportBtnsHtml || arsipBtnHtml) ? `
+            <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                ${exportBtnsHtml}${arsipBtnHtml}
             </div>` : '';
         if (!jamaah.length) {
             container.innerHTML = `<div class="kb-no-program"><i class="bi bi-person-dash-fill"></i><p>Belum ada jamaah terdaftar untuk program ini.</p></div>`;
@@ -4974,7 +4983,7 @@ async function loadKbJamaahForProgram(programId) {
                     <tbody>${rows}</tbody>
                 </table>
             </div>
-            ${arsipBtnHtml}
+            ${bottomActionsHtml}
         `;
 
     } catch (err) {
