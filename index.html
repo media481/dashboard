@@ -601,106 +601,143 @@
         <div class="modal-body">
             <form id="pendaftaranForm" onsubmit="savePendaftaran(event)">
                 <input type="hidden" id="p_editId" value="">
-                <div id="pfFromJamaahLamaBox" style="display:none;background:#fef3e2;padding:14px;border-radius:12px;margin-bottom:18px;border:1px solid #fbd9a3;">
-                    <label style="font-size:12px;font-weight:700;color:#b8935a;margin-bottom:0;display:flex;align-items:center;gap:6px;"><i class="bi bi-person-vcard-fill"></i> Daftarkan Ulang Jamaah Lama <span style="font-weight:500;color:var(--ink-soft);font-size:11px;">(opsional — cari kalau ini pelanggan lama)</span></label>
-                    <input type="text" id="pf_cari_jamaah_lama" placeholder="Ketik nama / NIK / paspor jamaah lama..." autocomplete="off" oninput="renderPfJamaahLamaOptions(this.value)" style="width:100%;padding:9px 12px;border:1px solid #fbd9a3;border-radius:8px;font-size:12.5px;font-family:inherit;background:#fff;margin-top:10px;">
-                    <div id="pfJamaahLamaResults" style="margin-top:8px;max-height:160px;overflow-y:auto;display:none;"></div>
+
+                <div id="pfFromJamaahLamaBox" class="pf-lama-box" style="display:none;">
+                    <label class="pf-lama-box-label"><i class="bi bi-person-vcard-fill"></i> Daftarkan Ulang Jamaah Lama <span class="pf-lama-box-hint">(opsional — cari kalau ini pelanggan lama)</span></label>
+                    <input type="text" id="pf_cari_jamaah_lama" class="pf-lama-search" placeholder="Ketik nama / NIK / paspor jamaah lama..." autocomplete="off" oninput="renderPfJamaahLamaOptions(this.value)">
+                    <div id="pfJamaahLamaResults" class="pf-lama-results"></div>
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Tanggal Pendaftaran</label>
-                        <input type="date" id="pf_tanggal">
-                    </div>
-                    <div class="form-group">
-                        <label>Program Diminati</label>
-                        <select id="pf_program" class="searchable-select" data-placeholder="-- Belum Ditentukan --" data-search-placeholder="Cari paket umroh...">
-                            <option value="">-- Belum Ditentukan --</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Nama Lengkap Calon Jamaah <span class="required">*</span></label>
-                    <input type="text" id="pf_nama" placeholder="Sesuai identitas, HURUF KAPITAL" required maxlength="150">
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>No. KTP / SIM</label>
-                        <input type="text" id="pf_ktp" placeholder="16 digit NIK atau No. SIM" maxlength="20">
-                    </div>
-                    <div class="form-group">
-                        <label>Jenis Kelamin</label>
-                        <select id="pf_gender">
-                            <option value="">-- Pilih --</option>
-                            <option value="Laki-laki">Laki-laki</option>
-                            <option value="Perempuan">Perempuan</option>
-                        </select>
+
+                <!-- [REDESIGN] Header ringkas: inisial + nama + badge status,
+                     update otomatis lewat pfSyncEditHero() saat nama diketik
+                     / status diubah. -->
+                <div class="ms-edit-hero">
+                    <div class="ms-edit-hero-avatar" id="pfHeroAvatar">–</div>
+                    <div class="ms-edit-hero-text">
+                        <div class="ms-edit-hero-name"><span id="pfHeroName">Calon jamaah baru</span><span class="ms-edit-hero-status st-baru" id="pfHeroStatus">Baru</span></div>
+                        <div class="ms-edit-hero-sub" id="pfHeroSub">Belum ada program dipilih</div>
                     </div>
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Tempat Lahir</label>
-                        <input type="text" id="pf_tempat_lahir" placeholder="Kota kelahiran">
+
+                <!-- Kartu 1: Program & Status -- paling sering dicek/diubah
+                     saat menindaklanjuti lead (baru -> dihubungi -> deal). -->
+                <div class="ms-card">
+                    <div class="ms-card-title"><i class="bi bi-clipboard-check-fill"></i> Program &amp; Status</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tanggal Pendaftaran</label>
+                            <input type="date" id="pf_tanggal">
+                        </div>
+                        <div class="form-group">
+                            <label>Program Diminati</label>
+                            <select id="pf_program" class="searchable-select" data-placeholder="-- Belum Ditentukan --" data-search-placeholder="Cari paket umroh..." onchange="pfSyncEditHero()">
+                                <option value="">-- Belum Ditentukan --</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Tanggal Lahir</label>
-                        <input type="date" id="pf_tgl_lahir">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Alamat</label>
-                    <textarea id="pf_alamat" placeholder="Alamat lengkap sesuai identitas"></textarea>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Kabupaten / Kota</label>
-                        <input type="text" id="pf_asal" placeholder="Contoh: Magetan, Jawa Timur">
-                    </div>
-                    <div class="form-group">
-                        <label>Kode Pos</label>
-                        <input type="text" id="pf_kodepos" placeholder="Kode pos" maxlength="10">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>No. Handphone</label>
-                        <input type="tel" id="pf_wa" placeholder="628xxxxxxxxxx">
-                    </div>
-                    <div class="form-group">
-                        <label>Telp Rumah</label>
-                        <input type="tel" id="pf_telp_rumah" placeholder="Contoh: 0351xxxxxx">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Ahli Waris</label>
-                        <input type="text" id="pf_ahli_waris_nama" placeholder="Nama ahli waris">
-                    </div>
-                    <div class="form-group">
-                        <label>Hubungan Ahli Waris</label>
-                        <select id="pf_ahli_waris_hubungan">
-                            <option value="">-- Pilih --</option>
-                            <option value="Suami">Suami</option>
-                            <option value="Istri">Istri</option>
-                            <option value="Anak">Anak</option>
-                            <option value="Orang Tua">Orang Tua</option>
-                        </select>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="pf_status" onchange="pfSyncEditHero()">
+                                <option value="baru">Baru</option>
+                                <option value="dihubungi">Dihubungi</option>
+                                <option value="deal">Deal</option>
+                                <option value="batal">Batal</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Catatan</label>
+                            <input type="text" id="pf_catatan" placeholder="Catatan tambahan...">
+                        </div>
                     </div>
                 </div>
-                <div class="form-row">
+
+                <!-- Kartu 2: Data Diri -->
+                <div class="ms-card">
+                    <div class="ms-card-title"><i class="bi bi-person-vcard-fill"></i> Data Diri Calon Jamaah</div>
                     <div class="form-group">
-                        <label>Status</label>
-                        <select id="pf_status">
-                            <option value="baru">Baru</option>
-                            <option value="dihubungi">Dihubungi</option>
-                            <option value="deal">Deal</option>
-                            <option value="batal">Batal</option>
-                        </select>
+                        <label>Nama Lengkap Calon Jamaah <span class="required">*</span></label>
+                        <input type="text" id="pf_nama" placeholder="Sesuai identitas, HURUF KAPITAL" required maxlength="150" oninput="pfSyncEditHero()">
                     </div>
-                    <div class="form-group">
-                        <label>Catatan</label>
-                        <input type="text" id="pf_catatan" placeholder="Catatan tambahan...">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>No. KTP / SIM</label>
+                            <input type="text" id="pf_ktp" placeholder="16 digit NIK atau No. SIM" maxlength="20">
+                        </div>
+                        <div class="form-group">
+                            <label>Jenis Kelamin</label>
+                            <select id="pf_gender">
+                                <option value="">-- Pilih --</option>
+                                <option value="Laki-laki">Laki-laki</option>
+                                <option value="Perempuan">Perempuan</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tempat Lahir</label>
+                            <input type="text" id="pf_tempat_lahir" placeholder="Kota kelahiran">
+                        </div>
+                        <div class="form-group">
+                            <label>Tanggal Lahir</label>
+                            <input type="date" id="pf_tgl_lahir">
+                        </div>
                     </div>
                 </div>
+
+                <!-- Kartu 3: Kontak -->
+                <div class="ms-card">
+                    <div class="ms-card-title"><i class="bi bi-telephone-fill"></i> Kontak</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>No. Handphone</label>
+                            <input type="tel" id="pf_wa" placeholder="628xxxxxxxxxx">
+                        </div>
+                        <div class="form-group">
+                            <label>Telp Rumah</label>
+                            <input type="tel" id="pf_telp_rumah" placeholder="Contoh: 0351xxxxxx">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data tambahan -- dilipat spt di modal Edit Data Jamaah,
+                     karena jarang dibutuhkan saat lead masih baru masuk. -->
+                <details class="ms-extra-section" id="pfExtraDetails">
+                    <summary class="ms-card-title"><i class="bi bi-file-earmark-text-fill"></i> Data Tambahan <span class="ms-extra-section-hint">— alamat &amp; ahli waris, opsional saat lead baru masuk</span></summary>
+                    <div class="ms-extra-section-body">
+                        <div class="form-group">
+                            <label>Alamat</label>
+                            <textarea id="pf_alamat" placeholder="Alamat lengkap sesuai identitas"></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Kabupaten / Kota</label>
+                                <input type="text" id="pf_asal" placeholder="Contoh: Magetan, Jawa Timur">
+                            </div>
+                            <div class="form-group">
+                                <label>Kode Pos</label>
+                                <input type="text" id="pf_kodepos" placeholder="Kode pos" maxlength="10">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Ahli Waris</label>
+                                <input type="text" id="pf_ahli_waris_nama" placeholder="Nama ahli waris">
+                            </div>
+                            <div class="form-group">
+                                <label>Hubungan Ahli Waris</label>
+                                <select id="pf_ahli_waris_hubungan">
+                                    <option value="">-- Pilih --</option>
+                                    <option value="Suami">Suami</option>
+                                    <option value="Istri">Istri</option>
+                                    <option value="Anak">Anak</option>
+                                    <option value="Orang Tua">Orang Tua</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
                 <div class="form-actions">
                     <button type="submit" class="btn-submit"><i class="bi bi-floppy-fill"></i> Simpan</button>
                     <button type="button" class="btn-cancel" onclick="closePendaftaranModal()">Batal</button>
@@ -774,19 +811,19 @@
                      admin langsung yakin sedang edit data siapa tanpa perlu
                      lihat lagi ke tabel di belakang modal. Update otomatis
                      lewat kbSyncEditHero() saat nama/program diketik/dipilih. -->
-                <div class="kb-edit-hero">
-                    <div class="kb-edit-hero-avatar" id="kbHeroAvatar">–</div>
-                    <div class="kb-edit-hero-text">
-                        <div class="kb-edit-hero-name" id="kbHeroName">Jamaah baru</div>
-                        <div class="kb-edit-hero-sub" id="kbHeroSub">Belum ada program dipilih</div>
+                <div class="ms-edit-hero">
+                    <div class="ms-edit-hero-avatar" id="kbHeroAvatar">–</div>
+                    <div class="ms-edit-hero-text">
+                        <div class="ms-edit-hero-name" id="kbHeroName">Jamaah baru</div>
+                        <div class="ms-edit-hero-sub" id="kbHeroSub">Belum ada program dipilih</div>
                     </div>
                 </div>
 
                 <!-- Kartu 1: Program & Status -- ini yang paling sering diubah
                      admin (ganti status pembayaran, tipe kamar), jadi ditaruh
                      paling atas supaya tidak perlu scroll. -->
-                <div class="kb-card">
-                    <div class="kb-card-title"><i class="bi bi-airplane-engines-fill"></i> Program &amp; Status</div>
+                <div class="ms-card">
+                    <div class="ms-card-title"><i class="bi bi-airplane-engines-fill"></i> Program &amp; Status</div>
                     <div class="form-group">
                         <label>Program Keberangkatan <span class="required">*</span></label>
                         <select id="kb_program" class="searchable-select" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." required onchange="kbSyncEditHero(); kbUpdatePasporBadge();"></select>
@@ -827,8 +864,8 @@
                 <!-- Kartu 2: Identitas & Dokumen Perjalanan -- paspor & visa
                      digabung di sini karena ini data operasional penting utk
                      urus visa/manifest, bukan sekadar data pelengkap. -->
-                <div class="kb-card">
-                    <div class="kb-card-title"><i class="bi bi-person-vcard-fill"></i> Identitas &amp; Dokumen Perjalanan</div>
+                <div class="ms-card">
+                    <div class="ms-card-title"><i class="bi bi-person-vcard-fill"></i> Identitas &amp; Dokumen Perjalanan</div>
                     <div class="form-group">
                         <label>Nama Lengkap <span class="required">*</span></label>
                         <input type="text" id="kb_nama" placeholder="Sesuai paspor" required maxlength="150" oninput="kbSyncEditHero()">
@@ -847,8 +884,8 @@
                         <div class="form-group">
                             <label>Tgl Kadaluarsa Paspor</label>
                             <input type="date" id="kb_paspor_exp" oninput="kbUpdatePasporBadge()">
-                            <div class="kb-field-with-badge">
-                                <span class="kb-badge is-kosong" id="kbPasporBadge"><i class="bi bi-dash-circle"></i> Belum diisi</span>
+                            <div class="ms-field-with-badge">
+                                <span class="ms-badge is-kosong" id="kbPasporBadge"><i class="bi bi-dash-circle"></i> Belum diisi</span>
                             </div>
                         </div>
                         <div class="form-group">
@@ -865,8 +902,8 @@
                 </div>
 
                 <!-- Kartu 3: Kontak -->
-                <div class="kb-card">
-                    <div class="kb-card-title"><i class="bi bi-telephone-fill"></i> Kontak</div>
+                <div class="ms-card">
+                    <div class="ms-card-title"><i class="bi bi-telephone-fill"></i> Kontak</div>
                     <div class="form-row">
                         <div class="form-group">
                             <label>No. WhatsApp</label>
@@ -882,9 +919,9 @@
                 <!-- Data tambahan sesuai formulir F4 -- tetap dilipat spt
                      sebelumnya karena jarang diedit, tapi header & chevron-nya
                      kini konsisten dgn pola accordion yg dipakai di modal lain. -->
-                <details class="kb-extra-section" id="kbF4Details">
-                    <summary class="kb-card-title"><i class="bi bi-file-earmark-text-fill"></i> Data Tambahan (sesuai F4) <span class="kb-extra-section-hint">— untuk dokumen visa/manifest</span></summary>
-                    <div class="kb-extra-section-body">
+                <details class="ms-extra-section" id="kbF4Details">
+                    <summary class="ms-card-title"><i class="bi bi-file-earmark-text-fill"></i> Data Tambahan (sesuai F4) <span class="ms-extra-section-hint">— untuk dokumen visa/manifest</span></summary>
+                    <div class="ms-extra-section-body">
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Jenis Kelamin</label>

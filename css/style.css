@@ -2650,21 +2650,20 @@
     font-size: 13px;
 }
 
-/* ===== MODAL: EDIT DATA JAMAAH (kbModal) — redesign tampilan =====
-   Form lama satu blok panjang tanpa pengelompokan visual. Dipecah jadi
-   "kartu" per topik (Program & Status, Identitas & Dokumen, Kontak) supaya
-   admin bisa scan cepat field mana yang mau diedit, plus badge otomatis
-   utk masa berlaku paspor. Field yang jarang diedit (alamat, ahli waris,
-   dst) tetap dilipat di bagian bawah spt sebelumnya. Semua id field TIDAK
-   berubah -- ini murni penataan ulang tampilan. */
-.kb-card {
+/* ===== KOMPONEN MODAL BERSAMA (kartu section, hero header, badge, accordion) =====
+   Dipakai bersama oleh modal Edit Data Jamaah & modal Pendaftaran. Form lama
+   satu blok panjang tanpa pengelompokan visual. Dipecah jadi "kartu" per
+   topik supaya admin bisa scan cepat field mana yang mau diedit. Field yang
+   jarang diedit tetap dilipat di bagian bawah. Semua id field TIDAK berubah
+   -- ini murni penataan ulang tampilan. */
+.ms-card {
     background: var(--bg);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     padding: 16px 18px 18px;
     margin-bottom: 16px;
 }
-.kb-card-title {
+.ms-card-title {
     font-weight: 700;
     font-size: 12px;
     text-transform: uppercase;
@@ -2675,16 +2674,16 @@
     align-items: center;
     gap: 8px;
 }
-.kb-card-title i { color: var(--brand); font-size: 13px; }
-.kb-card .form-group:last-child,
-.kb-card .form-row:last-child .form-group { margin-bottom: 0; }
-.kb-card .form-row:last-child { margin-bottom: 0; }
-.kb-card .form-group { margin-bottom: 12px; }
-.kb-card .form-row { margin-bottom: 12px; }
+.ms-card-title i { color: var(--brand); font-size: 13px; }
+.ms-card .form-group:last-child,
+.ms-card .form-row:last-child .form-group { margin-bottom: 0; }
+.ms-card .form-row:last-child { margin-bottom: 0; }
+.ms-card .form-group { margin-bottom: 12px; }
+.ms-card .form-row { margin-bottom: 12px; }
 
 /* Header ringkas: nama + program muncul besar di atas supaya jelas
    sedang mengedit siapa, tanpa perlu baca ulang tabel di belakang modal. */
-.kb-edit-hero {
+.ms-edit-hero {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -2692,7 +2691,7 @@
     margin-bottom: 4px;
     border-bottom: 1px solid var(--line);
 }
-.kb-edit-hero-avatar {
+.ms-edit-hero-avatar {
     width: 42px;
     height: 42px;
     border-radius: 50%;
@@ -2706,14 +2705,14 @@
     font-family: 'Space Grotesk';
     flex-shrink: 0;
 }
-.kb-edit-hero-text { min-width: 0; }
-.kb-edit-hero-name { font-weight: 700; font-size: 15.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.kb-edit-hero-sub { font-size: 12px; color: var(--ink-soft); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-edit-hero-text { min-width: 0; }
+.ms-edit-hero-name { font-weight: 700; font-size: 15.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-edit-hero-sub { font-size: 12px; color: var(--ink-soft); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Badge status paspor -- dihitung otomatis dari tanggal kadaluarsa vs.
    tanggal keberangkatan program yang dipilih (syarat 2026: min. 6-7 bulan). */
-.kb-field-with-badge { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
-.kb-badge {
+.ms-field-with-badge { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.ms-badge {
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -2723,28 +2722,28 @@
     font-weight: 700;
     white-space: nowrap;
 }
-.kb-badge.is-aman { background: var(--success-tint); color: #1b6b48; }
-.kb-badge.is-mepet { background: var(--warn-tint); color: var(--warn); }
-.kb-badge.is-kadaluarsa { background: var(--danger-tint); color: var(--danger); }
-.kb-badge.is-kosong { background: var(--line); color: var(--ink-soft); }
+.ms-badge.is-aman { background: var(--success-tint); color: #1b6b48; }
+.ms-badge.is-mepet { background: var(--warn-tint); color: var(--warn); }
+.ms-badge.is-kadaluarsa { background: var(--danger-tint); color: var(--danger); }
+.ms-badge.is-kosong { background: var(--line); color: var(--ink-soft); }
 
 /* Bagian "Data Tambahan" -- dilipat spt sebelumnya, dgn header + chevron
    memakai pola yg sama dgn .cicilan-activity-section supaya konsisten. */
-.kb-extra-section {
+.ms-extra-section {
     border: 1px solid var(--line);
     border-radius: var(--radius);
     padding: 4px 16px;
     margin-bottom: 4px;
 }
-.kb-extra-section > summary.kb-card-title {
+.ms-extra-section > summary.ms-card-title {
     cursor: pointer;
     list-style: none;
     user-select: none;
     padding: 12px 0;
     margin-bottom: 0;
 }
-.kb-extra-section > summary.kb-card-title::-webkit-details-marker { display: none; }
-.kb-extra-section > summary.kb-card-title::after {
+.ms-extra-section > summary.ms-card-title::-webkit-details-marker { display: none; }
+.ms-extra-section > summary.ms-card-title::after {
     content: '\f282'; /* bootstrap-icons chevron-down */
     font-family: 'bootstrap-icons';
     margin-left: auto;
@@ -2752,6 +2751,56 @@
     color: var(--ink-soft);
     transition: transform .15s;
 }
-.kb-extra-section[open] > summary.kb-card-title::after { transform: rotate(180deg); }
-.kb-extra-section-body { padding: 2px 0 16px; }
-.kb-extra-section-hint { font-weight: 500; text-transform: none; color: var(--ink-soft); letter-spacing: 0; font-size: 11px; }
+.ms-extra-section[open] > summary.ms-card-title::after { transform: rotate(180deg); }
+.ms-extra-section-body { padding: 2px 0 16px; }
+.ms-extra-section-hint { font-weight: 500; text-transform: none; color: var(--ink-soft); letter-spacing: 0; font-size: 11px; }
+
+/* Kotak aksi khusus "cari jamaah lama" di modal Pendaftaran -- dibuat beda
+   warna (bukan abu-abu spt kartu biasa) karena ini kotak AKSI (pencarian),
+   bukan sekadar kelompok field, supaya matanya langsung tertuju ke situ
+   kalau memang mau pakai jalur pintas ini. */
+.pf-lama-box {
+    background: var(--warn-tint);
+    border: 1px solid #f3d4a3;
+    border-radius: var(--radius);
+    padding: 14px 16px 16px;
+    margin-bottom: 18px;
+}
+.pf-lama-box-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--warn);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 0;
+}
+.pf-lama-box-label .pf-lama-box-hint { font-weight: 500; color: var(--ink-soft); font-size: 11px; }
+.pf-lama-search {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid #f3d4a3;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-family: inherit;
+    background: #fff;
+    margin-top: 10px;
+}
+.pf-lama-results { margin-top: 8px; max-height: 160px; overflow-y: auto; display: none; }
+
+/* Badge status pendaftaran di header ringkas (baru/dihubungi/deal/batal) */
+.ms-edit-hero-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 9px;
+    border-radius: 20px;
+    font-size: 10.5px;
+    font-weight: 700;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+.ms-edit-hero-status.st-baru { background: var(--brand-tint); color: var(--brand-deep); }
+.ms-edit-hero-status.st-dihubungi { background: var(--warn-tint); color: var(--warn); }
+.ms-edit-hero-status.st-deal { background: var(--success-tint); color: #1b6b48; }
+.ms-edit-hero-status.st-batal { background: var(--danger-tint); color: var(--danger); }

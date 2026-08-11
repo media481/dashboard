@@ -4548,6 +4548,7 @@ function openPendaftaranModal(id = null) {
         (dataUmroh || []).map(prog => `<option value="${prog.id}">${escapeHtml(prog.nama)}</option>`).join('');
 
     const jamaahLamaBox = document.getElementById('pfFromJamaahLamaBox');
+    let hasExtraData = false;
 
     if (id) {
         const p = pendaftaranList.find(item => item.id === id);
@@ -4571,6 +4572,9 @@ function openPendaftaranModal(id = null) {
         document.getElementById('pf_ahli_waris_hubungan').value = p.ahli_waris_hubungan || '';
         document.getElementById('pf_status').value = p.status || 'baru';
         document.getElementById('pf_catatan').value = p.catatan || '';
+        // [REDESIGN] Buka otomatis bagian "Data Tambahan" kalau salah satu
+        // field-nya sudah terisi, biar kelihatan tanpa perlu klik dulu.
+        hasExtraData = !!(p.alamat || p.asal || p.kode_pos || p.ahli_waris_nama || p.ahli_waris_hubungan);
     } else {
         document.getElementById('pendaftaranModalTitle').textContent = 'Tambah Pendaftaran';
         document.getElementById('pf_tanggal').value = new Date().toISOString().slice(0, 10);
@@ -4582,11 +4586,43 @@ function openPendaftaranModal(id = null) {
         if (resultsBox) { resultsBox.innerHTML = ''; resultsBox.style.display = 'none'; }
     }
 
+    const pfExtraDetails = document.getElementById('pfExtraDetails');
+    if (pfExtraDetails) pfExtraDetails.open = hasExtraData;
+
+    pfSyncEditHero();
+
     modal.classList.add('open');
 }
 
 function closePendaftaranModal() {
     document.getElementById('pendaftaranModal').classList.remove('open');
+}
+
+// [REDESIGN] Header ringkas di modal Pendaftaran -- inisial + nama + badge
+// status + nama program, diperbarui live saat diketik/dipilih supaya admin
+// selalu yakin sedang menangani lead yang mana.
+function pfSyncEditHero() {
+    const nameEl = document.getElementById('pf_nama');
+    const programSel = document.getElementById('pf_program');
+    const statusSel = document.getElementById('pf_status');
+    const avatarEl = document.getElementById('pfHeroAvatar');
+    const nameOut = document.getElementById('pfHeroName');
+    const statusOut = document.getElementById('pfHeroStatus');
+    const subOut = document.getElementById('pfHeroSub');
+    if (!nameEl || !avatarEl || !nameOut || !statusOut || !subOut) return;
+
+    const nama = (nameEl.value || '').trim();
+    nameOut.textContent = nama || 'Calon jamaah baru';
+    avatarEl.textContent = nama ? nama.trim().charAt(0).toUpperCase() : '–';
+
+    const statusLabels = { baru: 'Baru', dihubungi: 'Dihubungi', deal: 'Deal', batal: 'Batal' };
+    const statusVal = statusSel ? (statusSel.value || 'baru') : 'baru';
+    statusOut.textContent = statusLabels[statusVal] || 'Baru';
+    statusOut.className = 'ms-edit-hero-status st-' + statusVal;
+
+    const programId = programSel ? programSel.value : '';
+    const program = programId ? (dataUmroh || []).find(p => String(p.id) === String(programId)) : null;
+    subOut.textContent = program ? (program.nama || 'Program tanpa nama') : 'Belum ada program dipilih';
 }
 
 async function savePendaftaran(e) {
@@ -5239,7 +5275,7 @@ function kbUpdatePasporBadge() {
 
     const expVal = expInput.value;
     if (!expVal) {
-        badge.className = 'kb-badge is-kosong';
+        badge.className = 'ms-badge is-kosong';
         badge.innerHTML = '<i class="bi bi-dash-circle"></i> Belum diisi';
         return;
     }
@@ -5250,17 +5286,17 @@ function kbUpdatePasporBadge() {
     const refDate = (program && program.dateObj instanceof Date && !isNaN(program.dateObj)) ? program.dateObj : new Date();
 
     if (expDate < refDate) {
-        badge.className = 'kb-badge is-kadaluarsa';
+        badge.className = 'ms-badge is-kadaluarsa';
         badge.innerHTML = '<i class="bi bi-exclamation-octagon-fill"></i> Sudah/akan kadaluarsa';
         return;
     }
 
     const monthsLeft = (expDate.getFullYear() - refDate.getFullYear()) * 12 + (expDate.getMonth() - refDate.getMonth());
     if (monthsLeft < 6) {
-        badge.className = 'kb-badge is-mepet';
+        badge.className = 'ms-badge is-mepet';
         badge.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> Mepet, kurang dari 6 bulan';
     } else {
-        badge.className = 'kb-badge is-aman';
+        badge.className = 'ms-badge is-aman';
         badge.innerHTML = '<i class="bi bi-check-circle-fill"></i> Aman';
     }
 }
@@ -5331,6 +5367,10 @@ function fillPfFromJamaahLama(jamaahId) {
     document.getElementById('pf_telp_rumah').value = j.telp_rumah || '';
     document.getElementById('pf_ahli_waris_nama').value = j.ahli_waris_nama || '';
     document.getElementById('pf_ahli_waris_hubungan').value = j.ahli_waris_hubungan || '';
+
+    const pfExtraDetails = document.getElementById('pfExtraDetails');
+    if (pfExtraDetails && (j.alamat || j.asal || j.kode_pos || j.ahli_waris_nama || j.ahli_waris_hubungan)) pfExtraDetails.open = true;
+    pfSyncEditHero();
 
     const resultsBox = document.getElementById('pfJamaahLamaResults');
     if (resultsBox) { resultsBox.innerHTML = ''; resultsBox.style.display = 'none'; }
