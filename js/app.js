@@ -7721,6 +7721,21 @@ function tglKepulanganProgram(programId, field) {
     return (p && p[field]) || '';
 }
 
+// Tanggal jadwal keberangkatan program (kolom programs.tgl, format Indonesia
+// spt "17 September 2026") dikonversi ke yyyy-mm-dd -- dipakai sebagai NILAI
+// DEFAULT untuk input Tgl Berangkat Aktual di tab Status Kepulangan selama
+// belum diisi manual, supaya admin tidak perlu isi ulang tanggal yang sudah
+// ada di jadwal program. Sekadar default tampilan, belum tersimpan ke
+// programs.tgl_berangkat_aktual sampai admin benar-benar menyimpan (submit
+// field itu, walau isinya sama).
+function tglJadwalProgramISO(programId) {
+    const p = (dataUmroh || []).find(pr => String(pr.id) === String(programId));
+    if (!p || !p.tgl) return '';
+    const d = parseDateFromString(p.tgl);
+    if (!d || isNaN(d.getTime())) return '';
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 // Status kepulangan seorang jamaah = status program-nya (tidak ada override
 // per jamaah lagi -- satu rombongan berangkat & pulang bersamaan).
 function efektifStatusKepulangan(jamaah) {
@@ -7811,18 +7826,24 @@ async function loadKepulanganForProgram(programId) {
 
         const canEdit = canManageProgramData();
         const infoProgram = kepulanganStatusInfo(programStatus);
-        const programTglBerangkat = tglKepulanganProgram(programId, 'tgl_berangkat_aktual');
+        const tglBerangkatTersimpan = tglKepulanganProgram(programId, 'tgl_berangkat_aktual');
+        // Kalau belum pernah diisi manual, default-kan ke tanggal jadwal
+        // program (programs.tgl) supaya admin tidak perlu isi ulang tanggal
+        // yang sudah ada di jadwal -- tetap bisa diubah kalau realisasinya beda.
+        const pakaiDefaultJadwal = !tglBerangkatTersimpan;
+        const programTglBerangkat = tglBerangkatTersimpan || tglJadwalProgramISO(programId);
         const programTglPulang = tglKepulanganProgram(programId, 'tgl_pulang_aktual');
 
         // Status & tanggal kepulangan berlaku untuk SELURUH jamaah program
         // ini sekaligus -- tidak ada override per jamaah, karena satu
-        // rombongan pasti berangkat & pulang bersamaan.
+        // rombongan pasti berangkat & pulang bersamaan. Dibuat 1 baris
+        // (label dipendekkan, lebar field diperkecil) supaya hemat ruang.
         const programPanelHtml = `
-            <div class="kp-program-panel" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);">
-                <i class="bi bi-flag-fill" style="color:var(--ink-soft);"></i>
-                <span style="font-size:12.5px;color:var(--ink-soft);">Status Rombongan:</span>
+            <div class="kp-program-panel" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);">
+                <i class="bi bi-flag-fill" style="color:var(--ink-soft);flex-shrink:0;"></i>
+                <span style="font-size:12.5px;color:var(--ink-soft);flex-shrink:0;">Status:</span>
                 ${canEdit ? `
-                <div class="kp-select-wrap">
+                <div class="kp-select-wrap" style="min-width:150px;">
                     <select id="kpProgramStatusSelect" class="kp-field kp-status-select badge-${infoProgram.badge}"
                         onchange="updateStatusKepulanganProgram(this.value); kpRecolorStatusSelect(this);">
                         ${KEPULANGAN_STATUS_OPSI.map(s => `<option value="${s.value}" ${s.value === programStatus ? 'selected' : ''}>${s.label}</option>`).join('')}
@@ -7830,15 +7851,16 @@ async function loadKepulanganForProgram(programId) {
                     <i class="bi bi-chevron-down"></i>
                 </div>` : `<span class="status-badge ${infoProgram.badge}">${infoProgram.label}</span>`}
 
-                <span style="font-size:12.5px;color:var(--ink-soft);margin-left:8px;">Tgl Berangkat:</span>
+                <span style="font-size:12.5px;color:var(--ink-soft);flex-shrink:0;">Berangkat:</span>
                 <input type="date" class="kp-field" value="${programTglBerangkat}" ${canEdit ? '' : 'disabled'}
-                    onchange="updateTanggalKepulanganProgram('tgl_berangkat_aktual', this.value)" style="min-width:140px;">
+                    ${pakaiDefaultJadwal && programTglBerangkat ? 'title="Ikut jadwal program -- belum dikonfirmasi manual"' : ''}
+                    onchange="updateTanggalKepulanganProgram('tgl_berangkat_aktual', this.value)" style="min-width:128px;flex:1 1 128px;${pakaiDefaultJadwal ? 'border-style:dashed;' : ''}">
 
-                <span style="font-size:12.5px;color:var(--ink-soft);margin-left:8px;">Tgl Pulang:</span>
+                <span style="font-size:12.5px;color:var(--ink-soft);flex-shrink:0;">Pulang:</span>
                 <input type="date" class="kp-field" value="${programTglPulang}" ${canEdit ? '' : 'disabled'}
-                    onchange="updateTanggalKepulanganProgram('tgl_pulang_aktual', this.value)" style="min-width:140px;">
+                    onchange="updateTanggalKepulanganProgram('tgl_pulang_aktual', this.value)" style="min-width:128px;flex:1 1 128px;">
 
-                <span style="font-size:11px;color:var(--ink-soft);width:100%;">Berlaku untuk seluruh ${jamaah.length} jamaah di program ini sekaligus -- satu rombongan berangkat & pulang bersamaan, jadi tidak ada status/tanggal per jamaah.</span>
+                <span style="font-size:11px;color:var(--ink-soft);width:100%;">Berlaku untuk seluruh ${jamaah.length} jamaah di program ini sekaligus -- satu rombongan berangkat & pulang bersamaan, jadi tidak ada status/tanggal per jamaah.${pakaiDefaultJadwal && programTglBerangkat ? ' Tgl Berangkat (garis putus-putus) otomatis ikut jadwal program sampai dikonfirmasi manual.' : ''}</span>
             </div>`;
 
         container.innerHTML = `
