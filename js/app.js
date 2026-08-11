@@ -3323,37 +3323,95 @@ const SNAPSHOT_TRIGGER_LABEL = {
     'auto-pre-import': { text: 'Auto · sebelum import', color: '#E07B2E', tint: '#FBEBD9' }
 };
 
+// Label hari untuk header grup timeline: "Hari ini" / "Kemarin" / nama hari
+// lengkap -- supaya lebih cepat dipindai dibanding tanggal mentah, terutama
+// waktu ada beberapa snapshot dalam satu hari (harian + manual, dst).
+function formatSnapDayLabel(d) {
+    if (isNaN(d)) return '-';
+    const startOfDay = x => { const c = new Date(x); c.setHours(0, 0, 0, 0); return c.getTime(); };
+    const today = startOfDay(new Date());
+    const yesterday = today - 86400000;
+    const tglLengkap = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    if (startOfDay(d) === today) return `Hari ini &middot; ${tglLengkap}`;
+    if (startOfDay(d) === yesterday) return `Kemarin &middot; ${tglLengkap}`;
+    return d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 function renderSnapshotAdminTable() {
     const wrap = document.getElementById('snapshotTableWrap');
     if (!wrap) return;
     wrap.innerHTML = '<div style="text-align:center;padding:18px;color:var(--ink-soft);font-size:12px;"><i class="bi bi-arrow-repeat bi-spin"></i> Memuat...</div>';
     listSnapshots().then(rows => {
-        const pct = Math.min(100, Math.round((rows.length / MAX_SNAPSHOTS) * 100));
+        // ---- Reel kapasitas: 10 "frame" seperti gulungan film -- kiri = paling
+        // tua, kanan = slot kosong yang masih tersisa. Begitu 10 slot penuh,
+        // frame paling kiri (tertua) ditandai sebagai kandidat berikutnya yang
+        // otomatis tergantikan (FIFO), sesuai perilaku nyata di takeSnapshot().
+        const oldestToNewest = [...rows].reverse();
+        const reelSlots = oldestToNewest.slice();
+        while (reelSlots.length < MAX_SNAPSHOTS) reelSlots.push(null);
+        const reelHtml = reelSlots.map((r, i) => {
+            if (!r) return `<span class="snap-frame snap-frame-empty" title="Slot kosong"></span>`;
+            const trig = SNAPSHOT_TRIGGER_LABEL[r.trigger] || { text: r.trigger || 'manual', color: '#64758A', tint: '#F4F7FB' };
+            const d = new Date(r.created_at);
+            const tstr = isNaN(d) ? '' : d.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+            const isOldest = i === 0 && oldestToNewest.length >= MAX_SNAPSHOTS;
+            const tip = `${r.label || 'Snapshot'} &middot; ${tstr}${isOldest ? ' &middot; akan digantikan snapshot berikutnya' : ''}`;
+            return `<span class="snap-frame${isOldest ? ' snap-frame-oldest' : ''}" style="background:${trig.color};" title="${escapeHtml(tip)}"></span>`;
+        }).join('');
+        const reelGaugeHtml = `
+            <div class="snap-reel-wrap">
+                <div class="snap-reel-track">${reelHtml}</div>
+                <span class="snap-reel-count">${rows.length}<em>/${MAX_SNAPSHOTS}</em></span>
+            </div>`;
 
         if (!rows.length) {
             wrap.innerHTML = `
-                <div class="snap-progress-wrap"><div class="snap-progress-track"><div class="snap-progress-fill" style="width:0%;"></div></div><span class="snap-progress-label">0/${MAX_SNAPSHOTS}</span></div>
-                <div class="snap-empty"><i class="bi bi-camera2"></i><span>Belum ada snapshot. Klik <b>Ambil</b> untuk cadangan pertama.</span></div>`;
+                ${reelGaugeHtml}
+                <div class="snap-empty"><i class="bi bi-camera2"></i><span>Belum ada snapshot. Klik <b>Ambil</b> di kanan atas untuk membuat cadangan pertama.</span></div>`;
             return;
         }
 
-        const itemsHtml = rows.map(r => {
+        // ---- Kelompokkan per hari (data sudah urut terbaru -> tertua) ----
+        const groups = [];
+        let curKey = null, curGroup = null;
+        rows.forEach(r => {
             const d = new Date(r.created_at);
-            const tstr = isNaN(d) ? '-' : d.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-            const total = (r.meta && r.meta.total_rows != null) ? r.meta.total_rows : '-';
-            const trig = SNAPSHOT_TRIGGER_LABEL[r.trigger] || { text: r.trigger || 'manual', color: '#64758A', tint: '#F4F7FB' };
+            const key = isNaN(d) ? 'unknown' : d.toISOString().slice(0, 10);
+            if (key !== curKey) {
+                curGroup = { date: d, items: [] };
+                groups.push(curGroup);
+                curKey = key;
+            }
+            curGroup.items.push(r);
+        });
+
+        const groupsHtml = groups.map(g => {
+            const itemsHtml = g.items.map(r => {
+                const d = new Date(r.created_at);
+                const tstr = isNaN(d) ? '-' : d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                const total = (r.meta && r.meta.total_rows != null) ? r.meta.total_rows : '-';
+                const trig = SNAPSHOT_TRIGGER_LABEL[r.trigger] || { text: r.trigger || 'manual', color: '#64758A', tint: '#F4F7FB' };
+                return `
+                <div class="snap-card">
+                    <span class="snap-card-dot" style="background:${trig.color};"></span>
+                    <div class="snap-card-main">
+                        <div class="snap-card-top">
+                            <span class="snap-card-label" title="${escapeHtml(r.label || 'Snapshot')}">${escapeHtml(r.label || 'Snapshot')}</span>
+                            <span class="snap-card-badge" style="color:${trig.color};background:${trig.tint};">${escapeHtml(trig.text)}</span>
+                        </div>
+                        <div class="snap-card-meta">${tstr} &middot; ${total} baris</div>
+                    </div>
+                    <button class="snap-card-restore" title="Pulihkan snapshot ini" onclick="restoreSnapshot('${r.id}')"><i class="bi bi-arrow-counterclockwise"></i></button>
+                </div>`;
+            }).join('');
             return `
-            <div class="snap-row">
-                <span class="snap-dot" style="background:${trig.color};" title="${escapeHtml(trig.text)}"></span>
-                <span class="snap-row-label" title="${escapeHtml(r.label || 'Snapshot')}">${escapeHtml(r.label || 'Snapshot')}</span>
-                <span class="snap-row-meta">${tstr} · ${total} baris</span>
-                <button class="btn-icon-ghost btn-xs" title="Pulihkan snapshot ini" onclick="restoreSnapshot('${r.id}')"><i class="bi bi-arrow-counterclockwise"></i></button>
+            <div class="snap-day-group">
+                <div class="snap-day-label">${formatSnapDayLabel(g.date)}</div>
+                <div class="snap-timeline">${itemsHtml}</div>
             </div>`;
         }).join('');
 
-        wrap.innerHTML = `
-            <div class="snap-progress-wrap"><div class="snap-progress-track"><div class="snap-progress-fill" style="width:${pct}%;"></div></div><span class="snap-progress-label">${rows.length}/${MAX_SNAPSHOTS}</span></div>
-            <div class="snap-list">${itemsHtml}</div>`;
+        wrap.innerHTML = `${reelGaugeHtml}<div class="snap-groups">${groupsHtml}</div>`;
     }).catch(err => {
         wrap.innerHTML = '<div style="text-align:center;padding:18px;color:var(--danger);font-size:12px;">Gagal memuat: ' + escapeHtml(err.message || err) + '</div>';
     });
