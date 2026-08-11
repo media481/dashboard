@@ -134,7 +134,7 @@
                 </div>
             </div>
             <div class="topbar-actions">
-                <button class="btn-primary" id="btnTambahProgram" onclick="openAdminPanel('program')" style="display:none;">
+                <button class="btn-primary" id="btnTambahProgram" onclick="openQuickAddProgramModal()" style="display:none;">
                     <i class="bi bi-plus-lg"></i> Tambah
                 </button>
                 <button class="hamburger-toggle" onclick="toggleMobileSidebar()">
@@ -682,6 +682,31 @@
                 <button type="button" class="btn-cancel" onclick="copyProgramDetailWaText()"><i class="bi bi-clipboard-fill"></i> Salin</button>
             </div>
             <textarea id="pd_teks_wa" class="pd-wa-textarea" readonly></textarea>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL: TAMBAH PROGRAM CEPAT (shortcut dari tombol "Tambah" topbar) =====
+     Paste teks broadcast -> Isi Otomatis + Simpan sekaligus dalam 1 klik,
+     tanpa perlu buka halaman Admin Panel & form lengkap secara manual.
+     Field lengkap tetap terisi di balik layar (lewat parseBroadcastText() &
+     saveAdminProgram() yang sudah ada) supaya semua field lain tetap tersimpan
+     seperti biasa -- modal ini cuma jalan pintas tampilannya saja. -->
+<div class="modal-overlay" id="quickAddProgramModal">
+    <div class="modal-content" style="max-width:560px;">
+        <div class="modal-header">
+            <h2><i class="bi bi-lightning-charge-fill"></i> Tambah Program Cepat</h2>
+            <button class="modal-close" onclick="closeQuickAddProgramModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="margin-bottom:12px;color:var(--ink-soft);font-size:13.5px;">Paste teks broadcast program umroh di bawah ini, lalu klik <strong>Simpan</strong> — form akan otomatis terisi & langsung tersimpan sebagai program baru.</p>
+            <div class="form-group" style="margin-bottom:8px;">
+                <textarea id="quickAddBroadcastInput" rows="12" placeholder="Paste teks broadcast di sini..." style="font-size:12.5px;" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();quickSaveProgramFromBroadcast();}"></textarea>
+            </div>
+            <div class="form-actions" style="border-top:none;padding-top:0;">
+                <button class="btn-primary" id="quickAddProgramSaveBtn" onclick="quickSaveProgramFromBroadcast()" disabled><i class="bi bi-floppy-fill"></i> Simpan</button>
+                <button class="btn-cancel" onclick="closeQuickAddProgramModal()">Batal</button>
+            </div>
         </div>
     </div>
 </div>

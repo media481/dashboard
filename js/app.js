@@ -2208,6 +2208,75 @@ async function showAdminForm() {
     setupAdminFormAnchorNav();
 }
 
+// ============================================================
+// 13b. TAMBAH PROGRAM CEPAT (shortcut tombol "Tambah" di topbar)
+// ============================================================
+// Paste teks broadcast -> Isi Otomatis + Simpan sekaligus dalam 1 klik.
+// Modal ini cuma "wajah" tampilan -- di baliknya tetap memakai form Tambah
+// Program yang sudah ada (disembunyikan, display:none) sebagai mesin isi-
+// otomatis (parseBroadcastText()) & simpan (saveAdminProgram()), supaya
+// semua field lain (harga, hotel, termasuk/tidak termasuk, dll) tetap ikut
+// tersimpan persis seperti alur Tambah Program biasa.
+async function openQuickAddProgramModal() {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menambah program', 'error'); return; }
+
+    const modal = document.getElementById('quickAddProgramModal');
+    const input = document.getElementById('quickAddBroadcastInput');
+    const saveBtn = document.getElementById('quickAddProgramSaveBtn');
+    input.value = '';
+    saveBtn.disabled = true;
+    input.placeholder = 'Menyiapkan form...';
+    modal.classList.add('open'); // tampilkan modal DULU, baru siapkan form di baliknya
+
+    // Siapkan form Tambah Program di background (tersembunyi di balik modal ini)
+    await ensureAdminProgramPageReady();
+    editingProgramId = null;
+    setAdminFormData({}); // bersihkan sisa data dari sesi sebelumnya
+    cxClearAutofillHighlight();
+    const bcInput = document.getElementById('parseBroadcastInput');
+    if (bcInput) bcInput.value = '';
+    syncBroadcastRefBox();
+
+    // Modal bisa saja sudah ditutup pengguna sebelum persiapan di atas selesai
+    if (!modal.classList.contains('open')) return;
+    input.placeholder = 'Paste teks broadcast di sini...';
+    saveBtn.disabled = false;
+    input.focus();
+}
+
+function closeQuickAddProgramModal() {
+    document.getElementById('quickAddProgramModal').classList.remove('open');
+    closeAdminPanel(); // kembalikan tampilan ke tab dashboard semula
+}
+
+async function quickSaveProgramFromBroadcast() {
+    const input = document.getElementById('quickAddBroadcastInput');
+    const text = (input.value || '').trim();
+    if (!text) { showToast('Paste teks broadcast dulu', 'error'); return; }
+
+    const bcInput = document.getElementById('parseBroadcastInput');
+    if (!bcInput) { showToast('Form belum siap, coba lagi sebentar', 'error'); return; }
+    bcInput.value = text;
+    parseBroadcastText();
+
+    const saveBtn = document.getElementById('quickAddProgramSaveBtn');
+    const originalLabel = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Menyimpan...';
+    const ok = await saveAdminProgram();
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = originalLabel;
+
+    if (ok) closeQuickAddProgramModal(); // gagal -> modal tetap terbuka, toast error sudah ditampilkan
+}
+
+// Esc = batal, Ctrl/Cmd+Enter = simpan (dari textarea sudah ditangani onkeydown-nya sendiri)
+document.addEventListener('keydown', function(e) {
+    const modal = document.getElementById('quickAddProgramModal');
+    if (!modal || !modal.classList.contains('open')) return;
+    if (e.key === 'Escape') closeQuickAddProgramModal();
+});
+
 // ---- Anchor-nav sticky di dalam form Tambah/Edit Program: supaya kalau
 // salah isi di section atas (mis. Harga) user bisa lompat langsung ke situ
 // tanpa scroll manual, dan tombolnya menyorot section mana yang sedang
@@ -2519,10 +2588,10 @@ async function renderSidebarNav() {
 }
 
 async function saveAdminProgram() {
-    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengubah data program', 'error'); return; }
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengubah data program', 'error'); return false; }
     const nama = document.getElementById('admin_nama')?.value.trim();
-    if (!nama) { alert('Nama program wajib diisi!'); return; }
-    if (!isValidProgramName(nama)) { alert('Nama program mengandung karakter tidak valid!'); return; }
+    if (!nama) { alert('Nama program wajib diisi!'); return false; }
+    if (!isValidProgramName(nama)) { alert('Nama program mengandung karakter tidak valid!'); return false; }
 
     const formData = getAdminFormData();
 
@@ -2548,7 +2617,7 @@ async function saveAdminProgram() {
     for (const field of urlFields) {
         if (formData[field] && !isValidUrl(formData[field])) {
             alert(`Link ${field.replace('_',' ')} tidak valid!`);
-            return;
+            return false;
         }
     }
 
@@ -2599,9 +2668,11 @@ async function saveAdminProgram() {
             autoScanPosterForProgram(savedRow.id);
         }
 
+        return true;
     } catch (err) {
         console.error('Save program error:', err);
         showToast('Gagal menyimpan: ' + err.message, 'error');
+        return false;
     }
 }
 
