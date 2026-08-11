@@ -844,7 +844,13 @@ async function callWaCaptionAI(rawConcept) {
     if (!response.ok) {
         let detail = '';
         try { detail = (await response.json()).error || ''; } catch (e) {}
-        throw new Error(detail || 'Gagal memanggil API (status ' + response.status + ')');
+        const err = new Error(detail || 'Gagal memanggil API (status ' + response.status + ')');
+        // Edge Function membungkus error Gemini jadi status 500 (bukan meneruskan
+        // 429 aslinya), jadi rate-limit/quota habis dideteksi dari isi pesan --
+        // dipakai runBatchCaptionAI() untuk menghentikan loop lebih awal supaya
+        // tidak menghabiskan sisa kuota percuma dengan panggilan yang pasti gagal.
+        if (/429|quota|rate.?limit/i.test(detail)) err.isRateLimit = true;
+        throw err;
     }
     const data = await response.json();
     let result = (data.text || '').trim();
@@ -854,6 +860,7 @@ async function callWaCaptionAI(rawConcept) {
     result = enforceWaCaptionFormat(result);
     return result;
 }
+
 
 // Cari program yang teks_wa-nya masih kosong TAPI datanya sudah cukup untuk
 // disusun jadi caption (minimal nama + salah satu dari durasi/tanggal/harga) --
@@ -931,7 +938,7 @@ async function runBatchCaptionAI(targets, opts) {
     const btn = document.getElementById(opts.btnId);
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Menyusun 0/' + targets.length + '...'; }
 
-    let sukses = 0, gagal = 0;
+    let sukses = 0, gagal = 0, berhentiKuota = false;
     const gagalNama = [];
     showToast(`Mulai generate ${targets.length} caption AI...`);
 
@@ -950,6 +957,10 @@ async function runBatchCaptionAI(targets, opts) {
             console.error('Batch caption gagal untuk', prog.nama, err);
             gagal++;
             gagalNama.push(prog.nama || `#${prog.id}`);
+            // Kuota/rate limit Gemini habis -> berhenti SEKARANG, jangan lanjut
+            // memanggil program berikutnya karena hampir pasti gagal juga
+            // (buang-buang waktu & bikin toast error bertumpuk percuma).
+            if (err.isRateLimit) { berhentiKuota = true; break; }
         }
         // Jeda kecil antar panggilan supaya tidak kena rate limit Gemini free tier.
         if (i < targets.length - 1) await new Promise(r => setTimeout(r, 1200));
@@ -958,7 +969,10 @@ async function runBatchCaptionAI(targets, opts) {
     _batchCaptionRunning = false;
     await renderAdminPanel();
 
-    if (gagal === 0) {
+    if (berhentiKuota) {
+        const sisaBelumDiproses = targets.length - sukses - gagal;
+        showToast(`⏸ Berhenti otomatis — kuota API Gemini habis. ${sukses} caption berhasil sebelum berhenti, ${sisaBelumDiproses} program lain belum diproses. Coba lagi nanti (tombolnya akan muncul lagi dengan sisa program).`, 'error');
+    } else if (gagal === 0) {
         showToast(`✓ Selesai — ${sukses} caption berhasil di-generate`);
     } else {
         showToast(`Selesai — ${sukses} berhasil, ${gagal} gagal (${gagalNama.slice(0, 3).join(', ')}${gagalNama.length > 3 ? ', ...' : ''})`, 'error');
