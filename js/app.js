@@ -1947,13 +1947,19 @@ async function renderAdminPanel() {
         const isGuest = currentRole === 'guest';
         const canEditData = isAdmin || isUser; // boleh tambah/edit/hapus program
         const { data } = await supabaseClient.from('programs').select('*').order('created_at');
+        const nowForSort = new Date();
         adminPrograms = (data || []).map(unpackProgramAdminData).sort((a, b) => {
             const da = a.tgl ? parseDateFromString(a.tgl) : null;
             const db = b.tgl ? parseDateFromString(b.tgl) : null;
+            // Program yang sudah expired (tanggal berangkat sudah lewat) dinonaktifkan
+            // secara tampilan & selalu ditaruh paling bawah, di bawah program tanpa tanggal.
+            const aExpired = !!(da && da < nowForSort);
+            const bExpired = !!(db && db < nowForSort);
+            if (aExpired !== bExpired) return aExpired ? 1 : -1;
             if (!da && !db) return 0;
-            if (!da) return 1;  // program tanpa tanggal ditaruh di bawah
-            if (!db) return -1;
-            return da - db;
+            if (!da) return aExpired ? -1 : 1;  // program tanpa tanggal ditaruh di bawah (kecuali dua-duanya expired)
+            if (!db) return aExpired ? 1 : -1;
+            return aExpired ? db - da : da - db; // expired: terbaru dulu; aktif: terdekat dulu
         });
 
         container.innerHTML = `
@@ -2536,6 +2542,11 @@ function renderAdminTable() {
         return;
     }
     tbody.innerHTML = adminPrograms.map(p => {
+        const pDate = p.tgl ? parseDateFromString(p.tgl) : null;
+        const isExpiredRow = !!(pDate && pDate < new Date());
+        const expiredBadge = isExpiredRow
+            ? `<span class="status-badge full" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;"><i class="bi bi-clock-history" style="font-size:10px;"></i>Expired</span>`
+            : '';
         const noPoster = !p.link_poster;
         const posterBadge = noPoster
             ? (canEditData
@@ -2558,9 +2569,10 @@ function renderAdminTable() {
                 : `<span class="cx-status-bar warn" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;"><i class="bi bi-chat-square-text" style="font-size:10px;"></i>Caption belum lengkap</span>`;
         }
         return `
-        <tr>
+        <tr${isExpiredRow ? ' class="admin-row-expired" style="opacity:.55;"' : ''}>
             <td>
                 <strong>${escapeHtml(p.nama||'-')}</strong>
+                ${expiredBadge}
                 ${posterBadge}
                 ${captionBadge}
             </td>
