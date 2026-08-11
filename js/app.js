@@ -772,6 +772,228 @@ async function generateCaptionAI() {
 }
 
 // ============================================================
+// 4b. GENERATE CAPTION AI MASSAL (untuk program yang teks_wa-nya kosong)
+// ============================================================
+// Skenario: data program sudah lengkap (hasil Parse Broadcast / OCR poster /
+// isian manual admin), tapi caption WA-nya belum pernah di-generate --
+// biasanya program lama/hasil import yang belum sempat dibuka satu-satu lewat
+// tombol "Generate dengan AI" di form edit. Fitur ini menyisir SEMUA program
+// yang teks_wa-nya masih kosong lalu generate captionnya otomatis, berjalan
+// satu-per-satu (bukan paralel) supaya tidak kena rate limit Gemini free tier.
+
+// Susun "konsep mentah" dari SATU baris program (bukan dari form DOM seperti
+// buildRawConceptFromAdminForm) -- dipakai batch generator supaya tidak perlu
+// buka form satu-satu. Sumber data: field program yang sudah di-unpack lewat
+// unpackProgramAdminData (harga_quad/hotel/dll sudah di level atas), ditambah
+// poster_data (hasil OCR) di admin_data_lengkap sebagai pelengkap untuk field
+// yang cuma tersimpan di sana (mis. jarak hotel).
+function buildRawConceptFromProgramRow(prog) {
+    if (!prog || !prog.nama) return '';
+    const adl = (() => {
+        try { return prog.admin_data_lengkap ? (typeof prog.admin_data_lengkap === 'string' ? JSON.parse(prog.admin_data_lengkap) : prog.admin_data_lengkap) : {}; }
+        catch (e) { return {}; }
+    })();
+    const pd = adl.poster_data || {};
+    const g = key => prog[key] || pd[key] || '';
+
+    const lines = [`*${prog.nama.toUpperCase()}*`];
+    const durasi = g('durasi');
+    if (durasi) lines.push(`Program ${durasi.toString().replace(/\s*hari/i, '').trim()} Hari`);
+    const tgl = g('tgl');
+    if (tgl) lines.push(`Tanggal Berangkat: ${tgl}`);
+    const maskapai = g('maskapai');
+    if (maskapai) lines.push(`*PESAWAT*\n${maskapai}`);
+    const hotelMadinah = g('hotel_madinah');
+    if (hotelMadinah) {
+        const jarak = pd.hotel_madinah_jarak || '';
+        lines.push(`*HOTEL MADINAH*\n${hotelMadinah}${jarak ? `\n(${jarak})` : ''}`);
+    }
+    const hotelMakkah = g('hotel_makkah');
+    if (hotelMakkah) {
+        const jarak = pd.hotel_makkah_jarak || '';
+        lines.push(`*HOTEL MEKAH*\n${hotelMakkah}${jarak ? `\n(${jarak})` : ''}`);
+    }
+    const hargaLines = [];
+    const hargaQuint = g('harga_quint'), hargaQuad = g('harga_quad'), hargaTriple = g('harga_triple'), hargaDouble = g('harga_double');
+    if (hargaQuint) hargaLines.push(`${hargaQuint} Quint`);
+    if (hargaQuad) hargaLines.push(`${hargaQuad} Quad`);
+    if (hargaTriple) hargaLines.push(`${hargaTriple} Triple`);
+    if (hargaDouble) hargaLines.push(`${hargaDouble} Double`);
+    if (hargaLines.length) lines.push(`*BIAYA PROGRAM*\n${hargaLines.join('\n')}`);
+    const termasuk = g('termasuk');
+    if (termasuk) lines.push(`*Termasuk*\n${termasuk}`);
+    const tidakTermasuk = g('tidak_termasuk');
+    if (tidakTermasuk) lines.push(`*Tidak Termasuk*\n${tidakTermasuk}`);
+    return lines.join('\n');
+}
+
+// Panggil Edge Function generate-wa-caption untuk SATU konsep mentah, lalu
+// terapkan normalisasi & jaring pengaman format yang sama dengan
+// generateCaptionAI() (tombol single di form) -- dipakai ulang oleh batch generator.
+async function callWaCaptionAI(rawConcept) {
+    const userMsg = `KONSEP PROGRAM:\n${rawConcept}\n\nNOMOR WA KONTAK YANG DIPAKAI DI BAGIAN PENUTUP:\n${getWaCaptionContacts()}`;
+    const response = await fetch(WA_CAPTION_FUNCTION_URL, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": "Bearer " + SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({ userMsg })
+    });
+    if (!response.ok) {
+        let detail = '';
+        try { detail = (await response.json()).error || ''; } catch (e) {}
+        throw new Error(detail || 'Gagal memanggil API (status ' + response.status + ')');
+    }
+    const data = await response.json();
+    let result = (data.text || '').trim();
+    if (!result) throw new Error('Tidak ada hasil teks dari model.');
+    result = normalizeUmrohSpelling(result);
+    result = normalizePpAbbreviation(result);
+    result = enforceWaCaptionFormat(result);
+    return result;
+}
+
+// Cari program yang teks_wa-nya masih kosong TAPI datanya sudah cukup untuk
+// disusun jadi caption (minimal nama + salah satu dari durasi/tanggal/harga) --
+// program yang datanya masih terlalu kosong (baru dibuat, belum di-parse/OCR
+// sama sekali) sengaja dilewati supaya AI tidak mengarang isi.
+function getProgramsMissingCaption() {
+    if (!adminPrograms || !adminPrograms.length) return [];
+    return adminPrograms.filter(p => {
+        const kosong = !p.teks_wa || !p.teks_wa.trim();
+        if (!kosong) return false;
+        const cukupData = !!(p.durasi || p.tgl || p.harga_quad || p.harga_quint || p.harga_triple || p.harga_double);
+        return cukupData;
+    });
+}
+
+// Deteksi caption yang SUDAH ADA ISINYA tapi tidak lengkap -- dicek dengan
+// membandingkan section yang seharusnya ada (berdasarkan data program yang
+// tersedia) terhadap section yang benar-benar muncul di teks_wa saat ini.
+// Bukan menilai "bagus/jelek", murni cek struktur & kelengkapan section wajib
+// supaya tidak salah tangkap caption yang sudah oke tapi gaya bahasanya beda.
+function isTeksWaBelumLengkap(prog) {
+    const text = (prog.teks_wa || '').trim();
+    if (!text) return false; // kosong total itu urusan getProgramsMissingCaption, bukan fungsi ini
+
+    const hasJudul = /🕋/.test(text) && /\*[^*\n]+\*/.test(text);
+    const hasFasilitasData = !!(prog.maskapai || prog.hotel_makkah || prog.hotel_madinah);
+    const hasFasilitasSection = /fasilitas/i.test(text);
+    const hasHargaData = !!(prog.harga_quad || prog.harga_quint || prog.harga_triple || prog.harga_double);
+    const hasHargaSection = /biaya\s*program/i.test(text) && (text.match(/rp\s*[\d.]+/gi) || []).length > 0;
+    const hasTermasukSection = /termasuk/i.test(text);
+    const hasKontakSection = /wa\.me\/|info\s*&?\s*itinerary/i.test(text);
+    const terlaluPendek = text.length < 120; // caption normal biasanya jauh di atas ini
+
+    return !hasJudul
+        || (hasFasilitasData && !hasFasilitasSection)
+        || (hasHargaData && !hasHargaSection)
+        || !hasTermasukSection
+        || !hasKontakSection
+        || terlaluPendek;
+}
+
+// Sama seperti getProgramsMissingCaption(), tapi untuk caption yang ADA
+// isinya tapi terdeteksi belum lengkap (lihat isTeksWaBelumLengkap).
+function getProgramsIncompleteCaption() {
+    if (!adminPrograms || !adminPrograms.length) return [];
+    return adminPrograms.filter(p => {
+        const kosong = !p.teks_wa || !p.teks_wa.trim();
+        if (kosong) return false; // yang kosong total masuk kategori lain
+        const cukupData = !!(p.durasi || p.tgl || p.harga_quad || p.harga_quint || p.harga_triple || p.harga_double);
+        if (!cukupData) return false;
+        return isTeksWaBelumLengkap(p);
+    });
+}
+
+let _batchCaptionRunning = false;
+
+// Mesin batch generic dipakai oleh tombol "Caption Kosong" & "Caption Belum
+// Lengkap" -- bedanya cuma daftar target & teks konfirmasi/tombolnya.
+async function runBatchCaptionAI(targets, opts) {
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengubah data program', 'error'); return; }
+    if (_batchCaptionRunning) { showToast('Sedang berjalan, tunggu sampai selesai...'); return; }
+    if (!targets.length) { showToast(opts.emptyMsg); return; }
+
+    const daftar = targets.slice(0, 8).map(p => `• ${escapeHtml(p.nama || '(tanpa nama)')}`).join('<br>');
+    const sisa = targets.length > 8 ? `<br>… dan ${targets.length - 8} program lainnya` : '';
+    const ok = await openActionConfirm({
+        title: opts.confirmTitle,
+        message: `${opts.confirmIntro(targets.length)}<br><br>${daftar}${sisa}<br><br>Proses berjalan di background — jangan tutup halaman sampai selesai.`,
+        confirmLabel: `Generate ${targets.length} Caption`,
+        danger: !!opts.overwrite
+    });
+    if (!ok) return;
+
+    _batchCaptionRunning = true;
+    const btn = document.getElementById(opts.btnId);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Menyusun 0/' + targets.length + '...'; }
+
+    let sukses = 0, gagal = 0;
+    const gagalNama = [];
+    showToast(`Mulai generate ${targets.length} caption AI...`);
+
+    for (let i = 0; i < targets.length; i++) {
+        const prog = targets[i];
+        if (btn) btn.innerHTML = `<i class="bi bi-hourglass-split"></i> Menyusun ${i + 1}/${targets.length}...`;
+        try {
+            const raw = buildRawConceptFromProgramRow(prog);
+            if (!raw) throw new Error('Data program tidak cukup untuk disusun jadi konsep');
+            const hasil = await callWaCaptionAI(raw);
+            await updateProgramById(prog.id, { teks_wa: hasil });
+            const idx = adminPrograms.findIndex(p => String(p.id) === String(prog.id));
+            if (idx >= 0) adminPrograms[idx].teks_wa = hasil;
+            sukses++;
+        } catch (err) {
+            console.error('Batch caption gagal untuk', prog.nama, err);
+            gagal++;
+            gagalNama.push(prog.nama || `#${prog.id}`);
+        }
+        // Jeda kecil antar panggilan supaya tidak kena rate limit Gemini free tier.
+        if (i < targets.length - 1) await new Promise(r => setTimeout(r, 1200));
+    }
+
+    _batchCaptionRunning = false;
+    await renderAdminPanel();
+
+    if (gagal === 0) {
+        showToast(`✓ Selesai — ${sukses} caption berhasil di-generate`);
+    } else {
+        showToast(`Selesai — ${sukses} berhasil, ${gagal} gagal (${gagalNama.slice(0, 3).join(', ')}${gagalNama.length > 3 ? ', ...' : ''})`, 'error');
+    }
+}
+
+// Entry point tombol "Caption Kosong" di toolbar Program -- tidak menimpa
+// apa pun, cuma menyasar teks_wa yang benar-benar kosong.
+async function batchGenerateMissingCaptions() {
+    await runBatchCaptionAI(getProgramsMissingCaption(), {
+        btnId: 'btnBatchCaption',
+        overwrite: false,
+        emptyMsg: 'Semua program sudah punya Teks WA — tidak ada yang perlu di-generate',
+        confirmTitle: 'Generate Caption AI untuk Program Kosong',
+        confirmIntro: n => `Ditemukan <strong>${n} program</strong> yang Teks WA-nya masih kosong (data lain sudah lengkap dari Parse Broadcast/OCR/isian manual). AI akan menyusun caption untuk semua program ini satu per satu:`
+    });
+}
+window.batchGenerateMissingCaptions = batchGenerateMissingCaptions;
+
+// Entry point tombol "Caption Belum Lengkap" -- INI MENIMPA teks_wa yang
+// sudah ada isinya (karena terdeteksi section pentingnya hilang), makanya
+// pesan konfirmasinya ditandai "danger" & bahasanya eksplisit soal timpa.
+async function batchGenerateIncompleteCaptions() {
+    await runBatchCaptionAI(getProgramsIncompleteCaption(), {
+        btnId: 'btnBatchCaptionIncomplete',
+        overwrite: true,
+        emptyMsg: 'Tidak ada caption yang terdeteksi belum lengkap saat ini',
+        confirmTitle: 'Generate Ulang Caption yang Belum Lengkap',
+        confirmIntro: n => `Ditemukan <strong>${n} program</strong> yang Teks WA-nya SUDAH ADA ISI tapi terdeteksi belum lengkap (section wajib seperti judul/fasilitas/biaya/termasuk/kontak ada yang hilang, dibandingkan data yang tersedia). <strong style="color:var(--danger);">Isi teks_wa program-program ini akan DITIMPA</strong> dengan caption baru dari AI:`
+    });
+}
+window.batchGenerateIncompleteCaptions = batchGenerateIncompleteCaptions;
+
+
+// ============================================================
 // 5. TAB SWITCHING
 // ============================================================
 function switchTab(tabId) {
@@ -1629,6 +1851,20 @@ async function renderAdminPanel() {
             <div class="admin-toolbar">
                 ${canEditData ? `<button class="btn-primary" onclick="showAdminForm()"><i class="bi bi-plus-lg"></i> Tambah Program</button>` : `<span class="admin-role-note"><i class="bi bi-eye-fill"></i> Mode lihat saja (Guest)</span>`}
                 <div class="admin-toolbar-right">
+                    ${canEditData ? (() => {
+                        const missingCount = getProgramsMissingCaption().length;
+                        const incompleteCount = getProgramsIncompleteCaption().length;
+                        let html = '';
+                        if (missingCount > 0) html += `
+                    <button class="btn-batch-caption" id="btnBatchCaption" onclick="batchGenerateMissingCaptions()" title="Generate Caption AI otomatis untuk program yang Teks WA-nya masih kosong">
+                        <i class="bi bi-magic"></i> Caption Kosong <span class="badge-count">${missingCount}</span>
+                    </button>`;
+                        if (incompleteCount > 0) html += `
+                    <button class="btn-batch-caption warn" id="btnBatchCaptionIncomplete" onclick="batchGenerateIncompleteCaptions()" title="Generate ulang (TIMPA) Caption WA untuk program yang isinya sudah ada tapi terdeteksi belum lengkap">
+                        <i class="bi bi-exclamation-triangle"></i> Caption Belum Lengkap <span class="badge-count">${incompleteCount}</span>
+                    </button>`;
+                        return html;
+                    })() : ''}
                     ${isAdmin ? `
                     <button class="btn-icon-ghost" onclick="exportAdminData()" title="Export Data"><i class="bi bi-download"></i></button>
                     <button class="btn-icon-ghost" onclick="importAdminData()" title="Import Data"><i class="bi bi-upload"></i></button>
