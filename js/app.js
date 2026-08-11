@@ -3480,11 +3480,14 @@ async function exportAdminData() {
         // Buang field yang sudah tidak dipakai lagi (mis. link_metaads, link_dokumentasi)
         // dari hasil backup, meski kolomnya masih ada di database.
         const backup = {
-            _meta: { app: 'Dashboard Amiru', exported_at: new Date().toISOString(), version: '2.0' },
+            _meta: { app: 'Dashboard Amiru', exported_at: new Date().toISOString(), version: '2.1' },
             programs: rawPrograms.map(p => pickAllowedColumns(p, PROGRAM_COLUMNS))
         };
         // Sertakan juga tabel lain supaya backup bisa dipulihkan utuh (lihat importAdminData).
-        for (const tbl of ['jadwal_tamu', 'kb_jamaah', 'pendaftaran', 'featured_programs']) {
+        // pembayaran_jamaah (riwayat bayar/cicilan) disertakan di sini juga supaya
+        // konsisten dengan SNAPSHOT_TABLES di bawah -- sebelumnya cuma masuk snapshot,
+        // tidak ikut ter-backup/restore lewat export-import manual.
+        for (const tbl of ['jadwal_tamu', 'kb_jamaah', 'pendaftaran', 'pembayaran_jamaah', 'featured_programs']) {
             try {
                 const r = await fetch(`${SUPABASE_URL}/rest/v1/${tbl}?select=*&order=created_at.asc`, { headers });
                 backup[tbl] = r.ok ? await r.json() : [];
@@ -3519,7 +3522,7 @@ function isValidUUID(str) {
 const PROGRAM_COLUMNS = [
     'id', 'nama', 'tgl', 'durasi', 'maskapai', 'harga_quint',
     'link_poster', 'link_itinerary',
-    'teks_wa', 'admin_data_lengkap', 'is_active', 'created_at'
+    'teks_wa', 'admin_data_lengkap', 'is_active', 'kuota_pax', 'created_at'
 ];
 function pickAllowedColumns(obj, allowed) {
     const out = {};
@@ -3572,20 +3575,43 @@ function showImportResult(ok, failed, otherResults) {
 // Tabel opsional selain "programs" yang mungkin ada di file backup (mis. hasil
 // export dari versi lain / tool lain) -- diimport kalau ada datanya, dilewati
 // kalau tidak ada supaya backup lama (yang hanya berisi programs) tetap kompatibel.
-const OPTIONAL_IMPORT_TABLES = ['jadwal_tamu', 'kb_jamaah', 'pendaftaran', 'featured_programs'];
+// Urutan penting: kb_jamaah harus lebih dulu dari pembayaran_jamaah (FK jamaah_id),
+// dan programs (diimport terpisah di pemanggil) harus lebih dulu dari semuanya.
+const OPTIONAL_IMPORT_TABLES = ['jadwal_tamu', 'kb_jamaah', 'pembayaran_jamaah', 'pendaftaran', 'featured_programs'];
 const TABLE_LABEL = {
     jadwal_tamu: 'jadwal tamu',
     kb_jamaah: 'data jamaah',
+    pembayaran_jamaah: 'pembayaran & cicilan',
     pendaftaran: 'pendaftaran',
     featured_programs: 'program unggulan'
 };
-// Kolom asli tiap tabel (lihat sql/00_setup_semua_tabel.sql) -- sama seperti
-// PROGRAM_COLUMNS, dipakai untuk membuang field asing dari file backup supaya
-// upsert tidak ditolak Supabase gara-gara kolom yang tidak dikenal.
+// Kolom asli tiap tabel (lihat sql/00_setup_semua_tabel.sql + migrasi sql/tambah_*.sql) --
+// sama seperti PROGRAM_COLUMNS, dipakai untuk membuang field asing dari file backup
+// supaya upsert tidak ditolak Supabase gara-gara kolom yang tidak dikenal.
 const OPTIONAL_TABLE_COLUMNS = {
     jadwal_tamu: ['id', 'nama', 'tgl', 'jam', 'asal', 'jumlah', 'keperluan', 'wa', 'catatan', 'created_at'],
-    kb_jamaah: ['id', 'program_id', 'nama', 'nik', 'paspor', 'wa', 'asal', 'tipe_kamar', 'harga_custom', 'status', 'catatan', 'dokumen', 'created_at', 'jenis_kelamin', 'tempat_lahir', 'tgl_lahir', 'alamat', 'kode_pos', 'telp_rumah', 'ahli_waris_nama', 'ahli_waris_hubungan', 'pendaftaran_id', 'paspor_exp', 'visa_status'],
-    pendaftaran: ['id', 'program_id', 'nama', 'wa', 'asal', 'status', 'catatan', 'created_at'],
+    kb_jamaah: [
+        'id', 'program_id', 'nama', 'nik', 'paspor', 'wa', 'asal', 'tipe_kamar', 'harga_custom', 'status', 'catatan',
+        'dokumen', 'created_at', 'jenis_kelamin', 'tempat_lahir', 'tgl_lahir', 'alamat', 'kode_pos', 'telp_rumah',
+        'ahli_waris_nama', 'ahli_waris_hubungan', 'pendaftaran_id', 'paspor_exp', 'visa_status',
+        // Kolom baru: nomor kamar, status kepulangan (sql/tambah_nomor_kamar_kb_jamaah.sql,
+        // sql/tambah_status_kepulangan_kb_jamaah.sql), dan arsip jamaah (sql/tambah_arsip_jamaah.sql)
+        'nomor_kamar', 'status_kepulangan', 'tgl_berangkat_aktual', 'tgl_pulang_aktual', 'catatan_kepulangan',
+        'diarsipkan', 'diarsipkan_at'
+    ],
+    pembayaran_jamaah: [
+        'id', 'jamaah_id', 'tanggal', 'jumlah', 'metode', 'keterangan', 'created_at',
+        // nomor_kuitansi & nomor_nota diisi otomatis oleh trigger DB kalau kosong (lihat
+        // sql/tambah_nota_audit.sql) -- disertakan di sini supaya nomor lama yang sudah
+        // terbit tetap konsisten saat dipulihkan, bukan supaya bisa diubah manual.
+        'nomor_kuitansi', 'nomor_nota'
+    ],
+    pendaftaran: [
+        'id', 'program_id', 'nama', 'wa', 'asal', 'status', 'catatan', 'created_at',
+        // Kolom F4 (sql/tambah_field_pendaftaran_f4.sql)
+        'tanggal_daftar', 'ktp', 'jenis_kelamin', 'tempat_lahir', 'tgl_lahir', 'alamat', 'kode_pos',
+        'telp_rumah', 'ahli_waris_nama', 'ahli_waris_hubungan'
+    ],
     featured_programs: ['id', 'program_id', 'created_at']
 };
 
