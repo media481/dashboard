@@ -1276,6 +1276,49 @@
             color: var(--ink-soft);
         }
         .pf-empty i { font-size: 28px; display: block; margin-bottom: 10px; opacity: .4; }
+
+        /* ---- Assets: inner tab switcher (Link & Dokumen / Hotel Saudi Arabia) ---- */
+        .assets-inner-tabs { display: flex; gap: 6px; padding: 14px 18px 0; border-bottom: 1px solid var(--line); }
+        .assets-inner-tab-btn {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 9px 14px; border: none; background: transparent; cursor: pointer;
+            font-size: 12.5px; font-weight: 600; color: var(--ink-soft);
+            border-bottom: 2px solid transparent; margin-bottom: -1px;
+            transition: color .15s, border-color .15s;
+        }
+        .assets-inner-tab-btn:hover { color: var(--brand); }
+        .assets-inner-tab-btn.active { color: var(--brand); border-bottom-color: var(--brand); }
+
+        /* ---- Hotel Saudi Arabia: search bar + result table ---- */
+        .hotel-search-bar { display: flex; gap: 10px; padding: 16px 18px 0; flex-wrap: wrap; }
+        .hotel-search-bar input[type="text"] {
+            flex: 1 1 240px; min-width: 200px; padding: 9px 12px; border: 1px solid var(--line);
+            border-radius: 9px; font-size: 13px; color: var(--ink); background: var(--surface);
+        }
+        .hotel-search-bar input[type="text"]:focus { outline: none; border-color: var(--brand); }
+        .hotel-search-bar select {
+            padding: 9px 12px; border: 1px solid var(--line); border-radius: 9px;
+            font-size: 12.5px; color: var(--ink); background: var(--surface); cursor: pointer;
+        }
+        .hotel-result-count { padding: 12px 18px 0; font-size: 11.5px; color: var(--ink-soft); }
+        .hotel-table-wrap { padding: 10px 18px 18px; overflow-x: auto; }
+        .hotel-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+        .hotel-table th {
+            text-align: left; padding: 9px 10px; color: var(--ink-soft); font-weight: 700;
+            font-size: 11px; text-transform: uppercase; letter-spacing: .03em;
+            border-bottom: 1px solid var(--line); white-space: nowrap;
+        }
+        .hotel-table td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+        .hotel-table tr:hover td { background: var(--bg); }
+        .hotel-name-cell { font-weight: 600; color: var(--ink); white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+        .hotel-desc-cell {
+            color: var(--ink-soft); max-width: 360px; overflow: hidden; text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .hotel-score-pill {
+            display: inline-block; padding: 2px 8px; border-radius: 999px;
+            background: var(--success-tint); color: var(--success); font-weight: 700; font-size: 11.5px;
+        }
         .pf-pagination {
             display: flex;
             align-items: center;

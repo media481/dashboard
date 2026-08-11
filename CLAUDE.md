@@ -81,6 +81,8 @@ cek dulu apakah direferensikan di `index.html`/`service-worker.js` sebelum diasu
 | `app_config` | Password login admin/CS (key-value) |
 | `tg_config` | Config notifikasi Telegram (bot token, edge URL, daftar penerima) |
 | `kwt_kuitansi` | Kuitansi — tabel sudah disiapkan, belum otomatis dipakai di `js/app.js` |
+| `assets` | Link/bookmark ke dokumen penting — tab "Link & Dokumen" di menu Assets |
+| `hotel_saudi_arabia` | Referensi data hotel Arab Saudi, read-only (hasil import CSV) — tab "Hotel Saudi Arabia" di menu Assets |
 
 Setup Supabase baru: jalankan `sql/00_setup_semua_tabel.sql` di SQL Editor, lalu ganti
 password default di `app_config`, lalu update `SUPABASE_URL` & `SUPABASE_ANON_KEY` di

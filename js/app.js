@@ -45,6 +45,7 @@ let featuredIds = [];
 let jadwalList = [], editingJadwalId = null;
 let pendaftaranList = [], editingPendaftaranId = null;
 let assetsList = [], editingAssetId = null;
+let hotelSaudiList = [], hotelSaudiLoaded = false;
 
 // Urutkan program: yang masih tersedia dulu (tanggal terdekat), yang sudah expired selalu di baris paling bawah
 function sortProgramsDefault(list) {
@@ -1841,7 +1842,7 @@ const ADMIN_SUBTAB_META = {
     usersettings: { title: 'Pengaturan User', subtitle: 'Tambah & kelola akun user' },
     snapshot: { title: 'Snapshot / Backup', subtitle: 'Cadangan harian semua data Umroh (maksimal 10)' },
     profil: { title: 'Profil Perusahaan', subtitle: 'Logo, nama, alamat & rekening yang dipakai di nota' },
-    assets: { title: 'Assets', subtitle: 'Kumpulan link ke dokumen penting — mirip bookmark' }
+    assets: { title: 'Assets', subtitle: 'Link ke dokumen penting & referensi data Hotel Saudi Arabia' }
 };
 
 function switchAdminSubTab(name) {
@@ -1869,7 +1870,7 @@ function switchAdminSubTab(name) {
     if (name === 'unggulan') { renderFeaturedAdminTable(); }
     if (name === 'snapshot') { renderSnapshotAdminTable(); }
     if (name === 'usersettings') { loadUserList(); renderRoleMenuAccessMatrix(); }
-    if (name === 'assets') { loadAssets().then(renderAssetsAdminTable); }
+    if (name === 'assets') { switchAssetsInnerTab('links'); loadAssets().then(renderAssetsAdminTable); }
 }
 
 async function renderAdminPanel() {
@@ -2351,19 +2352,49 @@ async function renderAdminPanel() {
             </div>
 
             <div class="admin-subtab-panel" id="adminSubTab-assets" style="display:none;">
-                <div class="snap-header">
-                    <div class="snap-header-title">
-                        <i class="bi bi-bookmark-star-fill"></i>
-                        <div>
-                            <h4>Assets</h4>
-                            <span>Link ke dokumen penting (SOP, kontrak, akun cloud, dsb) — mirip bookmark</span>
-                        </div>
-                    </div>
-                    <button class="btn-primary btn-sm" onclick="openAssetModal()" ${canManageAssets() ? '' : 'style="display:none;"'}>
-                        <i class="bi bi-plus-lg"></i> Tambah Link
+                <div class="assets-inner-tabs">
+                    <button type="button" class="assets-inner-tab-btn active" data-inner-tab="links" onclick="switchAssetsInnerTab('links')">
+                        <i class="bi bi-bookmark-star-fill"></i> Link &amp; Dokumen
+                    </button>
+                    <button type="button" class="assets-inner-tab-btn" data-inner-tab="hotels" onclick="switchAssetsInnerTab('hotels')">
+                        <i class="bi bi-building"></i> Hotel Saudi Arabia
                     </button>
                 </div>
-                <div id="assetsListWrap"></div>
+
+                <div id="assetsLinksPanel" style="display:block;">
+                    <div class="snap-header">
+                        <div class="snap-header-title">
+                            <i class="bi bi-bookmark-star-fill"></i>
+                            <div>
+                                <h4>Assets</h4>
+                                <span>Link ke dokumen penting (SOP, kontrak, akun cloud, dsb) — mirip bookmark</span>
+                            </div>
+                        </div>
+                        <button class="btn-primary btn-sm" onclick="openAssetModal()" ${canManageAssets() ? '' : 'style="display:none;"'}>
+                            <i class="bi bi-plus-lg"></i> Tambah Link
+                        </button>
+                    </div>
+                    <div id="assetsListWrap"></div>
+                </div>
+
+                <div id="assetsHotelPanel" style="display:none;">
+                    <div class="snap-header">
+                        <div class="snap-header-title">
+                            <i class="bi bi-building"></i>
+                            <div>
+                                <h4>Hotel Saudi Arabia</h4>
+                                <span>Referensi data hotel — read-only, hasil import sekali dari CSV</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hotel-search-bar">
+                        <input type="text" id="hotelSaudiSearchInput" placeholder="Cari nama hotel, kota, atau deskripsi..." oninput="handleHotelSaudiSearchInput()">
+                        <select id="hotelSaudiCitySelect" onchange="renderHotelSaudiTable()">
+                            <option value="">Semua Kota</option>
+                        </select>
+                    </div>
+                    <div id="hotelSaudiWrap"></div>
+                </div>
             </div>
         `;
 
@@ -8626,6 +8657,118 @@ function getAssetIcon(url) {
 // escapeHtml tapi aman dipakai di dalam atribut href="..." (escape tanda kutip ganda juga)
 function escapeHtmlAttr(str) {
     return escapeHtml(str).replace(/"/g, '&quot;');
+}
+
+// ============================================================
+// 21c. HOTEL SAUDI ARABIA (read-only) — sub-tab di dalam menu Assets,
+// referensi data hotel hasil import sekali dari CSV (booking_saudi_arabia.csv).
+// Tidak ada tambah/edit/hapus lewat UI -- kalau perlu diperbarui, import
+// ulang lewat SQL Editor (lihat sql/tambah_hotel_saudi_arabia.sql &
+// sql/import_hotel_saudi_arabia.sql).
+// ============================================================
+
+function switchAssetsInnerTab(tab) {
+    document.querySelectorAll('.assets-inner-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.innerTab === tab));
+    const linksPanel = document.getElementById('assetsLinksPanel');
+    const hotelPanel = document.getElementById('assetsHotelPanel');
+    if (linksPanel) linksPanel.style.display = tab === 'links' ? 'block' : 'none';
+    if (hotelPanel) hotelPanel.style.display = tab === 'hotels' ? 'block' : 'none';
+
+    if (tab === 'hotels') {
+        if (!hotelSaudiLoaded) {
+            const wrap = document.getElementById('hotelSaudiWrap');
+            if (wrap) wrap.innerHTML = `<div class="pf-empty"><i class="bi bi-arrow-repeat bi-spin"></i>Memuat data hotel...</div>`;
+            loadHotelSaudiArabia().then(() => {
+                populateHotelSaudiCityFilter();
+                renderHotelSaudiTable();
+            });
+        } else {
+            renderHotelSaudiTable();
+        }
+    }
+}
+
+async function loadHotelSaudiArabia() {
+    try {
+        const { data, error } = await supabaseClient.from('hotel_saudi_arabia').select('*').order('score', { ascending: false, nullsFirst: false });
+        if (error) throw error;
+        hotelSaudiList = data || [];
+        hotelSaudiLoaded = true;
+    } catch (err) {
+        console.error('Load hotel_saudi_arabia error:', err);
+        hotelSaudiList = [];
+        hotelSaudiLoaded = false;
+        showToast('Gagal memuat data Hotel Saudi Arabia — periksa koneksi internet', 'error');
+    }
+}
+
+function populateHotelSaudiCityFilter() {
+    const sel = document.getElementById('hotelSaudiCitySelect');
+    if (!sel) return;
+    const counts = {};
+    hotelSaudiList.forEach(h => { const c = (h.city || '').trim(); if (c) counts[c] = (counts[c] || 0) + 1; });
+    const cities = Object.keys(counts).sort();
+    sel.innerHTML = '<option value="">Semua Kota</option>' + cities.map(c => `<option value="${escapeHtmlAttr(c)}">${escapeHtml(c)} (${counts[c]})</option>`).join('');
+}
+
+let hotelSaudiSearchDebounce = null;
+function handleHotelSaudiSearchInput() {
+    clearTimeout(hotelSaudiSearchDebounce);
+    hotelSaudiSearchDebounce = setTimeout(renderHotelSaudiTable, 250);
+}
+
+function renderHotelSaudiTable() {
+    const wrap = document.getElementById('hotelSaudiWrap');
+    if (!wrap) return;
+
+    if (!hotelSaudiLoaded) return;
+
+    if (!hotelSaudiList.length) {
+        wrap.innerHTML = `<div class="pf-empty"><i class="bi bi-building"></i>Data hotel belum diimport. Jalankan <code>sql/tambah_hotel_saudi_arabia.sql</code> lalu <code>sql/import_hotel_saudi_arabia.sql</code> di Supabase SQL Editor.</div>`;
+        return;
+    }
+
+    const term = (document.getElementById('hotelSaudiSearchInput')?.value || '').toLowerCase().trim();
+    const city = document.getElementById('hotelSaudiCitySelect')?.value || '';
+
+    let filtered = hotelSaudiList;
+    if (city) filtered = filtered.filter(h => h.city === city);
+    if (term) {
+        const keywords = term.split(/\s+/).filter(Boolean);
+        filtered = filtered.filter(h => {
+            const haystack = [h.hotel_name, h.description, h.city].join(' ').toLowerCase();
+            return keywords.every(kw => haystack.includes(kw));
+        });
+    }
+
+    if (!filtered.length) {
+        wrap.innerHTML = `<div class="pf-empty"><i class="bi bi-search"></i>Tidak ada hotel yang cocok dengan pencarian.</div>`;
+        return;
+    }
+
+    const LIMIT = 100;
+    const shown = filtered.slice(0, LIMIT);
+    wrap.innerHTML = `
+        <div class="hotel-result-count">Menampilkan ${shown.length} dari ${filtered.length} hotel (total ${hotelSaudiList.length})${filtered.length > LIMIT ? ' — perhalus pencarian untuk hasil lebih spesifik' : ''}</div>
+        <div class="hotel-table-wrap">
+            <table class="hotel-table">
+                <thead>
+                    <tr><th>Hotel</th><th>Kota</th><th>Skor</th><th>Ulasan</th><th>Deskripsi</th></tr>
+                </thead>
+                <tbody>
+                    ${shown.map(h => `
+                        <tr>
+                            <td class="hotel-name-cell">${escapeHtml(h.hotel_name || '-')}</td>
+                            <td>${escapeHtml(h.city || '-')}</td>
+                            <td>${h.score != null ? `<span class="hotel-score-pill">${escapeHtml(String(h.score))}</span>` : '<span style="color:var(--ink-soft);">—</span>'}</td>
+                            <td>${h.review_count != null ? escapeHtml(Number(h.review_count).toLocaleString('id-ID')) : '—'}</td>
+                            <td class="hotel-desc-cell" title="${escapeHtmlAttr(h.description || '')}">${escapeHtml(h.description || '-')}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
 }
 
 function openAssetModal(id = null) {
