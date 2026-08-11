@@ -73,10 +73,7 @@ const DOKUMEN_JENIS = [
     { key: 'ijazah', label: 'Ijazah', type: 'copy' },
     { key: 'kartu_vaksin', label: 'Kartu Vaksin', type: 'copy' },
     { key: 'pas_photo', label: 'Pas Photo 4x6', type: 'single' },
-    { key: 'form_pendaftaran', label: 'Form Pendaftaran', type: 'single' },
-    // kondisional: true -> hanya wajib untuk sebagian jamaah (lihat isMahramWajib()
-    // di bawah), bukan untuk semua jamaah seperti dokumen lain di atas.
-    { key: 'surat_mahram', label: 'Surat Mahram', type: 'single', kondisional: true }
+    { key: 'form_pendaftaran', label: 'Form Pendaftaran', type: 'single' }
 ];
 
 // Hitung usia (tahun, genap) dari tanggal lahir ISO (yyyy-mm-dd). null kalau tidak diketahui.
@@ -91,20 +88,13 @@ function hitungUsia(tglLahir) {
     return usia;
 }
 
-// Syarat Umroh 2026: jamaah wanita di bawah 45 tahun yang bepergian tanpa
-// mahram wajib punya Surat Mahram. Sistem tidak tahu ada/tidaknya mahram
-// pendamping, jadi defaultnya "wajib dicek" kalau jenis kelamin/tgl lahir
-// belum diisi -- supaya tidak ada kasus yang kelewat tanpa disadari admin.
-function isMahramWajib(jamaah) {
-    if (!jamaah || jamaah.jenis_kelamin !== 'Perempuan') return false;
-    const usia = hitungUsia(jamaah.tgl_lahir);
-    return usia === null ? true : usia < 45;
-}
-
-// Daftar jenis dokumen yang berlaku untuk jamaah tertentu (menyaring dokumen
-// kondisional seperti Surat Mahram yang cuma wajib untuk sebagian jamaah).
+// Daftar jenis dokumen yang berlaku untuk jamaah tertentu. Saat ini semua
+// dokumen berlaku untuk semua jamaah (tidak ada lagi dokumen kondisional
+// seperti Surat Mahram) -- fungsi ini dipertahankan supaya pemanggil di
+// tempat lain (isDokumenLengkap, cetak Tanda Terima Dokumen) tidak perlu
+// berubah kalau suatu saat ada dokumen kondisional baru.
 function dokumenJenisUntukJamaah(jamaah) {
-    return DOKUMEN_JENIS.filter(d => !d.kondisional || isMahramWajib(jamaah));
+    return DOKUMEN_JENIS;
 }
 
 // Status visa sederhana (bukan integrasi resmi ke sistem Saudi -- cuma
@@ -7570,14 +7560,12 @@ async function loadDokumenForProgram(programId) {
 
         const totalDok = DOKUMEN_JENIS.length;
         const totalLengkap = jamaah.filter(j => isDokumenLengkap(j.dokumen, j)).length;
-        const totalMahramWajib = jamaah.filter(isMahramWajib).length;
 
         summaryEl.innerHTML = `
             <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
                 <span class="status-badge available">${jamaah.length} Total Jamaah</span>
                 <span class="status-badge available">${totalLengkap} Dokumen Lengkap</span>
                 ${jamaah.length - totalLengkap > 0 ? `<span class="status-badge full">${jamaah.length - totalLengkap} Belum Lengkap</span>` : ''}
-                ${totalMahramWajib > 0 ? `<span class="status-badge limited"><i class="bi bi-shield-exclamation"></i> ${totalMahramWajib} Wajib Surat Mahram</span>` : ''}
             </div>`;
 
         const canEdit = canManageProgramData();
@@ -7612,16 +7600,10 @@ async function loadDokumenForProgram(programId) {
                         ${jamaah.map(j => {
                             const dok = j.dokumen || {};
                             const lengkap = isDokumenLengkap(dok, j);
-                            const mahramWajib = isMahramWajib(j);
                             return `
                             <tr style="border-bottom:1px solid var(--line);">
                                 <td style="padding:10px 14px;overflow:hidden;text-overflow:ellipsis;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
                                 ${DOKUMEN_JENIS.map(d => {
-                                    // Surat Mahram cuma wajib untuk sebagian jamaah (wanita <45th) --
-                                    // untuk yang tidak wajib, tampilkan strip abu-abu bukan checkbox.
-                                    if (d.kondisional && !mahramWajib) {
-                                        return `<td style="padding:10px 6px;text-align:center;border-left:1px solid var(--line);color:var(--ink-soft);font-size:11px;" title="Tidak wajib (laki-laki / usia ≥45 th)">—</td>`;
-                                    }
                                     return d.type === 'copy' ? `
                                     <td style="padding:10px 2px;text-align:center;border-left:1px solid var(--line);">
                                         <input type="checkbox" ${dok[d.key + '_fc'] ? 'checked' : ''} ${canEdit ? '' : 'disabled'}
@@ -7633,11 +7615,10 @@ async function loadDokumenForProgram(programId) {
                                             onchange="toggleDokumenJamaah('${j.id}','${d.key}_asli',this.checked)"
                                             style="width:16px;height:16px;cursor:${canEdit ? 'pointer' : 'default'};">
                                     </td>` : `
-                                    <td style="padding:10px 6px;text-align:center;border-left:1px solid var(--line);${d.kondisional ? 'background:var(--brand-tint);' : ''}">
+                                    <td style="padding:10px 6px;text-align:center;border-left:1px solid var(--line);">
                                         <input type="checkbox" ${dok[d.key] ? 'checked' : ''} ${canEdit ? '' : 'disabled'}
                                             onchange="toggleDokumenJamaah('${j.id}','${d.key}',this.checked)"
-                                            style="width:16px;height:16px;cursor:${canEdit ? 'pointer' : 'default'};"
-                                            ${d.kondisional ? 'title="Wajib -- jamaah wanita usia di bawah 45 tahun"' : ''}>
+                                            style="width:16px;height:16px;cursor:${canEdit ? 'pointer' : 'default'};">
                                     </td>`;
                                 }).join('')}
                                 <td style="padding:10px 14px;border-left:1px solid var(--line);">
@@ -7653,7 +7634,7 @@ async function loadDokumenForProgram(programId) {
                     </tbody>
                 </table>
             </div>
-            <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;">${totalDok} jenis dokumen dicek (mengikuti form Tanda Terima Dokumen): ${DOKUMEN_JENIS.map(d => d.label).join(', ')}. Untuk KTP–Kartu Vaksin, centang Fotocopy dan/atau Asli sesuai yang diserahkan jamaah. Surat Mahram otomatis ditandai wajib hanya untuk jamaah wanita usia di bawah 45 tahun (kolom bertanda "—" berarti tidak wajib). Klik <i class="bi bi-printer-fill"></i> untuk mencetak Tanda Terima Dokumen jamaah tersebut.</p>
+            <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;">${totalDok} jenis dokumen dicek (mengikuti form Tanda Terima Dokumen): ${DOKUMEN_JENIS.map(d => d.label).join(', ')}. Untuk KTP–Kartu Vaksin, centang Fotocopy dan/atau Asli sesuai yang diserahkan jamaah. Klik <i class="bi bi-printer-fill"></i> untuk mencetak Tanda Terima Dokumen jamaah tersebut.</p>
         `;
 
     } catch (err) {
@@ -7977,8 +7958,6 @@ function buildDokumenTandaTerimaHTML(jamaah, program) {
     // Baris status per jenis dokumen: hijau (lengkap), gold (sebagian —
     // khusus dokumen bertipe 'copy' yang baru diserahkan salah satu dari
     // Fotocopy/Asli), atau merah (belum diserahkan sama sekali).
-    // dokJenis sudah menyaring dokumen kondisional (Surat Mahram) sesuai
-    // apakah jamaah ini wajib atau tidak -- lihat dokumenJenisUntukJamaah().
     const rows = dokJenis.map((d, i) => {
         let label, warna;
         if (d.type === 'copy') {
