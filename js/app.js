@@ -2129,7 +2129,7 @@ function renderAdminTable() {
         noPosterBanner.innerHTML = noPosterCount > 0
             ? `<div class="cx-status-bar warn" style="margin:0 0 14px;">
                     <i class="bi bi-exclamation-triangle-fill"></i>
-                    <div>${noPosterCount} program belum punya link poster — OCR tidak bisa membaca/auto-isi data untuk program ini. Program ditandai <span style="color:var(--warn);font-weight:700;">"Belum ada poster"</span> di tabel di bawah.</div>
+                    <div>${noPosterCount} program belum punya link poster — OCR tidak bisa membaca/auto-isi data untuk program ini. Program ditandai <span style="color:var(--warn);font-weight:700;">"Belum ada poster"</span> di tabel di bawah — klik langsung badge-nya untuk menambahkan link poster.</div>
                 </div>`
             : '';
     }
@@ -2140,11 +2140,16 @@ function renderAdminTable() {
     }
     tbody.innerHTML = adminPrograms.map(p => {
         const noPoster = !p.link_poster;
+        const posterBadge = noPoster
+            ? (canEditData
+                ? `<button type="button" class="poster-missing-badge" onclick="quickAddPosterLink('${p.id}')" title="Klik untuk langsung tambahkan link poster program ini"><i class="bi bi-image"></i>Belum ada poster<i class="bi bi-plus-lg"></i></button>`
+                : `<span class="cx-status-bar warn" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;"><i class="bi bi-image" style="font-size:10px;"></i>Belum ada poster</span>`)
+            : '';
         return `
         <tr>
             <td>
                 <strong>${escapeHtml(p.nama||'-')}</strong>
-                ${noPoster ? `<span class="cx-status-bar warn" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;"><i class="bi bi-image" style="font-size:10px;"></i>Belum ada poster</span>` : ''}
+                ${posterBadge}
             </td>
             <td>${escapeHtml(p.tgl||'-')}</td>
             <td>${escapeHtml(p.durasi||'-')}</td>
@@ -2676,7 +2681,7 @@ async function saveAdminProgram() {
     }
 }
 
-async function editAdminProgram(id) {
+async function editAdminProgram(id, focusFieldId) {
     if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengedit program', 'error'); return; }
     await ensureAdminProgramPageReady();
     const { data, error } = await supabaseClient.from('programs').select('*').eq('id', id).single();
@@ -2700,9 +2705,36 @@ async function editAdminProgram(id) {
     syncBroadcastRefBox();
     document.getElementById('adminFormTitle').innerText = 'Edit Program';
     document.getElementById('adminFormContainer').style.display = 'block';
-    document.getElementById('adminFormContainer').scrollIntoView({ behavior: 'smooth' });
-    focusAdminFormAndSnapshot();
     setupAdminFormAnchorNav();
+
+    if (focusFieldId) {
+        // Shortcut: lompat & fokus langsung ke field tertentu (mis. dari badge
+        // "Belum ada poster" di tabel) -- tanpa perlu scroll cari sendiri.
+        _adminFormSnapshot = JSON.stringify(getAdminFormData());
+        setTimeout(() => scrollToAdminFieldAndFocus(focusFieldId), 120);
+    } else {
+        document.getElementById('adminFormContainer').scrollIntoView({ behavior: 'smooth' });
+        focusAdminFormAndSnapshot();
+    }
+}
+
+// Shortcut dari badge "Belum ada poster" di tabel: buka form edit program ini
+// & langsung lompat+fokus ke field Link Poster, supaya admin tidak perlu cari
+// manual di antara semua field form.
+function quickAddPosterLink(id) {
+    editAdminProgram(id, 'admin_link_poster');
+    showToast('Tempel link poster program ini, lalu klik Simpan');
+}
+
+// Scroll ke section (fieldset) yang menaungi sebuah field form, lalu fokuskan
+// field itu -- dipakai untuk shortcut lompat-ke-field (mis. quickAddPosterLink).
+function scrollToAdminFieldAndFocus(fieldId) {
+    const el = document.getElementById(fieldId);
+    if (!el) return;
+    const section = el.closest('.admin-fieldset');
+    if (section) scrollToAdminSection(section.id);
+    else el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => { el.focus(); el.select?.(); }, 380);
 }
 
 async function deleteProgramById(id) {

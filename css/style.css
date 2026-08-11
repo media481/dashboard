@@ -2251,6 +2251,15 @@
         .cx-status-bar.warn { background: var(--warn-tint); color: #8a4a12; }
         .cx-status-bar.missing { background: var(--bg); color: var(--ink-soft); border: 1px solid var(--line); }
         .cx-status-bar.scanning { background: var(--brand-tint); color: var(--brand-deep); }
+
+        /* Badge "Belum ada poster" di tabel Daftar Program -- diklik langsung
+           membuka form edit program itu & fokus ke field Link Poster (lihat
+           quickAddPosterLink() di app.js), jadi tidak perlu cari manual. */
+        .poster-missing-badge { display: inline-flex; align-items: center; gap: 5px; margin: 4px 0 0; padding: 3px 9px; font-size: 10.5px; font-family: inherit; font-weight: 600; border-radius: 20px; border: none; cursor: pointer; background: var(--warn-tint); color: #8a4a12; transition: background .12s, transform .1s; }
+        .poster-missing-badge i { font-size: 10px; }
+        .poster-missing-badge i.bi-plus-lg { font-size: 8px; opacity: .75; }
+        .poster-missing-badge:hover { background: #f6dcae; }
+        .poster-missing-badge:active { transform: scale(.96); }
         .cx-ocr-progress-wrap { background: rgba(0,0,0,0.08); border-radius: 6px; height: 5px; margin-top: 8px; overflow: hidden; }
         .cx-ocr-progress-bar { background: var(--brand); height: 100%; transition: width .3s ease; }
         .cx-mismatch-count { background: var(--danger-tint); color: var(--danger); font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 20px; }
