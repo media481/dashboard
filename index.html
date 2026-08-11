@@ -345,6 +345,9 @@
                         <button class="btn-primary" id="btnTambahJamaah" onclick="openKbModal()" style="font-size:12px;padding:6px 14px;">
                             <i class="bi bi-person-plus-fill"></i> Tambah Jamaah
                         </button>
+                        <button class="btn-primary" id="btnCetakManifest" onclick="bukaManifestProgram(this)" style="font-size:12px;padding:6px 14px;background:var(--brand-deep);">
+                            <i class="bi bi-file-earmark-spreadsheet-fill"></i> Cetak Manifest
+                        </button>
                     </div>
                     <div id="kbJamaahContent">
                         <div class="kb-no-program">
@@ -1087,6 +1090,36 @@
                     <button type="button" class="btn-cancel" onclick="tutupTandaTerimaModal()">Tutup</button>
                     <button type="button" class="btn-download-jpeg" onclick="unduhTandaTerimaDokumen('jpeg', this)"><i class="bi bi-image-fill"></i> Unduh JPEG</button>
                     <button type="button" class="btn-download-pdf" onclick="unduhTandaTerimaDokumen('pdf', this)"><i class="bi bi-file-earmark-pdf-fill"></i> Unduh PDF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal "Manifest Jamaah" per program — dibuka dari tombol Cetak Manifest di
+     tab Keberangkatan. Sama pola dengan modal Tanda Terima Dokumen, cuma lebih
+     lebar (dokumennya landscape, tabel banyak kolom) -- lihat js/app.js ->
+     buildManifestHTML(). -->
+<div class="modal-overlay" id="manifestModal">
+    <div class="modal-content cicilan-modal-1col" style="max-width:920px;">
+        <div class="modal-header">
+            <h2><i class="bi bi-file-earmark-spreadsheet-fill"></i> Manifest Jamaah</h2>
+            <button class="modal-close" onclick="tutupManifestModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="cicilan-modal-preview" style="position:static;width:100%;max-width:none;margin-top:0;">
+                <div class="cicilan-preview-head">
+                    <h4><i class="bi bi-file-earmark-text-fill"></i> Preview</h4>
+                    <div class="cicilan-preview-head-actions">
+                        <button type="button" class="btn-nota-expand" onclick="openNotaLightbox('manifestPreviewContent')" title="Perbesar preview (layar penuh)"><i class="bi bi-arrows-fullscreen"></i></button>
+                        <button type="button" class="modal-close" onclick="tutupManifestModal()" title="Tutup preview">&times;</button>
+                    </div>
+                </div>
+                <div id="manifestPreviewContent" class="nota-preview-content"></div>
+                <div class="nota-preview-actions">
+                    <button type="button" class="btn-cancel" onclick="tutupManifestModal()">Tutup</button>
+                    <button type="button" class="btn-download-jpeg" onclick="unduhManifest('jpeg', this)"><i class="bi bi-image-fill"></i> Unduh JPEG</button>
+                    <button type="button" class="btn-download-pdf" onclick="unduhManifest('pdf', this)"><i class="bi bi-file-earmark-pdf-fill"></i> Unduh PDF</button>
                 </div>
             </div>
         </div>
