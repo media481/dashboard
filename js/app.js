@@ -938,45 +938,78 @@ async function runBatchCaptionAI(targets, opts) {
     const btn = document.getElementById(opts.btnId);
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Menyusun 0/' + targets.length + '...'; }
 
-    let sukses = 0, gagal = 0, berhentiKuota = false;
+    let sukses = 0, gagal = 0, fallbackOffline = 0, kuotaHabis = false;
     const gagalNama = [];
     showToast(`Mulai generate ${targets.length} caption AI...`);
 
     for (let i = 0; i < targets.length; i++) {
         const prog = targets[i];
-        if (btn) btn.innerHTML = `<i class="bi bi-hourglass-split"></i> Menyusun ${i + 1}/${targets.length}...`;
-        try {
-            const raw = buildRawConceptFromProgramRow(prog);
-            if (!raw) throw new Error('Data program tidak cukup untuk disusun jadi konsep');
-            const hasil = await callWaCaptionAI(raw);
-            await updateProgramById(prog.id, { teks_wa: hasil });
-            const idx = adminPrograms.findIndex(p => String(p.id) === String(prog.id));
-            if (idx >= 0) adminPrograms[idx].teks_wa = hasil;
-            sukses++;
-        } catch (err) {
-            console.error('Batch caption gagal untuk', prog.nama, err);
+        if (btn) {
+            const tag = kuotaHabis ? ' (offline)' : '';
+            btn.innerHTML = `<i class="bi bi-hourglass-split"></i> Menyusun ${i + 1}/${targets.length}${tag}...`;
+        }
+
+        let hasil = null;
+        let pakaiFallback = false;
+
+        // Kalau kuota AI sudah diketahui habis (dari item sebelumnya di batch
+        // ini), skip langsung ke fallback offline -- tidak perlu coba panggil
+        // API lagi karena hampir pasti gagal juga, cuma buang waktu tunggu.
+        if (!kuotaHabis) {
+            try {
+                const raw = buildRawConceptFromProgramRow(prog);
+                if (!raw) throw new Error('Data program tidak cukup untuk disusun jadi konsep');
+                hasil = await callWaCaptionAI(raw);
+            } catch (err) {
+                console.error('AI gagal untuk', prog.nama, err);
+                if (err.isRateLimit) kuotaHabis = true;
+                // jatuh ke fallback offline di bawah, bukan langsung dianggap gagal
+            }
+        }
+
+        // Fallback offline: sama seperti catch block di generateCaptionAI()
+        // (tombol single) -- generateAutoWAText() menyusun caption dari data
+        // program yang sudah ada (harga, hotel, termasuk/tidak termasuk, kontak)
+        // pakai template lokal, tanpa AI. Tidak sekreatif versi AI, tapi semua
+        // data penting tetap lengkap tersusun & program tidak nyangkut kosong.
+        if (!hasil) {
+            try {
+                hasil = generateAutoWAText(prog);
+                pakaiFallback = true;
+            } catch (err2) {
+                console.error('Fallback offline gagal untuk', prog.nama, err2);
+            }
+        }
+
+        if (hasil) {
+            try {
+                await updateProgramById(prog.id, { teks_wa: hasil });
+                const idx = adminPrograms.findIndex(p => String(p.id) === String(prog.id));
+                if (idx >= 0) adminPrograms[idx].teks_wa = hasil;
+                sukses++;
+                if (pakaiFallback) fallbackOffline++;
+            } catch (errSave) {
+                console.error('Gagal simpan ke DB untuk', prog.nama, errSave);
+                gagal++;
+                gagalNama.push(prog.nama || `#${prog.id}`);
+            }
+        } else {
             gagal++;
             gagalNama.push(prog.nama || `#${prog.id}`);
-            // Kuota/rate limit Gemini habis -> berhenti SEKARANG, jangan lanjut
-            // memanggil program berikutnya karena hampir pasti gagal juga
-            // (buang-buang waktu & bikin toast error bertumpuk percuma).
-            if (err.isRateLimit) { berhentiKuota = true; break; }
         }
-        // Jeda kecil antar panggilan supaya tidak kena rate limit Gemini free tier.
-        if (i < targets.length - 1) await new Promise(r => setTimeout(r, 1200));
+
+        // Jeda cuma perlu selama masih memanggil AI -- kalau sudah mode
+        // full-offline (kuotaHabis), tidak perlu tunggu, tidak ada API yang dipanggil.
+        if (!kuotaHabis && i < targets.length - 1) await new Promise(r => setTimeout(r, 1200));
     }
 
     _batchCaptionRunning = false;
     await renderAdminPanel();
 
-    if (berhentiKuota) {
-        const sisaBelumDiproses = targets.length - sukses - gagal;
-        showToast(`⏸ Berhenti otomatis — kuota API Gemini habis. ${sukses} caption berhasil sebelum berhenti, ${sisaBelumDiproses} program lain belum diproses. Coba lagi nanti (tombolnya akan muncul lagi dengan sisa program).`, 'error');
-    } else if (gagal === 0) {
-        showToast(`✓ Selesai — ${sukses} caption berhasil di-generate`);
-    } else {
-        showToast(`Selesai — ${sukses} berhasil, ${gagal} gagal (${gagalNama.slice(0, 3).join(', ')}${gagalNama.length > 3 ? ', ...' : ''})`, 'error');
-    }
+    let ringkasan = `${sukses} dari ${targets.length} caption tersimpan`;
+    if (fallbackOffline > 0) ringkasan += ` (${fallbackOffline} pakai template offline karena kuota AI habis/error)`;
+    if (gagal > 0) ringkasan += `, ${gagal} gagal total (${gagalNama.slice(0, 3).join(', ')}${gagalNama.length > 3 ? ', ...' : ''})`;
+    showToast((gagal === 0 ? '✓ Selesai — ' : 'Selesai — ') + ringkasan, gagal > 0 ? 'error' : undefined);
 }
 
 // Entry point tombol "Caption Kosong" di toolbar Program -- tidak menimpa
