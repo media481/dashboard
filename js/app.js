@@ -8342,15 +8342,15 @@ function renderRoomingListBody() {
             const kap = ROOM_KAPASITAS[tipe] || 4;
             const penuh = isi.length > kap;
             roomBlocks.push(`
-                <div style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:200px;flex:1;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                        <b style="font-size:12.5px;">Kamar ${n}</b>
-                        <span style="font-size:10.5px;color:${penuh ? 'var(--danger)' : 'var(--ink-soft)'};font-weight:${penuh ? 700 : 400};">${isi.length}/${kap} orang${penuh ? ' — kelebihan!' : ''}</span>
+                <div style="border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-width:250px;flex:1 1 250px;max-width:320px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <b style="font-size:13.5px;">Kamar ${n}</b>
+                        <span style="font-size:11px;color:${penuh ? 'var(--danger)' : 'var(--ink-soft)'};font-weight:${penuh ? 700 : 400};">${isi.length}/${kap} orang${penuh ? ' — kelebihan!' : ''}</span>
                     </div>
                     ${isi.map(j => `
-                        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:4px 0;border-top:1px dashed var(--line);">
-                            <span style="font-size:12px;">${escapeHtml(j.nama)}</span>
-                            <select style="font-size:11px;padding:3px 5px;border-radius:6px;border:1px solid var(--line);" onchange="pindahKamarJamaah('${j.id}', this.value)">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-top:1px dashed var(--line);">
+                            <span style="font-size:12.5px;">${escapeHtml(j.nama)}</span>
+                            <select style="font-size:11.5px;padding:4px 6px;border-radius:6px;border:1px solid var(--line);" onchange="pindahKamarJamaah('${j.id}', this.value)">
                                 ${roomOptionsHtml(j.nomor_kamar)}
                             </select>
                         </div>
@@ -8359,16 +8359,16 @@ function renderRoomingListBody() {
         }
 
         return `
-            <div style="margin-bottom:18px;">
-                <div style="font-size:12.5px;font-weight:700;color:var(--brand);margin-bottom:8px;">${TIPE_KAMAR_LABEL_ROOMING[tipe]} — ${anggota.length} jamaah</div>
-                <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:${belumDikelompokkan.length ? '10px' : '0'};">${roomBlocks.join('') || '<span style="font-size:11.5px;color:var(--ink-soft);">Belum ada yang dikelompokkan.</span>'}</div>
+            <div style="margin-bottom:22px;">
+                <div style="font-size:13.5px;font-weight:700;color:var(--brand);margin-bottom:10px;">${TIPE_KAMAR_LABEL_ROOMING[tipe]} — ${anggota.length} jamaah</div>
+                <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:${belumDikelompokkan.length ? '12px' : '0'};">${roomBlocks.join('') || '<span style="font-size:11.5px;color:var(--ink-soft);">Belum ada yang dikelompokkan.</span>'}</div>
                 ${belumDikelompokkan.length ? `
-                <div style="border:1px dashed var(--warn);border-radius:10px;padding:10px 12px;background:var(--warn-tint);">
-                    <div style="font-size:11px;font-weight:700;color:var(--warn);margin-bottom:6px;"><i class="bi bi-exclamation-triangle-fill"></i> Belum Dikelompokkan (${belumDikelompokkan.length})</div>
+                <div style="border:1px dashed var(--warn);border-radius:10px;padding:12px 14px;background:var(--warn-tint);">
+                    <div style="font-size:11.5px;font-weight:700;color:var(--warn);margin-bottom:8px;"><i class="bi bi-exclamation-triangle-fill"></i> Belum Dikelompokkan (${belumDikelompokkan.length})</div>
                     ${belumDikelompokkan.map(j => `
-                        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;">
-                            <span style="font-size:12px;">${escapeHtml(j.nama)}</span>
-                            <select style="font-size:11px;padding:3px 5px;border-radius:6px;border:1px solid var(--line);" onchange="pindahKamarJamaah('${j.id}', this.value)">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;">
+                            <span style="font-size:12.5px;">${escapeHtml(j.nama)}</span>
+                            <select style="font-size:11.5px;padding:4px 6px;border-radius:6px;border:1px solid var(--line);" onchange="pindahKamarJamaah('${j.id}', this.value)">
                                 ${roomOptionsHtml(j.nomor_kamar)}
                             </select>
                         </div>
