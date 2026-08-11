@@ -1453,6 +1453,22 @@
             overflow-y: auto;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             animation: slideUp .25s ease;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* Edge/IE */
+        }
+        .modal-content::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+        /* [Sembunyikan indikator scroll] Semua area yang bisa di-scroll di
+           dalam modal (body modal, riwayat cicilan, log aktivitas, dsb) ikut
+           menyembunyikan scrollbar bawaan browser — konten tetap bisa
+           di-scroll seperti biasa, hanya indikator visualnya yang disembunyikan. */
+        .modal-content *,
+        .modal-overlay * {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* Edge/IE */
+        }
+        .modal-content *::-webkit-scrollbar,
+        .modal-overlay *::-webkit-scrollbar {
+            display: none; /* Chrome/Safari */
         }
         @keyframes slideUp {
             from { opacity: 0; transform: translateY(30px) scale(0.96); }
