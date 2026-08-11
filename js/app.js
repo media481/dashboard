@@ -72,8 +72,7 @@ const DOKUMEN_JENIS = [
     { key: 'akta_lahir', label: 'Akta Lahir', type: 'copy' },
     { key: 'ijazah', label: 'Ijazah', type: 'copy' },
     { key: 'kartu_vaksin', label: 'Kartu Vaksin', type: 'copy' },
-    { key: 'pas_photo', label: 'Pas Photo 4x6', type: 'single' },
-    { key: 'form_pendaftaran', label: 'Form Pendaftaran', type: 'single' }
+    { key: 'pas_photo', label: 'Pas Photo 4x6', type: 'single' }
 ];
 
 // Hitung usia (tahun, genap) dari tanggal lahir ISO (yyyy-mm-dd). null kalau tidak diketahui.
@@ -7562,14 +7561,16 @@ async function loadDokumenForProgram(programId) {
             return;
         }
 
-        const totalDok = DOKUMEN_JENIS.length;
         const totalLengkap = jamaah.filter(j => isDokumenLengkap(j.dokumen, j)).length;
+        const belumLengkap = jamaah.length - totalLengkap;
 
         summaryEl.innerHTML = `
-            <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+            <div class="kp-program-panel" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);">
+                <i class="bi bi-file-earmark-check-fill" style="color:var(--ink-soft);flex-shrink:0;"></i>
+                <span style="font-size:12.5px;color:var(--ink-soft);flex-shrink:0;">Ringkasan:</span>
                 <span class="status-badge available">${jamaah.length} Total Jamaah</span>
                 <span class="status-badge available">${totalLengkap} Dokumen Lengkap</span>
-                ${jamaah.length - totalLengkap > 0 ? `<span class="status-badge full">${jamaah.length - totalLengkap} Belum Lengkap</span>` : ''}
+                ${belumLengkap > 0 ? `<span class="status-badge full">${belumLengkap} Belum Lengkap</span>` : ''}
             </div>`;
 
         const canEdit = canManageProgramData();
@@ -7638,7 +7639,7 @@ async function loadDokumenForProgram(programId) {
                     </tbody>
                 </table>
             </div>
-            <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;">${totalDok} jenis dokumen dicek (mengikuti form Tanda Terima Dokumen): ${DOKUMEN_JENIS.map(d => d.label).join(', ')}. Untuk KTP–Kartu Vaksin, centang Fotocopy dan/atau Asli sesuai yang diserahkan jamaah. Klik <i class="bi bi-printer-fill"></i> untuk mencetak Tanda Terima Dokumen jamaah tersebut.</p>
+            <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;">Centang Fotocopy dan/atau Asli sesuai yang diserahkan jamaah. Klik <i class="bi bi-printer-fill"></i> untuk mencetak Tanda Terima Dokumen jamaah tersebut.</p>
         `;
 
     } catch (err) {
