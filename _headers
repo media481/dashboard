@@ -1,15 +1,16 @@
 # Cloudflare Pages/Workers membaca file ini otomatis untuk menambah HTTP header
 # ke semua response.
 #
-# CATATAN PERBAIKAN: komentar versi sebelumnya menyatakan "CSP lengkap
-# (script-src, connect-src, dst) tetap di meta tag index.html". Itu TIDAK
-# benar — index.html tidak pernah punya satu pun tag <meta http-equiv>, jadi
-# selama ini situs berjalan TANPA CSP sama sekali. Sekarang CSP lengkap
-# dipasang di sini (tempat yang memang benar; frame-ancestors & HSTS bahkan
-# diabaikan kalau dikirim lewat meta).
+# CSP ini dibangun khusus untuk Dashboard Amiru (bukan Merdeka) — daftar
+# domain di bawah diambil dari yang benar-benar dipakai index.html/js/app.js:
+#   - cdn.jsdelivr.net      -> @supabase/supabase-js
+#   - cdnjs.cloudflare.com  -> bootstrap-icons (css), jspdf, html2canvas
+#   - fonts.googleapis.com / fonts.gstatic.com -> Google Fonts
+#   - *.supabase.co         -> koneksi Supabase (REST + Edge Functions)
 #
-# Inline <script> pendaftar service worker sudah dipindah ke js/sw-register.js
-# supaya CSP tidak perlu 'unsafe-inline' untuk script.
+# Kalau nanti nambah CDN baru di index.html, jangan lupa tambahkan
+# domainnya di script-src / style-src di bawah juga, atau kena blokir CSP
+# persis seperti error yang barusan muncul.
 /*
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
@@ -17,11 +18,4 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=(), usb=(), interest-cohort=()
   Cross-Origin-Opener-Policy: same-origin
-  # PERBAIKAN CSP (lihat CATATAN bawah): script-src ditambah 'unsafe-inline'
-  # agar event handler atribut (onclick/onchange/oninput/dst) yang dipakai
-  # ~650 kali di seluruh tampilan (data-driven, mis. openAnggotaModal('${id}'))
-  # tidak lagi diblokir. 'unsafe-hashes' TIDAK cukup karena handler dinamis
-  # punya nilai hash berbeda tiap render. Catatan keamanan: ini melemahkan
-  # proteksi script-src (XSS blast radius lebih besar). PERBAIKAN proper =
-  # refactor ke addEventListener/delegasi (lihat pesan agent).
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://tykahltxzlpctfqdylno.supabase.co; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; object-src 'none'
