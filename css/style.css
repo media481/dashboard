@@ -721,6 +721,13 @@
         .btn-ai-caption { background: var(--brand); color: #fff; border: none; padding: 6px 12px; border-radius: 8px; font-size: 11.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background .15s; }
         .btn-ai-caption:hover { background: var(--brand-deep); }
         .btn-ai-caption:disabled { opacity: .6; cursor: not-allowed; }
+
+        .btn-batch-caption { background: var(--bg); border: 1px solid var(--line); color: var(--ink); height: 36px; padding: 0 12px; border-radius: 9px; display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all .15s; }
+        .btn-batch-caption:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-tint); }
+        .btn-batch-caption:disabled { opacity: .6; cursor: not-allowed; }
+        .btn-batch-caption .badge-count { background: var(--warn); color: #fff; font-size: 10.5px; font-weight: 800; padding: 1px 7px; border-radius: 999px; line-height: 1.5; }
+        .btn-batch-caption.warn:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-tint); }
+        .btn-batch-caption.warn .badge-count { background: var(--danger); }
         .wa-caption-gauge { font-size: 11.5px; margin-top: 6px; min-height: 14px; }
 
         /* Generator Teks WA: 2 kolom (hasil generate vs teks broadcast asli untuk cek manual) */
