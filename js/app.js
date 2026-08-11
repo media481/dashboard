@@ -7860,7 +7860,6 @@ async function loadKepulanganForProgram(programId) {
                 <input type="date" class="kp-field" value="${programTglPulang}" ${canEdit ? '' : 'disabled'}
                     onchange="updateTanggalKepulanganProgram('tgl_pulang_aktual', this.value)" style="min-width:128px;flex:1 1 128px;">
 
-                <span style="font-size:11px;color:var(--ink-soft);width:100%;">Berlaku untuk seluruh ${jamaah.length} jamaah di program ini sekaligus -- satu rombongan berangkat & pulang bersamaan, jadi tidak ada status/tanggal per jamaah.${pakaiDefaultJadwal && programTglBerangkat ? ' Tgl Berangkat (garis putus-putus) otomatis ikut jadwal program sampai dikonfirmasi manual.' : ''}</span>
             </div>`;
 
         container.innerHTML = `
