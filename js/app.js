@@ -4042,7 +4042,7 @@ async function confirmDeleteAction() {
         let pendaftaranIdSebelumHapus = null;
         if (finishedTable === 'kb_jamaah') {
             const { data } = await supabaseClient
-                .from('kb_jamaah').select('pendaftaran_id').eq('id', finishedId).single();
+                .from('kb_jamaah').select('pendaftaran_id').eq('id', finishedId).maybeSingle();
             pendaftaranIdSebelumHapus = data ? data.pendaftaran_id : null;
         }
 
@@ -5524,8 +5524,9 @@ function offerUndoJamaahEdit(jamaahId, beforeCopy, changedLabels) {
             const restore = {};
             Object.keys(JAMAAH_AUDIT_FIELDS).forEach(field => { restore[field] = beforeCopy[field] ?? ''; });
             const { data: currentRow, error: curErr } = await supabaseClient
-                .from('kb_jamaah').select('*').eq('id', jamaahId).single();
+                .from('kb_jamaah').select('*').eq('id', jamaahId).maybeSingle();
             if (curErr) throw curErr;
+            if (!currentRow) throw new Error('Data jamaah tidak ditemukan (mungkin sudah dihapus/diarsipkan)');
             const { error } = await supabaseClient.from('kb_jamaah').update(restore).eq('id', jamaahId);
             if (error) throw error;
             await logKbJamaahChanges(jamaahId, currentRow || {}, restore);
@@ -5620,10 +5621,11 @@ function closeCicilanModal() {
 async function loadCicilanHistory(jamaahId) {
     try {
         const { data: jamaahRow, error: jErr } = await withRetry(
-            () => supabaseClient.from('kb_jamaah').select('*').eq('id', jamaahId).single(),
+            () => supabaseClient.from('kb_jamaah').select('*').eq('id', jamaahId).maybeSingle(),
             { label: 'Muat data jamaah' }
         );
         if (jErr) throw jErr;
+        if (!jamaahRow) throw new Error('Data jamaah tidak ditemukan (mungkin sudah dihapus/diarsipkan)');
 
         const program = dataUmroh.find(p => String(p.id) === String(jamaahRow.program_id));
         const hargaProgram = getHargaKamarJamaah(program, jamaahRow);
@@ -6439,8 +6441,8 @@ async function previewNotaFromAudit(logId, btn) {
 
         if (!row.jamaah_id) { showToast('Data jamaah untuk nota ini tidak lengkap, tidak bisa dipreview', 'error'); return; }
 
-        const { data: jamaahRow, error: jErr } = await supabaseClient.from('kb_jamaah').select('*').eq('id', row.jamaah_id).single();
-        if (jErr || !jamaahRow) { showToast('Data jamaah untuk nota ini sudah tidak ada (mungkin sudah dihapus)', 'error'); return; }
+        const { data: jamaahRow, error: jErr } = await supabaseClient.from('kb_jamaah').select('*').eq('id', row.jamaah_id).maybeSingle();
+        if (jErr || !jamaahRow) { showToast('Data jamaah untuk nota ini sudah tidak ada (mungkin sudah dihapus/diarsipkan)', 'error'); return; }
 
         const { data: bayarRows, error: bErr } = await supabaseClient.from('pembayaran_jamaah').select('*').eq('jamaah_id', row.jamaah_id).order('tanggal', { ascending: false });
         if (bErr) throw bErr;
@@ -7405,7 +7407,7 @@ async function afterDeleteCicilan(jamaahId) {
 // selalu konsisten dengan data di tab Pembayaran & Cicilan.
 async function syncJamaahStatus(jamaahId) {
     try {
-        const { data: jamaahRow, error: jErr } = await supabaseClient.from('kb_jamaah').select('*').eq('id', jamaahId).single();
+        const { data: jamaahRow, error: jErr } = await supabaseClient.from('kb_jamaah').select('*').eq('id', jamaahId).maybeSingle();
         if (jErr || !jamaahRow) return;
         // Status "Batal" diset manual lewat form Edit Jamaah dan sengaja tidak
         // dihidupkan lagi otomatis oleh transaksi pembayaran/refund berikutnya.
@@ -7670,8 +7672,9 @@ function isDokumenLengkap(dok, jamaah) {
 async function toggleDokumenJamaah(jamaahId, key, checked) {
     if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengubah data dokumen', 'error'); return; }
     try {
-        const { data: jamaahRow, error: jErr } = await supabaseClient.from('kb_jamaah').select('dokumen').eq('id', jamaahId).single();
+        const { data: jamaahRow, error: jErr } = await supabaseClient.from('kb_jamaah').select('dokumen').eq('id', jamaahId).maybeSingle();
         if (jErr) throw jErr;
+        if (!jamaahRow) throw new Error('Data jamaah tidak ditemukan (mungkin sudah dihapus/diarsipkan)');
 
         const dokBaru = { ...(jamaahRow.dokumen || {}), [key]: checked };
         const { error } = await supabaseClient.from('kb_jamaah').update({ dokumen: dokBaru }).eq('id', jamaahId);
@@ -8111,8 +8114,8 @@ async function bukaTandaTerimaDokumen(jamaahId, btn) {
     const originalIcon = btn ? btn.innerHTML : null;
     if (btn) { btn.innerHTML = '<i class="bi bi-arrow-repeat bi-spin"></i>'; btn.disabled = true; }
     try {
-        const { data: jamaah, error } = await supabaseClient.from('kb_jamaah').select('*').eq('id', jamaahId).single();
-        if (error || !jamaah) throw error || new Error('Data jamaah tidak ditemukan');
+        const { data: jamaah, error } = await supabaseClient.from('kb_jamaah').select('*').eq('id', jamaahId).maybeSingle();
+        if (error || !jamaah) throw error || new Error('Data jamaah tidak ditemukan (mungkin sudah dihapus/diarsipkan)');
         const program = dataUmroh.find(p => String(p.id) === String(jamaah.program_id)) || null;
 
         const html = buildDokumenTandaTerimaHTML(jamaah, program);
