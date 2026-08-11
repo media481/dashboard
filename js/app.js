@@ -4935,7 +4935,7 @@ async function loadKbJamaahForProgram(programId) {
                     <td style="padding:10px 14px;white-space:nowrap;">
                         <div class="row-actions">
                             <button class="btn-primary btn-pay" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${j.id}')">
-                                <i class="bi bi-cash-stack"></i> Bayar
+                                <i class="bi bi-cash-stack"></i> Update Pembayaran
                             </button>
                             ${canEdit ? `
                             <span class="row-actions-sep"></span>
@@ -5942,7 +5942,7 @@ async function renderPembayaranPanel() {
                     <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
                     <td style="text-align:right;white-space:nowrap;">
                         <button class="btn-primary btn-pay" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${r.j.id}')" ${!canEdit ? 'disabled title="Tidak punya izin"' : ''}>
-                            <i class="bi bi-cash-stack"></i> Bayar
+                            <i class="bi bi-cash-stack"></i> Update Pembayaran
                         </button>
                     </td>
                 </tr>`;
