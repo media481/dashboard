@@ -4871,13 +4871,12 @@ async function loadKbJamaahForProgram(programId) {
             <button type="button" class="btn-export-subtle" id="btnExportPembayaranExcel" onclick="exportPembayaranExcel(this)" title="Export riwayat pembayaran & cicilan ke Excel">
                 <i class="bi bi-cash-coin"></i> Export Pembayaran
             </button>` : '';
-        const arsipBtnHtml = (canEdit && jamaah.length) ? `
-            <button type="button" class="btn-arsip-semua" onclick="arsipkanSemuaJamaah('${programId}')" title="Arsipkan semua jamaah di program ini">
-                <i class="bi bi-archive-fill"></i> Arsipkan Semua Jamaah Program Ini
-            </button>` : '';
-        const bottomActionsHtml = (exportBtnsHtml || arsipBtnHtml) ? `
+        // Tombol "Arsipkan Semua Jamaah Program Ini" dipindah ke tab Status
+        // Kepulangan (lihat loadKepulanganForProgram) supaya lokasinya
+        // berdekatan dengan status "Sudah Pulang" yang jadi syarat arsip.
+        const bottomActionsHtml = exportBtnsHtml ? `
             <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;">
-                ${exportBtnsHtml}${arsipBtnHtml}
+                ${exportBtnsHtml}
             </div>` : '';
         if (!jamaah.length) {
             container.innerHTML = `<div class="kb-no-program"><i class="bi bi-person-dash-fill"></i><p>Belum ada jamaah terdaftar untuk program ini.</p></div>`;
@@ -5098,6 +5097,7 @@ async function confirmArsipkanSemua() {
         await loadDataFromSupabase(true);
         await loadKbJamaah();
         renderKbProgramSelector();
+        renderKepulanganProgramSelector();
         updateMetrics();
     } catch (err) {
         console.error('Arsipkan semua jamaah error:', err);
@@ -7895,6 +7895,12 @@ async function loadKepulanganForProgram(programId) {
                 </table>
             </div>
             <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;">Status & tanggal di atas berlaku untuk seluruh jamaah di program ini -- tersimpan otomatis begitu berpindah field, tidak perlu tombol Simpan terpisah. Kolom Catatan cuma catatan bebas per jamaah (mis. titip alamat jemput), bukan status kepulangan.</p>
+            ${(canEdit && jamaah.length) ? `
+            <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                <button type="button" class="btn-arsip-semua" onclick="arsipkanSemuaJamaah('${programId}')" title="Arsipkan semua jamaah di program ini">
+                    <i class="bi bi-archive-fill"></i> Arsipkan Semua Jamaah Program Ini
+                </button>
+            </div>` : ''}
         `;
 
     } catch (err) {
