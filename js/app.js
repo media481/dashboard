@@ -2875,7 +2875,7 @@ const SIDEBAR_MENU_REGISTRY = [
     { key: 'info', label: 'Jadwal Tamu', group: 'Navigasi' },
     { key: 'pendaftaran', label: 'Pendaftaran', group: 'Navigasi' },
     { key: 'keberangkatan', label: 'Data Jamaah', group: 'Navigasi' },
-    { key: 'dokumen', label: 'Kelengkapan Dokumen', group: 'Navigasi' },
+    { key: 'dokumen', label: 'Dokumen', group: 'Navigasi' },
     { key: 'kepulangan', label: 'Status Kepulangan', group: 'Navigasi' },
     { key: 'arsip', label: 'Arsip Jamaah', group: 'Navigasi' },
     { key: 'program', label: 'Tambah Program', group: 'Manajemen' },
