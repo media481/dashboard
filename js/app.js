@@ -73,8 +73,63 @@ const DOKUMEN_JENIS = [
     { key: 'ijazah', label: 'Ijazah', type: 'copy' },
     { key: 'kartu_vaksin', label: 'Kartu Vaksin', type: 'copy' },
     { key: 'pas_photo', label: 'Pas Photo 4x6', type: 'single' },
-    { key: 'form_pendaftaran', label: 'Form Pendaftaran', type: 'single' }
+    { key: 'form_pendaftaran', label: 'Form Pendaftaran', type: 'single' },
+    // kondisional: true -> hanya wajib untuk sebagian jamaah (lihat isMahramWajib()
+    // di bawah), bukan untuk semua jamaah seperti dokumen lain di atas.
+    { key: 'surat_mahram', label: 'Surat Mahram', type: 'single', kondisional: true }
 ];
+
+// Hitung usia (tahun, genap) dari tanggal lahir ISO (yyyy-mm-dd). null kalau tidak diketahui.
+function hitungUsia(tglLahir) {
+    if (!tglLahir) return null;
+    const lahir = new Date(tglLahir);
+    if (isNaN(lahir)) return null;
+    const now = new Date();
+    let usia = now.getFullYear() - lahir.getFullYear();
+    const belumUlangTahun = (now.getMonth() < lahir.getMonth()) || (now.getMonth() === lahir.getMonth() && now.getDate() < lahir.getDate());
+    if (belumUlangTahun) usia--;
+    return usia;
+}
+
+// Syarat Umroh 2026: jamaah wanita di bawah 45 tahun yang bepergian tanpa
+// mahram wajib punya Surat Mahram. Sistem tidak tahu ada/tidaknya mahram
+// pendamping, jadi defaultnya "wajib dicek" kalau jenis kelamin/tgl lahir
+// belum diisi -- supaya tidak ada kasus yang kelewat tanpa disadari admin.
+function isMahramWajib(jamaah) {
+    if (!jamaah || jamaah.jenis_kelamin !== 'Perempuan') return false;
+    const usia = hitungUsia(jamaah.tgl_lahir);
+    return usia === null ? true : usia < 45;
+}
+
+// Daftar jenis dokumen yang berlaku untuk jamaah tertentu (menyaring dokumen
+// kondisional seperti Surat Mahram yang cuma wajib untuk sebagian jamaah).
+function dokumenJenisUntukJamaah(jamaah) {
+    return DOKUMEN_JENIS.filter(d => !d.kondisional || isMahramWajib(jamaah));
+}
+
+// Status visa sederhana (bukan integrasi resmi ke sistem Saudi -- cuma
+// pencatatan manual oleh admin) & label tampilan tiap statusnya.
+const VISA_STATUS_LABEL = {
+    belum_diajukan: { label: 'Belum Diajukan', badge: 'full' },
+    diproses: { label: 'Diproses', badge: 'limited' },
+    terbit: { label: 'Terbit', badge: 'available' },
+    ditolak: { label: 'Ditolak', badge: 'batal' }
+};
+
+// Syarat 2026: paspor minimal berlaku 6-7 bulan dari tanggal keberangkatan.
+// Pakai ambang 7 bulan (lebih ketat/aman) supaya admin punya waktu mengurus
+// perpanjangan sebelum mepet. Mengembalikan null kalau data tidak lengkap.
+function pasporMepetInfo(pasporExp, tglBerangkat) {
+    if (!pasporExp || !tglBerangkat) return null;
+    const exp = new Date(pasporExp);
+    const berangkat = new Date(tglBerangkat);
+    if (isNaN(exp) || isNaN(berangkat)) return null;
+    const batasAman = new Date(berangkat);
+    batasAman.setMonth(batasAman.getMonth() + 7);
+    if (exp < berangkat) return { level: 'expired', text: 'Paspor sudah/akan kadaluarsa sebelum keberangkatan' };
+    if (exp < batasAman) return { level: 'mepet', text: 'Masa berlaku paspor kurang dari 7 bulan dari keberangkatan' };
+    return null;
+}
 let deleteTarget = { table: null, id: null, name: '' };
 let adminSubTab = 'program';
 // ---- Crosscheck module state ----
@@ -3529,7 +3584,7 @@ const TABLE_LABEL = {
 // upsert tidak ditolak Supabase gara-gara kolom yang tidak dikenal.
 const OPTIONAL_TABLE_COLUMNS = {
     jadwal_tamu: ['id', 'nama', 'tgl', 'jam', 'asal', 'jumlah', 'keperluan', 'wa', 'catatan', 'created_at'],
-    kb_jamaah: ['id', 'program_id', 'nama', 'nik', 'paspor', 'wa', 'asal', 'tipe_kamar', 'harga_custom', 'status', 'catatan', 'dokumen', 'created_at', 'jenis_kelamin', 'tempat_lahir', 'tgl_lahir', 'alamat', 'kode_pos', 'telp_rumah', 'ahli_waris_nama', 'ahli_waris_hubungan', 'pendaftaran_id'],
+    kb_jamaah: ['id', 'program_id', 'nama', 'nik', 'paspor', 'wa', 'asal', 'tipe_kamar', 'harga_custom', 'status', 'catatan', 'dokumen', 'created_at', 'jenis_kelamin', 'tempat_lahir', 'tgl_lahir', 'alamat', 'kode_pos', 'telp_rumah', 'ahli_waris_nama', 'ahli_waris_hubungan', 'pendaftaran_id', 'paspor_exp', 'visa_status'],
     pendaftaran: ['id', 'program_id', 'nama', 'wa', 'asal', 'status', 'catatan', 'created_at'],
     featured_programs: ['id', 'program_id', 'created_at']
 };
@@ -4551,7 +4606,7 @@ async function loadKbJamaah() {
 // centang dokumen (toggleDokumenJamaah), dan sesudah ubah status kepulangan
 // (updateKepulanganField).
 function renderNavBadges() {
-    const dokBelumLengkap = (kbJamaahList || []).filter(j => !isDokumenLengkap(j.dokumen)).length;
+    const dokBelumLengkap = (kbJamaahList || []).filter(j => !isDokumenLengkap(j.dokumen, j)).length;
     // Sengaja hanya hitung "sudah_berangkat" (bukan "belum_berangkat") --
     // itu yang paling butuh perhatian admin karena jamaahnya sedang di
     // perjalanan tapi belum ditandai pulang, sedangkan "belum_berangkat"
@@ -4701,11 +4756,14 @@ async function loadKbJamaahForProgram(programId) {
             else if (dibayar > 0) { statusLabel = '<i class="bi bi-arrow-repeat"></i> Cicilan'; statusClass = 'limited'; }
             else { statusLabel = '<i class="bi bi-hourglass-split"></i> Belum Bayar'; statusClass = 'full'; }
 
+            const mepet = pasporMepetInfo(j.paspor_exp, program ? program.dateObj : null);
+            const visaInfo = VISA_STATUS_LABEL[j.visa_status || 'belum_diajukan'] || VISA_STATUS_LABEL.belum_diajukan;
+
             return `
                 <tr style="border-bottom:1px solid var(--line);">
                     <td style="padding:10px 14px;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
                     <td style="padding:10px 14px;">${j.nik || '-'}</td>
-                    <td style="padding:10px 14px;">${j.paspor || '-'}</td>
+                    <td style="padding:10px 14px;">${j.paspor || '-'}${mepet ? `<br><span class="status-badge ${mepet.level === 'expired' ? 'batal' : 'full'}" style="font-size:10px;margin-top:3px;" title="${escapeHtml(mepet.text)}"><i class="bi bi-exclamation-triangle-fill"></i> Paspor Mepet</span>` : ''}</td>
                     <td style="padding:10px 14px;white-space:nowrap;">${formatRupiah(hargaProgram)}<br><span style="font-size:10px;color:var(--ink-soft);">${parseRupiahToNumber(j.harga_custom) > 0 ? 'Harga Khusus' : (TIPE_KAMAR_LABEL[j.tipe_kamar] || 'Quad')}</span></td>
                     <td style="padding:10px 14px;white-space:nowrap;color:var(--success);font-weight:600;">${formatRupiah(dibayar)}</td>
                     <td style="padding:10px 14px;white-space:nowrap;color:${sisa > 0 ? 'var(--danger)' : 'var(--ink-soft)'};font-weight:600;">${formatRupiah(sisa)}</td>
@@ -4716,6 +4774,7 @@ async function loadKbJamaahForProgram(programId) {
                         <span style="font-size:10px;color:var(--ink-soft);">${pct}%</span>
                     </td>
                     <td style="padding:10px 14px;"><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                    <td style="padding:10px 14px;"><span class="status-badge ${visaInfo.badge}">Visa: ${visaInfo.label}</span></td>
                     <td style="padding:10px 14px;white-space:nowrap;">
                         <div class="row-actions">
                             <button class="btn-primary btn-pay" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${j.id}')">
@@ -4737,6 +4796,7 @@ async function loadKbJamaahForProgram(programId) {
             const h = getHargaKamarJamaah(program, j);
             return h > 0 && (totalPerJamaah[j.id] || 0) >= h;
         }).length;
+        const totalPasporMepet = jamaah.filter(j => pasporMepetInfo(j.paspor_exp, program ? program.dateObj : null)).length;
 
         container.innerHTML = `
             <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
@@ -4744,6 +4804,7 @@ async function loadKbJamaahForProgram(programId) {
                 <span class="status-badge available">${totalLunas} Lunas</span>
                 <span class="status-badge available">Total Dibayar: ${formatRupiah(grandTotalDibayar)}</span>
                 <span class="status-badge ${grandSisa > 0 ? 'full' : 'available'}">Sisa Tagihan: ${formatRupiah(grandSisa)}</span>
+                ${totalPasporMepet > 0 ? `<span class="status-badge full"><i class="bi bi-exclamation-triangle-fill"></i> ${totalPasporMepet} Paspor Mepet/Kadaluarsa</span>` : ''}
             </div>
             ${anyHargaKosong ? `<div style="font-size:12px;color:var(--warn);margin-bottom:10px;"><i class="bi bi-exclamation-triangle-fill"></i> Ada jamaah yang harga tipe kamarnya belum diisi di program ini, sisa tagihan jamaah tsb tidak bisa dihitung akurat.</div>` : ''}
             <div class="table-container" style="overflow-x:auto;">
@@ -4758,6 +4819,7 @@ async function loadKbJamaahForProgram(programId) {
                             <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Sisa</th>
                             <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Progress</th>
                             <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Status</th>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Visa</th>
                             <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Aksi</th>
                         </tr>
                     </thead>
@@ -4998,6 +5060,8 @@ function openKbModal(id = null) {
         document.getElementById('kb_nama').value = j.nama || '';
         document.getElementById('kb_nik').value = j.nik || '';
         document.getElementById('kb_paspor').value = j.paspor || '';
+        document.getElementById('kb_paspor_exp').value = j.paspor_exp || '';
+        document.getElementById('kb_visa_status').value = j.visa_status || 'belum_diajukan';
         document.getElementById('kb_wa').value = j.wa || '';
         document.getElementById('kb_asal').value = j.asal || '';
         document.getElementById('kb_tipe_kamar').value = j.tipe_kamar || 'quad';
@@ -5116,6 +5180,8 @@ async function saveKbJamaah(e) {
         nama: document.getElementById('kb_nama').value.trim(),
         nik: document.getElementById('kb_nik').value.trim(),
         paspor: document.getElementById('kb_paspor').value.trim(),
+        paspor_exp: document.getElementById('kb_paspor_exp').value || null,
+        visa_status: document.getElementById('kb_visa_status').value || 'belum_diajukan',
         wa: document.getElementById('kb_wa').value.trim(),
         asal: document.getElementById('kb_asal').value.trim(),
         tipe_kamar: document.getElementById('kb_tipe_kamar').value || 'quad',
@@ -7292,13 +7358,15 @@ async function loadDokumenForProgram(programId) {
         }
 
         const totalDok = DOKUMEN_JENIS.length;
-        const totalLengkap = jamaah.filter(j => isDokumenLengkap(j.dokumen)).length;
+        const totalLengkap = jamaah.filter(j => isDokumenLengkap(j.dokumen, j)).length;
+        const totalMahramWajib = jamaah.filter(isMahramWajib).length;
 
         summaryEl.innerHTML = `
             <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
                 <span class="status-badge available">${jamaah.length} Total Jamaah</span>
                 <span class="status-badge available">${totalLengkap} Dokumen Lengkap</span>
                 ${jamaah.length - totalLengkap > 0 ? `<span class="status-badge full">${jamaah.length - totalLengkap} Belum Lengkap</span>` : ''}
+                ${totalMahramWajib > 0 ? `<span class="status-badge limited"><i class="bi bi-shield-exclamation"></i> ${totalMahramWajib} Wajib Surat Mahram</span>` : ''}
             </div>`;
 
         const canEdit = canManageProgramData();
@@ -7332,11 +7400,18 @@ async function loadDokumenForProgram(programId) {
                     <tbody>
                         ${jamaah.map(j => {
                             const dok = j.dokumen || {};
-                            const lengkap = isDokumenLengkap(dok);
+                            const lengkap = isDokumenLengkap(dok, j);
+                            const mahramWajib = isMahramWajib(j);
                             return `
                             <tr style="border-bottom:1px solid var(--line);">
                                 <td style="padding:10px 14px;overflow:hidden;text-overflow:ellipsis;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
-                                ${DOKUMEN_JENIS.map(d => d.type === 'copy' ? `
+                                ${DOKUMEN_JENIS.map(d => {
+                                    // Surat Mahram cuma wajib untuk sebagian jamaah (wanita <45th) --
+                                    // untuk yang tidak wajib, tampilkan strip abu-abu bukan checkbox.
+                                    if (d.kondisional && !mahramWajib) {
+                                        return `<td style="padding:10px 6px;text-align:center;border-left:1px solid var(--line);color:var(--ink-soft);font-size:11px;" title="Tidak wajib (laki-laki / usia ≥45 th)">—</td>`;
+                                    }
+                                    return d.type === 'copy' ? `
                                     <td style="padding:10px 2px;text-align:center;border-left:1px solid var(--line);">
                                         <input type="checkbox" ${dok[d.key + '_fc'] ? 'checked' : ''} ${canEdit ? '' : 'disabled'}
                                             onchange="toggleDokumenJamaah('${j.id}','${d.key}_fc',this.checked)"
@@ -7347,11 +7422,13 @@ async function loadDokumenForProgram(programId) {
                                             onchange="toggleDokumenJamaah('${j.id}','${d.key}_asli',this.checked)"
                                             style="width:16px;height:16px;cursor:${canEdit ? 'pointer' : 'default'};">
                                     </td>` : `
-                                    <td style="padding:10px 6px;text-align:center;border-left:1px solid var(--line);">
+                                    <td style="padding:10px 6px;text-align:center;border-left:1px solid var(--line);${d.kondisional ? 'background:var(--brand-tint);' : ''}">
                                         <input type="checkbox" ${dok[d.key] ? 'checked' : ''} ${canEdit ? '' : 'disabled'}
                                             onchange="toggleDokumenJamaah('${j.id}','${d.key}',this.checked)"
-                                            style="width:16px;height:16px;cursor:${canEdit ? 'pointer' : 'default'};">
-                                    </td>`).join('')}
+                                            style="width:16px;height:16px;cursor:${canEdit ? 'pointer' : 'default'};"
+                                            ${d.kondisional ? 'title="Wajib -- jamaah wanita usia di bawah 45 tahun"' : ''}>
+                                    </td>`;
+                                }).join('')}
                                 <td style="padding:10px 14px;border-left:1px solid var(--line);">
                                     <span class="status-badge ${lengkap ? 'available' : 'full'}">${lengkap ? '<i class="bi bi-check-circle-fill"></i> Lengkap' : '<i class="bi bi-hourglass-split"></i> Belum Lengkap'}</span>
                                 </td>
@@ -7365,7 +7442,7 @@ async function loadDokumenForProgram(programId) {
                     </tbody>
                 </table>
             </div>
-            <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;">${totalDok} jenis dokumen dicek (mengikuti form Tanda Terima Dokumen): ${DOKUMEN_JENIS.map(d => d.label).join(', ')}. Untuk KTP–Kartu Vaksin, centang Fotocopy dan/atau Asli sesuai yang diserahkan jamaah. Klik <i class="bi bi-printer-fill"></i> untuk mencetak Tanda Terima Dokumen jamaah tersebut.</p>
+            <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;">${totalDok} jenis dokumen dicek (mengikuti form Tanda Terima Dokumen): ${DOKUMEN_JENIS.map(d => d.label).join(', ')}. Untuk KTP–Kartu Vaksin, centang Fotocopy dan/atau Asli sesuai yang diserahkan jamaah. Surat Mahram otomatis ditandai wajib hanya untuk jamaah wanita usia di bawah 45 tahun (kolom bertanda "—" berarti tidak wajib). Klik <i class="bi bi-printer-fill"></i> untuk mencetak Tanda Terima Dokumen jamaah tersebut.</p>
         `;
 
     } catch (err) {
@@ -7377,9 +7454,9 @@ async function loadDokumenForProgram(programId) {
     }
 }
 
-function isDokumenLengkap(dok) {
+function isDokumenLengkap(dok, jamaah) {
     if (!dok) return false;
-    return DOKUMEN_JENIS.every(d => d.type === 'copy'
+    return dokumenJenisUntukJamaah(jamaah).every(d => d.type === 'copy'
         ? !!(dok[d.key + '_fc'] || dok[d.key + '_asli'])
         : !!dok[d.key]);
 }
@@ -7596,8 +7673,9 @@ function nomorTandaTerimaDokumen(jamaah) {
 
 function buildDokumenTandaTerimaHTML(jamaah, program) {
     const dok = jamaah.dokumen || {};
-    const totalDok = DOKUMEN_JENIS.length;
-    const totalLengkap = DOKUMEN_JENIS.filter(d => d.type === 'copy'
+    const dokJenis = dokumenJenisUntukJamaah(jamaah);
+    const totalDok = dokJenis.length;
+    const totalLengkap = dokJenis.filter(d => d.type === 'copy'
         ? !!(dok[d.key + '_fc'] || dok[d.key + '_asli'])
         : !!dok[d.key]).length;
     const overallLengkap = totalLengkap === totalDok;
@@ -7607,7 +7685,9 @@ function buildDokumenTandaTerimaHTML(jamaah, program) {
     // Baris status per jenis dokumen: hijau (lengkap), gold (sebagian —
     // khusus dokumen bertipe 'copy' yang baru diserahkan salah satu dari
     // Fotocopy/Asli), atau merah (belum diserahkan sama sekali).
-    const rows = DOKUMEN_JENIS.map((d, i) => {
+    // dokJenis sudah menyaring dokumen kondisional (Surat Mahram) sesuai
+    // apakah jamaah ini wajib atau tidak -- lihat dokumenJenisUntukJamaah().
+    const rows = dokJenis.map((d, i) => {
         let label, warna;
         if (d.type === 'copy') {
             const fc = !!dok[d.key + '_fc'];

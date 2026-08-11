@@ -787,6 +787,23 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
+                        <label>Tgl Kadaluarsa Paspor</label>
+                        <input type="date" id="kb_paspor_exp">
+                        <small style="display:block;margin-top:4px;font-size:11px;color:var(--ink-soft);">Syarat 2026: minimal berlaku 6–7 bulan dari tanggal keberangkatan. Diisi supaya sistem bisa memperingatkan otomatis kalau mepet.</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Status Visa</label>
+                        <select id="kb_visa_status">
+                            <option value="belum_diajukan">Belum Diajukan</option>
+                            <option value="diproses">Diproses</option>
+                            <option value="terbit">Terbit</option>
+                            <option value="ditolak">Ditolak</option>
+                        </select>
+                        <small style="display:block;margin-top:4px;font-size:11px;color:var(--ink-soft);">Pencatatan manual oleh admin, bukan cek langsung ke sistem visa Saudi.</small>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
                         <label>No. WhatsApp</label>
                         <input type="tel" id="kb_wa" placeholder="628xxxxxxxxxx" maxlength="20">
                     </div>
