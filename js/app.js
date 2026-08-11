@@ -5080,6 +5080,8 @@ function openKbModal(id = null) {
         const j = kbJamaahList.find(item => item.id === id);
         if (!j) { showToast('Data tidak ditemukan', 'error'); return; }
         fromPendaftaranBox.style.display = 'none';
+        const fromJamaahLamaBoxEdit = document.getElementById('kbFromJamaahLamaBox');
+        if (fromJamaahLamaBoxEdit) fromJamaahLamaBoxEdit.style.display = 'none';
         document.getElementById('kbModalTitle').textContent = 'Edit Data Jamaah';
         document.getElementById('kb_editId').value = j.id;
         document.getElementById('kb_program').value = j.program_id || '';
@@ -5115,6 +5117,12 @@ function openKbModal(id = null) {
         if (f4Details) f4Details.open = false;
         renderKbPendaftaranOptions();
         fromPendaftaranBox.style.display = '';
+        const fromJamaahLamaBox = document.getElementById('kbFromJamaahLamaBox');
+        if (fromJamaahLamaBox) fromJamaahLamaBox.style.display = '';
+        const cariJamaahLamaInput = document.getElementById('kb_cari_jamaah_lama');
+        if (cariJamaahLamaInput) cariJamaahLamaInput.value = '';
+        const jamaahLamaResults = document.getElementById('kbJamaahLamaResults');
+        if (jamaahLamaResults) { jamaahLamaResults.innerHTML = ''; jamaahLamaResults.style.display = 'none'; }
     }
 
     modal.classList.add('open');
@@ -5191,6 +5199,90 @@ function fillKbFromPendaftaran(pendaftaranId) {
 
 function closeKbModal() {
     document.getElementById('kbModal').classList.remove('open');
+}
+
+// Cari jamaah lama (dari program-program sebelumnya) berdasarkan nama/NIK/paspor,
+// untuk kasus pelanggan lama yang mau daftar ke program baru -- supaya data
+// pribadinya (NIK, paspor, alamat, ahli waris, dll) tidak perlu diketik ulang
+// dari nol. Beda dengan fillKbFromPendaftaran: sumbernya kb_jamaah (bukan
+// pendaftaran), dan field per-trip (program, tipe kamar, harga, status,
+// catatan) SENGAJA tidak ikut disalin karena itu spesifik ke keberangkatan baru.
+function renderKbJamaahLamaOptions(query) {
+    const resultsBox = document.getElementById('kbJamaahLamaResults');
+    if (!resultsBox) return;
+    const q = String(query || '').trim().toLowerCase();
+    if (q.length < 2) { resultsBox.innerHTML = ''; resultsBox.style.display = 'none'; return; }
+
+    const editingId = document.getElementById('kb_editId').value;
+    const matches = (kbJamaahList || []).filter(j => {
+        if (editingId && String(j.id) === String(editingId)) return false;
+        const nama = (j.nama || '').toLowerCase();
+        const nik = (j.nik || '').toLowerCase();
+        const paspor = (j.paspor || '').toLowerCase();
+        return nama.includes(q) || (nik && nik.includes(q)) || (paspor && paspor.includes(q));
+    });
+
+    // Dedupe per orang (by NIK kalau ada, fallback ke nama) supaya orang yang
+    // sudah pernah ikut beberapa program tidak muncul berkali-kali -- ambil
+    // baris yang paling baru (created_at terbaru) sebagai sumber data.
+    const byKey = new Map();
+    for (const j of matches) {
+        const key = (j.nik && j.nik.trim()) ? 'nik:' + j.nik.trim() : 'nama:' + (j.nama || '').trim().toLowerCase();
+        const existing = byKey.get(key);
+        if (!existing || new Date(j.created_at || 0) > new Date(existing.created_at || 0)) byKey.set(key, j);
+    }
+    const unique = [...byKey.values()].slice(0, 8);
+
+    if (!unique.length) {
+        resultsBox.style.display = '';
+        resultsBox.innerHTML = '<div style="padding:8px 10px;font-size:12px;color:var(--ink-soft);">Tidak ada jamaah lama yang cocok — lanjutkan isi manual sebagai jamaah baru.</div>';
+        return;
+    }
+    resultsBox.style.display = '';
+    resultsBox.innerHTML = unique.map(j => {
+        const program = dataUmroh.find(x => String(x.id) === String(j.program_id));
+        const progName = program ? program.nama : 'Program tidak diketahui';
+        const identitas = [j.nik ? 'NIK ' + j.nik : '', j.paspor ? 'Paspor ' + j.paspor : ''].filter(Boolean).join(' · ');
+        return `<div class="kb-jamaah-lama-item" onclick="fillKbFromJamaahLama('${j.id}')" style="padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;border:1px solid transparent;" onmouseover="this.style.background='#fff';this.style.borderColor='#fbd9a3';" onmouseout="this.style.background='transparent';this.style.borderColor='transparent';">
+            <div style="font-weight:600;color:var(--ink);">${escapeHtml(j.nama || '-')}</div>
+            <div style="color:var(--ink-soft);">${escapeHtml(identitas || 'Identitas belum lengkap')} · terakhir ikut ${escapeHtml(progName)}</div>
+        </div>`;
+    }).join('');
+}
+
+// Salin data pribadi dari jamaah lama terpilih ke form -- program, tipe kamar,
+// harga, status pembayaran, dan catatan SENGAJA dikosongkan karena itu milik
+// keberangkatan baru, bukan riwayat lama.
+function fillKbFromJamaahLama(jamaahId) {
+    const j = (kbJamaahList || []).find(item => String(item.id) === String(jamaahId));
+    if (!j) { showToast('Data jamaah lama tidak ditemukan', 'error'); return; }
+
+    document.getElementById('kb_nama').value = j.nama || '';
+    document.getElementById('kb_nik').value = j.nik || '';
+    document.getElementById('kb_paspor').value = j.paspor || '';
+    document.getElementById('kb_paspor_exp').value = j.paspor_exp || '';
+    document.getElementById('kb_wa').value = j.wa || '';
+    document.getElementById('kb_asal').value = j.asal || '';
+    document.getElementById('kb_jenis_kelamin').value = j.jenis_kelamin || '';
+    document.getElementById('kb_tempat_lahir').value = j.tempat_lahir || '';
+    document.getElementById('kb_tgl_lahir').value = j.tgl_lahir || '';
+    document.getElementById('kb_alamat').value = j.alamat || '';
+    document.getElementById('kb_kode_pos').value = j.kode_pos || '';
+    document.getElementById('kb_telp_rumah').value = j.telp_rumah || '';
+    document.getElementById('kb_ahli_waris_nama').value = j.ahli_waris_nama || '';
+    document.getElementById('kb_ahli_waris_hubungan').value = j.ahli_waris_hubungan || '';
+    // Visa status SENGAJA tidak disalin (biasanya perlu diajukan ulang per
+    // keberangkatan), tapi paspor_exp tetap dipakai selama belum kadaluarsa.
+    const f4Details = document.getElementById('kbF4Details');
+    const hasF4 = j.jenis_kelamin || j.tempat_lahir || j.tgl_lahir || j.alamat || j.kode_pos || j.telp_rumah || j.ahli_waris_nama || j.ahli_waris_hubungan;
+    if (f4Details) f4Details.open = !!hasF4;
+
+    const resultsBox = document.getElementById('kbJamaahLamaResults');
+    if (resultsBox) { resultsBox.innerHTML = ''; resultsBox.style.display = 'none'; }
+    const input = document.getElementById('kb_cari_jamaah_lama');
+    if (input) input.value = j.nama || '';
+
+    showToast('Data pribadi disalin dari riwayat "' + (j.nama || '') + '" — pilih program baru & status pembayaran, lalu Simpan');
 }
 
 async function saveKbJamaah(e) {
