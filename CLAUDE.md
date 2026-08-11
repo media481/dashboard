@@ -1,164 +1,167 @@
 # CLAUDE.md
 
-Panduan untuk Claude Code (atau Claude di alat lain) saat bekerja di repo ini.
+Panduan konteks untuk Claude (atau siapa pun) saat mengerjakan proyek ini.
 
-## Ringkasan Proyek
+## Apa proyek ini
 
-**Merdeka** — PWA event management untuk Karang Taruna Inti. Situs statis
-murni (HTML/CSS/JS, tanpa framework, tanpa proses build saat deploy),
-dideploy ke **Cloudflare Workers (assets)** dengan backend **Supabase**.
+**Dashboard Amiru** — dashboard web untuk PT Amiru Haramain Indonesia (travel Umroh):
+mengelola data program Umroh, jadwal tamu, data jamaah per program, kuitansi, notifikasi
+Telegram, dan crosscheck poster promosi vs data yang diinput. Dipakai oleh 3 role:
+`admin`, `user`, `guest` (dan pengunjung anonim yang belum login).
 
-## Arsitektur
+Bahasa UI & komentar kode: **Bahasa Indonesia**. Ikuti gaya ini saat menambah fitur.
 
-- **Tanpa ES modules** — semua modul di `js/*.js` adalah script biasa yang
-  saling bergantung lewat variabel/fungsi **global**. Urutan load di
-  `index.html` HARUS sama persis dengan `MODULE_ORDER` di `build.js`.
-- **Pola sinkronisasi data utama**: hampir semua modul menyimpan datanya di
-  satu object global `db` (didefinisikan lewat `defaultDB()` di
-  `03-db-core.js`). Tiap array di `db` dipetakan ke satu tabel Supabase
-  lewat `ARRAY_TABLE_MAP`. Perubahan data memanipulasi `db.xxx` di memori,
-  lalu memanggil `saveDB()` — yang men-diff tiap tabel (`syncArrayTable` dkk)
-  terhadap server: baris yang tidak ada lagi di `db.xxx` dihapus, yang ada
-  di-upsert, sambil tetap mendeteksi konflik multi-device.
-- **PENGECUALIAN — modul Gudang (`17a`-`17c`) TIDAK ikut pola di atas.**
-  Gudang punya variabel modul sendiri (`gudangInventory`,
-  `gudangTransactions`) yang fetch/tulis **langsung** ke tabel `kt_gudang_*`
-  via Supabase, di luar `db`. Konsekuensi penting: kode mana pun yang
-  mengasumsikan "seluruh data aplikasi" = `JSON.stringify(db)` (backup,
-  ekspor, migrasi, laporan lintas-modul, dll) akan **melewatkan Gudang**
-  kecuali ditangani terpisah secara eksplisit — lihat contoh penanganannya
-  di `fetchGudangBackupData()`/`restoreGudangFromPayload()` (`15b-snapshot.js`)
-  yang dipakai baik oleh snapshot otomatis maupun "Backup Semua Data" manual
-  (`exportData()`/`importData()` di `15-pengaturan-event.js`). Kalau nanti
-  ada modul eventless baru yang dibangun dengan pola serupa Gudang (fetch
-  langsung, bukan lewat `db`), cek dulu apakah dia perlu ditambahkan secara
-  eksplisit ke jalur backup — jangan asumsikan otomatis ikut ter-cover.
-  Restore data Gudang sendiri lewat RPC atomik `kt_gudang_restore_snapshot`
-  (full wipe+insert dalam satu transaksi server, lihat
-  `supabase-gudang-restore-snapshot-migration.sql`) — BUKAN beberapa
-  delete()/insert() terpisah dari JS, supaya koneksi putus di tengah
-  restore tidak meninggalkan tabel Gudang kosong separuh.
-- **Sistem backup/restore** — ada 3 jalur, cakupannya kini sinkron (sama-sama
-  mencakup `db` + Gudang) sejak diperbaiki:
-  1. **Snapshot otomatis** (`15b-snapshot.js`, tabel `kt_snapshot`) — 1×/hari
-     + tepat sebelum aksi berisiko (Impor "Timpa Semua", restore snapshot
-     lain), retensi 10 baris terakhir, tersimpan di server (bukan file).
-  2. **Backup Semua Data manual** (`exportData()`/`importData()` di
-     `15-pengaturan-event.js`) — file `.json` diunduh admin, impor MENIMPA
-     seluruh data.
-  3. **Backup per-modul** (mis. `gudangExportJSON()`/`gudangImportJSON()`,
-     `kasExportJSON()`, dll) — file terpisah per modul, impor MENAMBAH
-     (bukan menimpa), semantik beda dari jalur #2.
-  Payload snapshot & backup manual sama-sama redaksi `telegram.botToken`
-  (kredensial live, bukan data). Payload lama (dibuat sebelum data Gudang
-  ikut ter-backup) tidak punya field `_gudang` — saat direstore, ini
-  ditangani sebagai "data Gudang saat ini dibiarkan", bukan dikosongkan.
-- **File yang di-deploy vs file source**:
-  - Source: `js/00-config.js` ... `js/25-tour.js`, `style.css`,
-    `icons/lucide-icons.local.js`
-  - Hasil build (JANGAN diedit manual, hasil `npm run build`):
-    `js/app.bundle.min.js`, `style.min.css`, `icons/lucide-icons.local.min.js`
-  - Kedua versi (source & bundle) ikut di-commit — bundle di-generate lokal
-    lalu di-commit seperti file biasa, bukan build step di CI/CD.
-- **Routing**: SPA via `wrangler.jsonc` (`not_found_handling:
-  single-page-application`) — semua path non-file balik ke `index.html`,
-  routing internal ditangani JS (`05-navigation.js`).
-- **Database**: Supabase. Setiap perubahan skema ada file migrasi SQL
-  terpisah di root (`supabase-*-migration.sql`) atau di `sql/` — HARUS
-  dijalankan manual di Supabase Dashboard, tidak otomatis.
-- **Service worker**: `sw.js` — hati-hati dengan cache-busting saat ubah
-  file yang di-cache (riwayat bug: deadlock `ERR_FAILED` di Cloudflare
-  Workers).
+## Stack
 
-## Perintah
+- Vanilla JavaScript (tanpa framework/bundler), HTML, CSS murni
+- Supabase (Postgres + REST API) sebagai backend, diakses langsung dari browser
+  via `@supabase/supabase-js` (CDN) dan sebagian via `fetch()` manual ke endpoint REST
+- Supabase Edge Functions (Deno/TypeScript) untuk hal yang butuh secret/server-side
+- PWA: `manifest.json` + `service-worker.js` (strategi network-first, fallback cache)
+- jsPDF (CDN) untuk generate kuitansi PDF
 
-```bash
-npm install        # sekali saja (install esbuild)
-npm run build       # regenerate app.bundle.min.js, style.min.css,
-                     # lucide-icons.local.min.js dari source
+## Struktur file AKTIF (yang benar-benar di-load browser)
+
+```
+index.html          ← struktur HTML saja, load css/style.css + js/app.js
+css/style.css        ← semua styling (CSS custom properties di :root untuk warna brand)
+js/app.js            ← SATU-SATUNYA file JS, berisi SEMUA logic + koneksi Supabase
+manifest.json         ← config PWA (name, theme_color, icons)
+service-worker.js     ← precache list, HARUS disinkronkan manual kalau nama file berubah
+icons/                ← 9 file ikon PWA sesuai daftar di manifest.json
+sql/
+  00_setup_semua_tabel.sql     ← CREATE TABLE + RLS untuk semua tabel (dari nol)
+  create_kwt_kuitansi.sql      ← SQL khusus tabel kwt_kuitansi
+  tambah_pembayaran_jamaah.sql ← migrasi tambahan: tabel pembayaran_jamaah
+                                  (jalankan ini di project yang SUDAH jalan)
+  tambah_dokumen_jamaah.sql    ← migrasi tambahan: kolom kb_jamaah.dokumen jsonb
+                                  (jalankan ini di project yang SUDAH jalan)
+  tambah_pendaftaran.sql       ← migrasi tambahan: tabel pendaftaran (calon jamaah)
+                                  (jalankan ini di project yang SUDAH jalan)
+  tambah_nota_audit.sql        ← migrasi tambahan: nomor nota resmi dari DB (trigger +
+                                  sequence, kolom pembayaran_jamaah.nomor_nota) + tabel
+                                  nota_audit_log (ledger append-only, UPDATE/DELETE
+                                  diblokir trigger) — lihat panel Admin > Audit Nota
+                                  (jalankan ini di project yang SUDAH jalan)
+  tambah_role_guest_readonly.sql ← kunci RLS write (insert/update/delete) semua tabel
+                                  inti ke role admin/user saja lewat current_dashboard_role(),
+                                  supaya role guest benar-benar read-only di database,
+                                  bukan cuma disembunyikan di UI (jalankan setelah
+                                  migrate_supabase_auth.sql & hardening_rls_keamanan.sql)
+.github/workflows/
+  keep-supabase-alive.yml      ← ping REST API tiap 3 hari biar project Supabase
+                                  free tier tidak auto-pause (butuh secret
+                                  SUPABASE_URL & SUPABASE_ANON_KEY di repo GitHub)
+supabase/functions/
+  send-telegram/index.ts       ← proxy ke Telegram Bot API
+  scan-poster-ocr/index.ts     ← OCR poster pakai Gemini Vision (butuh GEMINI_API_KEY)
+  README.md                     ← panduan deploy edge functions via Supabase CLI
 ```
 
-Jalankan `npm run build` setiap selesai edit file di `js/*.js` atau
-`style.css`, **sebelum** commit/push/deploy. Tidak ada dev server/test
-runner — situs 100% statis, testing manual di browser.
+**PENTING:** `index.html` HANYA punya satu `<script src="js/app.js">`. Tidak ada file JS
+lain yang di-load. Kalau menambah fitur, tambahkan langsung ke `js/app.js` (jangan buat
+file `.js` baru terpisah kecuali memang berniat mengubah `index.html` untuk me-load-nya
+juga, dan update `service-worker.js` precache list-nya).
 
-## Modul JS (urutan load, lihat `build.js` untuk urutan otoritatif)
+Riwayat: proyek ini pernah beberapa kali disusun ulang (monolith → dipecah jadi ~22 file
+modular → digabung lagi jadi satu `js/app.js`). Kalau menemukan file `.js` lepas di root
+atau folder `js/` selain `app.js`, kemungkinan besar itu sisa lama yang tidak dipakai —
+cek dulu apakah direferensikan di `index.html`/`service-worker.js` sebelum diasumsikan aktif.
 
-| # | File | Area |
-|---|------|------|
-| 00 | config.js | konfigurasi global |
-| 01 | utils-currency.js | util umum & format mata uang |
-| 02 | auth.js | autentikasi |
-| 03 | db-core.js | wrapper akses Supabase |
-| 04 | event-settings.js | pengaturan event |
-| 05 | navigation.js | routing SPA |
-| 06 | login-users.js | manajemen user login |
-| 07 | dashboard.js | dashboard |
-| 08 | anggota.js | data anggota |
-| 09 | donatur-transaksi-operasional.js | donatur & transaksi operasional |
-| 10, 10b | lomba.js, database-lomba.js | modul lomba |
-| 11 | belanja.js | belanja hadiah/kebutuhan |
-| 12 | jadwal-agenda-kas.js | jadwal, agenda, kas |
-| 13 | lpj.js | laporan pertanggungjawaban |
-| 14 | dokumen.js | generator dokumen (WYSIWYG + export JPEG via html2canvas) |
-| 15, 15b | pengaturan-event.js, snapshot.js | pengaturan lanjutan & snapshot |
-| 16 | ui-helpers.js | helper UI bersama |
-| 17a-17c | gudang-*.js | modul gudang (stok, pinjam, histori) |
-| 18 | getters-refresh.js | getter data & refresh state |
-| 19 | init.js | inisialisasi aplikasi (load terakhir) |
-| 20 | panduan.js | panduan penggunaan |
-| 21 | icons-lucide.js | auto-replace ikon emoji → Lucide |
-| 22 | dana-sosial.js | dana sosial (iuran bulanan) |
-| 23 | install-prompt.js | prompt install PWA |
-| 24 | bookmark.js | bookmark |
-| 25 | tour.js | tur onboarding |
+## Tabel Supabase yang dipakai
 
-## Konvensi Kode
+| Tabel | Fungsi |
+|---|---|
+| `programs` | Data program Umroh (field admin-only digabung di kolom `admin_data_lengkap` jsonb) |
+| `jadwal_tamu` | Jadwal kunjungan tamu ke kantor |
+| `kb_jamaah` | Data jamaah per program (kolom `dokumen` jsonb = checklist kelengkapan dokumen per jamaah) |
+| `pendaftaran` | Daftar minat calon jamaah (nama, WA, program diminati, asal) sebelum resmi masuk `kb_jamaah` |
+| `pembayaran_jamaah` | Riwayat pembayaran/cicilan per jamaah (tampil menyatu di tab "Keberangkatan") |
+| `featured_programs` | Program yang ditandai unggulan (diakses via `fetch()` REST langsung, bukan `.from()`) |
+| `app_config` | Password login admin/CS (key-value) |
+| `tg_config` | Config notifikasi Telegram (bot token, edge URL, daftar penerima) |
+| `kwt_kuitansi` | Kuitansi — tabel sudah disiapkan, belum otomatis dipakai di `js/app.js` |
 
-- Bahasa: **Bahasa Indonesia** untuk nama variabel/fungsi/komentar domain
-  bisnis (mis. `hadiahPerRegu`, `kategoriToko`, `bukaModalKelolaKategoriToko`).
-- Styling: tema "Corporate Formal" hijau, font Sora + JetBrains Mono.
-  `--merah` sudah direpurpose jadi forest green; pakai `--bahaya` untuk
-  warna danger/merah.
-- Ikon: pakai Lucide (`icons/lucide-icons.local.js`), bukan emoji — ada
-  MutationObserver di `21-icons-lucide.js` yang auto-replace emoji lama.
-- Saat generate JSON dari user input (import/export, backup), selalu
-  cek field `.error` per-row — jangan asumsikan sukses hanya karena
-  tidak ada exception (riwayat bug: toast sukses palsu di beberapa modul).
-- Saat edit form yang merekonstruksi objek dari field parsial (mis. form
-  edit paket hadiah), pastikan field lama yang tidak ditampilkan di form
-  tetap disalin, jangan sampai hilang diam-diam.
+Setup Supabase baru: jalankan `sql/00_setup_semua_tabel.sql` di SQL Editor, lalu ganti
+password default di `app_config`, lalu update `SUPABASE_URL` & `SUPABASE_ANON_KEY` di
+`js/app.js` baris 4–5.
 
-## Hal yang Perlu Diperhatikan
+## Peta bagian `js/app.js` (2500+ baris, dibagi per komentar section)
 
-- Migrasi SQL bertambah terus (28+ file) — cek file migrasi terbaru
-  sebelum asumsi skema tabel tertentu.
-- `CATATAN-MERGER-GUDANG.md` dan `SECURITY_AUDIT.md` di root berisi
-  catatan historis penting, baca kalau menyentuh modul gudang atau
-  keamanan.
-- Jangan tambah dependency runtime baru tanpa alasan kuat — proyek
-  sengaja statis tanpa framework/bundler runtime (`esbuild` cuma untuk
-  build lokal).
-- Sebelum menambah modul "eventless" baru (data yang tidak terikat
-  event, seperti Kas/Agenda/Gudang/Dana Sosial), putuskan sejak awal:
-  ikut pola `db.xxx` + `ARRAY_TABLE_MAP` (otomatis ke-cover semua jalur
-  backup), atau fetch/tulis langsung ke Supabase seperti Gudang (harus
-  ditambahkan manual ke `fetchGudangBackupData()`-style helper di jalur
-  backup, kalau tidak akan diam-diam tidak ter-backup — riwayat bug:
-  modul Gudang sempat tidak ikut snapshot maupun Backup Semua Data
-  selama beberapa waktu tanpa ada indikasi error apa pun ke admin).
-- **KETERBATASAN DIKETAHUI — "Pulihkan Snapshot"/"Impor Timpa Semua"
-  tidak 100% full-overwrite untuk data `db.xxx`.** `syncArrayTable()`
-  (`03-db-core.js`) hanya menghapus baris yang ID-nya PERNAH dikenal tab
-  ini (`_lastKnownIds`, diisi saat tab terakhir memuat data) — baris yang
-  ditambahkan device/admin LAIN setelah tab ini terakhir memuat data
-  TIDAK ikut terhapus walau tidak ada di payload yang dipulihkan. Ini
-  proteksi yang disengaja untuk kasus edit harian normal (supaya sync
-  satu device tidak menghapus data baru device lain), tapi untuk aksi
-  restore eksplisit, ini bisa meleset dari janji dialog konfirmasinya
-  ("Seluruh data SAAT INI akan ditimpa"). Belum diperbaiki — perlu
-  didiskusikan dulu trade-off-nya (full-wipe-paksa vs proteksi
-  concurrent-edit) sebelum diubah, karena keduanya sama-sama valid
-  tergantung prioritas: mana yang lebih penting, restore yang benar-benar
-  akurat 100%, atau tidak pernah kehilangan data device lain tanpa
-  peringatan.
+1. Supabase Config — 2. State — 3. Utility Functions (termasuk `withRetry()` untuk
+   retry request baca yang gagal karena masalah jaringan) — 4. Generate Auto WA Text —
+5. Tab Switching — 6. Mobile Sidebar — 7. Render Skeleton — 8. Load Data from Supabase —
+9. Render Table — 10. Search & Sort — 11. Detail Modal — 12. Admin Login —
+13. Admin Panel — 14. Admin CRUD Operations — 15. Parse Broadcast (auto-isi form dari
+teks broadcast WA) — 16. Export/Import — 17. Delete Confirm — 18. Jadwal Tamu (CRUD) —
+18B. Form Pendaftaran (CRUD daftar minat calon jamaah, tabel `pendaftaran`) —
+19. Keberangkatan (CRUD data jamaah + tabel pembayaran/cicilan tergabung dalam satu tab,
+terhubung ke harga program & auto-sync status di kb_jamaah) — 19B. Kelola Cicilan
+(modal dipakai dari tombol "Bayar" di tabel Keberangkatan) —
+19C. Kelengkapan Dokumen (checklist dokumen per jamaah, disimpan di kolom
+kb_jamaah.dokumen jsonb) —
+20. Kuitansi — 21. Featured Programs —
+21A. Crosscheck Module (OCR poster vs data) — 21B. Telegram Module —
+22. Init — 23. Close Modals on Overlay Click — 24. Poster Hover Popup
+
+## Role & akses
+
+Role: `admin`, `user`, `guest`, atau belum login sama sekali (anonim).
+- Anonim → hanya lihat "Program Umroh" & "Unggulan"
+- `guest` (sudah login) → tambahan lihat semua tab `nav-loggedin-only` (Jadwal Tamu,
+  Pendaftaran, Keberangkatan, Dokumen) tapi **read-only** — tombol tambah/edit/hapus
+  disembunyikan (`canManageProgramData()`) DAN ditolak di level RLS database
+  (lihat `sql/tambah_role_guest_readonly.sql`), jadi tidak bisa ditembus lewat API
+  langsung meski punya JWT authenticated
+- `user` & `admin` → boleh tambah/edit/hapus data (dicek via `canManageProgramData()`)
+- `admin` saja → akses section "Manajemen": Edit & Tambah Program, Crosscheck,
+  Telegram, Pengaturan User
+
+Buat akun guest baru lewat tab Admin > Pengaturan User, pilih role "Guest (lihat
+saja, tanpa akses tulis)". Butuh `sql/tambah_role_guest_readonly.sql` sudah dijalankan
+dan Edge Function `admin-create-user` sudah di-deploy ulang (ALLOWED_ROLES kini
+termasuk `guest`).
+
+Sidebar bersifat role-aware, di-render oleh `renderSidebarNav()`. Warna brand pakai CSS
+custom properties `--brand`, `--brand-deep`, `--brand-tint` di `css/style.css` — ganti di
+satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
+
+## Catatan alur Pembayaran & Cicilan (`pembayaran_jamaah`)
+
+- Status jamaah (`lunas`/`dp`/`pending`) dihitung dari `SUM(pembayaran_jamaah.jumlah)`
+  dibanding `programs.harga_quint` — **hanya kolom `harga_quint`** yang dipakai
+  sebagai acuan harga per jamaah, bukan `harga_quad`/`harga_triple`/`harga_double`
+  (kolom-kolom itu murni informasi tampilan paket, tidak terhubung ke jamaah
+  tertentu karena `kb_jamaah` tidak punya kolom tipe kamar). Kalau `harga_quint`
+  kosong, status jamaah di program itu **tidak akan pernah otomatis jadi "Lunas"**
+  walau sudah dibayar penuh — modal Kelola Cicilan sekarang menampilkan
+  peringatan soal ini di ringkasan.
+- Refund disimpan sebagai baris **negatif** di `pembayaran_jamaah` (bukan tabel
+  terpisah), supaya `SUM()` otomatis mengurangi total dibayar.
+- Kelebihan bayar (total dibayar > harga program) ditampilkan sebagai peringatan
+  info di ringkasan modal Kelola Cicilan — sistem tidak memblokir pembayaran
+  melebihi sisa tagihan (fleksibel untuk kasus DP awal besar/pelunasan lebih).
+- `saveCicilan()` punya guard `cicilanSaving` untuk cegah insert dobel kalau
+  tombol submit di-double click/tap saat koneksi lambat.
+- Hapus jamaah (`kb_jamaah`) akan **cascade delete** semua riwayat pembayarannya
+  (FK `on delete cascade`) — modal konfirmasi hapus sekarang menampilkan
+  peringatan total nilai pembayaran yang akan ikut hilang kalau jamaah itu
+  punya riwayat bayar, tapi tetap tidak memblokir (beda dari hapus program yang
+  diblokir total kalau masih ada jamaah).
+- `nota_audit_log` bersifat append-only (trigger DB memblokir UPDATE/DELETE).
+  Untuk log jenis "hapus pembayaran", data baris HARUS diambil dari DB
+  **sebelum** perintah delete dijalankan (lihat `confirmDeleteAction()`) —
+  kalau diambil sesudahnya baris itu sudah tidak ada lagi dan audit gagal
+  tercatat tanpa pesan error (bug lama yang sudah diperbaiki, jangan diulang
+  kalau refactor bagian ini).
+
+## Kalau menambah/mengubah fitur
+
+- Edit langsung di `js/app.js`, ikuti pola section comment yang sudah ada
+- Pakai `showToast(msg, type)` untuk feedback ke user, bukan `alert()`
+- Operasi baca (SELECT) yang rawan gagal jaringan → bungkus dengan `withRetry()`
+- Operasi tulis (insert/update/upsert) JANGAN dibungkus `withRetry()` — risiko data dobel
+- Kalau menambah file baru yang perlu di-load browser, jangan lupa update
+  `service-worker.js` (`APP_SHELL` array) supaya PWA cache-nya ikut sinkron, dan naikkan
+  `CACHE_NAME` versinya
+- Akurasi data finansial adalah prioritas karena datanya dipakai untuk laporan resmi

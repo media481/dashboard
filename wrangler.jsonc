@@ -1,28 +1,11 @@
 {
-  // Nama project di Cloudflare (harus sama dengan nama Worker "merdeka" yang sudah ada)
-  "name": "merdeka",
-  // Tanggal kompatibilitas runtime
-  "compatibility_date": "2026-07-08",
-
-  // Dulu situs ini murni static assets (tanpa "main"). Sekarang ada Worker
-  // tipis di src/worker.js yang menangani /api/telegram (memegang bot token
-  // sebagai secret, supaya token tidak lagi bocor ke browser) dan
-  // /api/health. Semua path lain diteruskan apa adanya ke static assets
-  // lewat env.ASSETS.fetch — perilaku situs tidak berubah.
-  "main": "src/worker.js",
-
-  "assets": {
-    "directory": "./",
-    // Worker bisa memanggil static assets lewat env.ASSETS
-    "binding": "ASSETS",
-    // Kalau ada request ke path yang bukan file statis, tetap kembalikan index.html
-    "not_found_handling": "single-page-application"
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "dashboard",
+  "compatibility_date": "2026-08-07",
+  "observability": {
+    "enabled": true
   },
-
-  // JANGAN taruh TELEGRAM_BOT_TOKEN / SUPABASE_ANON_KEY di sini —
-  // pasang sebagai secret supaya tidak ikut ter-commit:
-  //   npx wrangler secret put TELEGRAM_BOT_TOKEN
-  //   npx wrangler secret put SUPABASE_URL
-  //   npx wrangler secret put SUPABASE_ANON_KEY
-  "observability": { "enabled": true }
+  "assets": {
+    "directory": "."
+  }
 }
