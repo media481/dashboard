@@ -5667,7 +5667,9 @@ async function loadCicilanHistory(jamaahId) {
         if (error) throw error;
         cicilanList = data || [];
 
-        document.getElementById('cicilanModalTitle').textContent = (jamaahRow.diarsipkan ? 'Riwayat Pembayaran (Arsip) — ' : 'Kelola Cicilan — ') + (jamaahRow.nama || '');
+        const tipeKamarLabel = parseRupiahToNumber(jamaahRow.harga_custom) > 0 ? 'Harga Khusus' : (TIPE_KAMAR_LABEL[jamaahRow.tipe_kamar] || 'Quad');
+
+        document.getElementById('cicilanModalTitle').innerHTML = `${jamaahRow.diarsipkan ? 'Riwayat Pembayaran (Arsip) — ' : 'Kelola Cicilan — '}${escapeHtml(jamaahRow.nama || '')} <span class="status-badge neutral pill-sm" style="vertical-align:middle;margin-left:4px;">${escapeHtml(tipeKamarLabel)}</span>`;
         const cicilanFormEl = document.getElementById('cicilanForm');
         if (cicilanFormEl) cicilanFormEl.style.display = jamaahRow.diarsipkan ? 'none' : '';
 
@@ -5688,6 +5690,7 @@ async function loadCicilanHistory(jamaahId) {
             : '';
         document.getElementById('cicilanRingkasan').innerHTML = `
             <div class="cicilan-summary-card${isLunas ? ' is-lunas' : ''}">
+                <div class="cicilan-summary-program"><i class="bi bi-airplane-engines-fill"></i> ${program ? escapeHtml(program.nama) + (program.tgl ? ` <span class="cicilan-summary-program-date">— ${escapeHtml(program.tgl)}</span>` : '') : '<span class="cicilan-summary-program-empty">Program tidak ditemukan/sudah dihapus</span>'}</div>
                 <div class="cicilan-summary-top">
                     <div>
                         <div class="cicilan-summary-label">${isLunas ? 'Status Pembayaran' : 'Sisa Tagihan'}</div>
@@ -5699,6 +5702,7 @@ async function loadCicilanHistory(jamaahId) {
                 </div>
                 <div class="cicilan-progress-track"><div class="cicilan-progress-fill" style="width:${pct}%;"></div></div>
                 <div class="cicilan-summary-foot">
+                    <span>Tipe Kamar <b>${escapeHtml(tipeKamarLabel)}</b></span>
                     <span>Harga Program <b>${formatRupiah(hargaProgram)}</b></span>
                     <span>Total Dibayar <b>${formatRupiah(totalDibayar)}</b></span>
                 </div>

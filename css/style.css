@@ -1963,6 +1963,15 @@
             box-shadow: 0 2px 14px rgba(15,33,56,.06);
         }
         .cicilan-summary-card.is-lunas { border-color: var(--success); background: var(--success-tint); }
+        .cicilan-summary-program {
+            display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+            font-size: 12px; font-weight: 700; color: var(--brand);
+            padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px dashed var(--line);
+        }
+        .cicilan-summary-program i { flex-shrink: 0; }
+        .cicilan-summary-program-date { font-weight: 500; color: var(--ink-soft); }
+        .cicilan-summary-program-empty { font-weight: 500; color: var(--ink-soft); font-style: italic; }
+        .cicilan-summary-card.is-lunas .cicilan-summary-program { border-bottom-color: rgba(0,0,0,.08); }
         .cicilan-summary-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
         .cicilan-summary-label { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); font-weight: 700; margin-bottom: 3px; }
         .cicilan-summary-sisa { font-size: 20px; font-weight: 800; font-family: 'Space Grotesk'; line-height: 1.2; color: var(--warn); }
