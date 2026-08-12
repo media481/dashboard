@@ -2179,9 +2179,22 @@ async function renderAdminPanel() {
                 <div class="cx-stats-bar" id="pbStatsBar"></div>
                 <div class="admin-toolbar">
                     <input type="text" id="pbSearchInput" placeholder="Cari nama jamaah / NIK / paspor..." style="flex:1;min-width:220px;" oninput="handlePbSearchInput()">
-                    <select id="pbFilterProgram" onchange="renderPembayaranTable()" style="min-width:180px;">
-                        <option value="">Semua Program</option>
-                    </select>
+                    <div class="pb-combo" id="pbProgramCombo">
+                        <button type="button" class="pb-combo-trigger" id="pbProgramComboTrigger" onclick="togglePbProgramCombo()">
+                            <span id="pbProgramComboLabel">Semua Program</span>
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                        <div class="pb-combo-panel" id="pbProgramComboPanel">
+                            <div class="pb-combo-search">
+                                <i class="bi bi-search"></i>
+                                <input type="text" id="pbProgramComboSearch" placeholder="Cari nama program..." oninput="filterPbProgramComboOptions(this.value)" onclick="event.stopPropagation()">
+                            </div>
+                            <div class="pb-combo-list" id="pbProgramComboList"></div>
+                        </div>
+                        <select id="pbFilterProgram" onchange="renderPembayaranTable()" style="display:none;">
+                            <option value="">Semua Program</option>
+                        </select>
+                    </div>
                     <select id="pbFilterStatus" onchange="renderPembayaranTable()" style="min-width:160px;">
                         <option value="">Semua Status</option>
                         <option value="lunas">Lunas</option>
@@ -5839,8 +5852,12 @@ async function renderPembayaranPanel() {
     // Isi dropdown filter program (sekali saja, pertahankan pilihan yang sedang aktif)
     const progSelect = document.getElementById('pbFilterProgram');
     if (progSelect && progSelect.options.length <= 1) {
+        // Sertakan tanggal keberangkatan di label supaya program dengan nama
+        // sama (mis. beberapa keberangkatan "Umroh Landing Madinah" di tanggal
+        // berbeda) tidak terlihat dobel/membingungkan di dropdown.
         progSelect.innerHTML = '<option value="">Semua Program</option>' +
-            (dataUmroh || []).map(p => `<option value="${p.id}">${escapeHtml(p.nama)}</option>`).join('');
+            (dataUmroh || []).map(p => `<option value="${p.id}">${escapeHtml(p.nama)}${p.tgl ? ' — ' + escapeHtml(p.tgl) : ''}</option>`).join('');
+        buildPbProgramCombo(dataUmroh || []);
     }
 
     tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--ink-soft);">Memuat...</td></tr>`;
@@ -5999,6 +6016,97 @@ function renderPembayaranTable() {
             </tr>`;
     }).join('');
 }
+
+// ============================================================
+// 19B-1. COMBOBOX FILTER PROGRAM (Menu Pembayaran)
+// Native <select> browser tidak bisa distyling untuk daftar panjang
+// (highlight, jarak antar-opsi, scrollbar, dst), jadi dropdown filter
+// program di sini diganti tampilan custom (div-based) yang tetap sinkron
+// ke <select id="pbFilterProgram"> tersembunyi supaya renderPembayaranTable()
+// tidak perlu diubah. Tiap opsi juga menampilkan tanggal keberangkatan
+// supaya program dengan nama sama tidak terlihat dobel/membingungkan.
+// ============================================================
+let pbProgramComboData = [];
+
+function buildPbProgramCombo(programs) {
+    pbProgramComboData = (programs || []).slice().sort((a, b) => {
+        // Program dengan tanggal keberangkatan terdekat di atas
+        const da = a.dateObj instanceof Date && !isNaN(a.dateObj) ? a.dateObj : new Date(8640000000000000);
+        const db = b.dateObj instanceof Date && !isNaN(b.dateObj) ? b.dateObj : new Date(8640000000000000);
+        return da - db;
+    });
+    renderPbProgramComboList(pbProgramComboData, '');
+}
+
+function renderPbProgramComboList(programs, activeId) {
+    const listEl = document.getElementById('pbProgramComboList');
+    if (!listEl) return;
+    const currentVal = document.getElementById('pbFilterProgram')?.value || '';
+
+    const allItemHtml = `
+        <div class="pb-combo-item ${!currentVal ? 'active' : ''}" onclick="selectPbProgramOption('', 'Semua Program')">
+            <i class="bi bi-collection"></i>
+            <span class="pb-combo-item-main">Semua Program</span>
+        </div>`;
+
+    if (!programs.length) {
+        listEl.innerHTML = allItemHtml + `<div class="pb-combo-empty">Program tidak ditemukan.</div>`;
+        return;
+    }
+
+    listEl.innerHTML = allItemHtml + programs.map(p => `
+        <div class="pb-combo-item ${String(currentVal) === String(p.id) ? 'active' : ''}" onclick="selectPbProgramOption('${p.id}', '${escapeJsAttr(p.nama)}')">
+            <i class="bi bi-airplane-engines"></i>
+            <span class="pb-combo-item-main">
+                <span class="pb-combo-item-name">${escapeHtml(p.nama)}</span>
+                ${p.tgl ? `<span class="pb-combo-item-date">${escapeHtml(p.tgl)}</span>` : ''}
+            </span>
+        </div>`).join('');
+}
+
+function filterPbProgramComboOptions(query) {
+    const q = (query || '').trim().toLowerCase();
+    if (!q) { renderPbProgramComboList(pbProgramComboData, ''); return; }
+    const filtered = pbProgramComboData.filter(p => (p.nama || '').toLowerCase().includes(q) || (p.tgl || '').toLowerCase().includes(q));
+    renderPbProgramComboList(filtered, '');
+}
+
+function togglePbProgramCombo() {
+    const panel = document.getElementById('pbProgramComboPanel');
+    const combo = document.getElementById('pbProgramCombo');
+    if (!panel || !combo) return;
+    const willOpen = !combo.classList.contains('open');
+    closeAllPbProgramCombo();
+    if (willOpen) {
+        combo.classList.add('open');
+        const searchInput = document.getElementById('pbProgramComboSearch');
+        if (searchInput) { searchInput.value = ''; setTimeout(() => searchInput.focus(), 30); }
+        renderPbProgramComboList(pbProgramComboData, '');
+    }
+}
+
+function closeAllPbProgramCombo() {
+    document.getElementById('pbProgramCombo')?.classList.remove('open');
+}
+
+function selectPbProgramOption(id, nama) {
+    const select = document.getElementById('pbFilterProgram');
+    const label = document.getElementById('pbProgramComboLabel');
+    if (select) select.value = id;
+    if (label) label.textContent = id ? nama : 'Semua Program';
+    document.getElementById('pbProgramCombo')?.classList.remove('open');
+    renderPembayaranTable();
+}
+
+document.addEventListener('click', (e) => {
+    const combo = document.getElementById('pbProgramCombo');
+    if (combo && combo.classList.contains('open') && !combo.contains(e.target)) {
+        combo.classList.remove('open');
+    }
+});
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeAllPbProgramCombo();
+});
 
 // Versi debounce dari renderPembayaranTable() -- dipakai khusus di kolom cari
 // supaya tabel tidak di-render ulang di setiap ketukan tombol (nunggu jeda
