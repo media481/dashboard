@@ -2167,10 +2167,11 @@ async function renderAdminPanel() {
                     <div><h4><i class="bi bi-cash-stack"></i> Pembayaran Biaya Umroh</h4>
                     <p>Pantau & kelola cicilan/pelunasan biaya umroh seluruh jamaah dari semua program</p></div>
                 </div>
+                <div class="pb-scope-note"><i class="bi bi-info-circle"></i> Menampilkan progres tagihan &amp; pembayaran per jamaah, bukan buku kas/laporan arus keuangan.</div>
                 <div class="pb-income-hero" id="pbIncomeHero"></div>
                 <div class="pb-income-breakdown-wrap">
                     <div class="pb-income-breakdown-head">
-                        <h4><i class="bi bi-bar-chart-line-fill"></i> Rincian Pemasukan per Program</h4>
+                        <h4><i class="bi bi-bar-chart-line-fill"></i> Rincian Tagihan &amp; Pembayaran per Program</h4>
                         <span class="count" id="pbBreakdownCount">0 program</span>
                     </div>
                     <div class="pb-income-breakdown-grid" id="pbIncomeBreakdown"></div>
@@ -5795,10 +5796,10 @@ function renderPembayaranIncomeSummary(jamaahAll, totalPerJamaah) {
     heroEl.innerHTML = `
         <div class="pb-hero-top">
             <div>
-                <div class="pb-hero-label"><i class="bi bi-piggy-bank-fill"></i> Total Pemasukan Terkumpul</div>
+                <div class="pb-hero-label"><i class="bi bi-piggy-bank-fill"></i> Total Sudah Dibayar Jamaah</div>
                 <div class="pb-hero-amount">${formatRupiah(grandDibayar)}</div>
             </div>
-            <div class="pb-hero-pct-badge">${grandPct}% dari target</div>
+            <div class="pb-hero-pct-badge">${grandPct}% dari total tagihan</div>
         </div>
         <div class="pb-hero-progress-track"><div class="pb-hero-progress-fill" style="width:${grandPct}%;"></div></div>
         <div class="pb-hero-foot">
@@ -5812,7 +5813,7 @@ function renderPembayaranIncomeSummary(jamaahAll, totalPerJamaah) {
     // ---- Rincian per program ----
     if (countEl) countEl.textContent = `${programRows.length} program`;
     if (!programRows.length) {
-        gridEl.innerHTML = `<div class="pb-income-empty">Belum ada data pemasukan.</div>`;
+        gridEl.innerHTML = `<div class="pb-income-empty">Belum ada data tagihan/pembayaran.</div>`;
         return;
     }
     gridEl.innerHTML = programRows.map(g => `
