@@ -9057,20 +9057,25 @@ function renderRoomingListBody() {
         const kap = ROOM_KAPASITAS[tipe] || 4;
 
         const roomOptionsHtml = (selected) => {
-            let opts = `<option value="">— Belum dikelompokkan —</option>`;
+            let opts = `<option value="">Belum ada kamar</option>`;
             for (let n = 1; n <= jumlahKamar + 1; n++) {
-                opts += `<option value="${n}" ${Number(selected) === n ? 'selected' : ''}>Pindah ke Kamar ${n}</option>`;
+                opts += `<option value="${n}" ${Number(selected) === n ? 'selected' : ''}>Kamar ${n}</option>`;
             }
             return opts;
         };
 
         // Baris jamaah: avatar + nama + tombol "Pindah" (select native yang
         // disamarkan jadi chip supaya jelas ini tombol aksi, bukan cuma
-        // label kamar biasa -- lihat .rm-move di style.css).
+        // label kamar biasa -- lihat .rm-move di style.css). Teks opsi
+        // sengaja singkat ("Kamar 1", bukan "Pindah ke Kamar 1") supaya
+        // nama jamaah di sebelahnya tidak kepotong di kartu kamar yang
+        // sempit -- ikon ⇄ pada label sudah cukup menandakan ini aksi
+        // pindah. Nama lengkap juga ditaruh di title (tooltip) buat jaga-
+        // jaga kalau tetap terpotong pada nama yang sangat panjang.
         const occupantRowHtml = (j) => `
             <div class="rm-occupant">
                 <div class="rm-avatar" style="background:${warna};">${rmInisial(j.nama)}</div>
-                <span class="rm-occupant-name">${escapeHtml(j.nama)}</span>
+                <span class="rm-occupant-name" title="${escapeHtml(j.nama)}">${escapeHtml(j.nama)}</span>
                 <label class="rm-move" title="Pindahkan jamaah ini ke kamar lain">
                     <i class="bi bi-arrow-left-right"></i>
                     <select onchange="pindahKamarJamaah('${j.id}', this.value)">${roomOptionsHtml(j.nomor_kamar)}</select>
