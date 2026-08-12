@@ -2003,7 +2003,7 @@ function switchAdminSubTab(name) {
     if (name === 'pembayaran') { renderPembayaranPanel(); }
     if (name === 'unggulan') { renderFeaturedAdminTable(); }
     if (name === 'snapshot') { renderSnapshotAdminTable(); }
-    if (name === 'usersettings') { loadUserList(); renderRoleMenuAccessMatrix(); }
+    if (name === 'usersettings') { switchUsInnerTab('adduser'); loadUserList(); renderRoleMenuAccessMatrix(); }
     if (name === 'assets') { switchAssetsInnerTab('links'); loadAssets().then(renderAssetsAdminTable); }
 }
 
@@ -2433,57 +2433,75 @@ async function renderAdminPanel() {
                     <p>Tambah akun baru per-orang dengan role Admin (akses penuh), User (kelola data program), atau Guest (lihat saja)</p></div>
                 </div>
 
-                <div class="admin-fieldset" style="margin-top:28px;">
-                    <div class="admin-fieldset-title"><i class="bi bi-person-plus-fill"></i> Tambah User Baru</div>
-                    <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;">Buat akun login baru untuk satu orang, dengan role Admin (akses penuh), User (kelola data program), atau Guest (hanya lihat, tanpa akses tambah/edit/hapus).</p>
-                    <div class="form-group">
-                        <label>Nama / Label<span class="required">*</span></label>
-                        <input type="text" id="us_new_label" placeholder="Contoh: Budi Santoso" autocomplete="off">
-                    </div>
-                    <div class="form-group">
-                        <label>Email<span class="required">*</span></label>
-                        <input type="email" id="us_new_email" placeholder="nama@contoh.com" autocomplete="off">
-                    </div>
-                    <div class="form-group">
-                        <label>Password<span class="required">*</span></label>
-                        <input type="text" id="us_new_password" placeholder="Minimal 6 karakter" autocomplete="off">
-                    </div>
-                    <div class="form-group" style="margin-bottom:0;">
-                        <label>Role<span class="required">*</span></label>
-                        <select id="us_new_role">
-                            <option value="user">User biasa (kelola data program)</option>
-                            <option value="admin">Admin (akses penuh)</option>
-                            <option value="guest">Guest (lihat saja, tanpa akses tulis)</option>
-                        </select>
-                    </div>
-                </div>
-                <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
-                    <button class="btn-primary" onclick="createNewUser()"><i class="bi bi-person-plus-fill"></i> Tambah User</button>
-                </div>
-                <div id="usNewUserStatus" style="margin-top:12px;"></div>
-
-                <div class="admin-fieldset" style="margin-top:28px;">
-                    <div class="admin-fieldset-title"><i class="bi bi-ui-checks-grid"></i> Akses Menu Sidebar per Role</div>
-                    <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;">Atur menu sidebar apa saja yang boleh diakses oleh role <b>User</b> dan <b>Guest</b>. Role <b>Admin</b> selalu punya akses penuh ke semua menu dan tidak bisa dikunci di sini.</p>
-                    <div id="roleMenuAccessWrap">
-                        <div style="text-align:center;padding:20px;color:var(--ink-soft);">Memuat...</div>
-                    </div>
-                    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center;">
-                        <button class="btn-primary" id="roleMenuAccessSaveBtn" onclick="saveRoleMenuAccessMatrix()"><i class="bi bi-save-fill"></i> Simpan Akses Menu</button>
-                        <span id="roleMenuAccessStatus"></span>
-                    </div>
+                <div class="assets-inner-tabs">
+                    <button type="button" class="assets-inner-tab-btn active" data-inner-tab="adduser" onclick="switchUsInnerTab('adduser')">
+                        <i class="bi bi-person-plus-fill"></i> Tambah User
+                    </button>
+                    <button type="button" class="assets-inner-tab-btn" data-inner-tab="access" onclick="switchUsInnerTab('access')">
+                        <i class="bi bi-ui-checks-grid"></i> Akses Menu
+                    </button>
+                    <button type="button" class="assets-inner-tab-btn" data-inner-tab="list" onclick="switchUsInnerTab('list')">
+                        <i class="bi bi-people-fill"></i> Daftar User
+                    </button>
                 </div>
 
-                <div class="admin-table-card" style="margin-top:28px;">
-                    <div class="admin-table-head">
-                        <h4>Daftar User Terdaftar</h4>
-                        <span class="count" id="usUserListCount">-</span>
+                <div id="usPanel-adduser" style="display:block;">
+                    <div class="admin-fieldset" style="margin-top:20px;">
+                        <div class="admin-fieldset-title"><i class="bi bi-person-plus-fill"></i> Tambah User Baru</div>
+                        <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;">Buat akun login baru untuk satu orang, dengan role Admin (akses penuh), User (kelola data program), atau Guest (hanya lihat, tanpa akses tambah/edit/hapus).</p>
+                        <div class="form-group">
+                            <label>Nama / Label<span class="required">*</span></label>
+                            <input type="text" id="us_new_label" placeholder="Contoh: Budi Santoso" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label>Email<span class="required">*</span></label>
+                            <input type="email" id="us_new_email" placeholder="nama@contoh.com" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label>Password<span class="required">*</span></label>
+                            <input type="text" id="us_new_password" placeholder="Minimal 6 karakter" autocomplete="off">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Role<span class="required">*</span></label>
+                            <select id="us_new_role">
+                                <option value="user">User biasa (kelola data program)</option>
+                                <option value="admin">Admin (akses penuh)</option>
+                                <option value="guest">Guest (lihat saja, tanpa akses tulis)</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="admin-table-wrap">
-                        <table>
-                            <thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Terakhir Login</th><th>Aksi</th></tr></thead>
-                            <tbody id="usUserListBody"><tr><td colspan="5" style="text-align:center;padding:20px;color:var(--ink-soft);">Memuat...</td></tr></tbody>
-                        </table>
+                    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+                        <button class="btn-primary" onclick="createNewUser()"><i class="bi bi-person-plus-fill"></i> Tambah User</button>
+                    </div>
+                    <div id="usNewUserStatus" style="margin-top:12px;"></div>
+                </div>
+
+                <div id="usPanel-access" style="display:none;">
+                    <div class="admin-fieldset" style="margin-top:20px;">
+                        <div class="admin-fieldset-title"><i class="bi bi-ui-checks-grid"></i> Akses Menu Sidebar per Role</div>
+                        <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;">Atur menu sidebar apa saja yang boleh diakses oleh role <b>User</b> dan <b>Guest</b>. Role <b>Admin</b> selalu punya akses penuh ke semua menu dan tidak bisa dikunci di sini.</p>
+                        <div id="roleMenuAccessWrap">
+                            <div style="text-align:center;padding:20px;color:var(--ink-soft);">Memuat...</div>
+                        </div>
+                        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center;">
+                            <button class="btn-primary" id="roleMenuAccessSaveBtn" onclick="saveRoleMenuAccessMatrix()"><i class="bi bi-save-fill"></i> Simpan Akses Menu</button>
+                            <span id="roleMenuAccessStatus"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="usPanel-list" style="display:none;">
+                    <div class="admin-table-card" style="margin-top:20px;">
+                        <div class="admin-table-head">
+                            <h4>Daftar User Terdaftar</h4>
+                            <span class="count" id="usUserListCount">-</span>
+                        </div>
+                        <div class="admin-table-wrap">
+                            <table>
+                                <thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Terakhir Login</th><th>Aksi</th></tr></thead>
+                                <tbody id="usUserListBody"><tr><td colspan="5" style="text-align:center;padding:20px;color:var(--ink-soft);">Memuat...</td></tr></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -10343,6 +10361,18 @@ function updateHotelRefHint(inputId, hintId, cityKeyword) {
         hintEl.className = 'hotel-ref-hint ok';
         hintEl.innerHTML = `<i class="bi bi-check-circle-fill"></i> Cocok dengan data referensi${scoreTxt}`;
     }
+}
+
+// Tab internal menu "Pengaturan User" (Tambah User / Akses Menu / Daftar
+// User) -- sama pola dengan switchAssetsInnerTab, dipisah jadi tab supaya
+// tidak perlu scroll panjang buat 3 blok konten sekaligus.
+function switchUsInnerTab(tab) {
+    document.querySelectorAll('#adminSubTab-usersettings .assets-inner-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.innerTab === tab));
+    const panels = { adduser: 'usPanel-adduser', access: 'usPanel-access', list: 'usPanel-list' };
+    Object.entries(panels).forEach(([key, id]) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = (key === tab) ? 'block' : 'none';
+    });
 }
 
 function switchAssetsInnerTab(tab) {
