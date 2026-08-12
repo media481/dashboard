@@ -1925,31 +1925,28 @@ function getAdminLoginBoxHtml() {
     return `
     <div class="admin-login-wrap">
     <div class="admin-login-box">
-        <div class="admin-login-head">
-            <div class="admin-login-icon"><i class="bi bi-shield-check"></i></div>
-            <div>
-                <h3>Masuk Dashboard</h3>
-                <p>Admin &middot; User &middot; Guest</p>
-            </div>
-        </div>
+        <h3>Masuk ke Dashboard</h3>
+        <p class="admin-login-sub">Gunakan email &amp; password akun Anda</p>
+
         <div class="admin-login-body">
-            <label class="admin-login-label" for="adminEmailInput">Email</label>
-            <div class="admin-login-field">
-                <i class="bi bi-envelope-fill field-icon"></i>
+            <div class="form-group">
+                <label for="adminEmailInput">Email</label>
                 <input type="email" id="adminEmailInput" placeholder="nama@amiru-dashboard.internal" autocomplete="username" onkeydown="if(event.key==='Enter')checkAdminLogin()">
             </div>
-            <label class="admin-login-label" for="adminPasswordInput">Password</label>
-            <div class="admin-login-field has-toggle">
-                <i class="bi bi-lock-fill field-icon"></i>
-                <input type="password" id="adminPasswordInput" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')checkAdminLogin()">
-                <button type="button" class="toggle-pw" onclick="toggleAdminPasswordVisibility()" aria-label="Tampilkan password">
-                    <i class="bi bi-eye-fill" id="adminPwToggleIcon"></i>
-                </button>
+            <div class="form-group">
+                <label for="adminPasswordInput">Password</label>
+                <div class="admin-login-field has-toggle">
+                    <input type="password" id="adminPasswordInput" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')checkAdminLogin()">
+                    <button type="button" class="toggle-pw" onclick="toggleAdminPasswordVisibility()" aria-label="Tampilkan password">
+                        <i class="bi bi-eye-fill" id="adminPwToggleIcon"></i>
+                    </button>
+                </div>
             </div>
-            <button onclick="checkAdminLogin()" class="btn-primary"><i class="bi bi-box-arrow-in-right"></i> Masuk</button>
+            <button onclick="checkAdminLogin()" class="btn-primary admin-login-submit"><i class="bi bi-box-arrow-in-right"></i> Masuk</button>
             <div id="adminLoginError" class="admin-login-error"></div>
-            <p class="admin-login-hint">Lupa password? Hubungi Admin untuk direset.</p>
         </div>
+
+        <p class="admin-login-hint">Lupa password? Hubungi Admin untuk direset.</p>
     </div>
     </div>`;
 }
@@ -2013,6 +2010,7 @@ function switchAdminSubTab(name) {
 async function renderAdminPanel() {
     const container = document.getElementById('adminPanelBody');
     if (adminLoggedIn) {
+        container.classList.remove('is-login');
         // ---- Role tiers ----
         // admin  : akses penuh (Program + Crosscheck + Telegram + Pengaturan User)
         // user   : hanya kelola data Program (tambah/edit/hapus), tidak bisa masuk subtab lain
@@ -2579,6 +2577,7 @@ async function renderAdminPanel() {
         const subtitleEl = document.getElementById('adminPageSubtitle');
         if (titleEl) titleEl.textContent = 'Login';
         if (subtitleEl) subtitleEl.textContent = 'Masuk untuk mengakses fitur pengelolaan';
+        container.classList.add('is-login');
         container.innerHTML = getAdminLoginBoxHtml();
         setTimeout(() => {
             const emailInput = document.getElementById('adminEmailInput');
