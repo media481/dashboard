@@ -8925,6 +8925,9 @@ async function bukaRoomingList(btn) {
 
         roomingWorking = (data || []).map(j => ({ ...j, tipe_kamar: j.tipe_kamar || 'quad' }));
         roomingDirty = false;
+        roomingSearchTerm = '';
+        const searchInput = document.getElementById('roomingSearchInput');
+        if (searchInput) searchInput.value = '';
         renderRoomingListBody();
         document.getElementById('roomingModal').classList.add('open');
     } catch (err) {
@@ -8959,6 +8962,8 @@ function roomingJumlahKamar(tipe) {
 // kalau admin sudah pernah geser manual dan ingin dipertahankan, jangan
 // pakai tombol ini lagi setelah geser.
 function autoBagiKamar() {
+    const sudahAda = roomingWorking.some(j => j.nomor_kamar);
+    if (sudahAda && !confirm('Ini akan MENGULANG TOTAL semua pembagian kamar (termasuk yang sudah digeser manual). Lanjutkan?')) return;
     ROOM_TIPE_URUT.forEach(tipe => {
         const anggota = roomingWorking.filter(j => j.tipe_kamar === tipe).sort((a, b) => (a.nama || '').localeCompare(b.nama || '', 'id'));
         const kap = ROOM_KAPASITAS[tipe] || 4;
@@ -8967,6 +8972,15 @@ function autoBagiKamar() {
     roomingDirty = true;
     renderRoomingListBody();
     showToast('Kamar dibagi otomatis — klik "Simpan Perubahan" untuk menyimpan');
+}
+
+// Kata kunci pencarian nama jamaah aktif di modal Rooming List (lihat
+// input #roomingSearchInput). Cuma menyaring tampilan, tidak mengubah
+// roomingWorking, jadi aman dipakai sambil ada perubahan belum disimpan.
+let roomingSearchTerm = '';
+function filterRoomingList(value) {
+    roomingSearchTerm = (value || '').trim().toLowerCase();
+    renderRoomingListBody();
 }
 
 function pindahKamarJamaah(jamaahId, rawValue) {
@@ -8992,23 +9006,27 @@ function rmInisial(nama) {
 
 function renderRoomingListBody() {
     const wrap = document.getElementById('roomingListBody');
+    const statsWrap = document.getElementById('roomingStatsBar');
     if (!wrap) return;
 
     if (!roomingWorking.length) {
+        if (statsWrap) statsWrap.innerHTML = '';
         wrap.innerHTML = `<div class="rm-empty"><i class="bi bi-person-dash-fill"></i>Belum ada jamaah aktif di program ini.</div>`;
         return;
     }
 
-    // --- Stats bar ringkas di atas: total jamaah, kamar terpakai, dan
-    // berapa yang masih perlu dikelompokkan (biar admin langsung tahu
-    // progress tanpa scroll ke bawah).
+    // --- Stats bar ringkas: total jamaah, kamar terpakai, dan berapa yang
+    // masih perlu dikelompokkan. Dirender terpisah dari #roomingListBody
+    // (lihat #roomingStatsBar di index.html) supaya bisa dibikin sticky di
+    // toolbar & tetap kelihatan walau daftar jamaah discroll ke bawah.
     const totalJamaah = roomingWorking.length;
     const totalBelum = roomingWorking.filter(j => !j.nomor_kamar).length;
     const totalKamar = ROOM_TIPE_URUT.reduce((sum, tipe) => {
         const nomorTerisi = new Set(roomingWorking.filter(j => j.tipe_kamar === tipe && j.nomor_kamar).map(j => j.nomor_kamar));
         return sum + nomorTerisi.size;
     }, 0);
-    const statsHtml = `
+    if (statsWrap) {
+        statsWrap.innerHTML = `
         <div class="rm-stats">
             <div class="rm-stat">
                 <div class="rm-stat-icon" style="background:var(--brand-tint);color:var(--brand);"><i class="bi bi-people-fill"></i></div>
@@ -9018,15 +9036,21 @@ function renderRoomingListBody() {
                 <div class="rm-stat-icon" style="background:var(--success-tint);color:var(--success);"><i class="bi bi-door-closed-fill"></i></div>
                 <div><div class="rm-stat-num">${totalKamar}</div><div class="rm-stat-label">Kamar Terpakai</div></div>
             </div>
-            <div class="rm-stat">
+            <div class="rm-stat${totalBelum ? ' is-attention' : ''}">
                 <div class="rm-stat-icon" style="background:${totalBelum ? 'var(--warn-tint)' : 'var(--success-tint)'};color:${totalBelum ? 'var(--warn)' : 'var(--success)'};"><i class="bi bi-${totalBelum ? 'exclamation-triangle-fill' : 'check-circle-fill'}"></i></div>
                 <div><div class="rm-stat-num">${totalBelum}</div><div class="rm-stat-label">Belum Dikelompokkan</div></div>
             </div>
         </div>`;
+    }
+
+    const q = roomingSearchTerm;
+    const cocok = (j) => !q || (j.nama || '').toLowerCase().includes(q);
 
     const sections = ROOM_TIPE_URUT.map(tipe => {
-        const anggota = roomingWorking.filter(j => j.tipe_kamar === tipe);
-        if (!anggota.length) return '';
+        const anggotaSemua = roomingWorking.filter(j => j.tipe_kamar === tipe);
+        if (!anggotaSemua.length) return '';
+        const anggota = anggotaSemua.filter(cocok);
+        if (!anggota.length) return ''; // tidak ada yang cocok pencarian di tipe ini, sembunyikan section
         const warna = ROOM_TIPE_COLOR[tipe] || 'var(--brand)';
         const jumlahKamar = roomingJumlahKamar(tipe);
         const belumDikelompokkan = anggota.filter(j => !j.nomor_kamar);
@@ -9035,16 +9059,22 @@ function renderRoomingListBody() {
         const roomOptionsHtml = (selected) => {
             let opts = `<option value="">— Belum dikelompokkan —</option>`;
             for (let n = 1; n <= jumlahKamar + 1; n++) {
-                opts += `<option value="${n}" ${Number(selected) === n ? 'selected' : ''}>Kamar ${n}</option>`;
+                opts += `<option value="${n}" ${Number(selected) === n ? 'selected' : ''}>Pindah ke Kamar ${n}</option>`;
             }
             return opts;
         };
 
+        // Baris jamaah: avatar + nama + tombol "Pindah" (select native yang
+        // disamarkan jadi chip supaya jelas ini tombol aksi, bukan cuma
+        // label kamar biasa -- lihat .rm-move di style.css).
         const occupantRowHtml = (j) => `
             <div class="rm-occupant">
                 <div class="rm-avatar" style="background:${warna};">${rmInisial(j.nama)}</div>
                 <span class="rm-occupant-name">${escapeHtml(j.nama)}</span>
-                <select onchange="pindahKamarJamaah('${j.id}', this.value)">${roomOptionsHtml(j.nomor_kamar)}</select>
+                <label class="rm-move" title="Pindahkan jamaah ini ke kamar lain">
+                    <i class="bi bi-arrow-left-right"></i>
+                    <select onchange="pindahKamarJamaah('${j.id}', this.value)">${roomOptionsHtml(j.nomor_kamar)}</select>
+                </label>
             </div>`;
 
         const roomCards = [];
@@ -9052,20 +9082,18 @@ function renderRoomingListBody() {
             const isi = anggota.filter(j => j.nomor_kamar === n);
             if (!isi.length) continue;
             const over = isi.length > kap;
-            const totalDots = Math.max(kap, isi.length);
-            const dots = Array.from({ length: totalDots }, (_, i) => {
-                if (i >= isi.length) return `<span class="rm-dot"></span>`;
-                const overflow = i >= kap;
-                return `<span class="rm-dot" style="background:${overflow ? 'var(--danger)' : warna};"></span>`;
-            }).join('');
+            const sisaSlot = Math.max(0, kap - isi.length);
+            const emptySlotsHtml = Array.from({ length: sisaSlot }, () =>
+                `<div class="rm-slot-empty"><i class="bi bi-plus-circle"></i>Slot kosong</div>`
+            ).join('');
             roomCards.push(`
                 <div class="rm-room-card${over ? ' is-over' : ''}">
                     <div class="rm-room-head">
                         <span class="rm-room-num">Kamar ${n}</span>
                         <span class="rm-room-badge" style="background:${over ? 'var(--danger-tint)' : 'var(--bg)'};color:${over ? 'var(--danger)' : 'var(--ink-soft)'};">${isi.length}/${kap}${over ? ' — kelebihan' : ''}</span>
                     </div>
-                    <div class="rm-dots">${dots}</div>
                     ${isi.map(occupantRowHtml).join('')}
+                    ${emptySlotsHtml}
                 </div>`);
         }
 
@@ -9076,16 +9104,22 @@ function renderRoomingListBody() {
                     <span class="rm-section-title">${TIPE_KAMAR_LABEL_ROOMING[tipe]}</span>
                     <span class="rm-section-count">${anggota.length} jamaah</span>
                 </div>
-                ${roomCards.length ? `<div class="rm-room-grid">${roomCards.join('')}</div>` : `<div style="font-size:11.5px;color:var(--ink-soft);">Belum ada yang dikelompokkan.</div>`}
                 ${belumDikelompokkan.length ? `
-                <div class="rm-unassigned" style="margin-top:${roomCards.length ? '12px' : '0'};">
-                    <div class="rm-unassigned-head"><i class="bi bi-exclamation-triangle-fill"></i> Belum Dikelompokkan (${belumDikelompokkan.length})</div>
+                <div class="rm-unassigned">
+                    <div class="rm-unassigned-head"><i class="bi bi-exclamation-triangle-fill"></i> Belum Dikelompokkan (${belumDikelompokkan.length}) — pindahkan ke kamar lewat tombol di kanan nama</div>
                     <div class="rm-unassigned-grid">${belumDikelompokkan.map(occupantRowHtml).join('')}</div>
                 </div>` : ''}
+                ${roomCards.length ? `<div class="rm-room-grid"${belumDikelompokkan.length ? ' style="margin-top:12px;"' : ''}>${roomCards.join('')}</div>` : (belumDikelompokkan.length ? '' : `<div style="font-size:11.5px;color:var(--ink-soft);">Belum ada yang dikelompokkan.</div>`)}
             </div>`;
     }).join('');
 
-    wrap.innerHTML = statsHtml + (sections || `<div class="rm-empty">Tidak ada data untuk ditampilkan.</div>`);
+    if (!sections) {
+        wrap.innerHTML = q
+            ? `<div class="rm-empty"><i class="bi bi-search"></i>Tidak ada jamaah dengan nama "${escapeHtml(roomingSearchTerm)}".</div>`
+            : `<div class="rm-empty">Tidak ada data untuk ditampilkan.</div>`;
+        return;
+    }
+    wrap.innerHTML = sections;
 }
 
 async function simpanRoomingList(btn) {
