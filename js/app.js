@@ -4922,7 +4922,7 @@ async function loadKbJamaahForProgram(programId) {
 
             return `
                 <tr style="border-bottom:1px solid var(--line);">
-                    <td style="padding:10px 14px;"><strong>${escapeHtml(j.nama)}</strong>${j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(j.asal)}</span>` : ''}</td>
+                    <td style="padding:10px 14px;max-width:150px;overflow:hidden;"><strong style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(j.nama)}">${escapeHtml(j.nama)}</strong>${j.asal ? `<span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--ink-soft);" title="${escapeHtml(j.asal)}">${escapeHtml(j.asal)}</span>` : ''}</td>
                     <td style="padding:10px 14px;">${j.nik || '-'}</td>
                     <td style="padding:10px 14px;">${j.paspor || '-'}${mepet ? `<br><span class="status-badge ${mepet.level === 'expired' ? 'batal' : 'full'}" style="font-size:10px;margin-top:3px;" title="${escapeHtml(mepet.text)}"><i class="bi bi-exclamation-triangle-fill"></i> Paspor Mepet</span>` : ''}</td>
                     <td style="padding:10px 14px;white-space:nowrap;">
@@ -4979,7 +4979,7 @@ async function loadKbJamaahForProgram(programId) {
                 <table style="width:100%;border-collapse:collapse;font-size:13px;">
                     <thead style="background:var(--bg);">
                         <tr>
-                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Nama</th>
+                            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);width:150px;max-width:150px;">Nama</th>
                             <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">NIK</th>
                             <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Paspor</th>
                             <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);">Harga Program</th>
