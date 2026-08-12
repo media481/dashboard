@@ -4925,8 +4925,8 @@ async function loadKbJamaahForProgram(programId) {
                     <td style="padding:10px 14px;">${j.nik || '-'}</td>
                     <td style="padding:10px 14px;">${j.paspor || '-'}${mepet ? `<br><span class="status-badge ${mepet.level === 'expired' ? 'batal' : 'full'}" style="font-size:10px;margin-top:3px;" title="${escapeHtml(mepet.text)}"><i class="bi bi-exclamation-triangle-fill"></i> Paspor Mepet</span>` : ''}</td>
                     <td style="padding:10px 14px;white-space:nowrap;">${formatRupiah(hargaProgram)}<br><span style="font-size:10px;color:var(--ink-soft);">${parseRupiahToNumber(j.harga_custom) > 0 ? 'Harga Khusus' : (TIPE_KAMAR_LABEL[j.tipe_kamar] || 'Quad')}</span></td>
-                    <td style="padding:10px 14px;white-space:nowrap;color:var(--success);font-weight:600;">${formatRupiah(dibayar)}</td>
-                    <td style="padding:10px 14px;white-space:nowrap;color:${sisa > 0 ? 'var(--danger)' : 'var(--ink-soft)'};font-weight:600;">${formatRupiah(sisa)}</td>
+                    <td style="padding:10px 14px;white-space:nowrap;color:var(--ink);font-weight:600;">${formatRupiah(dibayar)}</td>
+                    <td style="padding:10px 14px;white-space:nowrap;color:var(--ink);font-weight:600;">${formatRupiah(sisa)}</td>
                     <td style="padding:10px 14px;min-width:110px;">
                         <div style="background:var(--line);border-radius:6px;height:8px;overflow:hidden;">
                             <div style="background:var(--brand);height:100%;width:${pct}%;"></div>
@@ -5966,8 +5966,8 @@ function renderPembayaranTable() {
                 <td><strong>${escapeHtml(r.j.nama || '-')}</strong>${r.j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(r.j.asal)}</span>` : ''}</td>
                 <td>${escapeHtml(r.program ? r.program.nama : '-')}</td>
                 <td style="white-space:nowrap;">${formatRupiah(r.hargaProgram)}<br><span style="font-size:10px;color:var(--ink-soft);">${parseRupiahToNumber(r.j.harga_custom) > 0 ? 'Harga Khusus' : (TIPE_KAMAR_LABEL[r.j.tipe_kamar] || 'Quad')}</span></td>
-                <td style="white-space:nowrap;color:var(--success);font-weight:600;">${formatRupiah(r.dibayar)}</td>
-                <td style="white-space:nowrap;color:${r.sisa > 0 ? 'var(--danger)' : 'var(--ink-soft)'};font-weight:600;">${formatRupiah(r.sisa)}</td>
+                <td style="white-space:nowrap;color:var(--ink);font-weight:600;">${formatRupiah(r.dibayar)}</td>
+                <td style="white-space:nowrap;color:var(--ink);font-weight:600;">${formatRupiah(r.sisa)}</td>
                 <td style="min-width:110px;">
                     <div style="background:var(--line);border-radius:6px;height:8px;overflow:hidden;">
                         <div style="background:var(--brand);height:100%;width:${r.pct}%;"></div>
