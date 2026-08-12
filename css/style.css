@@ -1942,25 +1942,25 @@
         /* ---- Kartu ringkasan (hero) — angka paling penting (sisa tagihan)
            ditonjolkan besar + progress bar visual, supaya status "sudah bayar
            berapa persen" bisa dibaca sekilas tanpa menghitung manual. ---- */
-        .cicilan-summary { margin-bottom: 18px; }
+        .cicilan-summary { margin-bottom: 14px; }
         .cicilan-summary-card {
             background: var(--surface);
             border: 1px solid var(--line);
             border-radius: var(--radius);
-            padding: 18px 20px;
+            padding: 14px 16px;
             color: var(--ink);
             box-shadow: 0 2px 14px rgba(15,33,56,.06);
         }
         .cicilan-summary-card.is-lunas { border-color: var(--success); background: var(--success-tint); }
-        .cicilan-summary-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
-        .cicilan-summary-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); font-weight: 700; margin-bottom: 6px; }
-        .cicilan-summary-sisa { font-size: 23px; font-weight: 800; font-family: 'Space Grotesk'; line-height: 1.2; color: var(--warn); }
+        .cicilan-summary-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+        .cicilan-summary-label { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); font-weight: 700; margin-bottom: 3px; }
+        .cicilan-summary-sisa { font-size: 20px; font-weight: 800; font-family: 'Space Grotesk'; line-height: 1.2; color: var(--warn); }
         .cicilan-summary-card.is-lunas .cicilan-summary-sisa { color: var(--success); }
         .cicilan-summary-pct-badge, .cicilan-summary-lunas-badge {
             flex-shrink: 0;
             border-radius: 20px;
-            padding: 6px 13px;
-            font-size: 12px;
+            padding: 4px 11px;
+            font-size: 11.5px;
             font-weight: 700;
             white-space: nowrap;
             display: inline-flex;
@@ -1969,17 +1969,20 @@
         }
         .cicilan-summary-pct-badge { background: var(--brand-tint); color: var(--brand); }
         .cicilan-summary-lunas-badge { background: var(--success-tint); color: var(--success); }
-        .cicilan-progress-track { height: 7px; border-radius: 20px; background: var(--bg); overflow: hidden; margin-bottom: 14px; }
+        .cicilan-progress-track { height: 6px; border-radius: 20px; background: var(--bg); overflow: hidden; margin-bottom: 10px; }
         .cicilan-progress-fill { height: 100%; border-radius: 20px; transition: width .3s ease; background: linear-gradient(90deg, var(--brand) 0%, var(--success) 100%); }
-        .cicilan-summary-foot { display: flex; gap: 10px; flex-wrap: wrap; }
-        .cicilan-summary-foot span { flex: 1 1 140px; display: flex; flex-direction: column; gap: 4px; padding: 9px 12px; background: var(--bg); border-radius: 10px; font-size: 11.5px; color: var(--ink-soft); }
+        /* Foot: dibuat 1 baris per item (label kiri, nominal kanan) alih-alih
+           label di atas & nominal di bawah -- lebih hemat tinggi. */
+        .cicilan-summary-foot { display: flex; gap: 8px; flex-wrap: wrap; }
+        .cicilan-summary-foot span { flex: 1 1 140px; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px; background: var(--bg); border-radius: 8px; font-size: 11px; color: var(--ink-soft); }
         .cicilan-summary-card.is-lunas .cicilan-summary-foot span { background: rgba(255,255,255,.6); }
-        .cicilan-summary-foot b { font-size: 13.5px; font-weight: 700; color: var(--ink); }
-        .cicilan-summary-warning { display: flex; align-items: flex-start; gap: 7px; margin-top: 12px; padding: 9px 11px; border-radius: 8px; font-size: 11.5px; line-height: 1.4; background: var(--warn-tint); color: var(--warn); }
+        .cicilan-summary-foot b { font-size: 12.5px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+        .cicilan-summary-warning { display: flex; align-items: flex-start; gap: 7px; margin-top: 10px; padding: 8px 10px; border-radius: 8px; font-size: 11.5px; line-height: 1.4; background: var(--warn-tint); color: var(--warn); }
         .cicilan-summary-warning.is-info { background: var(--brand-tint); color: var(--brand); }
         .cicilan-summary-warning i { margin-top: 1px; flex-shrink: 0; }
         @media (max-width: 480px) {
-            .cicilan-summary-sisa { font-size: 20px; }
+            .cicilan-summary-sisa { font-size: 18px; }
+            .cicilan-summary-foot span { flex-direction: column; align-items: flex-start; gap: 2px; }
         }
 
         /* ---- Form Tambah Pembayaran — dibingkai sebagai kartu supaya jelas
@@ -1989,12 +1992,15 @@
             background: var(--bg);
             border: 1px solid var(--line);
             border-radius: var(--radius);
-            padding: 18px 20px 20px;
-            margin-bottom: 22px;
+            padding: 14px 16px 16px;
+            margin-bottom: 16px;
         }
-        .cicilan-add-card .form-group { margin-bottom: 12px; }
+        .cicilan-add-card .form-row { gap: 12px; }
+        .cicilan-add-card .form-group { margin-bottom: 10px; }
+        .cicilan-add-card .form-group label { font-size: 12px; margin-bottom: 3px; }
+        .cicilan-add-card .form-group input, .cicilan-add-card .form-group select { padding: 8px 12px; font-size: 13px; }
         .cicilan-add-card .form-row:last-of-type .form-group { margin-bottom: 0; }
-        .cicilan-add-card .form-actions { margin-top: 16px; padding-top: 0; border-top: none; }
+        .cicilan-add-card .form-actions { margin-top: 12px; padding-top: 0; border-top: none; }
 
         .cicilan-section-title {
             font-weight: 700;
@@ -2002,14 +2008,14 @@
             text-transform: uppercase;
             letter-spacing: .02em;
             color: var(--ink-soft);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
         .cicilan-section-title i { color: var(--brand); }
         .cicilan-history-count { font-weight: 600; color: var(--ink-soft); text-transform: none; letter-spacing: 0; }
-        .cicilan-history-section { margin-top: 22px; }
+        .cicilan-history-section { margin-top: 16px; }
         .cicilan-section-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
         .cicilan-section-head .cicilan-section-title { margin-bottom: 0; }
         .cicilan-section-head .btn-nota-riwayat { margin-left: 0; padding: 7px 14px; font-size: 12px; }
