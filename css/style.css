@@ -2361,12 +2361,19 @@
         .pb-combo-trigger:hover { border-color: #c3cede; }
         .pb-combo.open .pb-combo-trigger { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-tint); }
         .pb-combo.open .pb-combo-trigger i { transform: rotate(180deg); }
+        .pb-combo.open.drop-up .pb-combo-trigger i { transform: rotate(0deg); }
         .pb-combo-panel {
             display: none; position: absolute; top: calc(100% + 6px); left: 0; width: max(100%, 300px); z-index: 40;
             background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
             box-shadow: 0 12px 32px rgba(15,33,56,.14); overflow: hidden;
         }
         .pb-combo.open .pb-combo-panel { display: block; }
+        /* Kalau ruang di bawah trigger sempit (mis. trigger dekat bawah layar),
+           panel dibuka ke atas -- lihat positionPbProgramComboPanel() di app.js */
+        .pb-combo.drop-up .pb-combo-panel {
+            top: auto; bottom: calc(100% + 6px);
+            box-shadow: 0 -12px 32px rgba(15,33,56,.14);
+        }
         .pb-combo-search { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); background: var(--bg); }
         .pb-combo-search i { color: var(--ink-soft); font-size: 13px; flex-shrink: 0; }
         .pb-combo-search input {

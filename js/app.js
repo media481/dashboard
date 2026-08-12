@@ -6078,11 +6078,24 @@ function togglePbProgramCombo() {
     const willOpen = !combo.classList.contains('open');
     closeAllPbProgramCombo();
     if (willOpen) {
+        positionPbProgramComboPanel(combo, panel);
         combo.classList.add('open');
         const searchInput = document.getElementById('pbProgramComboSearch');
         if (searchInput) { searchInput.value = ''; setTimeout(() => searchInput.focus(), 30); }
         renderPbProgramComboList(pbProgramComboData, '');
     }
+}
+
+// Buka panel ke bawah selama ruang di bawah trigger cukup; kalau ruang
+// di bawah lebih sempit dari perkiraan tinggi panel (dan ruang di atas
+// lebih luas), panel dibuka ke atas supaya tidak kepotong viewport.
+function positionPbProgramComboPanel(combo, panel) {
+    const rect = combo.getBoundingClientRect();
+    const estPanelHeight = Math.min(340, panel.scrollHeight || 340);
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const openUp = spaceBelow < estPanelHeight && spaceAbove > spaceBelow;
+    combo.classList.toggle('drop-up', openUp);
 }
 
 function closeAllPbProgramCombo() {
