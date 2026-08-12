@@ -5224,6 +5224,7 @@ function openKbModal(id) {
     document.getElementById('kb_asal').value = j.asal || '';
     document.getElementById('kb_tipe_kamar').value = j.tipe_kamar || 'quad';
     document.getElementById('kb_harga_custom').value = j.harga_custom || '';
+    formatNominalInput(document.getElementById('kb_harga_custom'));
     document.getElementById('kb_status').value = j.status || 'pending';
     document.getElementById('kb_catatan').value = j.catatan || '';
     document.getElementById('kb_jenis_kelamin').value = j.jenis_kelamin || '';

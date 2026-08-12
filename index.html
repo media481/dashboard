@@ -846,7 +846,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Harga Khusus <span style="font-weight:500;color:var(--ink-soft);">(opsional)</span></label>
-                            <input type="text" id="kb_harga_custom" placeholder="Kosongkan kalau ikut harga tipe kamar">
+                            <input type="text" inputmode="numeric" id="kb_harga_custom" placeholder="Kosongkan kalau ikut harga tipe kamar" oninput="formatNominalInput(this)">
                         </div>
                         <div class="form-group">
                             <label>Catatan</label>
