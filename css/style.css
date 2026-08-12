@@ -1063,6 +1063,9 @@
            bukan status baik/buruk -- supaya warna hijau/merah tetap berarti
            dan tidak dipakai berlebihan cuma buat menampilkan angka. */
         .status-badge.neutral { background: var(--bg); color: var(--ink-soft); border: 1px solid var(--line); }
+        /* Varian kecil dipakai di dalam sel tabel (Harga+Tipe Kamar, %
+           progres pembayaran) supaya pill tetap ringkas sebaris dgn teks lain. */
+        .status-badge.pill-sm { font-size: 10px; font-weight: 600; padding: 2px 9px; flex-shrink: 0; }
 
         /* Action Buttons */
         .action-btns {
