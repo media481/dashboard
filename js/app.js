@@ -1504,6 +1504,7 @@ function setAdminSession(role) {
             const adminView = document.getElementById('adminPageView');
             if (adminView.style.display !== 'none') closeAdminPanel();
             renderSidebarNav();
+            renderHeaderWelcome();
             showToast('Sesi berakhir, silakan login ulang.', 'error');
         }
     }, SESSION_DURATION);
@@ -1598,6 +1599,7 @@ async function checkAdminLogin() {
         supabaseClient.rpc('update_last_login').then(({ error }) => {
             if (error) console.warn('update_last_login gagal:', error.message);
         });
+        renderHeaderWelcome();
         closeAdminPanel();
         renderSidebarNav();
         showToast('Berhasil login sebagai ' + profile.label);
@@ -1861,6 +1863,7 @@ async function logoutAdmin() {
     if (sessionTimeout) clearTimeout(sessionTimeout);
     closeAdminPanel();
     renderSidebarNav();
+    renderHeaderWelcome();
     showToast('Berhasil logout');
 }
 
@@ -10493,148 +10496,49 @@ async function saveAsset(e) {
 }
 
 // ============================================================
-// 21b. LOKASI & CUACA DI HEADER
+// 21b. SAMBUTAN USER DI HEADER
 // ============================================================
-// Ganti judul "Dashboard Amiru" di topbar jadi info lokasi + cuaca hari ini
-// (mis. "MAGETAN, JATIM · 25°C · Cerah"), otomatis mengikuti lokasi device
-// (browser geolocation) dan cuaca terkini dari Open-Meteo (API gratis, tanpa
-// API key). Kalau izin lokasi ditolak / gagal ambil data, teks default
-// "Dashboard Amiru" tetap tampil (tidak ada error yang mengganggu user).
+// Sebelumnya judul topbar menampilkan lokasi + cuaca perangkat (lewat browser
+// geolocation + Open-Meteo). Sekarang diganti sambutan dinamis & profesional
+// untuk user yang sedang login -- menyesuaikan jam (Selamat Pagi/Siang/Sore/
+// Malam), nama user (dari dashboard_profiles.label, sudah tersimpan di
+// sessionStorage saat login -- lihat checkAdminLogin()), dan satu kalimat
+// penyemangat singkat yang berganti-ganti tiap render supaya tidak monoton.
+// Kalau belum ada yang login, tampil sambutan umum ke nama brand perusahaan.
+const HEADER_WELCOME_PHRASES = [
+    'Semoga hari ini penuh capaian.',
+    'Selamat bekerja, sukses selalu menyertai.',
+    'Selamat menjalankan tugas hari ini.',
+    'Mari mulai hari dengan semangat terbaik.',
+    'Semoga lancar dan berkah sepanjang hari.',
+    'Selamat produktif hari ini.',
+];
 
-// Kode cuaca WMO (dipakai Open-Meteo) -> label Bahasa Indonesia.
-const WEATHER_CODE_LABEL_ID = {
-    0: 'Cerah', 1: 'Cerah Berawan', 2: 'Berawan', 3: 'Mendung',
-    45: 'Berkabut', 48: 'Berkabut',
-    51: 'Gerimis Ringan', 53: 'Gerimis', 55: 'Gerimis Lebat',
-    56: 'Gerimis Beku', 57: 'Gerimis Beku Lebat',
-    61: 'Hujan Ringan', 63: 'Hujan', 65: 'Hujan Lebat',
-    66: 'Hujan Beku', 67: 'Hujan Beku Lebat',
-    71: 'Salju Ringan', 73: 'Salju', 75: 'Salju Lebat', 77: 'Butiran Salju',
-    80: 'Hujan Lokal Ringan', 81: 'Hujan Lokal', 82: 'Hujan Lokal Lebat',
-    85: 'Salju Lokal Ringan', 86: 'Salju Lokal Lebat',
-    95: 'Badai Petir', 96: 'Badai Petir + Es Ringan', 99: 'Badai Petir + Es Lebat'
-};
-
-// Nama provinsi lengkap (Bahasa Indonesia) -> singkatan umum, biar formatnya
-// pendek seperti "JATIM" bukan "JAWA TIMUR". Provinsi yang tidak ada di daftar
-// ini ditampilkan apa adanya (uppercase).
-const PROVINSI_SINGKATAN = {
-    'ACEH': 'ACEH', 'SUMATERA UTARA': 'SUMUT', 'SUMATERA BARAT': 'SUMBAR',
-    'SUMATERA SELATAN': 'SUMSEL', 'RIAU': 'RIAU', 'KEPULAUAN RIAU': 'KEPRI',
-    'JAMBI': 'JAMBI', 'BENGKULU': 'BENGKULU', 'LAMPUNG': 'LAMPUNG',
-    'KEPULAUAN BANGKA BELITUNG': 'BABEL', 'DKI JAKARTA': 'DKI',
-    'JAWA BARAT': 'JABAR', 'JAWA TENGAH': 'JATENG', 'JAWA TIMUR': 'JATIM',
-    'DAERAH ISTIMEWA YOGYAKARTA': 'DIY', 'BANTEN': 'BANTEN', 'BALI': 'BALI',
-    'NUSA TENGGARA BARAT': 'NTB', 'NUSA TENGGARA TIMUR': 'NTT',
-    'KALIMANTAN BARAT': 'KALBAR', 'KALIMANTAN TENGAH': 'KALTENG',
-    'KALIMANTAN SELATAN': 'KALSEL', 'KALIMANTAN TIMUR': 'KALTIM',
-    'KALIMANTAN UTARA': 'KALTARA', 'SULAWESI UTARA': 'SULUT',
-    'SULAWESI TENGAH': 'SULTENG', 'SULAWESI SELATAN': 'SULSEL',
-    'SULAWESI TENGGARA': 'SULTRA', 'GORONTALO': 'GORONTALO',
-    'SULAWESI BARAT': 'SULBAR', 'MALUKU': 'MALUKU', 'MALUKU UTARA': 'MALUT',
-    'PAPUA': 'PAPUA', 'PAPUA BARAT': 'PABAR'
-};
-
-// Reverse-geocode koordinat -> "KOTA, PROVINSI" pakai Nominatim/OpenStreetMap
-// (gratis, tanpa API key). Dipakai (bukan BigDataCloud) karena field "state"
-// dari Nominatim jauh lebih konsisten mengembalikan nama provinsi LENGKAP
-// (mis. "Jawa Timur") walau titik lokasinya di kecamatan/desa kecil.
-async function resolveLocationName(lat, lon) {
-    try {
-        const res = await fetchWithTimeout(
-            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&addressdetails=1&accept-language=id&zoom=14`,
-            6000
-        );
-        if (!res.ok) return null;
-        const data = await res.json();
-        const addr = data.address || {};
-        const kota = (addr.city || addr.town || addr.municipality || addr.village
-            || addr.county || addr.state_district || '').trim();
-        const provinsiFull = (addr.state || '').trim().toUpperCase();
-        const provinsi = PROVINSI_SINGKATAN[provinsiFull] || provinsiFull;
-        if (kota && provinsi) return `${kota.toUpperCase()}, ${provinsi}`;
-        return kota.toUpperCase() || provinsi || null;
-    } catch (e) {
-        console.warn('resolveLocationName gagal:', e);
-        return null;
-    }
+function getHeaderGreetingWord(hour) {
+    if (hour >= 4 && hour < 11) return 'Selamat Pagi';
+    if (hour >= 11 && hour < 15) return 'Selamat Siang';
+    if (hour >= 15 && hour < 18) return 'Selamat Sore';
+    return 'Selamat Malam';
 }
 
-// fetch() dengan batas waktu, supaya kalau API cuaca/lokasi lambat merespons,
-// tidak menggantung tanpa batas dan header topbar tetap fallback ke default.
-function fetchWithTimeout(url, timeoutMs) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
-}
-
-// Ambil suhu & kondisi cuaca terkini dari Open-Meteo untuk koordinat tertentu.
-// Dicoba maksimal 2x (percobaan kedua kalau yang pertama gagal karena jaringan
-// lambat/timeout) sebelum menyerah dan membiarkan header fallback ke default.
-async function fetchCurrentWeather(lat, lon, attempt = 1) {
-    try {
-        const res = await fetchWithTimeout(
-            `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`,
-            6000
-        );
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        const cw = data.current_weather;
-        if (!cw || typeof cw.temperature !== 'number') throw new Error('Format respons tidak sesuai');
-        return {
-            suhu: Math.round(cw.temperature),
-            label: WEATHER_CODE_LABEL_ID[cw.weathercode] ?? 'Cerah'
-        };
-    } catch (e) {
-        if (attempt < 2) return fetchCurrentWeather(lat, lon, attempt + 1);
-        console.warn('fetchCurrentWeather gagal:', e);
-        return null;
-    }
-}
-
-// Minta lokasi device, lalu update judul topbar jadi "KOTA, PROVINSI · 25°C · Cerah".
-// Hasil disimpan sebentar di localStorage (30 menit) supaya reload halaman tidak
-// selalu minta izin lokasi / panggil API ulang.
-const LOCATION_WEATHER_CACHE_KEY = 'dashAmiru_locationWeather_v3';
-const LOCATION_WEATHER_CACHE_MS = 30 * 60 * 1000; // 30 menit
-
-function loadHeaderLocationWeather() {
+// Dipanggil saat halaman dimuat (setelah checkSession() memulihkan status
+// login), dan diulang lagi setiap kali status login berubah (login/logout)
+// supaya sambutan di header selalu sesuai user yang aktif tanpa perlu reload.
+function renderHeaderWelcome() {
     const el = document.getElementById('topbarLocationWeather');
-    if (!el || !navigator.geolocation) return; // browser tidak support -> biarkan teks default
-
-    try {
-        const cached = JSON.parse(localStorage.getItem(LOCATION_WEATHER_CACHE_KEY) || 'null');
-        if (cached && cached.text && (Date.now() - cached.at) < LOCATION_WEATHER_CACHE_MS) {
-            el.textContent = cached.text;
-            return;
-        }
-    } catch (e) { /* cache korup, abaikan & lanjut fetch baru */ }
-
-    navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-            const { latitude, longitude } = pos.coords;
-            try {
-                const [namaLokasi, cuaca] = await Promise.all([
-                    resolveLocationName(latitude, longitude),
-                    fetchCurrentWeather(latitude, longitude)
-                ]);
-                const parts = [];
-                if (namaLokasi) parts.push(namaLokasi);
-                if (cuaca) parts.push(`${cuaca.suhu}°C`, cuaca.label);
-                if (!parts.length) return; // kedua sumber gagal -> biarkan teks default
-                const text = parts.join(' · ');
-                el.textContent = text;
-                try {
-                    localStorage.setItem(LOCATION_WEATHER_CACHE_KEY, JSON.stringify({ text, at: Date.now() }));
-                } catch (e) { /* localStorage penuh/nonaktif, abaikan */ }
-            } catch (e) {
-                // API lokasi/cuaca gagal -> biarkan teks default "Dashboard Amiru"
-            }
-        },
-        () => { /* izin lokasi ditolak / gagal -> biarkan teks default */ },
-        { timeout: 8000, maximumAge: 15 * 60 * 1000 }
-    );
+    if (!el) return;
+    const greeting = getHeaderGreetingWord(new Date().getHours());
+    let label = '';
+    try { label = adminLoggedIn ? (sessionStorage.getItem('admin_login_label') || '') : ''; } catch (_) { label = ''; }
+    const phrase = HEADER_WELCOME_PHRASES[Math.floor(Math.random() * HEADER_WELCOME_PHRASES.length)];
+    if (label) {
+        el.textContent = `${greeting}, ${label} — ${phrase}`;
+    } else {
+        const brand = (typeof NOTA_PERUSAHAAN !== 'undefined' && NOTA_PERUSAHAAN?.brand) ? NOTA_PERUSAHAAN.brand : 'Amiru Tour';
+        el.textContent = `${greeting} — Selamat datang di ${brand}`;
+    }
 }
+window.renderHeaderWelcome = renderHeaderWelcome;
 
 // ============================================================
 // 22. INIT
@@ -10681,8 +10585,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Cek & kirim pengingat Telegram untuk program yang berangkat ≤30 hari lagi (1x/hari)
     setTimeout(() => checkAndSendReminders(), 2000);
 
-    // Update judul topbar jadi info lokasi + cuaca hari ini (non-blocking, ada fallback)
-    loadHeaderLocationWeather();
+    // Render sambutan user di header (menggantikan info lokasi & cuaca lama)
+    renderHeaderWelcome();
 });
 
 // ============================================================
