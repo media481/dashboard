@@ -1719,13 +1719,13 @@ function openResetPasswordModal(userId, label) {
     if (pwdInput) pwdInput.value = '';
     const statusEl = document.getElementById('rupStatus');
     if (statusEl) statusEl.innerHTML = '';
-    document.getElementById('resetUserPasswordModal').classList.add('show');
+    document.getElementById('resetUserPasswordModal').classList.add('open');
     setTimeout(() => pwdInput && pwdInput.focus(), 100);
 }
 window.openResetPasswordModal = openResetPasswordModal;
 
 function closeResetPasswordModal() {
-    document.getElementById('resetUserPasswordModal').classList.remove('show');
+    document.getElementById('resetUserPasswordModal').classList.remove('open');
 }
 window.closeResetPasswordModal = closeResetPasswordModal;
 
