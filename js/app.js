@@ -4624,6 +4624,22 @@ async function convertPendaftaranToJamaah(pendaftaranId) {
     }
 }
 
+// Program yang boleh dipilih untuk PENDAFTARAN BARU: hanya yang masih aktif
+// & belum lewat tanggal keberangkatan (tidak masuk akal menawarkan program
+// yang sudah expired ke calon jamaah baru). Dipakai oleh openPendaftaranModal.
+// existingProgramId (opsional): kalau sedang EDIT pendaftaran lama yang
+// program-nya kebetulan sudah expired/nonaktif, tetap disertakan (ditandai)
+// supaya pilihan yang sudah tersimpan tidak hilang/ke-reset diam-diam.
+function getSelectablePendaftaranPrograms(existingProgramId = null) {
+    const now = new Date();
+    const aktif = (dataUmroh || []).filter(p => p.is_active !== false && (!p.dateObj || p.dateObj >= now));
+    if (existingProgramId && !aktif.some(p => String(p.id) === String(existingProgramId))) {
+        const existingProg = (dataUmroh || []).find(p => String(p.id) === String(existingProgramId));
+        if (existingProg) return [...aktif, { ...existingProg, _expiredTag: true }];
+    }
+    return aktif;
+}
+
 function openPendaftaranModal(id = null) {
     if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menambah pendaftaran', 'error'); return; }
     const modal = document.getElementById('pendaftaranModal');
@@ -4631,9 +4647,11 @@ function openPendaftaranModal(id = null) {
     form.reset();
     document.getElementById('p_editId').value = '';
 
+    const existing = id ? pendaftaranList.find(item => item.id === id) : null;
     const programSelect = document.getElementById('pf_program');
+    const selectablePrograms = getSelectablePendaftaranPrograms(existing?.program_id);
     programSelect.innerHTML = '<option value="">-- Belum Ditentukan --</option>' +
-        (dataUmroh || []).map(prog => `<option value="${prog.id}">${escapeHtml(prog.nama)}</option>`).join('');
+        selectablePrograms.map(prog => `<option value="${prog.id}">${escapeHtml(prog.nama)}${prog._expiredTag ? ' (Sudah Lewat)' : ''}</option>`).join('');
 
     const jamaahLamaBox = document.getElementById('pfFromJamaahLamaBox');
     let hasExtraData = false;
