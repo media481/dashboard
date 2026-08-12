@@ -7092,6 +7092,16 @@ function buildNotaHTML(cicilan, kodeVerifikasi) {
     const statusLunas = hargaProgram > 0 && totalDibayarSemua >= hargaProgram;
     const lebihBayar = Math.max(totalDibayarSemua - hargaProgram, 0);
 
+    // Kalau baris cicilan ini punya harga_program_snapshot (harga acuan saat
+    // transaksi itu dicatat) dan nilainya BEDA dari harga acuan saat ini
+    // (mis. jamaah pindah tipe kamar setelah transaksi ini), tampilkan catatan
+    // historis supaya nota lama yang di-reprint tidak terlihat "salah hitung"
+    // dibanding kertas fisik yang sudah diberikan ke jamaah sebelumnya. Angka
+    // Harga Program / Sisa Tagihan di rekap tetap pakai harga LIVE (sengaja,
+    // lihat catatan di isCicilanPelunasan & sql/tambah_snapshot_harga_pembayaran.sql).
+    const hargaSnapshot = cicilan.harga_program_snapshot != null ? Number(cicilan.harga_program_snapshot) : null;
+    const hargaSnapshotBeda = hargaSnapshot != null && hargaSnapshot > 0 && hargaSnapshot !== hargaProgram;
+
     // Judul & nomor dokumen ditentukan OTOMATIS oleh sistem, bukan dipilih
     // manual staf: kalau baris pembayaran INI SENDIRI yang menutup pelunasan
     // (lihat isCicilanPelunasan di atas), dokumennya berjudul "KUITANSI" &
@@ -7154,6 +7164,7 @@ function buildNotaHTML(cicilan, kodeVerifikasi) {
                 <div style="font-size:9.5px;color:#555;font-style:italic;margin-top:3px;">Terbilang: ${rupiahTerbilang(jumlah)}</div>
                 <div style="font-size:9px;color:${NOTA_TEMA.inkSoft};margin-top:5px;padding-top:5px;border-top:1px dashed ${NOTA_TEMA.line};">Total dibayar s.d. nota ini: <b style="color:${NOTA_TEMA.navy};font-size:10px;">${formatRupiah(totalDibayarSemua)}</b></div>
                 ${cicilan.keterangan ? `<div style="font-size:9.5px;color:${NOTA_TEMA.inkSoft};margin-top:5px;padding-top:5px;border-top:1px dashed ${NOTA_TEMA.line};">Untuk Pembayaran: <span style="color:#1a1a1a;font-weight:600;">${escapeHtml(cicilan.keterangan)}</span></div>` : ''}
+                ${hargaSnapshotBeda ? `<div style="font-size:9px;color:${NOTA_TEMA.inkSoft};margin-top:5px;padding-top:5px;border-top:1px dashed ${NOTA_TEMA.line};">Harga Program saat transaksi ini: <b style="color:#1a1a1a;">${formatRupiah(hargaSnapshot)}</b> <span style="font-style:italic;">(berbeda dari harga acuan saat ini karena ada perubahan tipe kamar/harga setelah transaksi ini)</span></div>` : ''}
             </div>
 
             <div style="display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-top:1px solid ${NOTA_TEMA.line};border-bottom:1px solid ${NOTA_TEMA.line};">
@@ -7788,8 +7799,13 @@ async function saveCicilan(e) {
         // BENAR tersimpan. Tanpa ini, kalau ditolak RLS (sesi kedaluwarsa dll),
         // toast tetap bilang "berhasil" padahal uang yang dicatat tidak masuk
         // ke database sama sekali -- riskan untuk data uang.
+        // harga_program_snapshot: catat harga acuan (Triple/Quad/Double/custom)
+        // yang berlaku PERSIS saat transaksi ini dicatat, supaya kalau nanti
+        // tipe_kamar/harga_custom jamaah berubah, nota transaksi ini tetap bisa
+        // menunjukkan harga historis yang benar (lihat sql/tambah_snapshot_harga_pembayaran.sql).
+        // Tidak dipakai untuk menentukan status lunas -- itu tetap live.
         const { data: insertedRows, error } = await supabaseClient.from('pembayaran_jamaah')
-            .insert([{ jamaah_id: jamaahId, tanggal, jumlah, metode, keterangan }]).select('id');
+            .insert([{ jamaah_id: jamaahId, tanggal, jumlah, metode, keterangan, harga_program_snapshot: cicilanHargaProgram || null }]).select('id');
         if (error) throw error;
         if (!insertedRows || insertedRows.length === 0) {
             throw new Error('Pembayaran tidak berhasil tersimpan ke database. Kemungkinan sesi login sudah kedaluwarsa atau akun tidak punya izin — coba logout lalu login ulang, JANGAN dianggap sudah tercatat.');
