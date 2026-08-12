@@ -2961,3 +2961,52 @@
 .kp-status-select.badge-limited { background: var(--warn-tint); border-color: #f3d4a3; color: #A5541A; }
 .kp-status-select.badge-available { background: var(--success-tint); border-color: #bfe3cf; color: var(--success); }
 .kp-status-select.badge-full { background: var(--danger-tint); border-color: #f1c3bd; color: var(--danger); }
+
+
+/* ============================================================
+   ROOMING LIST — redesign tampilan (kartu kamar, avatar inisial,
+   indikator kapasitas, legend & stats bar). Lihat js/app.js ->
+   renderRoomingListBody() untuk markup yang dihasilkan.
+   ============================================================ */
+.rm-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+.rm-legend-item { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ink-soft); font-weight: 600; white-space: nowrap; }
+.rm-legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.rm-legend-note { font-size: 10.5px; color: var(--ink-soft); font-style: italic; }
+
+.rm-stats { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+.rm-stat { flex: 1 1 150px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+.rm-stat-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.rm-stat-num { font-size: 17px; font-weight: 800; color: var(--ink); line-height: 1.15; font-family: 'Space Grotesk', sans-serif; }
+.rm-stat-label { font-size: 10.5px; color: var(--ink-soft); font-weight: 600; }
+
+.rm-section { margin-bottom: 24px; }
+.rm-section:last-child { margin-bottom: 0; }
+.rm-section-head { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
+.rm-section-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.rm-section-title { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.rm-section-count { font-size: 10.5px; color: var(--ink-soft); font-weight: 700; background: var(--bg); padding: 2px 9px; border-radius: 100px; }
+
+.rm-room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.rm-room-card { background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; transition: box-shadow .15s, border-color .15s; }
+.rm-room-card:hover { box-shadow: var(--shadow); }
+.rm-room-card.is-over { border-color: var(--danger); background: var(--danger-tint); }
+.rm-room-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.rm-room-num { font-size: 13px; font-weight: 700; color: var(--ink); }
+.rm-room-badge { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 100px; white-space: nowrap; }
+.rm-dots { display: flex; gap: 3px; margin-bottom: 9px; flex-wrap: wrap; }
+.rm-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line); flex-shrink: 0; }
+
+.rm-occupant { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px dashed var(--line); }
+.rm-occupant:first-child { border-top: none; padding-top: 0; }
+.rm-avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9.5px; font-weight: 700; color: #fff; flex-shrink: 0; font-family: 'Space Grotesk', sans-serif; }
+.rm-occupant-name { flex: 1; font-size: 12.5px; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rm-occupant select { font-size: 11px; padding: 4px 24px 4px 8px; border-radius: 6px; border: 1px solid var(--line); flex-shrink: 0; }
+
+.rm-unassigned { border: 1.5px dashed var(--warn); border-radius: 12px; background: var(--warn-tint); padding: 14px 16px; }
+.rm-unassigned-head { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; color: var(--warn); margin-bottom: 10px; }
+.rm-unassigned-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px 16px; }
+.rm-unassigned .rm-occupant { border-top: none; background: var(--surface); border-radius: 8px; padding: 6px 8px; }
+.rm-unassigned .rm-occupant:first-child { padding-top: 6px; }
+
+.rm-empty { text-align: center; padding: 44px 20px; color: var(--ink-soft); font-size: 12.5px; }
+.rm-empty i { font-size: 28px; display: block; margin-bottom: 10px; opacity: .6; }

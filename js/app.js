@@ -8978,21 +8978,59 @@ function pindahKamarJamaah(jamaahId, rawValue) {
 }
 
 const TIPE_KAMAR_LABEL_ROOMING = { quad: 'Quad (4 orang/kamar)', triple: 'Triple (3 orang/kamar)', double: 'Double (2 orang/kamar)' };
+// Warna aksen per tipe kamar -- dipakai konsisten di dot section, avatar
+// inisial jamaah, dan dot kapasitas kamar biar satu tipe gampang dikenali
+// sekilas tanpa baca teks.
+const ROOM_TIPE_COLOR = { quad: 'var(--brand)', triple: '#b8935a', double: 'var(--success)' };
+
+// Inisial dari nama jamaah (maks 2 huruf) buat avatar bulat di baris jamaah.
+function rmInisial(nama) {
+    const parts = (nama || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    return parts.slice(0, 2).map(w => w[0].toUpperCase()).join('');
+}
 
 function renderRoomingListBody() {
     const wrap = document.getElementById('roomingListBody');
     if (!wrap) return;
 
     if (!roomingWorking.length) {
-        wrap.innerHTML = `<div class="kb-no-program"><i class="bi bi-person-dash-fill"></i><p>Belum ada jamaah aktif di program ini.</p></div>`;
+        wrap.innerHTML = `<div class="rm-empty"><i class="bi bi-person-dash-fill"></i>Belum ada jamaah aktif di program ini.</div>`;
         return;
     }
+
+    // --- Stats bar ringkas di atas: total jamaah, kamar terpakai, dan
+    // berapa yang masih perlu dikelompokkan (biar admin langsung tahu
+    // progress tanpa scroll ke bawah).
+    const totalJamaah = roomingWorking.length;
+    const totalBelum = roomingWorking.filter(j => !j.nomor_kamar).length;
+    const totalKamar = ROOM_TIPE_URUT.reduce((sum, tipe) => {
+        const nomorTerisi = new Set(roomingWorking.filter(j => j.tipe_kamar === tipe && j.nomor_kamar).map(j => j.nomor_kamar));
+        return sum + nomorTerisi.size;
+    }, 0);
+    const statsHtml = `
+        <div class="rm-stats">
+            <div class="rm-stat">
+                <div class="rm-stat-icon" style="background:var(--brand-tint);color:var(--brand);"><i class="bi bi-people-fill"></i></div>
+                <div><div class="rm-stat-num">${totalJamaah}</div><div class="rm-stat-label">Jamaah Aktif</div></div>
+            </div>
+            <div class="rm-stat">
+                <div class="rm-stat-icon" style="background:var(--success-tint);color:var(--success);"><i class="bi bi-door-closed-fill"></i></div>
+                <div><div class="rm-stat-num">${totalKamar}</div><div class="rm-stat-label">Kamar Terpakai</div></div>
+            </div>
+            <div class="rm-stat">
+                <div class="rm-stat-icon" style="background:${totalBelum ? 'var(--warn-tint)' : 'var(--success-tint)'};color:${totalBelum ? 'var(--warn)' : 'var(--success)'};"><i class="bi bi-${totalBelum ? 'exclamation-triangle-fill' : 'check-circle-fill'}"></i></div>
+                <div><div class="rm-stat-num">${totalBelum}</div><div class="rm-stat-label">Belum Dikelompokkan</div></div>
+            </div>
+        </div>`;
 
     const sections = ROOM_TIPE_URUT.map(tipe => {
         const anggota = roomingWorking.filter(j => j.tipe_kamar === tipe);
         if (!anggota.length) return '';
+        const warna = ROOM_TIPE_COLOR[tipe] || 'var(--brand)';
         const jumlahKamar = roomingJumlahKamar(tipe);
         const belumDikelompokkan = anggota.filter(j => !j.nomor_kamar);
+        const kap = ROOM_KAPASITAS[tipe] || 4;
 
         const roomOptionsHtml = (selected) => {
             let opts = `<option value="">— Belum dikelompokkan —</option>`;
@@ -9002,49 +9040,52 @@ function renderRoomingListBody() {
             return opts;
         };
 
-        const roomBlocks = [];
+        const occupantRowHtml = (j) => `
+            <div class="rm-occupant">
+                <div class="rm-avatar" style="background:${warna};">${rmInisial(j.nama)}</div>
+                <span class="rm-occupant-name">${escapeHtml(j.nama)}</span>
+                <select onchange="pindahKamarJamaah('${j.id}', this.value)">${roomOptionsHtml(j.nomor_kamar)}</select>
+            </div>`;
+
+        const roomCards = [];
         for (let n = 1; n <= jumlahKamar; n++) {
             const isi = anggota.filter(j => j.nomor_kamar === n);
             if (!isi.length) continue;
-            const kap = ROOM_KAPASITAS[tipe] || 4;
-            const penuh = isi.length > kap;
-            roomBlocks.push(`
-                <div style="border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-width:250px;flex:1 1 250px;max-width:320px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                        <b style="font-size:13.5px;">Kamar ${n}</b>
-                        <span style="font-size:11px;color:${penuh ? 'var(--danger)' : 'var(--ink-soft)'};font-weight:${penuh ? 700 : 400};">${isi.length}/${kap} orang${penuh ? ' — kelebihan!' : ''}</span>
+            const over = isi.length > kap;
+            const totalDots = Math.max(kap, isi.length);
+            const dots = Array.from({ length: totalDots }, (_, i) => {
+                if (i >= isi.length) return `<span class="rm-dot"></span>`;
+                const overflow = i >= kap;
+                return `<span class="rm-dot" style="background:${overflow ? 'var(--danger)' : warna};"></span>`;
+            }).join('');
+            roomCards.push(`
+                <div class="rm-room-card${over ? ' is-over' : ''}">
+                    <div class="rm-room-head">
+                        <span class="rm-room-num">Kamar ${n}</span>
+                        <span class="rm-room-badge" style="background:${over ? 'var(--danger-tint)' : 'var(--bg)'};color:${over ? 'var(--danger)' : 'var(--ink-soft)'};">${isi.length}/${kap}${over ? ' — kelebihan' : ''}</span>
                     </div>
-                    ${isi.map(j => `
-                        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-top:1px dashed var(--line);">
-                            <span style="font-size:12.5px;">${escapeHtml(j.nama)}</span>
-                            <select style="font-size:11.5px;padding:4px 6px;border-radius:6px;border:1px solid var(--line);" onchange="pindahKamarJamaah('${j.id}', this.value)">
-                                ${roomOptionsHtml(j.nomor_kamar)}
-                            </select>
-                        </div>
-                    `).join('')}
+                    <div class="rm-dots">${dots}</div>
+                    ${isi.map(occupantRowHtml).join('')}
                 </div>`);
         }
 
         return `
-            <div style="margin-bottom:22px;">
-                <div style="font-size:13.5px;font-weight:700;color:var(--brand);margin-bottom:10px;">${TIPE_KAMAR_LABEL_ROOMING[tipe]} — ${anggota.length} jamaah</div>
-                <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:${belumDikelompokkan.length ? '12px' : '0'};">${roomBlocks.join('') || '<span style="font-size:11.5px;color:var(--ink-soft);">Belum ada yang dikelompokkan.</span>'}</div>
+            <div class="rm-section">
+                <div class="rm-section-head">
+                    <span class="rm-section-dot" style="background:${warna};"></span>
+                    <span class="rm-section-title">${TIPE_KAMAR_LABEL_ROOMING[tipe]}</span>
+                    <span class="rm-section-count">${anggota.length} jamaah</span>
+                </div>
+                ${roomCards.length ? `<div class="rm-room-grid">${roomCards.join('')}</div>` : `<div style="font-size:11.5px;color:var(--ink-soft);">Belum ada yang dikelompokkan.</div>`}
                 ${belumDikelompokkan.length ? `
-                <div style="border:1px dashed var(--warn);border-radius:10px;padding:12px 14px;background:var(--warn-tint);">
-                    <div style="font-size:11.5px;font-weight:700;color:var(--warn);margin-bottom:8px;"><i class="bi bi-exclamation-triangle-fill"></i> Belum Dikelompokkan (${belumDikelompokkan.length})</div>
-                    ${belumDikelompokkan.map(j => `
-                        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;">
-                            <span style="font-size:12.5px;">${escapeHtml(j.nama)}</span>
-                            <select style="font-size:11.5px;padding:4px 6px;border-radius:6px;border:1px solid var(--line);" onchange="pindahKamarJamaah('${j.id}', this.value)">
-                                ${roomOptionsHtml(j.nomor_kamar)}
-                            </select>
-                        </div>
-                    `).join('')}
+                <div class="rm-unassigned" style="margin-top:${roomCards.length ? '12px' : '0'};">
+                    <div class="rm-unassigned-head"><i class="bi bi-exclamation-triangle-fill"></i> Belum Dikelompokkan (${belumDikelompokkan.length})</div>
+                    <div class="rm-unassigned-grid">${belumDikelompokkan.map(occupantRowHtml).join('')}</div>
                 </div>` : ''}
             </div>`;
     }).join('');
 
-    wrap.innerHTML = sections || `<div class="kb-no-program"><p>Tidak ada data untuk ditampilkan.</p></div>`;
+    wrap.innerHTML = statsHtml + (sections || `<div class="rm-empty">Tidak ada data untuk ditampilkan.</div>`);
 }
 
 async function simpanRoomingList(btn) {
