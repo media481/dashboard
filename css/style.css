@@ -1578,6 +1578,26 @@
         }
         .form-group textarea { resize: vertical; min-height: 60px; }
 
+        /* Input Jumlah + tombol "Isi Sisa" (auto-fill sisa tagihan) di form
+           Tambah Pembayaran -- dibuat sebaris supaya tidak makan tempat. */
+        .cic-jumlah-input-wrap { display: flex; gap: 6px; }
+        .cic-jumlah-input-wrap input { flex: 1; min-width: 0; }
+        .btn-isi-sisa {
+            flex-shrink: 0;
+            background: var(--brand-tint);
+            color: var(--brand);
+            border: 1px solid transparent;
+            border-radius: 8px;
+            padding: 0 12px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all .15s;
+        }
+        .btn-isi-sisa:hover { background: var(--brand); color: #fff; }
+
         /* [AUTO-FILL] Highlight kuning untuk field yang baru terisi otomatis
            dari hasil OCR poster & belum "disentuh"/dikonfirmasi admin. Hilang
            begitu admin mengetik di field tsb, atau begitu form disimpan

@@ -58,7 +58,11 @@ function sortProgramsDefault(list) {
 }
 let kbJamaahList = [], kbSelectedProgram = null, editingKbId = null;
 let cicilanList = [], cicilanJamaahId = null;
-let cicilanJamaahInfo = null, cicilanProgramInfo = null, cicilanHargaProgram = 0;
+let cicilanJamaahInfo = null, cicilanProgramInfo = null, cicilanHargaProgram = 0, cicilanSisaTagihan = 0;
+// Cache data mentah panel Pembayaran, supaya ketik di kolom cari / ganti
+// filter TIDAK perlu fetch ulang ke Supabase tiap kali -- cukup filter ulang
+// data yang sudah ada di memori (lihat renderPembayaranTable()).
+let pbCacheJamaahAll = null, pbCacheTotalPerJamaah = null, pbSearchDebounce = null;
 let notaGenerating = false;
 let dokSelectedProgram = null;
 // type 'copy'   -> dua checkbox terpisah: Fotocopy & Asli (disimpan sbg {key}_fc / {key}_asli)
@@ -2173,11 +2177,11 @@ async function renderAdminPanel() {
                 </div>
                 <div class="cx-stats-bar" id="pbStatsBar"></div>
                 <div class="admin-toolbar">
-                    <input type="text" id="pbSearchInput" placeholder="Cari nama jamaah / NIK / paspor..." style="flex:1;min-width:220px;" oninput="renderPembayaranPanel()">
-                    <select id="pbFilterProgram" onchange="renderPembayaranPanel()" style="min-width:180px;">
+                    <input type="text" id="pbSearchInput" placeholder="Cari nama jamaah / NIK / paspor..." style="flex:1;min-width:220px;" oninput="handlePbSearchInput()">
+                    <select id="pbFilterProgram" onchange="renderPembayaranTable()" style="min-width:180px;">
                         <option value="">Semua Program</option>
                     </select>
-                    <select id="pbFilterStatus" onchange="renderPembayaranPanel()" style="min-width:160px;">
+                    <select id="pbFilterStatus" onchange="renderPembayaranTable()" style="min-width:160px;">
                         <option value="">Semua Status</option>
                         <option value="lunas">Lunas</option>
                         <option value="cicilan">Cicilan</option>
@@ -5616,6 +5620,7 @@ function closeCicilanModal() {
     cicilanJamaahInfo = null;
     cicilanProgramInfo = null;
     cicilanHargaProgram = 0;
+    cicilanSisaTagihan = 0;
 }
 
 async function loadCicilanHistory(jamaahId) {
@@ -5646,6 +5651,7 @@ async function loadCicilanHistory(jamaahId) {
 
         const totalDibayar = cicilanList.reduce((sum, c) => sum + Number(c.jumlah || 0), 0);
         const sisa = Math.max(hargaProgram - totalDibayar, 0);
+        cicilanSisaTagihan = sisa;
         const lebihBayar = Math.max(totalDibayar - hargaProgram, 0);
         const isLunas = hargaProgram > 0 && sisa <= 0;
         const pct = hargaProgram > 0 ? Math.min(100, Math.round((totalDibayar / hargaProgram) * 100)) : 0;
@@ -5836,6 +5842,7 @@ async function renderPembayaranPanel() {
 
         const jamaahAll = kbJamaahList || [];
         if (!jamaahAll.length) {
+            pbCacheJamaahAll = []; pbCacheTotalPerJamaah = {};
             tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--ink-soft);">Belum ada data jamaah.</td></tr>`;
             document.getElementById('pbStatsBar').innerHTML = '';
             document.getElementById('pbCount').textContent = '0 jamaah';
@@ -5857,103 +5864,132 @@ async function renderPembayaranPanel() {
             totalPerJamaah[b.jamaah_id] = (totalPerJamaah[b.jamaah_id] || 0) + Number(b.jumlah || 0);
         });
 
+        // Simpan ke cache -- pencarian/filter berikutnya baca dari sini saja,
+        // TIDAK fetch ulang ke server (lihat renderPembayaranTable()).
+        pbCacheJamaahAll = jamaahAll;
+        pbCacheTotalPerJamaah = totalPerJamaah;
+
         // ---- Card detail pemasukan (hero) + rincian pemasukan per program ----
         // Dihitung dari SELURUH data jamaah (tidak terpengaruh search/filter tabel di
         // bawah) supaya angka total pemasukan selalu mencerminkan kondisi sebenarnya.
         renderPembayaranIncomeSummary(jamaahAll, totalPerJamaah);
 
-        const search = (document.getElementById('pbSearchInput')?.value || '').trim().toLowerCase();
-        const filterProgram = document.getElementById('pbFilterProgram')?.value || '';
-        const filterStatus = document.getElementById('pbFilterStatus')?.value || '';
-
-        let rowsData = jamaahAll.map(j => {
-            const program = dataUmroh.find(p => String(p.id) === String(j.program_id));
-            const hargaProgram = getHargaKamarJamaah(program, j);
-            const dibayar = totalPerJamaah[j.id] || 0;
-            const sisa = Math.max(hargaProgram - dibayar, 0);
-            const pct = hargaProgram > 0 ? Math.min(100, Math.round((dibayar / hargaProgram) * 100)) : 0;
-            let status = 'belum';
-            if (j.status === 'batal') status = 'batal';
-            else if (hargaProgram > 0 && dibayar >= hargaProgram) status = 'lunas';
-            else if (dibayar > 0) status = 'cicilan';
-            return { j, program, hargaProgram, dibayar, sisa, pct, status };
-        });
-
-        if (filterProgram) rowsData = rowsData.filter(r => String(r.j.program_id) === String(filterProgram));
-        if (filterStatus) rowsData = rowsData.filter(r => r.status === filterStatus);
-        if (search) {
-            rowsData = rowsData.filter(r =>
-                (r.j.nama || '').toLowerCase().includes(search) ||
-                (r.j.nik || '').toLowerCase().includes(search) ||
-                (r.j.paspor || '').toLowerCase().includes(search)
-            );
-        }
-
-        // Prioritaskan yang masih punya sisa tagihan terbesar supaya admin gampang follow-up
-        rowsData.sort((a, b) => b.sisa - a.sisa);
-
-        // [FIX BUG] Sama seperti renderPembayaranIncomeSummary(): tagihan &
-        // sisa di stats bar ini exclude jamaah "Batal" supaya "Sisa Belum
-        // Terbayar" tidak digembungkan oleh booking yang sudah dibatalkan.
-        const rowsDataAktif = rowsData.filter(r => r.status !== 'batal');
-        const grandTagihan = rowsDataAktif.reduce((s, r) => s + r.hargaProgram, 0);
-        const grandDibayar = rowsDataAktif.reduce((s, r) => s + r.dibayar, 0);
-        const grandSisa = Math.max(grandTagihan - grandDibayar, 0);
-        const totalLunas = rowsData.filter(r => r.status === 'lunas').length;
-        const totalBelum = rowsData.filter(r => r.status === 'belum').length;
-        const totalBatal = rowsData.filter(r => r.status === 'batal').length;
-        const totalCicilan = rowsData.length - totalLunas - totalBelum - totalBatal;
-
-        document.getElementById('pbStatsBar').innerHTML = `
-            <span class="status-badge neutral">${rowsData.length} Jamaah</span>
-            <span class="status-badge available">${totalLunas} Lunas</span>
-            <span class="status-badge limited">${totalCicilan} Cicilan</span>
-            <span class="status-badge full">${totalBelum} Belum Bayar</span>
-            ${totalBatal ? `<span class="status-badge batal">${totalBatal} Batal</span>` : ''}
-            <span class="status-badge neutral">Dibayar: ${formatRupiah(grandDibayar)}</span>
-            <span class="status-badge ${grandSisa > 0 ? 'full' : 'neutral'}">Sisa: ${formatRupiah(grandSisa)}</span>
-        `;
-        document.getElementById('pbCount').textContent = `${rowsData.length} jamaah`;
-
-        if (!rowsData.length) {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--ink-soft);">Tidak ada data yang cocok dengan filter/pencarian.</td></tr>`;
-            return;
-        }
-
-        const canEdit = canManageProgramData();
-        tbody.innerHTML = rowsData.map(r => {
-            let statusLabel, statusClass;
-            if (r.status === 'batal') { statusLabel = '<i class="bi bi-x-circle-fill"></i> Batal'; statusClass = 'batal'; }
-            else if (r.status === 'lunas') { statusLabel = '<i class="bi bi-check-circle-fill"></i> Lunas'; statusClass = 'available'; }
-            else if (r.status === 'cicilan') { statusLabel = '<i class="bi bi-arrow-repeat"></i> Cicilan'; statusClass = 'limited'; }
-            else { statusLabel = '<i class="bi bi-hourglass-split"></i> Belum Bayar'; statusClass = 'full'; }
-
-            return `
-                <tr>
-                    <td><strong>${escapeHtml(r.j.nama || '-')}</strong>${r.j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(r.j.asal)}</span>` : ''}</td>
-                    <td>${escapeHtml(r.program ? r.program.nama : '-')}</td>
-                    <td style="white-space:nowrap;">${formatRupiah(r.hargaProgram)}<br><span style="font-size:10px;color:var(--ink-soft);">${parseRupiahToNumber(r.j.harga_custom) > 0 ? 'Harga Khusus' : (TIPE_KAMAR_LABEL[r.j.tipe_kamar] || 'Quad')}</span></td>
-                    <td style="white-space:nowrap;color:var(--success);font-weight:600;">${formatRupiah(r.dibayar)}</td>
-                    <td style="white-space:nowrap;color:${r.sisa > 0 ? 'var(--danger)' : 'var(--ink-soft)'};font-weight:600;">${formatRupiah(r.sisa)}</td>
-                    <td style="min-width:110px;">
-                        <div style="background:var(--line);border-radius:6px;height:8px;overflow:hidden;">
-                            <div style="background:var(--brand);height:100%;width:${r.pct}%;"></div>
-                        </div>
-                        <span style="font-size:10px;color:var(--ink-soft);">${r.pct}%</span>
-                    </td>
-                    <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
-                    <td style="text-align:right;white-space:nowrap;">
-                        <button class="btn-primary btn-pay" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${r.j.id}')" ${!canEdit ? 'disabled title="Tidak punya izin"' : ''}>
-                            Update Pembayaran
-                        </button>
-                    </td>
-                </tr>`;
-        }).join('');
+        renderPembayaranTable();
 
     } catch (err) {
         console.error('Render pembayaran panel error:', err);
         tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--danger);">Gagal memuat data: ${escapeHtml(err.message)}</td></tr>`;
     }
+}
+
+// Filter + render ulang tabel Pembayaran dari data yang SUDAH ada di cache
+// (pbCacheJamaahAll/pbCacheTotalPerJamaah) -- dipanggil tiap kali kolom cari
+// diketik atau filter diganti. Sengaja dipisah dari renderPembayaranPanel()
+// (yang fetch ke Supabase) supaya ketik-cari tidak lag/nge-hit server tiap huruf.
+function renderPembayaranTable() {
+    const tbody = document.getElementById('pbTableBody');
+    if (!tbody) return;
+    // Cache belum ada (panel belum pernah full-load) -- fallback ke full render.
+    if (!pbCacheJamaahAll) { renderPembayaranPanel(); return; }
+
+    const jamaahAll = pbCacheJamaahAll;
+    const totalPerJamaah = pbCacheTotalPerJamaah;
+
+    const search = (document.getElementById('pbSearchInput')?.value || '').trim().toLowerCase();
+    const filterProgram = document.getElementById('pbFilterProgram')?.value || '';
+    const filterStatus = document.getElementById('pbFilterStatus')?.value || '';
+
+    let rowsData = jamaahAll.map(j => {
+        const program = dataUmroh.find(p => String(p.id) === String(j.program_id));
+        const hargaProgram = getHargaKamarJamaah(program, j);
+        const dibayar = totalPerJamaah[j.id] || 0;
+        const sisa = Math.max(hargaProgram - dibayar, 0);
+        const pct = hargaProgram > 0 ? Math.min(100, Math.round((dibayar / hargaProgram) * 100)) : 0;
+        let status = 'belum';
+        if (j.status === 'batal') status = 'batal';
+        else if (hargaProgram > 0 && dibayar >= hargaProgram) status = 'lunas';
+        else if (dibayar > 0) status = 'cicilan';
+        return { j, program, hargaProgram, dibayar, sisa, pct, status };
+    });
+
+    if (filterProgram) rowsData = rowsData.filter(r => String(r.j.program_id) === String(filterProgram));
+    if (filterStatus) rowsData = rowsData.filter(r => r.status === filterStatus);
+    if (search) {
+        rowsData = rowsData.filter(r =>
+            (r.j.nama || '').toLowerCase().includes(search) ||
+            (r.j.nik || '').toLowerCase().includes(search) ||
+            (r.j.paspor || '').toLowerCase().includes(search)
+        );
+    }
+
+    // Prioritaskan yang masih punya sisa tagihan terbesar supaya admin gampang follow-up
+    rowsData.sort((a, b) => b.sisa - a.sisa);
+
+    // [FIX BUG] Sama seperti renderPembayaranIncomeSummary(): tagihan &
+    // sisa di stats bar ini exclude jamaah "Batal" supaya "Sisa Belum
+    // Terbayar" tidak digembungkan oleh booking yang sudah dibatalkan.
+    const rowsDataAktif = rowsData.filter(r => r.status !== 'batal');
+    const grandTagihan = rowsDataAktif.reduce((s, r) => s + r.hargaProgram, 0);
+    const grandDibayar = rowsDataAktif.reduce((s, r) => s + r.dibayar, 0);
+    const grandSisa = Math.max(grandTagihan - grandDibayar, 0);
+    const totalLunas = rowsData.filter(r => r.status === 'lunas').length;
+    const totalBelum = rowsData.filter(r => r.status === 'belum').length;
+    const totalBatal = rowsData.filter(r => r.status === 'batal').length;
+    const totalCicilan = rowsData.length - totalLunas - totalBelum - totalBatal;
+
+    document.getElementById('pbStatsBar').innerHTML = `
+        <span class="status-badge neutral">${rowsData.length} Jamaah</span>
+        <span class="status-badge available">${totalLunas} Lunas</span>
+        <span class="status-badge limited">${totalCicilan} Cicilan</span>
+        <span class="status-badge full">${totalBelum} Belum Bayar</span>
+        ${totalBatal ? `<span class="status-badge batal">${totalBatal} Batal</span>` : ''}
+        <span class="status-badge neutral">Dibayar: ${formatRupiah(grandDibayar)}</span>
+        <span class="status-badge ${grandSisa > 0 ? 'full' : 'neutral'}">Sisa: ${formatRupiah(grandSisa)}</span>
+    `;
+    document.getElementById('pbCount').textContent = `${rowsData.length} jamaah`;
+
+    if (!rowsData.length) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--ink-soft);">Tidak ada data yang cocok dengan filter/pencarian.</td></tr>`;
+        return;
+    }
+
+    const canEdit = canManageProgramData();
+    tbody.innerHTML = rowsData.map(r => {
+        let statusLabel, statusClass;
+        if (r.status === 'batal') { statusLabel = '<i class="bi bi-x-circle-fill"></i> Batal'; statusClass = 'batal'; }
+        else if (r.status === 'lunas') { statusLabel = '<i class="bi bi-check-circle-fill"></i> Lunas'; statusClass = 'available'; }
+        else if (r.status === 'cicilan') { statusLabel = '<i class="bi bi-arrow-repeat"></i> Cicilan'; statusClass = 'limited'; }
+        else { statusLabel = '<i class="bi bi-hourglass-split"></i> Belum Bayar'; statusClass = 'full'; }
+
+        return `
+            <tr>
+                <td><strong>${escapeHtml(r.j.nama || '-')}</strong>${r.j.asal ? `<br><span style="font-size:11px;color:var(--ink-soft);">${escapeHtml(r.j.asal)}</span>` : ''}</td>
+                <td>${escapeHtml(r.program ? r.program.nama : '-')}</td>
+                <td style="white-space:nowrap;">${formatRupiah(r.hargaProgram)}<br><span style="font-size:10px;color:var(--ink-soft);">${parseRupiahToNumber(r.j.harga_custom) > 0 ? 'Harga Khusus' : (TIPE_KAMAR_LABEL[r.j.tipe_kamar] || 'Quad')}</span></td>
+                <td style="white-space:nowrap;color:var(--success);font-weight:600;">${formatRupiah(r.dibayar)}</td>
+                <td style="white-space:nowrap;color:${r.sisa > 0 ? 'var(--danger)' : 'var(--ink-soft)'};font-weight:600;">${formatRupiah(r.sisa)}</td>
+                <td style="min-width:110px;">
+                    <div style="background:var(--line);border-radius:6px;height:8px;overflow:hidden;">
+                        <div style="background:var(--brand);height:100%;width:${r.pct}%;"></div>
+                    </div>
+                    <span style="font-size:10px;color:var(--ink-soft);">${r.pct}%</span>
+                </td>
+                <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                <td style="text-align:right;white-space:nowrap;">
+                    <button class="btn-primary btn-pay" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${r.j.id}')" ${!canEdit ? 'disabled title="Tidak punya izin"' : ''}>
+                        Update Pembayaran
+                    </button>
+                </td>
+            </tr>`;
+    }).join('');
+}
+
+// Versi debounce dari renderPembayaranTable() -- dipakai khusus di kolom cari
+// supaya tabel tidak di-render ulang di setiap ketukan tombol (nunggu jeda
+// ketik ~250ms dulu), lebih responsif terutama kalau data jamaah banyak.
+function handlePbSearchInput() {
+    clearTimeout(pbSearchDebounce);
+    pbSearchDebounce = setTimeout(renderPembayaranTable, 250);
 }
 
 // ============================================================
@@ -7099,6 +7135,25 @@ function previewNotaRiwayatLengkap(btn) {
 function handleCicilanFormLiveInput() {
     clearTimeout(notaLiveDraftDebounce);
     notaLiveDraftDebounce = setTimeout(updateLiveNotaDraft, 200);
+}
+
+// Isi otomatis field Jumlah dengan sisa tagihan yang masih berjalan --
+// mempercepat input saat jamaah bayar pas/lunas (kasus paling sering terjadi),
+// staf tidak perlu hitung manual atau lihat bolak-balik ke ringkasan di atas.
+function isiSisaTagihanKeForm() {
+    if (!cicilanSisaTagihan || cicilanSisaTagihan <= 0) {
+        showToast('Tidak ada sisa tagihan untuk diisi otomatis', 'error');
+        return;
+    }
+    const jumlahInput = document.getElementById('cic_jumlah');
+    const metodeInput = document.getElementById('cic_metode');
+    if (metodeInput && metodeInput.value === 'Refund') metodeInput.value = 'Transfer';
+    if (jumlahInput) {
+        jumlahInput.value = String(Math.round(cicilanSisaTagihan));
+        formatNominalInput(jumlahInput);
+        jumlahInput.focus();
+    }
+    handleCicilanFormLiveInput();
 }
 
 function updateLiveNotaDraft() {
