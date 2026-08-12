@@ -1710,7 +1710,10 @@
             align-items: center;
             gap: 6px;
             white-space: nowrap;
+            background: var(--danger);
+            border-color: var(--danger);
         }
+        .row-actions .btn-pay:hover { background: #a03226; border-color: #a03226; }
         .row-actions .row-actions-sep {
             width: 1px;
             align-self: stretch;
