@@ -4079,6 +4079,15 @@ function openDeleteModal(table, id, name, extraWarning) {
             showToast(`Tidak bisa hapus "${name}" — masih ada ${jumlahJamaah} jamaah terdaftar di program ini. Pindahkan atau hapus dulu data jamaahnya.`, 'error');
             return;
         }
+        // Program juga tidak boleh dihapus kalau masih ada lead Pendaftaran
+        // (status Baru/Dihubungi/Deal) yang menunjuk ke sini -- kalau
+        // dipaksa hapus, program_id di baris pendaftaran itu jadi anak
+        // hilang induk (yatim) & tampil "Belum ditentukan" tanpa penjelasan.
+        const pendaftaranTerkait = (pendaftaranList || []).filter(p => String(p.program_id) === String(id) && p.status !== 'batal').length;
+        if (pendaftaranTerkait > 0) {
+            showToast(`Tidak bisa hapus "${name}" — masih ada ${pendaftaranTerkait} pendaftaran yang menunjuk ke program ini. Ubah program pendaftarannya dulu, atau tandai Batal.`, 'error');
+            return;
+        }
     }
     deleteTarget.table = table;
     deleteTarget.id = id;
@@ -4126,6 +4135,19 @@ async function confirmDeleteAction() {
             if (countErr) throw countErr;
             if (count && count > 0) {
                 showToast(`Tidak bisa hapus — masih ada ${count} jamaah terdaftar di program ini.`, 'error');
+                closeDeleteConfirmModal();
+                return;
+            }
+            // Sama seperti jamaah: cek ulang ke database juga untuk pendaftaran
+            // yang belum Batal, jaga-jaga ada lead baru masuk barusan.
+            const { count: pfCount, error: pfCountErr } = await supabaseClient
+                .from('pendaftaran')
+                .select('id', { count: 'exact', head: true })
+                .eq('program_id', deleteTarget.id)
+                .neq('status', 'batal');
+            if (pfCountErr) throw pfCountErr;
+            if (pfCount && pfCount > 0) {
+                showToast(`Tidak bisa hapus — masih ada ${pfCount} pendaftaran yang menunjuk ke program ini.`, 'error');
                 closeDeleteConfirmModal();
                 return;
             }
@@ -4615,6 +4637,10 @@ function renderPendaftaranSection() {
         const program = dataUmroh.find(x => String(x.id) === String(effectiveProgramId));
         const stKey = p.status || 'baru';
         const st = statusMap[stKey] || statusMap.baru;
+        const linkedJamaah = getLinkedJamaahForPendaftaran(p.id);
+        const deleteWarning = linkedJamaah
+            ? `⚠️ Pendaftaran ini sudah punya data di Data Jamaah ("${linkedJamaah.nama}"). Baris jamaah TIDAK ikut terhapus, tapi tautannya akan putus.`
+            : '';
         return `<tr class="status-${stKey}">
             <td><span class="pf-name">${escapeHtml(p.nama || '-')}</span></td>
             <td>${escapeHtml(program ? program.nama : 'Belum ditentukan')}</td>
@@ -4627,7 +4653,7 @@ function renderPendaftaranSection() {
                     ${p.wa ? `<a href="https://wa.me/${p.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(p.nama||'')}%20kami%20dari%20${encodeURIComponent(NOTA_PERUSAHAAN.nama)}" target="_blank" class="pf-btn-wa" title="Hubungi via WhatsApp"><i class="bi bi-whatsapp"></i></a>` : ''}
                     ${(stKey !== 'deal' && stKey !== 'batal') ? `<button type="button" class="pf-btn-convert" onclick="convertPendaftaranToJamaah('${p.id}')" title="Tandai Deal — otomatis masuk Data Jamaah"><i class="bi bi-person-check-fill"></i></button>` : ''}
                     <button type="button" class="pf-btn-edit" onclick="openPendaftaranModal('${p.id}')" title="Edit"><i class="bi bi-pencil-fill"></i></button>
-                    <button type="button" class="pf-btn-delete" onclick="openDeleteModal('pendaftaran', '${p.id}', '${escapeJsAttr(p.nama)}')" title="Hapus"><i class="bi bi-trash-fill"></i></button>
+                    <button type="button" class="pf-btn-delete" onclick="openDeleteModal('pendaftaran', '${p.id}', '${escapeJsAttr(p.nama)}'${deleteWarning ? `, '${escapeJsAttr(deleteWarning)}'` : ''})" title="Hapus"><i class="bi bi-trash-fill"></i></button>
                 </div>
             </td>
         </tr>`;
@@ -4831,6 +4857,29 @@ async function savePendaftaran(e) {
         // Data Jamaah sudah ditiadakan, jamaah hanya masuk lewat jalur ini.
         if (data.status === 'deal' && savedId) {
             await autoConvertPendaftaranToJamaah({ ...data, id: savedId });
+        }
+
+        // Sinkron ke arah sebaliknya: kalau pendaftaran yang SUDAH punya
+        // jamaah (hasil Deal sebelumnya) diedit balik jadi "Batal", jamaah
+        // tertaut ikut ditandai Batal di Data Jamaah -- supaya kuota program
+        // otomatis lega lagi & tidak perlu diubah manual di dua tempat.
+        if (id && data.status === 'batal') {
+            const linkedJamaah = getLinkedJamaahForPendaftaran(id);
+            if (linkedJamaah && linkedJamaah.status !== 'batal') {
+                try {
+                    const { error: jErr } = await supabaseClient.from('kb_jamaah').update({ status: 'batal' }).eq('id', linkedJamaah.id);
+                    if (!jErr) {
+                        await loadKbJamaah();
+                        renderKbProgramSelector();
+                        updateMetrics();
+                        if (currentData && currentData.length) renderTable(currentData);
+                        renderFeaturedSection();
+                        showToast(`Data jamaah "${linkedJamaah.nama}" ikut ditandai "Batal"`, 'info');
+                    }
+                } catch (jErr) {
+                    console.error('Sync batal ke kb_jamaah gagal (non-fatal):', jErr);
+                }
+            }
         }
 
     } catch (err) {
@@ -5618,18 +5667,35 @@ async function saveKbJamaah(e) {
         }
 
         // Sinkronkan balik ke Pendaftaran: kalau jamaah ini tertaut lewat
-        // pendaftaran_id & program-nya barusan diganti di sini, pendaftaran
-        // asalnya ikut diupdate supaya kedua menu tidak beda data (lihat
-        // getEffectiveProgramIdForPendaftaran).
-        if (id && beforeCopy && beforeCopy.pendaftaran_id && String(beforeCopy.program_id || '') !== String(data.program_id || '')) {
-            try {
-                const { error: syncErr } = await supabaseClient.from('pendaftaran').update({ program_id: data.program_id }).eq('id', beforeCopy.pendaftaran_id);
-                if (!syncErr) {
-                    const idx = pendaftaranList.findIndex(p => String(p.id) === String(beforeCopy.pendaftaran_id));
-                    if (idx !== -1) { pendaftaranList[idx].program_id = data.program_id; renderPendaftaranSection(); }
+        // pendaftaran_id, & (a) program-nya barusan diganti, atau (b) status
+        // baru saja masuk/keluar dari "Batal", pendaftaran asalnya ikut
+        // diupdate supaya pipeline Pendaftaran & Data Jamaah tidak pernah beda
+        // data (lihat getEffectiveProgramIdForPendaftaran).
+        if (id && beforeCopy && beforeCopy.pendaftaran_id) {
+            const programBerubah = String(beforeCopy.program_id || '') !== String(data.program_id || '');
+            const jadiBatal = data.status === 'batal' && beforeCopy.status !== 'batal';
+            const keluarDariBatal = beforeCopy.status === 'batal' && data.status !== 'batal';
+            if (programBerubah || jadiBatal || keluarDariBatal) {
+                const pendaftaranPatch = {};
+                if (programBerubah) pendaftaranPatch.program_id = data.program_id;
+                // "Batal" di Data Jamaah = jamaah tidak jadi berangkat -> pipeline
+                // Pendaftaran ikut ditandai Batal. Sebaliknya, kalau status Batal
+                // dibatalkan (jamaah aktif lagi), pipeline balik ke "Deal" karena
+                // jamaahnya sudah pasti ada (bukan sekadar lead lagi).
+                if (jadiBatal) pendaftaranPatch.status = 'batal';
+                else if (keluarDariBatal) pendaftaranPatch.status = 'deal';
+
+                try {
+                    const { error: syncErr } = await supabaseClient.from('pendaftaran').update(pendaftaranPatch).eq('id', beforeCopy.pendaftaran_id);
+                    if (!syncErr) {
+                        const idx = pendaftaranList.findIndex(p => String(p.id) === String(beforeCopy.pendaftaran_id));
+                        if (idx !== -1) { Object.assign(pendaftaranList[idx], pendaftaranPatch); renderPendaftaranSection(); }
+                        if (jadiBatal) showToast('Pendaftaran terkait ikut ditandai "Batal"', 'info');
+                        else if (keluarDariBatal) showToast('Pendaftaran terkait dikembalikan ke status "Deal"', 'info');
+                    }
+                } catch (syncErr) {
+                    console.error('Sync ke pendaftaran gagal (non-fatal):', syncErr);
                 }
-            } catch (syncErr) {
-                console.error('Sync program ke pendaftaran gagal (non-fatal):', syncErr);
             }
         }
 
@@ -6015,14 +6081,22 @@ async function renderPembayaranPanel() {
     const tbody = document.getElementById('pbTableBody');
     if (!tbody) return; // panel belum/tidak sedang dibuka
 
-    // Isi dropdown filter program (sekali saja, pertahankan pilihan yang sedang aktif)
+    // Isi dropdown filter program -- dibangun ulang tiap kali daftar program
+    // BERUBAH (program baru ditambah, dihapus, atau diarsipkan), bukan cuma
+    // sekali per sesi. Dicek pakai signature ringan (gabungan ID) supaya
+    // tidak render ulang percuma tiap kali panel Pembayaran dibuka tanpa ada
+    // perubahan data -- sekaligus tetap mempertahankan pilihan yang aktif.
     const progSelect = document.getElementById('pbFilterProgram');
-    if (progSelect && progSelect.options.length <= 1) {
+    const currentProgramSignature = (dataUmroh || []).map(p => p.id).join(',');
+    if (progSelect && progSelect.dataset.builtSignature !== currentProgramSignature) {
+        const currentVal = progSelect.value;
         // Sertakan tanggal keberangkatan di label supaya program dengan nama
         // sama (mis. beberapa keberangkatan "Umroh Landing Madinah" di tanggal
         // berbeda) tidak terlihat dobel/membingungkan di dropdown.
         progSelect.innerHTML = '<option value="">Semua Program</option>' +
             (dataUmroh || []).map(p => `<option value="${p.id}">${escapeHtml(p.nama)}${p.tgl ? ' — ' + escapeHtml(p.tgl) : ''}</option>`).join('');
+        progSelect.dataset.builtSignature = currentProgramSignature;
+        if (currentVal && (dataUmroh || []).some(p => String(p.id) === String(currentVal))) progSelect.value = currentVal;
         buildPbProgramCombo(dataUmroh || []);
     }
 
