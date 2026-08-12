@@ -1483,7 +1483,7 @@
             max-height: 90vh;
             overflow-y: auto;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            animation: slideUp .25s ease;
+            animation: modalFadeIn .18s ease;
             scrollbar-width: none; /* Firefox */
             -ms-overflow-style: none; /* Edge/IE */
         }
@@ -1501,9 +1501,17 @@
         .modal-overlay *::-webkit-scrollbar {
             display: none; /* Chrome/Safari */
         }
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(30px) scale(0.96); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+        /* [FIX ANIMASI PATAH] Sebelumnya animasi buka modal pakai
+           transform: translateY()+scale(). Modal "Kelola Cicilan" punya
+           panel preview nota dengan position:sticky di dalamnya -- transform
+           pada elemen induk memaksa browser menghitung ulang posisi elemen
+           sticky itu di SETIAP frame animasi, bikin bukanya kelihatan
+           patah/tidak smooth. Diganti jadi fade opacity saja (tanpa
+           transform) supaya animasinya ringan & elemen sticky tidak perlu
+           dihitung ulang selama modal muncul. */
+        @keyframes modalFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
         .modal-header {
             display: flex;
