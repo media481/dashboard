@@ -2164,14 +2164,14 @@ async function renderAdminPanel() {
 
             <div class="admin-subtab-panel" id="adminSubTab-pembayaran" style="display:none;">
                 <div class="admin-section-header">
-                    <div><h4><i class="bi bi-cash-stack"></i> Pembayaran Biaya Umroh</h4>
+                    <div><h4>Pembayaran Biaya Umroh</h4>
                     <p>Pantau & kelola cicilan/pelunasan biaya umroh seluruh jamaah dari semua program</p></div>
                 </div>
                 <div class="pb-scope-note"><i class="bi bi-info-circle"></i> Menampilkan progres tagihan &amp; pembayaran per jamaah, bukan buku kas/laporan arus keuangan.</div>
                 <div class="pb-income-hero" id="pbIncomeHero"></div>
                 <div class="pb-income-breakdown-wrap">
                     <div class="pb-income-breakdown-head">
-                        <h4><i class="bi bi-bar-chart-line-fill"></i> Rincian Tagihan &amp; Pembayaran per Program</h4>
+                        <h4>Rincian Tagihan &amp; Pembayaran per Program</h4>
                         <span class="count" id="pbBreakdownCount">0 program</span>
                     </div>
                     <div class="pb-income-breakdown-grid" id="pbIncomeBreakdown"></div>
@@ -2230,7 +2230,7 @@ async function renderAdminPanel() {
 
             <div class="admin-subtab-panel" id="adminSubTab-unggulan" style="display:none;">
                 <div class="admin-section-header">
-                    <div><h4><i class="bi bi-star-fill" style="color:#d97706;"></i> Program Unggulan</h4>
+                    <div><h4>Program Unggulan</h4>
                     <p>Pilih program untuk ditampilkan di beranda (antara running text & tabel program)</p></div>
                     <div class="sec-actions"></div>
                 </div>
@@ -2254,7 +2254,7 @@ async function renderAdminPanel() {
 
             <div class="admin-subtab-panel" id="adminSubTab-crosscheck" style="display:none;">
                 <div class="admin-section-header">
-                    <div><h4><i class="bi bi-graph-up-arrow"></i> Crosscheck Data Program</h4>
+                    <div><h4>Crosscheck Data Program</h4>
                     <p>Poster dibaca otomatis (OCR) & dibandingkan dengan data teks program saat disimpan</p></div>
                 </div>
                 <div class="cx-stats-bar" id="cxStatsBar"></div>
@@ -2270,7 +2270,7 @@ async function renderAdminPanel() {
 
             <div class="admin-subtab-panel" id="adminSubTab-telegram" style="display:none;">
                 <div class="admin-section-header">
-                    <div><h4><i class="bi bi-telegram"></i> Notifikasi Telegram</h4>
+                    <div><h4>Notifikasi Telegram</h4>
                     <p>Kirim notifikasi otomatis ke grup/chat Telegram saat ada program/jadwal baru</p></div>
                 </div>
                 <div class="tg-info-box">
@@ -2307,7 +2307,7 @@ async function renderAdminPanel() {
 
             <div class="admin-subtab-panel" id="adminSubTab-auditnota" style="display:none;">
                 <div class="admin-section-header">
-                    <div><h4><i class="bi bi-file-earmark-lock2-fill"></i> Audit Nota</h4>
+                    <div><h4>Audit Nota</h4>
                     <p>Setiap nota yang diunduh (pembayaran, riwayat & kuitansi) otomatis tercatat di sini. Log ini append-only — tidak bisa diedit atau dihapus siapa pun, termasuk Admin.</p></div>
                 </div>
                 <div class="admin-toolbar">
@@ -2349,7 +2349,7 @@ async function renderAdminPanel() {
 
             <div class="admin-subtab-panel" id="adminSubTab-usersettings" style="display:none;">
                 <div class="admin-section-header">
-                    <div><h4><i class="bi bi-person-gear"></i> Pengaturan User</h4>
+                    <div><h4>Pengaturan User</h4>
                     <p>Tambah akun baru per-orang dengan role Admin (akses penuh), User (kelola data program), atau Guest (lihat saja)</p></div>
                 </div>
 
@@ -2396,7 +2396,7 @@ async function renderAdminPanel() {
 
                 <div class="admin-table-card" style="margin-top:28px;">
                     <div class="admin-table-head">
-                        <h4><i class="bi bi-people-fill"></i> Daftar User Terdaftar</h4>
+                        <h4>Daftar User Terdaftar</h4>
                         <span class="count" id="usUserListCount">-</span>
                     </div>
                     <div class="admin-table-wrap">
@@ -6212,7 +6212,7 @@ function renderCompanyProfileForm() {
     profileLogoPendingDataUrl = null;
     return `
         <div class="admin-section-header">
-            <div><h4><i class="bi bi-building"></i> Profil Perusahaan</h4>
+            <div><h4>Profil Perusahaan</h4>
             <p>Data ini dipakai untuk kop &amp; footer semua nota (Nota Pembayaran, Nota Riwayat, Kuitansi) — ubah di sini, otomatis ikut berubah di semua nota tanpa perlu edit kode.</p></div>
         </div>
 
