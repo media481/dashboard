@@ -4956,10 +4956,10 @@ async function loadKbJamaahForProgram(programId) {
 
         container.innerHTML = `
             <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
-                <span class="status-badge available">${jamaah.length} Total Jamaah</span>
-                <span class="status-badge available">${totalLunas} Lunas</span>
-                <span class="status-badge available">Total Dibayar: ${formatRupiah(grandTotalDibayar)}</span>
-                <span class="status-badge ${grandSisa > 0 ? 'full' : 'available'}">Sisa Tagihan: ${formatRupiah(grandSisa)}</span>
+                <span class="status-badge neutral">${jamaah.length} Total Jamaah</span>
+                <span class="status-badge neutral">${totalLunas} Lunas</span>
+                <span class="status-badge neutral">Total Dibayar: ${formatRupiah(grandTotalDibayar)}</span>
+                <span class="status-badge ${grandSisa > 0 ? 'full' : 'neutral'}">Sisa Tagihan: ${formatRupiah(grandSisa)}</span>
                 ${totalPasporMepet > 0 ? `<span class="status-badge full"><i class="bi bi-exclamation-triangle-fill"></i> ${totalPasporMepet} Paspor Mepet/Kadaluarsa</span>` : ''}
             </div>
             ${anyHargaKosong ? `<div style="font-size:12px;color:var(--warn);margin-bottom:10px;"><i class="bi bi-exclamation-triangle-fill"></i> Ada jamaah yang harga tipe kamarnya belum diisi di program ini, sisa tagihan jamaah tsb tidak bisa dihitung akurat.</div>` : ''}
@@ -5171,7 +5171,7 @@ async function loadArsipJamaahForProgram(programId) {
 
     container.innerHTML = `
         <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
-            <span class="status-badge available">${jamaah.length} Jamaah Terarsip</span>
+            <span class="status-badge neutral">${jamaah.length} Jamaah Terarsip</span>
         </div>
         <div class="table-container" style="overflow-x:auto;">
             <table style="width:100%;border-collapse:collapse;font-size:13px;">
@@ -5905,13 +5905,13 @@ async function renderPembayaranPanel() {
         const totalCicilan = rowsData.length - totalLunas - totalBelum - totalBatal;
 
         document.getElementById('pbStatsBar').innerHTML = `
-            <span class="status-badge available">${rowsData.length} Jamaah</span>
+            <span class="status-badge neutral">${rowsData.length} Jamaah</span>
             <span class="status-badge available">${totalLunas} Lunas</span>
             <span class="status-badge limited">${totalCicilan} Cicilan</span>
             <span class="status-badge full">${totalBelum} Belum Bayar</span>
             ${totalBatal ? `<span class="status-badge batal">${totalBatal} Batal</span>` : ''}
-            <span class="status-badge available">Dibayar: ${formatRupiah(grandDibayar)}</span>
-            <span class="status-badge full">Sisa: ${formatRupiah(grandSisa)}</span>
+            <span class="status-badge neutral">Dibayar: ${formatRupiah(grandDibayar)}</span>
+            <span class="status-badge ${grandSisa > 0 ? 'full' : 'neutral'}">Sisa: ${formatRupiah(grandSisa)}</span>
         `;
         document.getElementById('pbCount').textContent = `${rowsData.length} jamaah`;
 
@@ -7579,7 +7579,7 @@ async function loadDokumenForProgram(programId) {
             <div class="kp-program-panel" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);">
                 <i class="bi bi-file-earmark-check-fill" style="color:var(--ink-soft);flex-shrink:0;"></i>
                 <span style="font-size:12.5px;color:var(--ink-soft);flex-shrink:0;">Ringkasan:</span>
-                <span class="status-badge available">${jamaah.length} Total Jamaah</span>
+                <span class="status-badge neutral">${jamaah.length} Total Jamaah</span>
                 <span class="status-badge available">${totalLengkap} Dokumen Lengkap</span>
                 ${belumLengkap > 0 ? `<span class="status-badge full">${belumLengkap} Belum Lengkap</span>` : ''}
             </div>`;
@@ -7834,7 +7834,7 @@ async function loadKepulanganForProgram(programId) {
         const programStatus = statusKepulanganProgram(programId);
         summaryEl.innerHTML = `
             <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
-                <span class="status-badge available">${jamaah.length} Total Jamaah</span>
+                <span class="status-badge neutral">${jamaah.length} Total Jamaah</span>
             </div>`;
 
         const canEdit = canManageProgramData();

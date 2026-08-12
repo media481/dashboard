@@ -398,8 +398,11 @@
             font-family: 'Inter', sans-serif;
         }
         .btn-primary:hover { background: var(--brand-deep); transform: translateY(-1px); box-shadow: var(--shadow); }
-        .btn-tambah-cepat { background: #C0392B; border-color: #C0392B; }
-        .btn-tambah-cepat:hover { background: #A5301F; border-color: #A5301F; }
+        /* Sebelumnya merah (warna "danger") padahal ini cuma tombol tambah,
+           bukan aksi hapus/berbahaya -- diseragamkan ke warna brand supaya
+           merah tetap khusus dipakai utk peringatan/hapus saja. */
+        .btn-tambah-cepat { background: var(--brand); border-color: var(--brand); }
+        .btn-tambah-cepat:hover { background: var(--brand-deep); border-color: var(--brand-deep); }
 
         .btn-success {
             background: var(--success);
@@ -1056,6 +1059,10 @@
         .status-badge.limited { background: var(--warn-tint); color: #A5541A; }
         .status-badge.full { background: var(--danger-tint); color: var(--danger); }
         .status-badge.batal { background: #e5e7eb; color: #4b5563; }
+        /* Netral: dipakai utk info/angka biasa (total, jumlah, nominal) yang
+           bukan status baik/buruk -- supaya warna hijau/merah tetap berarti
+           dan tidak dipakai berlebihan cuma buat menampilkan angka. */
+        .status-badge.neutral { background: var(--bg); color: var(--ink-soft); border: 1px solid var(--line); }
 
         /* Action Buttons */
         .action-btns {
