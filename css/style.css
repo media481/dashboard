@@ -2164,6 +2164,7 @@
         .toast.toast-leaving { opacity: 0; transform: translateY(6px); }
         .toast.error { background: var(--danger); }
         .toast.success { background: var(--success); }
+        .toast.info { background: var(--brand, #2563eb); }
         .toast-action-btn {
             background: rgba(255,255,255,0.18);
             border: 1px solid rgba(255,255,255,0.35);

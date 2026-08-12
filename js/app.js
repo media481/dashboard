@@ -4559,6 +4559,26 @@ function renderPfPagination(totalItems) {
     el.innerHTML = html;
 }
 
+// Sinkronisasi program antara Pendaftaran <-> Data Jamaah.
+// Setelah pendaftaran ditandai "Deal", baris Data Jamaah dibuat & ditautkan
+// lewat kb_jamaah.pendaftaran_id (lihat autoConvertPendaftaranToJamaah).
+// Tapi kalau admin GANTI program jamaah tsb belakangan lewat tab Data
+// Jamaah, pendaftaran.program_id bisa jadi basi/kosong kalau tidak ikut
+// disinkronkan. Helper ini jadi sumber kebenaran tunggal: kalau jamaah yang
+// tertaut sudah punya program, itu yang dipakai untuk ditampilkan/diedit di
+// Pendaftaran -- bukan program_id lama di baris pendaftaran itu sendiri.
+function getLinkedJamaahForPendaftaran(pendaftaranId) {
+    if (!pendaftaranId) return null;
+    return (kbJamaahList || []).find(j => String(j.pendaftaran_id) === String(pendaftaranId)) || null;
+}
+
+function getEffectiveProgramIdForPendaftaran(p) {
+    if (!p) return '';
+    const linkedJamaah = getLinkedJamaahForPendaftaran(p.id);
+    if (linkedJamaah && linkedJamaah.program_id) return linkedJamaah.program_id;
+    return p.program_id || '';
+}
+
 function renderPendaftaranSection() {
     const tbody = document.getElementById('pendaftaranTableBody');
     const countEl = document.getElementById('pfCount');
@@ -4591,7 +4611,8 @@ function renderPendaftaranSection() {
     const pageItems = filtered.slice(start, start + PF_PAGE_SIZE);
 
     tbody.innerHTML = pageItems.map(p => {
-        const program = dataUmroh.find(x => String(x.id) === String(p.program_id));
+        const effectiveProgramId = getEffectiveProgramIdForPendaftaran(p);
+        const program = dataUmroh.find(x => String(x.id) === String(effectiveProgramId));
         const stKey = p.status || 'baru';
         const st = statusMap[stKey] || statusMap.baru;
         return `<tr class="status-${stKey}">
@@ -4666,8 +4687,9 @@ function openPendaftaranModal(id = null) {
     document.getElementById('p_editId').value = '';
 
     const existing = id ? pendaftaranList.find(item => item.id === id) : null;
+    const effectiveExistingProgramId = existing ? getEffectiveProgramIdForPendaftaran(existing) : null;
     const programSelect = document.getElementById('pf_program');
-    const selectablePrograms = getSelectablePendaftaranPrograms(existing?.program_id);
+    const selectablePrograms = getSelectablePendaftaranPrograms(effectiveExistingProgramId);
     programSelect.innerHTML = '<option value="">-- Belum Ditentukan --</option>' +
         selectablePrograms.map(prog => `<option value="${prog.id}">${escapeHtml(prog.nama)}${prog._expiredTag ? ' (Sudah Lewat)' : ''}</option>`).join('');
 
@@ -4682,7 +4704,14 @@ function openPendaftaranModal(id = null) {
         document.getElementById('p_editId').value = p.id;
         document.getElementById('pf_tanggal').value = p.tanggal_daftar || '';
         document.getElementById('pf_nama').value = p.nama || '';
-        document.getElementById('pf_program').value = p.program_id || '';
+        document.getElementById('pf_program').value = effectiveExistingProgramId || '';
+        if (effectiveExistingProgramId && String(effectiveExistingProgramId) !== String(p.program_id || '')) {
+            // Program di baris Pendaftaran ternyata beda/kosong dibanding
+            // program yang sudah dipilih di Data Jamaah (jamaah tertaut) --
+            // tampilkan versi yang sudah disinkronkan, dan langsung tandai
+            // supaya tersimpan otomatis begitu form ini di-Save.
+            showToast('Program disinkronkan otomatis dari data jamaah yang sudah terdaftar', 'info');
+        }
         document.getElementById('pf_ktp').value = p.ktp || '';
         document.getElementById('pf_gender').value = p.jenis_kelamin || '';
         document.getElementById('pf_tempat_lahir').value = p.tempat_lahir || '';
@@ -5585,6 +5614,22 @@ async function saveKbJamaah(e) {
                 }
             } catch (pErr) {
                 console.error('Update status pendaftaran error:', pErr);
+            }
+        }
+
+        // Sinkronkan balik ke Pendaftaran: kalau jamaah ini tertaut lewat
+        // pendaftaran_id & program-nya barusan diganti di sini, pendaftaran
+        // asalnya ikut diupdate supaya kedua menu tidak beda data (lihat
+        // getEffectiveProgramIdForPendaftaran).
+        if (id && beforeCopy && beforeCopy.pendaftaran_id && String(beforeCopy.program_id || '') !== String(data.program_id || '')) {
+            try {
+                const { error: syncErr } = await supabaseClient.from('pendaftaran').update({ program_id: data.program_id }).eq('id', beforeCopy.pendaftaran_id);
+                if (!syncErr) {
+                    const idx = pendaftaranList.findIndex(p => String(p.id) === String(beforeCopy.pendaftaran_id));
+                    if (idx !== -1) { pendaftaranList[idx].program_id = data.program_id; renderPendaftaranSection(); }
+                }
+            } catch (syncErr) {
+                console.error('Sync program ke pendaftaran gagal (non-fatal):', syncErr);
             }
         }
 
