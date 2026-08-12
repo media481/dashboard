@@ -15,6 +15,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 // Key custom lagi. Role ditentukan dari tabel dashboard_profiles setelah login berhasil
 // (lihat checkAdminLogin() dan sql/migrate_supabase_auth.sql).
 const ADMIN_CREATE_USER_URL = SUPABASE_URL + '/functions/v1/admin-create-user';
+const ADMIN_RESET_USER_PASSWORD_URL = SUPABASE_URL + '/functions/v1/admin-reset-user-password';
 
 let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
@@ -1531,6 +1532,10 @@ async function checkSession() {
         adminLoggedIn = true;
         currentRole = savedRole || 'admin';
         setAdminSession(currentRole);
+        // Sesi lama dipulihkan (app dibuka lagi) -> catat sebagai "terakhir buka app".
+        supabaseClient.rpc('update_last_login').then(({ error }) => {
+            if (error) console.warn('update_last_login (restore sesi) gagal:', error.message);
+        });
     } else {
         sessionStorage.removeItem('admin_logged_in');
         sessionStorage.removeItem('admin_role');
@@ -1589,6 +1594,10 @@ async function checkAdminLogin() {
             sessionStorage.setItem('admin_login_email', email);
             sessionStorage.setItem('admin_login_label', profile.label || '');
         } catch (_) {}
+        // Catat waktu login ini sebagai "terakhir buka app" (tidak perlu ditunggu).
+        supabaseClient.rpc('update_last_login').then(({ error }) => {
+            if (error) console.warn('update_last_login gagal:', error.message);
+        });
         closeAdminPanel();
         renderSidebarNav();
         showToast('Berhasil login sebagai ' + profile.label);
@@ -1659,29 +1668,99 @@ async function loadUserList() {
     if (!body) return;
     const { data, error } = await supabaseClient
         .from('dashboard_profiles')
-        .select('email, label, dashboard_role, created_at')
+        .select('id, email, label, dashboard_role, created_at, last_login')
         .order('created_at');
     if (error) {
         const isMissingSetup = /column .*email.* does not exist/i.test(error.message || '');
+        const isMissingLastLogin = /column .*last_login.* does not exist/i.test(error.message || '');
         body.innerHTML = isMissingSetup
-            ? `<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--danger);">Setup belum lengkap: jalankan <code>sql/tambah_kelola_user.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.</td></tr>`
-            : `<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--danger);">Gagal memuat daftar user: ${escapeHtml(error.message)}</td></tr>`;
+            ? `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--danger);">Setup belum lengkap: jalankan <code>sql/tambah_kelola_user.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.</td></tr>`
+            : isMissingLastLogin
+            ? `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--danger);">Setup belum lengkap: jalankan <code>sql/tambah_last_login_profiles.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.</td></tr>`
+            : `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--danger);">Gagal memuat daftar user: ${escapeHtml(error.message)}</td></tr>`;
         if (countEl) countEl.textContent = '-';
         return;
     }
     const rows = data || [];
     if (countEl) countEl.textContent = rows.length + ' user';
     if (!rows.length) {
-        body.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--ink-soft);">Belum ada data.</td></tr>';
+        body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--ink-soft);">Belum ada data.</td></tr>';
         return;
     }
     const roleBadge = { admin: '👑 Admin', user: '🎧 User', guest: '👁️ Guest' };
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const myId = session?.user?.id || '';
     body.innerHTML = rows.map(u => `<tr>
         <td>${escapeHtml(u.label || '-')}</td>
         <td>${escapeHtml(u.email || '-')}</td>
         <td>${roleBadge[u.dashboard_role] || escapeHtml(u.dashboard_role || '-')}</td>
+        <td style="white-space:nowrap;font-size:12.5px;color:var(--ink-soft);">${u.last_login ? escapeHtml(new Date(u.last_login).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })) : 'Belum pernah'}</td>
+        <td>
+            <button class="btn-icon-ghost" title="Ganti Password" onclick="openResetPasswordModal('${escapeJsAttr(u.id)}', '${escapeJsAttr(u.label || u.email || '')}')"${u.id === myId ? ' style="opacity:.5;" disabled' : ''}>
+                <i class="bi bi-key-fill"></i>
+            </button>
+        </td>
     </tr>`).join('');
 }
+
+// ============================================================
+// 12b-2b. GANTI PASSWORD USER LAIN (admin only)
+// Lewat Edge Function admin-reset-user-password (pakai Supabase Auth Admin
+// API), admin bisa reset password user lain tanpa perlu tahu password lama.
+// ============================================================
+function openResetPasswordModal(userId, label) {
+    if (currentRole !== 'admin') { showToast('Hanya Admin yang boleh mengganti password user', 'error'); return; }
+    if (!userId) return;
+    document.getElementById('rupTargetId').value = userId;
+    document.getElementById('rupTargetLabel').textContent = label || '-';
+    const pwdInput = document.getElementById('rupNewPassword');
+    if (pwdInput) pwdInput.value = '';
+    const statusEl = document.getElementById('rupStatus');
+    if (statusEl) statusEl.innerHTML = '';
+    document.getElementById('resetUserPasswordModal').classList.add('show');
+    setTimeout(() => pwdInput && pwdInput.focus(), 100);
+}
+window.openResetPasswordModal = openResetPasswordModal;
+
+function closeResetPasswordModal() {
+    document.getElementById('resetUserPasswordModal').classList.remove('show');
+}
+window.closeResetPasswordModal = closeResetPasswordModal;
+
+async function submitResetPassword() {
+    const targetId = document.getElementById('rupTargetId')?.value || '';
+    const newPassword = document.getElementById('rupNewPassword')?.value || '';
+    const statusEl = document.getElementById('rupStatus');
+    if (!targetId) return;
+    if (!newPassword || newPassword.length < 6) {
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger);font-size:12.5px;"><i class="bi bi-exclamation-circle-fill"></i> Password baru minimal 6 karakter.</span>';
+        return;
+    }
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--ink-soft);font-size:12.5px;"><i class="bi bi-hourglass-split"></i> Mengganti password...</span>';
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) throw new Error('Sesi login tidak ditemukan, silakan login ulang.');
+        const resp = await fetch(ADMIN_RESET_USER_PASSWORD_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': 'Bearer ' + session.access_token
+            },
+            body: JSON.stringify({ target_user_id: targetId, new_password: newPassword })
+        });
+        const result = await resp.json();
+        if (!resp.ok || !result.ok) throw new Error(result.description || 'Gagal mengganti password');
+
+        showToast('Password user berhasil diganti');
+        closeResetPasswordModal();
+    } catch (err) {
+        console.error('submitResetPassword error:', err);
+        if (statusEl) statusEl.innerHTML = `<span style="color:var(--danger);font-size:12.5px;"><i class="bi bi-exclamation-circle-fill"></i> ${escapeHtml(err.message)}</span>`;
+        showToast('Gagal mengganti password', 'error');
+    }
+}
+window.submitResetPassword = submitResetPassword;
 
 // ============================================================
 // 12b-3. AKSES MENU SIDEBAR PER ROLE (admin only) — matrix checkbox
@@ -2401,8 +2480,8 @@ async function renderAdminPanel() {
                     </div>
                     <div class="admin-table-wrap">
                         <table>
-                            <thead><tr><th>Nama</th><th>Email</th><th>Role</th></tr></thead>
-                            <tbody id="usUserListBody"><tr><td colspan="3" style="text-align:center;padding:20px;color:var(--ink-soft);">Memuat...</td></tr></tbody>
+                            <thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Terakhir Login</th><th>Aksi</th></tr></thead>
+                            <tbody id="usUserListBody"><tr><td colspan="5" style="text-align:center;padding:20px;color:var(--ink-soft);">Memuat...</td></tr></tbody>
                         </table>
                     </div>
                 </div>

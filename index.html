@@ -1174,6 +1174,31 @@
     </div>
 </div>
 
+<!-- ===== MODAL: GANTI PASSWORD USER (admin only, dari tab Pengaturan User) =====
+     Admin bisa reset password user lain tanpa perlu tahu password lama, lewat
+     Edge Function admin-reset-user-password (lihat js/app.js -> submitResetPassword). -->
+<div class="modal-overlay" id="resetUserPasswordModal">
+    <div class="modal-content" style="max-width:420px;">
+        <div class="modal-header">
+            <h2><i class="bi bi-key-fill"></i> Ganti Password User</h2>
+            <button class="modal-close" onclick="closeResetPasswordModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="margin-bottom:12px;color:var(--ink-soft);font-size:13px;">Password baru untuk <strong id="rupTargetLabel">-</strong>. User tidak perlu memasukkan password lama.</p>
+            <input type="hidden" id="rupTargetId">
+            <div class="form-group">
+                <label>Password Baru<span class="required">*</span></label>
+                <input type="text" id="rupNewPassword" placeholder="Minimal 6 karakter" autocomplete="off" onkeydown="if(event.key==='Enter')submitResetPassword()">
+            </div>
+            <div id="rupStatus" style="margin-top:4px;"></div>
+            <div class="form-actions" style="border-top:none;padding-top:12px;">
+                <button class="btn-primary" onclick="submitResetPassword()"><i class="bi bi-key-fill"></i> Ganti Password</button>
+                <button class="btn-cancel" onclick="closeResetPasswordModal()">Batal</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Poster Hover Popup -->
 <div id="posterPopup" class="poster-popup">
     <div class="poster-popup-inner">
