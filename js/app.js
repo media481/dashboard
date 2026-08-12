@@ -8458,7 +8458,10 @@ function buildManifestHTML(program, jamaahList) {
 
         <div style="position:relative;z-index:1;display:flex;justify-content:flex-end;">
             <div style="width:220px;">
-                ${buildNotaSignatureHTML('', `Disiapkan oleh,<br>${escapeHtml(getPetugasDisplayName())}`).replace('display:flex;justify-content:space-between;', 'display:flex;justify-content:flex-end;')}
+                <div style="position:relative;z-index:1;font-size:8.5px;text-align:center;color:#333;">
+                    <div style="margin-bottom:14px;">&nbsp;</div>
+                    <div style="border-top:1px solid #999;padding-top:3px;font-weight:600;">Disiapkan oleh,<br>${escapeHtml(getPetugasDisplayName())}</div>
+                </div>
             </div>
         </div>
 
