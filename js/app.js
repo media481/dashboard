@@ -5047,6 +5047,9 @@ async function loadKbJamaahForProgram(programId) {
 
         const jamaah = data || [];
         const exportBtnsHtml = (jamaah.length) ? `
+            <button type="button" class="btn-export-subtle" id="btnRoomingList" onclick="bukaRoomingList(this)" title="Buka Rooming List (pembagian kamar) program ini">
+                <i class="bi bi-door-closed-fill"></i> Rooming List
+            </button>
             <button type="button" class="btn-export-subtle" id="btnExportJamaahExcel" onclick="exportJamaahExcel(this)" title="Export data jamaah ke Excel">
                 <i class="bi bi-file-earmark-excel-fill"></i> Export Excel
             </button>

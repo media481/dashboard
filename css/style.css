@@ -458,7 +458,9 @@
 
         /* Tombol export di bawah tabel Data Jamaah -- sengaja dibuat TIDAK
            mencolok (netral, bukan warna solid) karena cuma aksi sekunder,
-           beda dgn tombol utama (Cetak Manifest/Rooming List) di header. */
+           beda dgn tombol utama (Cetak Manifest) di header. Rooming List
+           ikut gaya subtle ini juga sejak dipindah ke baris bawah,
+           sejajar dengan Export Excel & Export Pembayaran. */
         .btn-export-subtle {
             background: var(--surface);
             color: var(--ink-soft);
