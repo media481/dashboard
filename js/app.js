@@ -11159,7 +11159,7 @@ function renderIgCalendar() {
 
         html += `<div class="ig-cal-day ${isToday ? 'ig-cal-today' : ''}" data-date="${year}-${month + 1}-${day}">
             <span class="ig-cal-day-num">${day}</span>
-            ${hasPosts > 0 ? `<span class="ig-cal-dot">${hasPosts} post</span>` : ''}
+            ${hasPosts > 0 ? `<span class="ig-cal-dot" title="${hasPosts} post">${hasPosts}</span>` : ''}
         </div>`;
     }
 
