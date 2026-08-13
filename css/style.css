@@ -1219,8 +1219,6 @@
             font-weight: 600;
             white-space: nowrap;
         }
-        .pf-status-pill.baru { color: var(--brand); background: var(--brand-tint); }
-        .pf-status-pill.dihubungi { color: #b45309; background: #fef3c7; }
         .pf-status-pill.deal { color: var(--success); background: var(--success-tint); }
         .pf-status-pill.batal { color: var(--danger); background: var(--danger-tint); }
         .pf-actions { display: flex; gap: 6px; justify-content: flex-end; }
@@ -2896,7 +2894,7 @@
 }
 .pf-lama-results { margin-top: 8px; max-height: 160px; overflow-y: auto; display: none; }
 
-/* Badge status pendaftaran di header ringkas (baru/dihubungi/deal/batal) */
+/* Badge status pendaftaran di header ringkas (deal/batal) */
 .ms-edit-hero-status {
     display: inline-flex;
     align-items: center;
@@ -2908,8 +2906,6 @@
     margin-left: 8px;
     vertical-align: middle;
 }
-.ms-edit-hero-status.st-baru { background: var(--brand-tint); color: var(--brand-deep); }
-.ms-edit-hero-status.st-dihubungi { background: var(--warn-tint); color: var(--warn); }
 .ms-edit-hero-status.st-deal { background: var(--success-tint); color: #1b6b48; }
 .ms-edit-hero-status.st-batal { background: var(--danger-tint); color: var(--danger); }
 

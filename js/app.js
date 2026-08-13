@@ -4225,18 +4225,17 @@ async function confirmDeleteAction() {
             renderFeaturedSection();
 
             // Sinkron balik: kalau jamaah yang baru dihapus ini tadinya hasil
-            // konversi dan pendaftaran asalnya masih berstatus "Deal", balikin
-            // ke "Baru" supaya lead-nya kelihatan lagi & bisa dikonversi ulang
-            // atau ditindaklanjuti, bukan nyangkut diam-diam sebagai "Deal".
+            // konversi otomatis dan pendaftaran asalnya masih berstatus "Deal",
+            // biarkan statusnya tetap "Deal" -- supaya begitu admin buka Edit &
+            // Save lagi, otomatis dibuatkan ulang baris Data Jamaah-nya (lihat
+            // autoConvertPendaftaranToJamaah, dipanggil tiap kali status
+            // tersimpan sebagai "Deal" dan belum ada jamaah tertaut).
             if (pendaftaranIdSebelumHapus) {
                 try {
-                    const { error: pErr } = await supabaseClient
-                        .from('pendaftaran').update({ status: 'baru' })
-                        .eq('id', pendaftaranIdSebelumHapus).eq('status', 'deal');
-                    if (!pErr) {
-                        const idx = pendaftaranList.findIndex(p => String(p.id) === String(pendaftaranIdSebelumHapus));
-                        if (idx !== -1 && pendaftaranList[idx].status === 'deal') pendaftaranList[idx].status = 'baru';
+                    const idx = pendaftaranList.findIndex(p => String(p.id) === String(pendaftaranIdSebelumHapus));
+                    if (idx !== -1 && pendaftaranList[idx].status === 'deal') {
                         renderPendaftaranSection();
+                        showToast('Data jamaah dihapus — pendaftaran asalnya masih "Deal", buka Edit & Simpan lagi untuk membuatkan ulang datanya', 'info');
                     }
                 } catch (pErr) {
                     console.error('Sinkron balik status pendaftaran gagal:', pErr);
@@ -4552,7 +4551,7 @@ function goToPfPage(page) {
 function getFilteredPendaftaran() {
     const term = pfSearchTerm.trim().toLowerCase();
     return pendaftaranList.filter(p => {
-        if (pfStatusFilterVal && (p.status || 'baru') !== pfStatusFilterVal) return false;
+        if (pfStatusFilterVal && (p.status || 'deal') !== pfStatusFilterVal) return false;
         if (!term) return true;
         const program = dataUmroh.find(x => String(x.id) === String(p.program_id));
         const haystack = [p.nama, program ? program.nama : '', p.asal, p.wa].join(' ').toLowerCase();
@@ -4621,8 +4620,6 @@ function renderPendaftaranSection() {
     }
 
     const statusMap = {
-        baru: { label: 'Baru', icon: 'bi-plus-circle-fill' },
-        dihubungi: { label: 'Dihubungi', icon: 'bi-arrow-repeat' },
         deal: { label: 'Deal', icon: 'bi-check-circle-fill' },
         batal: { label: 'Batal', icon: 'bi-x-circle-fill' }
     };
@@ -4635,8 +4632,8 @@ function renderPendaftaranSection() {
     tbody.innerHTML = pageItems.map(p => {
         const effectiveProgramId = getEffectiveProgramIdForPendaftaran(p);
         const program = dataUmroh.find(x => String(x.id) === String(effectiveProgramId));
-        const stKey = p.status || 'baru';
-        const st = statusMap[stKey] || statusMap.baru;
+        const stKey = p.status || 'deal';
+        const st = statusMap[stKey] || statusMap.deal;
         const linkedJamaah = getLinkedJamaahForPendaftaran(p.id);
         const deleteWarning = linkedJamaah
             ? `⚠️ Pendaftaran ini sudah punya data di Data Jamaah ("${linkedJamaah.nama}"). Baris jamaah TIDAK ikut terhapus, tapi tautannya akan putus.`
@@ -4651,7 +4648,6 @@ function renderPendaftaranSection() {
             <td>
                 <div class="pf-actions">
                     ${p.wa ? `<a href="https://wa.me/${p.wa.replace(/\D/g,'')}?text=Assalamualaikum%20${encodeURIComponent(p.nama||'')}%20kami%20dari%20${encodeURIComponent(NOTA_PERUSAHAAN.nama)}" target="_blank" class="pf-btn-wa" title="Hubungi via WhatsApp"><i class="bi bi-whatsapp"></i></a>` : ''}
-                    ${(stKey !== 'deal' && stKey !== 'batal') ? `<button type="button" class="pf-btn-convert" onclick="convertPendaftaranToJamaah('${p.id}')" title="Tandai Deal — otomatis masuk Data Jamaah"><i class="bi bi-person-check-fill"></i></button>` : ''}
                     <button type="button" class="pf-btn-edit" onclick="openPendaftaranModal('${p.id}')" title="Edit"><i class="bi bi-pencil-fill"></i></button>
                     <button type="button" class="pf-btn-delete" onclick="openDeleteModal('pendaftaran', '${p.id}', '${escapeJsAttr(p.nama)}'${deleteWarning ? `, '${escapeJsAttr(deleteWarning)}'` : ''})" title="Hapus"><i class="bi bi-trash-fill"></i></button>
                 </div>
@@ -4660,33 +4656,6 @@ function renderPendaftaranSection() {
     }).join('');
 
     renderPfPagination(filtered.length);
-}
-
-// Shortcut dari baris Form Pendaftaran: langsung tandai status "Deal" &
-// otomatis masuk Data Jamaah di background (lihat autoConvertPendaftaranToJamaah)
-// -- tidak perlu buka form apa pun lagi, karena menu "Tambah Jamaah" manual
-// di tab Data Jamaah sudah ditiadakan.
-async function convertPendaftaranToJamaah(pendaftaranId) {
-    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menandai jamaah', 'error'); return; }
-    const p = pendaftaranList.find(item => String(item.id) === String(pendaftaranId));
-    if (!p) { showToast('Data pendaftaran tidak ditemukan', 'error'); return; }
-    if (!p.program_id) {
-        showToast('⚠️ Pilih program keberangkatan dulu lewat Edit sebelum menandai "Deal"', 'error');
-        openPendaftaranModal(pendaftaranId);
-        return;
-    }
-    if (!confirm(`Tandai "${p.nama}" sebagai Deal & pindahkan ke Data Jamaah?`)) return;
-
-    try {
-        const { error } = await supabaseClient.from('pendaftaran').update({ status: 'deal' }).eq('id', pendaftaranId);
-        if (error) throw error;
-        p.status = 'deal';
-        renderPendaftaranSection();
-        await autoConvertPendaftaranToJamaah(p);
-    } catch (err) {
-        console.error('Convert pendaftaran error:', err);
-        showToast('Gagal menandai Deal: ' + err.message, 'error');
-    }
 }
 
 // Program yang boleh dipilih untuk PENDAFTARAN BARU: hanya yang masih aktif
@@ -4749,7 +4718,7 @@ function openPendaftaranModal(id = null) {
         document.getElementById('pf_telp_rumah').value = p.telp_rumah || '';
         document.getElementById('pf_ahli_waris_nama').value = p.ahli_waris_nama || '';
         document.getElementById('pf_ahli_waris_hubungan').value = p.ahli_waris_hubungan || '';
-        document.getElementById('pf_status').value = p.status || 'baru';
+        document.getElementById('pf_status').value = p.status || 'deal';
         document.getElementById('pf_catatan').value = p.catatan || '';
         // [REDESIGN] Buka otomatis bagian "Data Tambahan" kalau salah satu
         // field-nya sudah terisi, biar kelihatan tanpa perlu klik dulu.
@@ -4757,7 +4726,7 @@ function openPendaftaranModal(id = null) {
     } else {
         document.getElementById('pendaftaranModalTitle').textContent = 'Tambah Pendaftaran';
         document.getElementById('pf_tanggal').value = new Date().toISOString().slice(0, 10);
-        document.getElementById('pf_status').value = 'baru';
+        document.getElementById('pf_status').value = 'deal';
         if (jamaahLamaBox) jamaahLamaBox.style.display = '';
         const cariInput = document.getElementById('pf_cari_jamaah_lama');
         if (cariInput) cariInput.value = '';
@@ -4794,9 +4763,9 @@ function pfSyncEditHero() {
     nameOut.textContent = nama || 'Calon jamaah baru';
     avatarEl.textContent = nama ? nama.trim().charAt(0).toUpperCase() : '–';
 
-    const statusLabels = { baru: 'Baru', dihubungi: 'Dihubungi', deal: 'Deal', batal: 'Batal' };
-    const statusVal = statusSel ? (statusSel.value || 'baru') : 'baru';
-    statusOut.textContent = statusLabels[statusVal] || 'Baru';
+    const statusLabels = { deal: 'Deal', batal: 'Batal' };
+    const statusVal = statusSel ? (statusSel.value || 'deal') : 'deal';
+    statusOut.textContent = statusLabels[statusVal] || 'Deal';
     statusOut.className = 'ms-edit-hero-status st-' + statusVal;
 
     const programId = programSel ? programSel.value : '';

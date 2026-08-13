@@ -321,8 +321,6 @@
                         </div>
                         <select id="pfStatusFilter" onchange="handlePfStatusFilter(this.value)">
                             <option value="">Semua Status</option>
-                            <option value="baru">Baru</option>
-                            <option value="dihubungi">Dihubungi</option>
                             <option value="deal">Deal</option>
                             <option value="batal">Batal</option>
                         </select>
@@ -608,13 +606,13 @@
                 <div class="ms-edit-hero">
                     <div class="ms-edit-hero-avatar" id="pfHeroAvatar">–</div>
                     <div class="ms-edit-hero-text">
-                        <div class="ms-edit-hero-name"><span id="pfHeroName">Calon jamaah baru</span><span class="ms-edit-hero-status st-baru" id="pfHeroStatus">Baru</span></div>
+                        <div class="ms-edit-hero-name"><span id="pfHeroName">Calon jamaah baru</span><span class="ms-edit-hero-status st-deal" id="pfHeroStatus">Deal</span></div>
                         <div class="ms-edit-hero-sub" id="pfHeroSub">Belum ada program dipilih</div>
                     </div>
                 </div>
 
                 <!-- Kartu 1: Program & Status -- paling sering dicek/diubah
-                     saat menindaklanjuti lead (baru -> dihubungi -> deal). -->
+                     saat menindaklanjuti lead (baru -> deal). -->
                 <div class="ms-card">
                     <div class="ms-card-title"><i class="bi bi-clipboard-check-fill"></i> Program &amp; Status</div>
                     <div class="form-row">
@@ -633,8 +631,6 @@
                         <div class="form-group">
                             <label>Status</label>
                             <select id="pf_status" onchange="pfSyncEditHero()">
-                                <option value="baru">Baru</option>
-                                <option value="dihubungi">Dihubungi</option>
                                 <option value="deal">Deal</option>
                                 <option value="batal">Batal</option>
                             </select>
