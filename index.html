@@ -958,7 +958,7 @@
 
                     <form id="cicilanForm" class="cicilan-form cicilan-add-card" onsubmit="saveCicilan(event)">
                         <input type="hidden" id="cic_jamaahId" value="">
-                        <div class="cicilan-section-title"><i class="bi bi-plus-circle-fill"></i> Tambah Pembayaran</div>
+                        <div class="cicilan-section-title">Tambah Pembayaran</div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Tanggal <span class="required">*</span></label>
@@ -995,7 +995,7 @@
 
                     <div class="cicilan-modal-preview" id="cicilanPreviewPanel" style="display:none;">
                         <div class="cicilan-preview-head">
-                            <h4><i class="bi bi-file-earmark-text-fill"></i> <span id="cicilanPreviewTitle">Preview Nota</span></h4>
+                            <h4><span id="cicilanPreviewTitle">Preview Nota</span></h4>
                             <div class="cicilan-preview-head-actions">
                                 <button type="button" class="btn-nota-expand" onclick="openNotaLightbox()" title="Perbesar preview (layar penuh)"><i class="bi bi-arrows-fullscreen"></i></button>
                                 <button type="button" class="modal-close" onclick="hideNotaPreviewPanel()" title="Tutup preview">&times;</button>
@@ -1014,7 +1014,7 @@
 
                     <div class="cicilan-section cicilan-history-section">
                         <div class="cicilan-section-head">
-                            <div class="cicilan-section-title"><i class="bi bi-clock-history"></i> Riwayat Pembayaran <span class="cicilan-history-count" id="cicilanHistoryCount"></span></div>
+                            <div class="cicilan-section-title">Riwayat Pembayaran <span class="cicilan-history-count" id="cicilanHistoryCount"></span></div>
                             <button type="button" class="btn-nota-riwayat" id="btnNotaRiwayat" onclick="previewNotaRiwayatLengkap(this)" title="Preview lalu unduh nota berisi seluruh riwayat pembayaran (JPEG)">
                                 <i class="bi bi-file-earmark-image-fill"></i> Unduh Nota Riwayat
                             </button>
@@ -1023,7 +1023,7 @@
                     </div>
 
                     <details class="cicilan-section cicilan-activity-section">
-                        <summary class="cicilan-section-title"><i class="bi bi-journal-text"></i> Riwayat Aktivitas Jamaah <span class="cicilan-history-count" id="jamaahActivityCount"></span></summary>
+                        <summary class="cicilan-section-title">Riwayat Aktivitas Jamaah <span class="cicilan-history-count" id="jamaahActivityCount"></span></summary>
                         <div id="jamaahActivityList" class="jamaah-activity-list"></div>
                     </details>
                 </div>
