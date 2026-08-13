@@ -397,67 +397,78 @@
                         </div>
                     </div>
                 </div>
-                <!-- IG Scheduler Tab Panel -->
-                <div class="tab-panel" id="tab-igScheduler">
-                    <div class="ig-scheduler-tab">
-                        <div class="ig-scheduler-toolbar">
-                            <button class="btn-primary" id="btnIgUpload" onclick="openIgUploadModal()" style="font-size:12px;padding:6px 14px;">
-                                <i class="bi bi-plus-lg"></i> Post Baru
-                            </button>
-                            <button class="btn-secondary" id="btnIgRefresh" onclick="loadIgPosts(true)" style="font-size:12px;padding:6px 14px;">
-                                <i class="bi bi-arrow-clockwise"></i> Refresh
-                            </button>
-                            <span class="ig-scheduler-count" id="igSchedulerCount">0 post</span>
-                        </div>
+            </div>
+        </div>
+    </div>
 
-                        <!-- IG Account Status -->
-                        <div class="ig-account-status" id="igAccountStatus" style="display:none;">
-                            <div class="ig-account-info">
-                                <i class="bi bi-instagram"></i>
-                                <span id="igAccountName">Instagram Account</span>
-                                <span class="ig-account-badge ig-account-active" id="igAccountBadge">Active</span>
-                            </div>
-                            <span class="ig-account-expiry" id="igAccountExpiry"></span>
-                        </div>
+    <div id="igSchedulerPageView" class="admin-page" style="display:none;">
+        <div class="admin-page-header">
+            <button class="admin-back-btn" onclick="closeIgSchedulerPage()" title="Kembali ke Dashboard">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <div>
+                <h1><span>IG Scheduler</span></h1>
+                <p>Jadwalkan &amp; kelola publikasi otomatis ke Instagram</p>
+            </div>
+        </div>
+        <div class="admin-page-body">
+            <div class="ig-scheduler-tab">
+                <div class="ig-scheduler-toolbar">
+                    <button class="btn-primary" id="btnIgUpload" onclick="openIgUploadModal()" style="font-size:12px;padding:6px 14px;">
+                        <i class="bi bi-plus-lg"></i> Post Baru
+                    </button>
+                    <button class="btn-secondary" id="btnIgRefresh" onclick="loadIgPosts(true)" style="font-size:12px;padding:6px 14px;">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                    <span class="ig-scheduler-count" id="igSchedulerCount">0 post</span>
+                </div>
 
-                        <!-- Calendar View -->
-                        <div class="ig-calendar-container">
-                            <div class="ig-calendar-header">
-                                <button class="ig-cal-nav" id="igCalPrev" onclick="igPrevMonth()">‹</button>
-                                <h3 class="ig-cal-month" id="igCalMonth">Agustus 2026</h3>
-                                <button class="ig-cal-nav" id="igCalNext" onclick="igNextMonth()">›</button>
-                            </div>
-                            <div class="ig-calendar-grid">
-                                <div class="ig-cal-day-header">Min</div>
-                                <div class="ig-cal-day-header">Sen</div>
-                                <div class="ig-cal-day-header">Sel</div>
-                                <div class="ig-cal-day-header">Rab</div>
-                                <div class="ig-cal-day-header">Kam</div>
-                                <div class="ig-cal-day-header">Jum</div>
-                                <div class="ig-cal-day-header">Sab</div>
-                                <div id="igCalDays"></div>
-                            </div>
-                        </div>
-
-                        <!-- Post List -->
-                        <div class="ig-post-list-container">
-                            <table class="ig-post-table">
-                                <thead>
-                                    <tr>
-                                        <th>Media</th>
-                                        <th>Caption</th>
-                                        <th>Jadwal</th>
-                                        <th>Status</th>
-                                        <th>Diterbitkan</th>
-                                        <th>Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="igPostTableBody">
-                                    <tr><td colspan="6"><div class="ig-empty"><i class="bi bi-hourglass-split"></i> Memuat...</div></td></tr>
-                                </tbody>
-                            </table>
-                        </div>
+                <!-- IG Account Status -->
+                <div class="ig-account-status" id="igAccountStatus" style="display:none;">
+                    <div class="ig-account-info">
+                        <i class="bi bi-instagram"></i>
+                        <span id="igAccountName">Instagram Account</span>
+                        <span class="ig-account-badge ig-account-active" id="igAccountBadge">Active</span>
                     </div>
+                    <span class="ig-account-expiry" id="igAccountExpiry"></span>
+                </div>
+
+                <!-- Calendar View -->
+                <div class="ig-calendar-container">
+                    <div class="ig-calendar-header">
+                        <button class="ig-cal-nav" id="igCalPrev" onclick="igPrevMonth()">‹</button>
+                        <h3 class="ig-cal-month" id="igCalMonth">Agustus 2026</h3>
+                        <button class="ig-cal-nav" id="igCalNext" onclick="igNextMonth()">›</button>
+                    </div>
+                    <div class="ig-calendar-grid">
+                        <div class="ig-cal-day-header">Min</div>
+                        <div class="ig-cal-day-header">Sen</div>
+                        <div class="ig-cal-day-header">Sel</div>
+                        <div class="ig-cal-day-header">Rab</div>
+                        <div class="ig-cal-day-header">Kam</div>
+                        <div class="ig-cal-day-header">Jum</div>
+                        <div class="ig-cal-day-header">Sab</div>
+                        <div id="igCalDays"></div>
+                    </div>
+                </div>
+
+                <!-- Post List -->
+                <div class="ig-post-list-container">
+                    <table class="ig-post-table">
+                        <thead>
+                            <tr>
+                                <th>Media</th>
+                                <th>Caption</th>
+                                <th>Jadwal</th>
+                                <th>Status</th>
+                                <th>Diterbitkan</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="igPostTableBody">
+                            <tr><td colspan="6"><div class="ig-empty"><i class="bi bi-hourglass-split"></i> Memuat...</div></td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

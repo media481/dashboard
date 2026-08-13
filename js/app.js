@@ -1094,6 +1094,13 @@ window.batchGenerateIncompleteCaptions = batchGenerateIncompleteCaptions;
 // 5. TAB SWITCHING
 // ============================================================
 function switchTab(tabId) {
+    // IG Scheduler sekarang halaman mandiri (seperti Assets dkk), bukan tab-panel
+    // di dashboard utama -- alihkan ke situ, jangan diproses sebagai tab biasa.
+    if (tabId === 'igScheduler') {
+        openIgSchedulerPage();
+        return;
+    }
+
     // Kalau sedang di halaman Admin Panel, otomatis kembali dulu ke dashboard
     // supaya menu navigasi (Program, Unggulan, Jadwal Tamu, Keberangkatan)
     // langsung bisa diakses tanpa harus klik "Kembali" secara manual.
@@ -1120,7 +1127,52 @@ function switchTab(tabId) {
     if (tabId === 'dokumen') renderDokProgramSelector();
     if (tabId === 'kepulangan') renderKepulanganProgramSelector();
     if (tabId === 'arsip') { loadArsipJamaah().then(renderArsipProgramSelector); }
-    if (tabId === 'igScheduler') { loadIgPosts(); loadIgAccounts(); renderIgCalendar(); }
+}
+
+// ============================================================
+// 5b. IG SCHEDULER — halaman mandiri (bukan tab-panel/card di dashboard utama)
+// ============================================================
+let previousActiveTabForIg = null;
+
+function openIgSchedulerPage() {
+    // Tutup Admin Panel dulu kalau kebetulan sedang terbuka
+    const adminView = document.getElementById('adminPageView');
+    if (adminView && adminView.style.display !== 'none') {
+        adminView.style.display = 'none';
+    }
+
+    const activeTabBtn = document.querySelector('.sidebar .nav-item[data-tab].active');
+    previousActiveTabForIg = activeTabBtn ? activeTabBtn.dataset.tab : null;
+
+    document.getElementById('dashboardView').style.display = 'none';
+    document.getElementById('igSchedulerPageView').style.display = 'block';
+
+    document.querySelectorAll('.sidebar .nav-item').forEach(item => item.classList.remove('active'));
+    const navBtn = document.querySelector('.sidebar .nav-item[data-tab="igScheduler"]');
+    if (navBtn) navBtn.classList.add('active');
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    loadIgPosts();
+    loadIgAccounts();
+    renderIgCalendar();
+}
+
+function closeIgSchedulerPage() {
+    document.getElementById('igSchedulerPageView').style.display = 'none';
+    document.getElementById('dashboardView').style.display = 'block';
+
+    document.querySelectorAll('.sidebar .nav-item').forEach(item => item.classList.remove('active'));
+    if (previousActiveTabForIg) {
+        document.querySelectorAll('.sidebar .nav-item[data-tab]').forEach(item => {
+            item.classList.toggle('active', item.dataset.tab === previousActiveTabForIg);
+        });
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === previousActiveTabForIg);
+        });
+    } else {
+        const umrohNav = document.querySelector('.sidebar .nav-item[data-tab="umroh"]');
+        if (umrohNav) umrohNav.classList.add('active');
+    }
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1880,6 +1932,12 @@ async function openAdminPanel(subtab) {
     // Snapshot otomatis harian (1x/hari) — hanya untuk admin yang benar-benar login
     if (adminLoggedIn && currentRole === 'admin') {
         maybeDailySnapshot();
+    }
+
+    // Kalau sedang di halaman IG Scheduler, tutup dulu supaya tidak tumpang tindih
+    const igPageView = document.getElementById('igSchedulerPageView');
+    if (igPageView && igPageView.style.display !== 'none') {
+        igPageView.style.display = 'none';
     }
 
     // Remember which dashboard tab was active so we can restore it on close
@@ -3135,8 +3193,13 @@ async function renderSidebarNav() {
     // kembalikan ke tab "Program Umroh" supaya tidak nyangkut di halaman kosong.
     if (!loggedIn) {
         const activePanel = document.querySelector('.tab-panel.active');
-        const loggedinOnlyIds = ['tab-info', 'tab-pendaftaran', 'tab-keberangkatan', 'tab-dokumen', 'tab-kepulangan', 'tab-arsip', 'tab-igScheduler'];
+        const loggedinOnlyIds = ['tab-info', 'tab-pendaftaran', 'tab-keberangkatan', 'tab-dokumen', 'tab-kepulangan', 'tab-arsip'];
         if (activePanel && loggedinOnlyIds.includes(activePanel.id)) {
+            switchTab('umroh');
+        }
+        const igPageView = document.getElementById('igSchedulerPageView');
+        if (igPageView && igPageView.style.display !== 'none') {
+            closeIgSchedulerPage();
             switchTab('umroh');
         }
     }
