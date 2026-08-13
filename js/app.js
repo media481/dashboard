@@ -5943,8 +5943,8 @@ function renderCicilanHistory() {
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
                 ${!isRefund ? `
-                <button type="button" class="cicilan-nota-btn" onclick="previewNotaPembayaran('${c.id}', this)" title="Preview lalu unduh nota bukti pembayaran (JPEG)">
-                    <i class="bi bi-file-earmark-image-fill"></i>
+                <button type="button" class="cicilan-nota-btn" onclick="previewNotaPembayaran('${c.id}', this)" title="Unduh nota bukti pembayaran (JPEG)">
+                    <i class="bi bi-download"></i> Unduh Nota
                 </button>` : ''}
                 <button type="button" class="cicilan-delete-btn" onclick="deleteCicilan('${c.id}')" title="Hapus ${isRefund ? 'refund' : 'pembayaran'} ini">
                     <i class="bi bi-trash-fill"></i>

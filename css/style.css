@@ -2118,16 +2118,21 @@
             background: var(--brand-tint);
             color: var(--brand);
             border: none;
-            width: 28px;
             height: 28px;
+            padding: 0 10px;
             border-radius: 8px;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            gap: 5px;
             flex-shrink: 0;
+            font-size: 11.5px;
+            font-weight: 600;
+            white-space: nowrap;
             transition: background .15s, color .15s;
         }
+        .cicilan-nota-btn i { font-size: 12px; }
         .cicilan-nota-btn:hover { background: var(--brand); color: #fff; }
         .cicilan-nota-btn:disabled { opacity: .6; cursor: default; }
 
