@@ -11183,6 +11183,12 @@ function updateIgSchedulerCount() {
 }
 
 // ---- Calendar ----
+// Tanggal acuan sebuah post di kalender: pakai jadwal jika ada, kalau tidak pakai waktu publish
+function igPostRefDate(post) {
+    const raw = post.schedule_time || post.published_at;
+    return raw ? new Date(raw) : null;
+}
+
 function renderIgCalendar() {
     const monthEl = document.getElementById('igCalMonth');
     const daysEl = document.getElementById('igCalDays');
@@ -11201,16 +11207,18 @@ function renderIgCalendar() {
     const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     monthEl.textContent = `${monthNames[month]} ${year}`;
 
-    // Build scheduled posts map: schedule_time -> count
-    const scheduledThisMonth = igPosts.filter(p => {
-        if (!p.schedule_time || p.status !== 'scheduled') return false;
-        const d = new Date(p.schedule_time);
-        return d.getFullYear() === year && d.getMonth() === month;
+    // Kelompokkan semua post bulan ini berdasarkan tanggal
+    const postsByDay = {};
+    igPosts.forEach(p => {
+        const d = igPostRefDate(p);
+        if (!d || d.getFullYear() !== year || d.getMonth() !== month) return;
+        const day = d.getDate();
+        (postsByDay[day] = postsByDay[day] || []).push(p);
     });
 
     let html = '';
 
-    // Empty cells for previous month's trailing days
+    // Sel kosong untuk hari terakhir bulan sebelumnya
     for (let i = 0; i < startDay; i++) {
         html += `<div class="ig-cal-day ig-cal-empty"></div>`;
     }
@@ -11218,11 +11226,38 @@ function renderIgCalendar() {
     for (let day = 1; day <= totalDays; day++) {
         const cellDate = new Date(year, month, day);
         const isToday = cellDate.getTime() === today.getTime();
-        const hasPosts = scheduledThisMonth.filter(p => new Date(p.schedule_time).getDate() === day).length;
+        const isWeekend = cellDate.getDay() === 0 || cellDate.getDay() === 6;
+        const dayPosts = (postsByDay[day] || []).slice().sort((a, b) => igPostRefDate(a) - igPostRefDate(b));
+        const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-        html += `<div class="ig-cal-day ${isToday ? 'ig-cal-today' : ''}" data-date="${year}-${month + 1}-${day}">
-            <span class="ig-cal-day-num">${day}</span>
-            ${hasPosts > 0 ? `<span class="ig-cal-dot">${hasPosts} post</span>` : ''}
+        let dotsHtml = '';
+        if (dayPosts.length) {
+            const visible = dayPosts.slice(0, 4);
+            dotsHtml = `<div class="ig-cal-dots">` + visible.map(p => {
+                const color = IG_STATUS_COLORS[p.status] || IG_STATUS_COLORS.draft;
+                const label = escapeHtml(IG_STATUS_LABELS[p.status] || p.status);
+                return `<span class="ig-cal-dot-mark" style="background:${color};" title="${label}"></span>`;
+            }).join('') + (dayPosts.length > 4 ? `<span class="ig-cal-dot-more">+${dayPosts.length - 4}</span>` : '') + `</div>`;
+        }
+
+        let thumbHtml = '';
+        const firstMedia = dayPosts.find(p => p.media_type === 'image' && p.media_url);
+        if (firstMedia) {
+            thumbHtml = `<img src="${firstMedia.media_url}" class="ig-cal-thumb" loading="lazy" alt="">`;
+        }
+
+        const cellClasses = ['ig-cal-day'];
+        if (isToday) cellClasses.push('ig-cal-today');
+        if (isWeekend) cellClasses.push('ig-cal-weekend');
+        if (dayPosts.length) cellClasses.push('has-posts');
+
+        html += `<div class="${cellClasses.join(' ')}" data-date="${dateKey}" onclick="igOnDayClick('${dateKey}')">
+            <div class="ig-cal-day-top">
+                <span class="ig-cal-day-num">${day}</span>
+                ${dayPosts.length ? `<span class="ig-cal-day-count">${dayPosts.length}</span>` : ''}
+            </div>
+            ${thumbHtml}
+            ${dotsHtml}
         </div>`;
     }
 
@@ -11237,9 +11272,85 @@ function igNextMonth() {
     igCalendarCurrent = new Date(igCalendarCurrent.getFullYear(), igCalendarCurrent.getMonth() + 1, 1);
     renderIgCalendar();
 }
+function igGotoToday() {
+    igCalendarCurrent = new Date();
+    renderIgCalendar();
+}
+
+// ---- Detail post per tanggal (modal saat klik sel kalender) ----
+let igDayModalDateKey = null;
+
+function igOnDayClick(dateKey) {
+    igOpenDayModal(dateKey);
+}
+
+function igOpenDayModal(dateKey) {
+    const modal = document.getElementById('igDayModal');
+    const titleEl = document.getElementById('igDayModalTitle');
+    const bodyEl = document.getElementById('igDayModalBody');
+    if (!modal || !bodyEl) return;
+
+    igDayModalDateKey = dateKey;
+    const [y, m, d] = dateKey.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    if (titleEl) {
+        titleEl.textContent = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    }
+
+    const dayPosts = igPosts.filter(p => {
+        const dd = igPostRefDate(p);
+        return dd && dd.getFullYear() === y && dd.getMonth() === m - 1 && dd.getDate() === d;
+    }).sort((a, b) => igPostRefDate(a) - igPostRefDate(b));
+
+    if (!dayPosts.length) {
+        bodyEl.innerHTML = `<div class="ig-empty"><i class="bi bi-calendar-x"></i> Belum ada post pada tanggal ini.</div>`;
+    } else {
+        bodyEl.innerHTML = dayPosts.map(post => {
+            const refDate = igPostRefDate(post);
+            const timeLabel = refDate ? refDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-';
+            const statusColor = IG_STATUS_COLORS[post.status] || IG_STATUS_COLORS.draft;
+            const statusLabel = IG_STATUS_LABELS[post.status] || post.status;
+
+            let mediaPreview = '';
+            if (post.media_type === 'image') {
+                mediaPreview = `<img src="${post.media_url}" alt="media" class="ig-media-thumb" loading="lazy">`;
+            } else if (post.media_type === 'video') {
+                mediaPreview = `<video src="${post.media_url}" class="ig-media-thumb" preload="none"></video>`;
+            } else {
+                mediaPreview = `<div class="ig-media-thumb ig-carousel-thumb"><i class="bi bi-images"></i></div>`;
+            }
+
+            return `<div class="ig-day-post-item">
+                ${mediaPreview}
+                <div class="ig-day-post-info">
+                    <p class="ig-day-post-caption">${escapeHtml(post.caption || '(tanpa caption)')}</p>
+                    <div class="ig-day-post-meta">
+                        <span class="ig-status-pill" style="background:${statusColor}1a;color:${statusColor};">${escapeHtml(statusLabel)}</span>
+                        <span class="ig-day-post-time"><i class="bi bi-clock"></i> ${timeLabel}</span>
+                    </div>
+                </div>
+                <button type="button" class="ig-btn-edit" onclick="closeIgDayModal(); openIgUploadModal('${post.id}')" title="Edit"><i class="bi bi-pencil-fill"></i></button>
+            </div>`;
+        }).join('');
+    }
+
+    modal.classList.add('open');
+}
+
+function closeIgDayModal() {
+    const modal = document.getElementById('igDayModal');
+    if (modal) modal.classList.remove('open');
+    igDayModalDateKey = null;
+}
+
+function igAddPostFromDayModal() {
+    const dateKey = igDayModalDateKey;
+    closeIgDayModal();
+    openIgUploadModal(null, dateKey);
+}
 
 // ---- Modal: Upload/Edit Post ----
-function openIgUploadModal(postId = null) {
+function openIgUploadModal(postId = null, presetDateKey = null) {
     if (!canManageProgramData()) {
         showToast('Akun Anda tidak punya izin untuk mengelola post IG', 'error');
         return;
@@ -11256,11 +11367,11 @@ function openIgUploadModal(postId = null) {
     document.getElementById('igCaptionCount').textContent = '2200';
     document.getElementById('ig_media_type').value = 'image';
 
-    // Default tanggal/jam = besok pagi
+    // Default tanggal/jam = besok pagi (atau tanggal yang dipilih dari kalender)
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(9, 0, 0, 0);
-    document.getElementById('ig_schedule_date').value = tomorrow.toISOString().split('T')[0];
+    document.getElementById('ig_schedule_date').value = presetDateKey || tomorrow.toISOString().split('T')[0];
     document.getElementById('ig_schedule_time').value = '09:00';
 
     const modalTitle = document.getElementById('igModalTitle');
@@ -11552,6 +11663,10 @@ window.retryIgPost = retryIgPost;
 window.loadIgPosts = loadIgPosts;
 window.igPrevMonth = igPrevMonth;
 window.igNextMonth = igNextMonth;
+window.igGotoToday = igGotoToday;
+window.igOnDayClick = igOnDayClick;
+window.closeIgDayModal = closeIgDayModal;
+window.igAddPostFromDayModal = igAddPostFromDayModal;
 window.igPrevPage = igPrevPage;
 window.igNextPage = igNextPage;
 
