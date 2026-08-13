@@ -1,0 +1,26 @@
+# Cloudflare Worker: IG Scheduler Cron
+# Deploy: wrangler deploy --config scheduler/wrangler.toml
+#
+# Cron trigger tiap 15 menit untuk publish cycle.
+# Token refresh (ig-refresh-token) otomatis berjalan tiap Senin jam 09:00 UTC
+# di dalam handler scheduled() worker.js.
+
+name = "ig-scheduler-cron"
+main = "worker.js"
+compatibility_date = "2026-08-07"
+
+[triggers]
+# Tiap 15 menit — ig-publish
+# Senin jam 9 UTC — ig-refresh-token (di-handle di worker.js via scheduled())
+crons = ["*/15 * * * *", "0 9 * * 1"]
+
+# [observability]
+# enabled = true
+
+[vars]
+# Diisi via: wrangler secret put SUPABASE_FUNCTIONS_URL
+# wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+
+# Contoh:
+# SUPABASE_FUNCTIONS_URL = "https://xxx.supabase.co/functions/v1"
+# SUPABASE_SERVICE_ROLE_KEY = (secret, tidak pernah di-commit ke repo)

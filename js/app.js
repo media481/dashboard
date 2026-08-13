@@ -1120,6 +1120,7 @@ function switchTab(tabId) {
     if (tabId === 'dokumen') renderDokProgramSelector();
     if (tabId === 'kepulangan') renderKepulanganProgramSelector();
     if (tabId === 'arsip') { loadArsipJamaah().then(renderArsipProgramSelector); }
+    if (tabId === 'igScheduler') { loadIgPosts(); loadIgAccounts(); renderIgCalendar(); }
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -2994,6 +2995,7 @@ const SIDEBAR_MENU_REGISTRY = [
     { key: 'dokumen', label: 'Dokumen', group: 'Navigasi' },
     { key: 'kepulangan', label: 'Status Kepulangan', group: 'Navigasi' },
     { key: 'arsip', label: 'Arsip Jamaah', group: 'Navigasi' },
+    { key: 'igScheduler', label: 'IG Scheduler', group: 'Social Media' },
     { key: 'program', label: 'Tambah Program', group: 'Manajemen' },
     { key: 'pembayaran', label: 'Pembayaran', group: 'Manajemen' },
     { key: 'unggulan', label: 'Unggulan (Admin)', group: 'Manajemen' },
@@ -3133,7 +3135,7 @@ async function renderSidebarNav() {
     // kembalikan ke tab "Program Umroh" supaya tidak nyangkut di halaman kosong.
     if (!loggedIn) {
         const activePanel = document.querySelector('.tab-panel.active');
-        const loggedinOnlyIds = ['tab-info', 'tab-pendaftaran', 'tab-keberangkatan', 'tab-dokumen', 'tab-kepulangan', 'tab-arsip'];
+        const loggedinOnlyIds = ['tab-info', 'tab-pendaftaran', 'tab-keberangkatan', 'tab-dokumen', 'tab-kepulangan', 'tab-arsip', 'tab-igScheduler'];
         if (activePanel && loggedinOnlyIds.includes(activePanel.id)) {
             switchTab('umroh');
         }
@@ -10809,6 +10811,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderPendaftaranSection();
     renderKbProgramSelector();
     renderFeaturedSection();
+    loadIgPosts();  // IG Scheduler — fire & forget di init
+    loadIgAccounts();
+    renderIgCalendar();
 
     // Bind sort listeners on table headers (nama, tgl, maskapai, isAvailable)
     document.querySelectorAll('th.sortable').forEach(th => {
@@ -10905,8 +10910,589 @@ window.showPosterPopup = showPosterPopup;
 window.hidePosterPopup = hidePosterPopup;
 
 // ============================================================
-// 25. CUSTOM SEARCHABLE SELECT (pengganti dropdown <select> native)
+// 24. INSTAGRAM CONTENT SCHEDULER
 // ============================================================
+// State untuk IG Scheduler tab. Data diambil langsung dari Supabase
+// via supabaseClient (tabel ig_posts, ig_accounts, ig_publish_logs).
+// Semua panggilan ke Instagram Graph API hanya lewat Edge Function
+// (ig-publish / ig-refresh-token / ig-manual-retry) — token IG tidak
+// pernah bocor ke client.
+const IG_STORAGE_BUCKET = 'ig-media';
+const IG_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const IG_POSTS_PAGE_SIZE = 50;
+
+let igPosts = [];              // cache post list
+let igPostsCurrentPage = 1;
+let igPostsTotal = 0;
+let igAccounts = [];           // akun IG aktif (tanpa access_token)
+let igCalendarCurrent = new Date(); // bulan yang sedang ditampilkan di kalender
+
+// Badge warna sesuai status post
+const IG_STATUS_COLORS = {
+    draft: 'var(--ink-soft)',
+    scheduled: 'var(--brand)',
+    publishing: 'var(--warn)',
+    published: 'var(--success)',
+    failed: 'var(--danger)'
+};
+const IG_STATUS_LABELS = {
+    draft: 'Draft',
+    scheduled: 'Terjadwal',
+    publishing: 'Mempublikasi',
+    published: 'Dipublikasi',
+    failed: 'Gagal'
+};
+
+// ---- Load IG posts ----
+async function loadIgPosts(forceRefresh = false) {
+    try {
+        const { data, error } = await withRetry(
+            () => supabaseClient.from('ig_posts').select('*').order('created_at', { ascending: false }),
+            { label: 'Muat daftar post IG' }
+        );
+        if (error) throw error;
+        igPosts = data || [];
+        igPostsTotal = igPosts.length;
+        renderIgPostTable();
+        updateIgSchedulerCount();
+        renderIgCalendar(); // refresh calendar markers
+    } catch (err) {
+        console.error('loadIgPosts error:', err);
+        showToast('Gagal memuat daftar post IG: ' + err.message, 'error');
+    }
+}
+
+// ---- Load IG accounts (tanpa expose access_token) ----
+async function loadIgAccounts() {
+    try {
+        const { data, error } = await withRetry(
+            () => supabaseClient.from('ig_accounts').select('id, ig_user_id, fb_page_id, token_expires_at, is_active').eq('is_active', true).order('created_at', { ascending: false }),
+            { label: 'Muat akun IG' }
+        );
+        if (error) throw error;
+        igAccounts = data || [];
+        renderIgAccountStatus();
+        // isi dropdown akun di modal upload jika terbuka
+        const picker = document.getElementById('ig_account_id');
+        if (picker) {
+            const currentVal = picker.value;
+            picker.innerHTML = '<option value="">-- Pilih Akun IG --</option>' +
+                igAccounts.map(a => `<option value="${a.id}">IG User ${a.ig_user_id}</option>`).join('');
+            if (currentVal) picker.value = currentVal;
+        }
+    } catch (err) {
+        console.error('loadIgAccounts error:', err);
+    }
+}
+
+// ---- Render account status bar ----
+function renderIgAccountStatus() {
+    const wrap = document.getElementById('igAccountStatus');
+    const nameEl = document.getElementById('igAccountName');
+    const badge = document.getElementById('igAccountBadge');
+    const expiry = document.getElementById('igAccountExpiry');
+    if (!wrap || !nameEl || !badge || !expiry) return;
+
+    const active = igAccounts.find(a => a.is_active);
+    if (!active) {
+        wrap.style.display = 'none';
+        return;
+    }
+
+    wrap.style.display = 'block';
+    nameEl.textContent = `IG Business #${active.ig_user_id.slice(-6)}`;
+
+    // Hitung hari tersisa token
+    const expiresAt = new Date(active.token_expires_at);
+    const now = new Date();
+    const daysLeft = Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24));
+
+    if (daysLeft <= 0) {
+        badge.textContent = 'Expired';
+        badge.className = 'ig-account-badge ig-account-expired';
+        expiry.textContent = 'Token sudah kadaluarsa — refresh diperlukan';
+    } else if (daysLeft < 10) {
+        badge.textContent = 'Perlu Refresh';
+        badge.className = 'ig-account-badge ig-account-warn';
+        expiry.textContent = `Token berakhir dalam ${daysLeft} hari`;
+    } else {
+        badge.textContent = 'Active';
+        badge.className = 'ig-account-badge ig-account-active';
+        expiry.textContent = `${daysLeft} hari tersisa`;
+    }
+}
+
+// ---- Render post list table ----
+function renderIgPostTable() {
+    const tbody = document.getElementById('igPostTableBody');
+    if (!tbody) return;
+
+    if (!igPosts.length) {
+        tbody.innerHTML = `<tr><td colspan="6"><div class="ig-empty"><i class="bi bi-instagram"></i>Belum ada post IG. Klik "Post Baru" untuk mulai.</div></td></tr>`;
+        return;
+    }
+
+    const totalPages = Math.max(1, Math.ceil(igPosts.length / IG_POSTS_PAGE_SIZE));
+    if (igPostsCurrentPage > totalPages) igPostsCurrentPage = totalPages;
+    const start = (igPostsCurrentPage - 1) * IG_POSTS_PAGE_SIZE;
+    const pageItems = igPosts.slice(start, start + IG_POSTS_PAGE_SIZE);
+
+    tbody.innerHTML = pageItems.map(post => {
+        const scheduleFormatted = post.schedule_time ? new Date(post.schedule_time).toLocaleString('id-ID', {
+            weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+        }) : '-';
+        const publishedFormatted = post.published_at ? new Date(post.published_at).toLocaleString('id-ID', {
+            day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        }) : '-';
+
+        const statusColor = IG_STATUS_COLORS[post.status] || IG_STATUS_COLORS.draft;
+        const statusLabel = IG_STATUS_LABELS[post.status] || post.status;
+
+        // Preview media
+        let mediaPreview = '';
+        if (post.media_type === 'image') {
+            mediaPreview = `<img src="${post.media_url}" alt="media" class="ig-media-thumb" loading="lazy">`;
+        } else if (post.media_type === 'video') {
+            mediaPreview = `<video src="${post.media_url}" class="ig-media-thumb" preload="none"></video>`;
+        } else {
+            mediaPreview = `<div class="ig-media-thumb ig-carousel-thumb"><i class="bi bi-images"></i></div>`;
+        }
+
+        // Aksi berdasarkan status
+        const actions = [];
+        if (post.status === 'failed') {
+            actions.push(`<button type="button" class="ig-btn-retry" onclick="openIgActionModal('${post.id}', 'retry')" title="Retry Publish"><i class="bi bi-arrow-counterclockwise"></i> Retry</button>`);
+        }
+        if (['draft', 'scheduled', 'failed'].includes(post.status)) {
+            actions.push(`<button type="button" class="ig-btn-edit" onclick="openIgUploadModal('${post.id}')" title="Edit"><i class="bi bi-pencil-fill"></i></button>`);
+        }
+        if (post.status === 'failed' || post.status === 'draft') {
+            actions.push(`<button type="button" class="ig-btn-delete" onclick="openIgActionModal('${post.id}', 'delete')" title="Hapus"><i class="bi bi-trash-fill"></i></button>`);
+        }
+        if (post.last_error) {
+            actions.push(`<button type="button" class="ig-btn-log" onclick="openIgActionModal('${post.id}', 'logs', null, '${escapeJsAttr(post.last_error || '')}')" title="Lihat Error"><i class="bi bi-info-circle-fill"></i></button>`);
+        }
+
+        return `<tr class="ig-post-row status-${post.status}">
+            <td class="ig-post-media">${mediaPreview}</td>
+            <td class="ig-post-caption">${escapeHtml(post.caption || '(tanpa caption)')}</td>
+            <td class="ig-post-schedule">${escapeHtml(scheduleFormatted)}</td>
+            <td class="ig-post-status"><span class="ig-status-pill" style="background:${statusColor}1a;color:${statusColor};">${escapeHtml(statusLabel)}</span></td>
+            <td class="ig-post-published">${escapeHtml(publishedFormatted)}</td>
+            <td class="ig-post-actions">${actions.join('')}</td>
+        </tr>`;
+    }).join('');
+
+    // Pagination
+    const paginationInfo = document.getElementById('igPostPagination') || (() => {
+        const div = document.createElement('div');
+        div.id = 'igPostPagination';
+        div.className = 'ig-pagination';
+        tbody.parentNode.parentNode.appendChild(div);
+        return div;
+    })();
+
+    paginationInfo.innerHTML = `<span>Halaman ${igPostsCurrentPage} dari ${totalPages}</span>`;
+    if (igPosts.length > IG_POSTS_PAGE_SIZE) {
+        paginationInfo.innerHTML += `
+            <button ${igPostsCurrentPage <= 1 ? 'disabled' : ''} onclick="igPrevPage()" style="padding:4px 10px;font-size:12px;border:1px solid var(--line);border-radius:6px;background:var(--surface);cursor:pointer;">‹ Prev</button>
+            <button ${igPostsCurrentPage >= totalPages ? 'disabled' : ''} onclick="igNextPage()" style="padding:4px 10px;font-size:12px;border:1px solid var(--line);border-radius:6px;background:var(--surface);cursor:pointer;">Next ›</button>`;
+    }
+}
+
+function igPrevPage() {
+    if (igPostsCurrentPage > 1) {
+        igPostsCurrentPage--;
+        renderIgPostTable();
+    }
+}
+function igNextPage() {
+    const totalPages = Math.max(1, Math.ceil(igPosts.length / IG_POSTS_PAGE_SIZE));
+    if (igPostsCurrentPage < totalPages) {
+        igPostsCurrentPage++;
+        renderIgPostTable();
+    }
+}
+
+function updateIgSchedulerCount() {
+    const el = document.getElementById('igSchedulerCount');
+    if (el) el.textContent = `${igPosts.length} post`;
+}
+
+// ---- Calendar ----
+function renderIgCalendar() {
+    const monthEl = document.getElementById('igCalMonth');
+    const daysEl = document.getElementById('igCalDays');
+    if (!monthEl || !daysEl) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const year = igCalendarCurrent.getFullYear();
+    const month = igCalendarCurrent.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDay = firstDay.getDay(); // 0 = Minggu
+    const totalDays = lastDay.getDate();
+
+    const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    monthEl.textContent = `${monthNames[month]} ${year}`;
+
+    // Build scheduled posts map: schedule_time -> count
+    const scheduledThisMonth = igPosts.filter(p => {
+        if (!p.schedule_time || p.status !== 'scheduled') return false;
+        const d = new Date(p.schedule_time);
+        return d.getFullYear() === year && d.getMonth() === month;
+    });
+
+    let html = '';
+
+    // Empty cells for previous month's trailing days
+    for (let i = 0; i < startDay; i++) {
+        html += `<div class="ig-cal-day ig-cal-empty"></div>`;
+    }
+
+    for (let day = 1; day <= totalDays; day++) {
+        const cellDate = new Date(year, month, day);
+        const isToday = cellDate.getTime() === today.getTime();
+        const hasPosts = scheduledThisMonth.filter(p => new Date(p.schedule_time).getDate() === day).length;
+
+        html += `<div class="ig-cal-day ${isToday ? 'ig-cal-today' : ''}" data-date="${year}-${month + 1}-${day}">
+            <span class="ig-cal-day-num">${day}</span>
+            ${hasPosts > 0 ? `<span class="ig-cal-dot">${hasPosts} post</span>` : ''}
+        </div>`;
+    }
+
+    daysEl.innerHTML = html;
+}
+
+function igPrevMonth() {
+    igCalendarCurrent = new Date(igCalendarCurrent.getFullYear(), igCalendarCurrent.getMonth() - 1, 1);
+    renderIgCalendar();
+}
+function igNextMonth() {
+    igCalendarCurrent = new Date(igCalendarCurrent.getFullYear(), igCalendarCurrent.getMonth() + 1, 1);
+    renderIgCalendar();
+}
+
+// ---- Modal: Upload/Edit Post ----
+function openIgUploadModal(postId = null) {
+    if (!canManageProgramData()) {
+        showToast('Akun Anda tidak punya izin untuk mengelola post IG', 'error');
+        return;
+    }
+
+    const modal = document.getElementById('igUploadModal');
+    const form = document.getElementById('igUploadForm');
+    if (!modal || !form) return;
+
+    form.reset();
+    document.getElementById('ig_post_id').value = '';
+    document.getElementById('ig_media_url').value = '';
+    document.getElementById('igMediaFileName').textContent = '-';
+    document.getElementById('igCaptionCount').textContent = '2200';
+    document.getElementById('ig_media_type').value = 'image';
+
+    // Default tanggal/jam = besok pagi
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+    document.getElementById('ig_schedule_date').value = tomorrow.toISOString().split('T')[0];
+    document.getElementById('ig_schedule_time').value = '09:00';
+
+    const modalTitle = document.getElementById('igModalTitle');
+    if (modalTitle) modalTitle.textContent = 'Post Baru ke Instagram';
+
+    // Clear preview
+    const preview = document.getElementById('igMediaPreview');
+    if (preview) preview.innerHTML = '';
+
+    // Load akun IG & isi dropdown
+    loadIgAccounts();
+
+    if (postId) {
+        // Mode edit
+        const post = igPosts.find(p => p.id === postId);
+        if (post) {
+            modalTitle.textContent = 'Edit Post IG';
+            document.getElementById('ig_post_id').value = post.id;
+            document.getElementById('ig_caption').value = post.caption || '';
+            if (post.schedule_time) {
+                const d = new Date(post.schedule_time);
+                document.getElementById('ig_schedule_date').value = d.toISOString().split('T')[0];
+                document.getElementById('ig_schedule_time').value = d.toTimeString().slice(0, 5);
+            }
+            document.getElementById('ig_media_type').value = post.media_type || 'image';
+            document.getElementById('ig_media_url').value = post.media_url || '';
+
+            // Show preview media yang sudah ada
+            if (post.media_url) {
+                const pre = document.getElementById('igMediaPreview');
+                if (pre) {
+                    if (post.media_type === 'image') {
+                        pre.innerHTML = `<img src="${post.media_url}" class="ig-media-preview-img">`;
+                    }
+                }
+            }
+            // Select akun default
+            const accountSelect = document.getElementById('ig_account_id');
+            if (accountSelect && igAccounts.length) {
+                accountSelect.value = igAccounts[0].id;
+            }
+        }
+    } else {
+        // Mode baru — select first akun by default
+        const accountSelect = document.getElementById('ig_account_id');
+        if (accountSelect && igAccounts.length) {
+            accountSelect.value = igAccounts[0].id;
+        }
+    }
+
+    // Show hide account picker — kalau belum ada akun sama sekilo, tampilkan notif
+    const pickerWrap = document.getElementById('igAccountPickerWrap');
+    if (pickerWrap) {
+        pickerWrap.style.display = igAccounts.length ? 'block' : 'none';
+    }
+
+    modal.classList.add('open');
+
+    // Caption counter
+    const captionEl = document.getElementById('ig_caption');
+    if (captionEl) {
+        captionEl.oninput = function() {
+            const remaining = 2200 - this.value.length;
+            const countEl = document.getElementById('igCaptionCount');
+            if (countEl) countEl.textContent = Math.max(0, remaining);
+        };
+    }
+}
+
+function closeIgUploadModal() {
+    const modal = document.getElementById('igUploadModal');
+    if (modal) modal.classList.remove('open');
+}
+
+// ---- Handle media file change ----
+async function onIgMediaChange() {
+    const input = document.getElementById('ig_media_file');
+    const fileNameEl = document.getElementById('igMediaFileName');
+    const urlEl = document.getElementById('ig_media_url');
+    const preview = document.getElementById('igMediaPreview');
+
+    if (!input.files || !input.files[0]) return;
+
+    const file = input.files[0];
+    const mediaType = document.getElementById('ig_media_type')?.value || 'image';
+
+    // Validasi ukuran
+    if (file.size > IG_MAX_FILE_SIZE) {
+        showToast('File terlalu besar (maks 10MB)', 'error');
+        return;
+    }
+
+    // Validasi tipe
+    const allowedImage = ['image/jpeg', 'image/png', 'image/webp'];
+    const allowedVideo = ['video/mp4', 'video/quicktime'];
+    if (mediaType === 'image' && !allowedImage.includes(file.type)) {
+        showToast('Format file tidak didukung untuk image (jpg, png, webp)', 'error');
+        return;
+    }
+    if (mediaType === 'video' && !allowedVideo.includes(file.type)) {
+        showToast('Format file tidak didukung untuk video (mp4, mov)', 'error');
+        return;
+    }
+
+    if (fileNameEl) fileNameEl.textContent = file.name;
+    showToast('Mengupload media...', 'info');
+
+    try {
+        // Upload ke Supabase Storage bucket ig-media
+        const fileName = `ig_${Date.now()}_${file.name}`;
+        const { data, error } = await supabaseClient.storage
+            .from(IG_STORAGE_BUCKET)
+            .upload(fileName, file, {
+                cacheControl: '3600',
+                upsert: false
+            });
+
+        if (error) throw error;
+
+        // Dapatkan public URL
+        const { data: { publicUrl } } = supabaseClient.storage
+            .from(IG_STORAGE_BUCKET)
+            .getPublicUrl(data.path);
+
+        if (urlEl) urlEl.value = publicUrl;
+
+        // Preview
+        if (preview) {
+            if (mediaType === 'image') {
+                preview.innerHTML = `<img src="${publicUrl}" class="ig-media-preview-img">`;
+            } else {
+                preview.innerHTML = `<video src="${publicUrl}" class="ig-media-preview-img" controls></video>`;
+            }
+        }
+
+        showToast('Media berhasil diupload', 'success');
+    } catch (err) {
+        console.error('IG upload error:', err);
+        showToast('Gagal upload media: ' + err.message, 'error');
+    }
+}
+
+// ---- Save post (create / update) ----
+async function saveIgPost(e) {
+    e.preventDefault();
+    if (!canManageProgramData()) return;
+
+    const postId = document.getElementById('ig_post_id').value;
+    const caption = document.getElementById('ig_caption').value.trim();
+    const mediaUrl = document.getElementById('ig_media_url').value;
+    const mediaType = document.getElementById('ig_media_type').value;
+    const scheduleDate = document.getElementById('ig_schedule_date').value;
+    const scheduleTime = document.getElementById('ig_schedule_time').value;
+
+    if (!mediaUrl) { showToast('Media belum diupload', 'error'); return; }
+    if (!scheduleDate || !scheduleTime) { showToast('Jadwal wajib diisi', 'error'); return; }
+
+    const scheduleISO = `${scheduleDate}T${scheduleTime}:00`;
+
+    const postData = {
+        caption: caption || null,
+        media_url: mediaUrl,
+        media_type: mediaType || 'image',
+        schedule_time: scheduleISO,
+        status: 'scheduled'
+    };
+
+    try {
+        let result;
+        if (postId) {
+            result = await supabaseClient.from('ig_posts').update(postData).eq('id', postId).select();
+        } else {
+            result = await supabaseClient.from('ig_posts').insert([postData]).select();
+        }
+
+        if (result.error) throw result.error;
+
+        showToast(`Post ${postId ? 'diperbarui' : 'ditambahkan'}`, 'success');
+        closeIgUploadModal();
+        igPostsCurrentPage = 1;
+        await loadIgPosts(true);
+    } catch (err) {
+        console.error('saveIgPost error:', err);
+        showToast('Gagal menyimpan post: ' + err.message, 'error');
+    }
+}
+
+// ---- Delete post ----
+async function deleteIgPost(postId) {
+    if (!canManageProgramData()) return;
+    try {
+        const { error } = await supabaseClient.from('ig_posts').delete().eq('id', postId);
+        if (error) throw error;
+        showToast('Post dihapus', 'success');
+        igPostsCurrentPage = 1;
+        await loadIgPosts(true);
+    } catch (err) {
+        showToast('Gagal hapus post: ' + err.message, 'error');
+    }
+}
+
+// ---- Retry post (manual) via edge function ----
+async function retryIgPost(postId) {
+    if (!canManageProgramData()) return;
+    showToast('Memicu retry publish...', 'info');
+    try {
+        // Call edge function ig-manual-retry
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/ig-manual-retry`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${(await supabaseClient.auth.getSession()).data.session?.access_token || ''}`
+            },
+            body: JSON.stringify({ post_id: postId })
+        });
+        const result = await res.json();
+        if (result.success || res.ok) {
+            showToast('Retry berhasil — post akan dipublish lagi', 'success');
+        } else {
+            showToast('Retry gagal: ' + (result.error || res.statusText), 'error');
+        }
+        await loadIgPosts(true);
+    } catch (err) {
+        showToast('Gagal retry: ' + err.message, 'error');
+    }
+}
+
+// ---- IG Action Modal (Retry / Delete / Logs) ----
+function openIgActionModal(postId, action, post = null, errorDetail = '') {
+    const modal = document.getElementById('igActionModal');
+    const body = document.getElementById('igActionBody');
+    const title = document.getElementById('igActionTitle');
+    if (!modal || !body || !title) return;
+
+    const p = post || igPosts.find(p => p.id === postId);
+
+    if (action === 'retry') {
+        title.textContent = 'Konfirmasi Retry';
+        body.innerHTML = `
+            <p style="color:var(--ink);margin-bottom:16px;">
+                <i class="bi bi-exclamation-triangle-fill" style="color:var(--warn);"></i>
+                Post ini gagal dipublish. Yakin ingin mencoba lagi?
+            </p>
+            ${p && p.last_error ? `<div style="background:var(--danger-tint);padding:10px;border-radius:8px;margin-bottom:12px;font-size:12.5px;color:var(--danger);"><i class="bi bi-info-circle"></i> Error: ${escapeHtml(p.last_error)}</div>` : ''}
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button class="btn-cancel" onclick="closeIgActionModal()" style="font-size:12px;padding:6px 14px;">Batal</button>
+                <button class="btn-primary" onclick="retryIgPost('${postId}')" style="font-size:12px;padding:6px 14px;"><i class="bi bi-arrow-counterclockwise"></i> Retry</button>
+            </div>`;
+    } else if (action === 'delete') {
+        title.textContent = 'Hapus Post';
+        body.innerHTML = `
+            <p style="color:var(--ink);margin-bottom:16px;">
+                <i class="bi bi-exclamation-triangle-fill" style="color:var(--danger);"></i>
+                Hapus post IG ini secara permanen?
+            </p>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button class="btn-cancel" onclick="closeIgActionModal()" style="font-size:12px;padding:6px 14px;">Batal</button>
+                <button class="btn-danger" onclick="deleteIgPost('${postId}')" style="font-size:12px;padding:6px 14px;"><i class="bi bi-trash-fill"></i> Hapus</button>
+            </div>`;
+    } else if (action === 'logs') {
+        title.textContent = 'Detail Error';
+        body.innerHTML = `
+            <p style="color:var(--ink);margin-bottom:12px;">${escapeHtml(errorDetail || p?.last_error || 'Tidak ada detail error')}</p>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button class="btn-cancel" onclick="closeIgActionModal()" style="font-size:12px;padding:6px 14px;">Tutup</button>
+            </div>`;
+    } else {
+        body.innerHTML = '';
+    }
+
+    modal.classList.add('open');
+}
+
+function closeIgActionModal() {
+    const modal = document.getElementById('igActionModal');
+    if (modal) modal.classList.remove('open');
+}
+
+// Expose functions globally
+window.openIgUploadModal = openIgUploadModal;
+window.closeIgUploadModal = closeIgUploadModal;
+window.saveIgPost = saveIgPost;
+window.onIgMediaChange = onIgMediaChange;
+window.onIgAccountChange = loadIgAccounts;
+window.openIgActionModal = openIgActionModal;
+window.closeIgActionModal = closeIgActionModal;
+window.deleteIgPost = deleteIgPost;
+window.retryIgPost = retryIgPost;
+window.loadIgPosts = loadIgPosts;
+window.igPrevMonth = igPrevMonth;
+window.igNextMonth = igNextMonth;
+window.igPrevPage = igPrevPage;
+window.igNextPage = igNextPage;
+
+
 // Membungkus <select class="searchable-select"> dengan UI kustom (bisa dicari)
 // tanpa mengubah cara select tsb dipakai di tempat lain: .value masih bisa
 // dibaca/ditulis seperti biasa, dan innerHTML options masih bisa diisi ulang

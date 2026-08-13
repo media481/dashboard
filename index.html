@@ -71,6 +71,11 @@
                 <i class="bi bi-house-door-fill"></i> <span class="nav-text">Status Kepulangan</span><span class="nav-badge" id="badgeKepulanganDesktop"></span>
             </button>
 
+            <div class="nav-label nav-group-label" style="display:none;">Social Media</div>
+            <button class="nav-item nav-loggedin-only" data-tab="igScheduler" style="display:none;" title="IG Scheduler">
+                <i class="bi bi-instagram"></i> <span class="nav-text">IG Scheduler</span>
+            </button>
+
             <div class="nav-label nav-group-label" style="display:none;">Arsip</div>
             <button class="nav-item nav-loggedin-only" data-tab="arsip" style="display:none;" title="Arsip Jamaah">
                 <i class="bi bi-archive-fill"></i> <span class="nav-text">Arsip Jamaah</span>
@@ -200,6 +205,9 @@
                 </button>
                 <button class="tab-btn nav-loggedin-only" data-tab="arsip" style="display:none;">
                     <i class="bi bi-archive-fill"></i> <span>Arsip Jamaah</span>
+                </button>
+                <button class="tab-btn nav-loggedin-only" data-tab="igScheduler" style="display:none;">
+                    <i class="bi bi-instagram"></i> <span>IG Scheduler</span>
                 </button>
             </div>
 
@@ -392,6 +400,68 @@
                         </div>
                     </div>
                 </div>
+                <!-- IG Scheduler Tab Panel -->
+                <div class="tab-panel" id="tab-igScheduler">
+                    <div class="ig-scheduler-tab">
+                        <div class="ig-scheduler-toolbar">
+                            <button class="btn-primary" id="btnIgUpload" onclick="openIgUploadModal()" style="font-size:12px;padding:6px 14px;">
+                                <i class="bi bi-plus-lg"></i> Post Baru
+                            </button>
+                            <button class="btn-secondary" id="btnIgRefresh" onclick="loadIgPosts(true)" style="font-size:12px;padding:6px 14px;">
+                                <i class="bi bi-arrow-clockwise"></i> Refresh
+                            </button>
+                            <span class="ig-scheduler-count" id="igSchedulerCount">0 post</span>
+                        </div>
+
+                        <!-- IG Account Status -->
+                        <div class="ig-account-status" id="igAccountStatus" style="display:none;">
+                            <div class="ig-account-info">
+                                <i class="bi bi-instagram"></i>
+                                <span id="igAccountName">Instagram Account</span>
+                                <span class="ig-account-badge ig-account-active" id="igAccountBadge">Active</span>
+                            </div>
+                            <span class="ig-account-expiry" id="igAccountExpiry"></span>
+                        </div>
+
+                        <!-- Calendar View -->
+                        <div class="ig-calendar-container">
+                            <div class="ig-calendar-header">
+                                <button class="ig-cal-nav" id="igCalPrev" onclick="igPrevMonth()">‹</button>
+                                <h3 class="ig-cal-month" id="igCalMonth">Agustus 2026</h3>
+                                <button class="ig-cal-nav" id="igCalNext" onclick="igNextMonth()">›</button>
+                            </div>
+                            <div class="ig-calendar-grid">
+                                <div class="ig-cal-day-header">Min</div>
+                                <div class="ig-cal-day-header">Sen</div>
+                                <div class="ig-cal-day-header">Sel</div>
+                                <div class="ig-cal-day-header">Rab</div>
+                                <div class="ig-cal-day-header">Kam</div>
+                                <div class="ig-cal-day-header">Jum</div>
+                                <div class="ig-cal-day-header">Sab</div>
+                                <div id="igCalDays"></div>
+                            </div>
+                        </div>
+
+                        <!-- Post List -->
+                        <div class="ig-post-list-container">
+                            <table class="ig-post-table">
+                                <thead>
+                                    <tr>
+                                        <th>Media</th>
+                                        <th>Caption</th>
+                                        <th>Jadwal</th>
+                                        <th>Status</th>
+                                        <th>Diterbitkan</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="igPostTableBody">
+                                    <tr><td colspan="6"><div class="ig-empty"><i class="bi bi-hourglass-split"></i> Memuat...</div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -440,6 +510,11 @@
             </button>
             <button class="nav-item nav-loggedin-only" data-tab="kepulangan" style="display:none;" onclick="switchTab('kepulangan'); toggleMobileSidebar();">
                 <i class="bi bi-house-door-fill"></i> Status Kepulangan<span class="nav-badge" id="badgeKepulanganMobile"></span>
+            </button>
+
+            <div class="nav-label nav-group-label" style="display:none;">Social Media</div>
+            <button class="nav-item nav-loggedin-only" data-tab="igScheduler" style="display:none;" onclick="switchTab('igScheduler'); toggleMobileSidebar();">
+                <i class="bi bi-instagram"></i> IG Scheduler
             </button>
 
             <div class="nav-label nav-group-label" style="display:none;">Arsip</div>
@@ -1028,6 +1103,91 @@
                     </details>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- IG Upload/Edit Post Modal -->
+<div class="modal-overlay" id="igUploadModal">
+    <div class="modal-content" style="max-width:680px;">
+        <div class="modal-header">
+            <h2><i class="bi bi-instagram"></i> <span id="igModalTitle">Post Baru ke Instagram</span></h2>
+            <button class="modal-close" onclick="closeIgUploadModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="igUploadForm" onsubmit="saveIgPost(event)">
+                <input type="hidden" id="ig_post_id">
+
+                <!-- Account Selector -->
+                <div class="form-group" id="igAccountPickerWrap" style="display:none;">
+                    <label>Akun Instagram</label>
+                    <select id="ig_account_id" onchange="onIgAccountChange()">
+                        <option value="">-- Pilih Akun IG --</option>
+                    </select>
+                </div>
+
+                <!-- File Upload -->
+                <div class="form-group">
+                    <label>Media <span style="color:var(--danger);">*</span></label>
+                    <div class="ig-file-input-wrap">
+                        <input type="file" id="ig_media_file" accept="image/*,.mp4,.mov" style="display:none;" onchange="onIgMediaChange()">
+                        <button type="button" class="btn-secondary" id="igMediaBtn" onclick="document.getElementById('ig_media_file').click()" style="font-size:12px;padding:6px 14px;">
+                            <i class="bi bi-upload"></i> Pilih File
+                        </button>
+                        <span class="ig-file-name" id="igMediaFileName">-</span>
+                    </div>
+                    <input type="hidden" id="ig_media_url">
+                    <div class="form-note">Ukuran maksimal 10MB. Format: JPG/PNG untuk gambar, MP4 untuk video/Reels.</div>
+                    <div id="igMediaPreview" class="ig-media-preview"></div>
+                </div>
+
+                <!-- Caption -->
+                <div class="form-group">
+                    <label>Caption</label>
+                    <textarea id="ig_caption" placeholder="Tulis caption Instagram..." rows="4" maxlength="2200" style="width:100%;font-family:'Inter',sans-serif;padding:10px;border:1.5px solid var(--line);border-radius:10px;resize:vertical;"></textarea>
+                    <div class="form-note">Karakter tersisa: <span id="igCaptionCount">2200</span></div>
+                </div>
+
+                <!-- Schedule -->
+                <div class="form-group">
+                    <label>Jadwal <span style="color:var(--danger);">*</span></label>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
+                        <div style="flex:1;min-width:140px;">
+                            <label style="font-size:11px;color:var(--ink-soft);">Tanggal</label>
+                            <input type="date" id="ig_schedule_date" required>
+                        </div>
+                        <div style="flex:1;min-width:120px;">
+                            <label style="font-size:11px;color:var(--ink-soft);">Jam</label>
+                            <input type="time" id="ig_schedule_time" required>
+                        </div>
+                        <div>
+                            <label style="font-size:11px;color:var(--ink-soft);">Media Type</label>
+                            <select id="ig_media_type">
+                                <option value="image">Image</option>
+                                <option value="video">Video/Reels</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions" style="margin-top:20px;">
+                    <button type="submit" class="btn-primary" id="igSubmitBtn"><i class="bi bi-save"></i> Simpan</button>
+                    <button type="button" class="btn-cancel" onclick="closeIgUploadModal()">Batal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- IG Post Actions Modal (Retry / Delete) -->
+<div class="modal-overlay" id="igActionModal">
+    <div class="modal-content" style="max-width:480px;">
+        <div class="modal-header">
+            <h2><i class="bi bi-sliders2"></i> <span id="igActionTitle">Aksi Post</span></h2>
+            <button class="modal-close" onclick="closeIgActionModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="igActionBody">
+            <!-- Diisi oleh JS -->
         </div>
     </div>
 </div>
