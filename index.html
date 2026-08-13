@@ -436,9 +436,12 @@
                 <!-- Calendar View -->
                 <div class="ig-calendar-container">
                     <div class="ig-calendar-header">
-                        <button class="ig-cal-nav" id="igCalPrev" onclick="igPrevMonth()">‹</button>
-                        <h3 class="ig-cal-month" id="igCalMonth">Agustus 2026</h3>
-                        <button class="ig-cal-nav" id="igCalNext" onclick="igNextMonth()">›</button>
+                        <div class="ig-calendar-header-left">
+                            <button class="ig-cal-nav" id="igCalPrev" onclick="igPrevMonth()" title="Bulan sebelumnya">‹</button>
+                            <h3 class="ig-cal-month" id="igCalMonth">Agustus 2026</h3>
+                            <button class="ig-cal-nav" id="igCalNext" onclick="igNextMonth()" title="Bulan berikutnya">›</button>
+                        </div>
+                        <button class="ig-cal-today-btn" onclick="igGotoToday()"><i class="bi bi-calendar-check"></i> Hari Ini</button>
                     </div>
                     <div class="ig-calendar-grid">
                         <div class="ig-cal-day-header">Min</div>
@@ -449,6 +452,13 @@
                         <div class="ig-cal-day-header">Jum</div>
                         <div class="ig-cal-day-header">Sab</div>
                         <div id="igCalDays"></div>
+                    </div>
+                    <div class="ig-cal-legend">
+                        <span class="ig-cal-legend-item"><span class="ig-cal-legend-dot" style="background:var(--ink-soft);"></span>Draft</span>
+                        <span class="ig-cal-legend-item"><span class="ig-cal-legend-dot" style="background:var(--brand);"></span>Terjadwal</span>
+                        <span class="ig-cal-legend-item"><span class="ig-cal-legend-dot" style="background:var(--warn);"></span>Mempublikasi</span>
+                        <span class="ig-cal-legend-item"><span class="ig-cal-legend-dot" style="background:var(--success);"></span>Dipublikasi</span>
+                        <span class="ig-cal-legend-item"><span class="ig-cal-legend-dot" style="background:var(--danger);"></span>Gagal</span>
                     </div>
                 </div>
 
@@ -1196,6 +1206,25 @@
         </div>
         <div class="modal-body" id="igActionBody">
             <!-- Diisi oleh JS -->
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="igDayModal">
+    <div class="modal-content" style="max-width:520px;">
+        <div class="modal-header">
+            <h2><i class="bi bi-calendar3"></i> <span id="igDayModalTitle">Post pada tanggal ini</span></h2>
+            <button class="modal-close" onclick="closeIgDayModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="ig-day-post-list" id="igDayModalBody">
+                <!-- Diisi oleh JS -->
+            </div>
+            <div class="form-actions" style="border-top:none;padding-top:4px;">
+                <button class="btn-primary" id="igDayModalAddBtn" onclick="igAddPostFromDayModal()" style="font-size:12px;padding:6px 14px;">
+                    <i class="bi bi-plus-lg"></i> Tambah Post di Tanggal Ini
+                </button>
+            </div>
         </div>
     </div>
 </div>
