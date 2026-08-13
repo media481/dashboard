@@ -4686,7 +4686,7 @@ function openPendaftaranModal(id = null) {
     const programSelect = document.getElementById('pf_program');
     const selectablePrograms = getSelectablePendaftaranPrograms(effectiveExistingProgramId);
     programSelect.innerHTML = '<option value="">-- Belum Ditentukan --</option>' +
-        selectablePrograms.map(prog => `<option value="${prog.id}">${escapeHtml(prog.nama)}${prog._expiredTag ? ' (Sudah Lewat)' : ''}</option>`).join('');
+        selectablePrograms.map(prog => `<option value="${prog.id}">${escapeHtml(prog.nama)}${prog.tgl ? ' (' + escapeHtml(prog.tgl) + ')' : ''}${prog._expiredTag ? ' (Sudah Lewat)' : ''}</option>`).join('');
 
     const jamaahLamaBox = document.getElementById('pfFromJamaahLamaBox');
     let hasExtraData = false;
