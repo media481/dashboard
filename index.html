@@ -7,26 +7,19 @@
     <meta name="description" content="Repository Program Umroh PT Amiru Haramain Indonesia">
     <meta name="theme-color" content="#1a355b">
 
-    <!-- PWA -->
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
     <link rel="apple-touch-icon" href="icons/icon-180.png">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
 
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 
-    <!-- Bootstrap Icons -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.13.1/font/bootstrap-icons.min.css">
 
-    <!-- Supabase SDK, jsPDF, html2canvas: defer supaya tidak menghalangi parsing HTML &
-         CSS di atas (skeleton loading jadi tampil lebih cepat) -- defer tetap menjaga
-         urutan eksekusi sama seperti sebelumnya (berurutan, sebelum DOMContentLoaded),
-         jadi window.supabase/jsPDF/html2canvas tetap siap sebelum js/app.js jalan. -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
@@ -38,7 +31,7 @@
 <body>
 
 <div class="app">
-    <!-- ===== SIDEBAR ===== -->
+    
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-top">
             <div class="sidebar-foot">
@@ -128,7 +121,6 @@
         </nav>
     </aside>
 
-    <!-- ===== MAIN ===== -->
     <main>
     <div id="dashboardView">
         <div class="topbar">
@@ -151,7 +143,6 @@
             </div>
         </div>
 
-        <!-- METRICS -->
         <div class="metrics" id="metricsContainer">
             <div class="metric-card">
                 <div class="m-icon icon-brand"><i class="bi bi-layers-fill"></i></div>
@@ -183,7 +174,6 @@
             </div>
         </div>
 
-        <!-- TABS -->
         <div class="tabs-wrapper">
             <div class="tabs-bar" id="tabsBar">
                 <button class="tab-btn active" data-tab="umroh">
@@ -214,7 +204,7 @@
             </div>
 
             <div class="tab-panels">
-                <!-- TAB: Program Umroh -->
+                
                 <div class="tab-panel active" id="tab-umroh">
                     <div class="table-container">
                         <div id="loadingState">
@@ -242,7 +232,6 @@
                     </div>
                 </div>
 
-                <!-- TAB: Unggulan -->
                 <div class="tab-panel" id="tab-unggulan">
                     <div class="table-container">
                         <table id="featuredTable">
@@ -265,7 +254,6 @@
                     </div>
                 </div>
 
-                <!-- TAB: Jadwal Tamu -->
                 <div class="tab-panel" id="tab-info">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
                         <p style="color:var(--ink-soft);font-size:13px;">Jadwal kunjungan tamu ke kantor</p>
@@ -306,7 +294,6 @@
                     <div class="pf-pagination" id="jfPagination"></div>
                 </div>
 
-                <!-- TAB: Form Pendaftaran -->
                 <div class="tab-panel" id="tab-pendaftaran">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
                         <p style="color:var(--ink-soft);font-size:13px;">Daftar minat calon jamaah sebelum resmi masuk data Keberangkatan</p>
@@ -345,7 +332,6 @@
                     <div class="pf-pagination" id="pfPagination"></div>
                 </div>
 
-                <!-- TAB: Keberangkatan (jamaah + pembayaran & cicilan digabung) -->
                 <div class="tab-panel" id="tab-keberangkatan">
                     <div class="kb-program-selector" id="kbProgramSelector">
                         <select id="kbProgramSelect" class="searchable-select" data-cs-inline="1" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." onchange="selectKbProgram(this.value)">
@@ -363,7 +349,6 @@
                     </div>
                 </div>
 
-                <!-- TAB: Arsip Jamaah (sudah pulang ke tanah air, read-only, tidak bisa di-unarsip) -->
                 <div class="tab-panel" id="tab-arsip">
                     <div class="kb-program-selector" id="arsipProgramSelector">
                         <select id="arsipProgramSelect" class="searchable-select" data-cs-inline="1" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." onchange="selectArsipProgram(this.value)">
@@ -378,7 +363,6 @@
                     </div>
                 </div>
 
-                <!-- TAB: Kelengkapan Dokumen -->
                 <div class="tab-panel" id="tab-dokumen">
                     <div class="kb-program-selector" id="dokProgramSelector">
                         <select id="dokProgramSelect" class="searchable-select" data-cs-inline="1" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." onchange="selectDokProgram(this.value)">
@@ -394,7 +378,6 @@
                     </div>
                 </div>
 
-                <!-- TAB: Status Kepulangan -->
                 <div class="tab-panel" id="tab-kepulangan">
                     <div class="kb-program-selector" id="kepulanganProgramSelector">
                         <select id="kepulanganProgramSelect" class="searchable-select" data-cs-inline="1" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." onchange="selectKepulanganProgram(this.value)">
@@ -413,7 +396,6 @@
         </div>
     </div>
 
-    <!-- ===== ADMIN PAGE (full screen, non-modal) ===== -->
     <div id="adminPageView" class="admin-page" style="display:none;">
         <div class="admin-page-header">
             <button class="admin-back-btn" onclick="closeAdminPanel()" title="Kembali ke Dashboard">
@@ -425,13 +407,12 @@
             </div>
         </div>
         <div class="admin-page-body" id="adminPanelBody">
-            <!-- Admin content rendered by JS -->
+            
         </div>
     </div>
     </main>
 </div>
 
-<!-- ===== MOBILE SIDEBAR OVERLAY ===== -->
 <div class="mobile-sidebar-overlay" id="mobileSidebarOverlay" onclick="if(event.target===this) toggleMobileSidebar()">
     <div class="mobile-sidebar">
         <button class="close-btn" onclick="toggleMobileSidebar()"><i class="bi bi-x-lg"></i></button>
@@ -512,10 +493,8 @@
     </div>
 </div>
 
-<!-- ===== TOAST ===== -->
 <div class="toast-stack" id="toastStack"></div>
 
-<!-- ===== MODAL: JADWAL TAMU ===== -->
 <div class="modal-overlay" id="jadwalModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -580,7 +559,6 @@
     </div>
 </div>
 
-<!-- ===== MODAL: FORM PENDAFTARAN ===== -->
 <div class="modal-overlay" id="pendaftaranModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -597,9 +575,6 @@
                     <div id="pfJamaahLamaResults" class="pf-lama-results"></div>
                 </div>
 
-                <!-- [REDESIGN] Header ringkas: inisial + nama + badge status,
-                     update otomatis lewat pfSyncEditHero() saat nama diketik
-                     / status diubah. -->
                 <div class="ms-edit-hero">
                     <div class="ms-edit-hero-avatar" id="pfHeroAvatar">–</div>
                     <div class="ms-edit-hero-text">
@@ -608,8 +583,6 @@
                     </div>
                 </div>
 
-                <!-- Kartu 1: Program & Status -- paling sering dicek/diubah
-                     saat menindaklanjuti lead (baru -> deal). -->
                 <div class="ms-card">
                     <div class="ms-card-title"><i class="bi bi-clipboard-check-fill"></i> Program &amp; Status</div>
                     <div class="form-row">
@@ -639,7 +612,6 @@
                     </div>
                 </div>
 
-                <!-- Kartu 2: Data Diri -->
                 <div class="ms-card">
                     <div class="ms-card-title"><i class="bi bi-person-vcard-fill"></i> Data Diri Calon Jamaah</div>
                     <div class="form-group">
@@ -672,7 +644,6 @@
                     </div>
                 </div>
 
-                <!-- Kartu 3: Kontak -->
                 <div class="ms-card">
                     <div class="ms-card-title"><i class="bi bi-telephone-fill"></i> Kontak</div>
                     <div class="form-row">
@@ -687,8 +658,6 @@
                     </div>
                 </div>
 
-                <!-- Data tambahan -- dilipat spt di modal Edit Data Jamaah,
-                     karena jarang dibutuhkan saat lead masih baru masuk. -->
                 <details class="ms-extra-section" id="pfExtraDetails">
                     <summary class="ms-card-title"><i class="bi bi-file-earmark-text-fill"></i> Data Tambahan <span class="ms-extra-section-hint">— alamat &amp; ahli waris, opsional saat lead baru masuk</span></summary>
                     <div class="ms-extra-section-body">
@@ -734,7 +703,6 @@
     </div>
 </div>
 
-<!-- ===== MODAL: DETAIL PROGRAM / TEKS MARKETING WA ===== -->
 <div class="modal-overlay" id="programDetailModal">
     <div class="modal-content pd-modal">
         <div class="modal-header">
@@ -758,12 +726,6 @@
     </div>
 </div>
 
-<!-- ===== MODAL: TAMBAH PROGRAM CEPAT (shortcut dari tombol "Tambah" topbar) =====
-     Paste teks broadcast -> Isi Otomatis + Simpan sekaligus dalam 1 klik,
-     tanpa perlu buka halaman Admin Panel & form lengkap secara manual.
-     Field lengkap tetap terisi di balik layar (lewat parseBroadcastText() &
-     saveAdminProgram() yang sudah ada) supaya semua field lain tetap tersimpan
-     seperti biasa -- modal ini cuma jalan pintas tampilannya saja. -->
 <div class="modal-overlay" id="quickAddProgramModal">
     <div class="modal-content" style="max-width:560px;">
         <div class="modal-header">
@@ -783,7 +745,6 @@
     </div>
 </div>
 
-<!-- ===== MODAL: KEBERANGKATAN ===== -->
 <div class="modal-overlay" id="kbModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -794,10 +755,6 @@
             <form id="kbForm" onsubmit="saveKbJamaah(event)">
                 <input type="hidden" id="kb_editId" value="">
 
-                <!-- [REDESIGN] Header ringkas: inisial + nama + program, biar
-                     admin langsung yakin sedang edit data siapa tanpa perlu
-                     lihat lagi ke tabel di belakang modal. Update otomatis
-                     lewat kbSyncEditHero() saat nama/program diketik/dipilih. -->
                 <div class="ms-edit-hero">
                     <div class="ms-edit-hero-avatar" id="kbHeroAvatar">–</div>
                     <div class="ms-edit-hero-text">
@@ -806,9 +763,6 @@
                     </div>
                 </div>
 
-                <!-- Kartu 1: Program & Status -- ini yang paling sering diubah
-                     admin (ganti status pembayaran, tipe kamar), jadi ditaruh
-                     paling atas supaya tidak perlu scroll. -->
                 <div class="ms-card">
                     <div class="ms-card-title"><i class="bi bi-airplane-engines-fill"></i> Program &amp; Status</div>
                     <div class="form-group">
@@ -848,9 +802,6 @@
                     </div>
                 </div>
 
-                <!-- Kartu 2: Identitas & Dokumen Perjalanan -- paspor & visa
-                     digabung di sini karena ini data operasional penting utk
-                     urus visa/manifest, bukan sekadar data pelengkap. -->
                 <div class="ms-card">
                     <div class="ms-card-title"><i class="bi bi-person-vcard-fill"></i> Identitas &amp; Dokumen Perjalanan</div>
                     <div class="form-group">
@@ -888,7 +839,6 @@
                     </div>
                 </div>
 
-                <!-- Kartu 3: Kontak -->
                 <div class="ms-card">
                     <div class="ms-card-title"><i class="bi bi-telephone-fill"></i> Kontak</div>
                     <div class="form-row">
@@ -903,9 +853,6 @@
                     </div>
                 </div>
 
-                <!-- Data tambahan sesuai formulir F4 -- tetap dilipat spt
-                     sebelumnya karena jarang diedit, tapi header & chevron-nya
-                     kini konsisten dgn pola accordion yg dipakai di modal lain. -->
                 <details class="ms-extra-section" id="kbF4Details">
                     <summary class="ms-card-title"><i class="bi bi-file-earmark-text-fill"></i> Data Tambahan <span class="ms-extra-section-hint">— untuk dokumen visa/manifest</span></summary>
                     <div class="ms-extra-section-body">
@@ -962,7 +909,6 @@
     </div>
 </div>
 
-<!-- ===== MODAL: ASSETS (link/bookmark dokumen penting) ===== -->
 <div class="modal-overlay" id="assetModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -998,14 +944,7 @@
         </div>
     </div>
 </div>
-<!-- ===== MODAL: KELOLA CICILAN JAMAAH ===== -->
-<!-- [REDESIGN v2] Urutan disusun berdasar prioritas tugas pengguna saat modal
-     ini dibuka: (1) langsung lihat status "sisa berapa lagi" lewat kartu
-     ringkasan bergaya progress, (2) form Tambah Pembayaran ditaruh paling
-     dekat supaya aksi utama tidak perlu discroll, (3) Riwayat di bawahnya
-     untuk referensi/cross-check, tombol "Unduh Nota Riwayat" dipindah ke
-     situ karena itu lebih relevan dengan riwayat, bukan dengan form tambah.
-     Header modal & body dipisah scroll-nya (header tetap terlihat). -->
+
 <div class="modal-overlay" id="cicilanModal">
     <div class="modal-content cicilan-modal-1col">
         <div class="modal-header">
@@ -1093,7 +1032,6 @@
     </div>
 </div>
 
-<!-- ===== MODAL: DELETE CONFIRM ===== -->
 <div class="modal-overlay" id="deleteConfirmModal">
     <div class="modal-content" style="max-width:450px;">
         <div class="modal-header">
@@ -1141,12 +1079,6 @@
     </div>
 </div>
 
-<!-- ===== MODAL: KONFIRMASI AKSI (pengganti confirm() bawaan browser) =====
-     Dipakai untuk semua aksi berisiko selain hapus 1 baris data (yang sudah
-     punya modal sendiri di atas): Hapus Semua Program, Restore Backup,
-     Import Data, Restore Snapshot, dan Tutup Form Tanpa Simpan. Aksi paling
-     destruktif (Hapus Semua Program) mewajibkan mengetik kata konfirmasi,
-     sama seperti pola di modal Hapus Data. -->
 <div class="modal-overlay" id="actionConfirmModal">
     <div class="modal-content" style="max-width:460px;">
         <div class="modal-header">
@@ -1167,9 +1099,6 @@
     </div>
 </div>
 
-<!-- ===== MODAL: GANTI PASSWORD USER (admin only, dari tab Pengaturan User) =====
-     Admin bisa reset password user lain tanpa perlu tahu password lama, lewat
-     Edge Function admin-reset-user-password (lihat js/app.js -> submitResetPassword). -->
 <div class="modal-overlay" id="resetUserPasswordModal">
     <div class="modal-content" style="max-width:420px;">
         <div class="modal-header">
@@ -1192,7 +1121,6 @@
     </div>
 </div>
 
-<!-- Poster Hover Popup -->
 <div id="posterPopup" class="poster-popup">
     <div class="poster-popup-inner">
         <div class="poster-popup-img-wrap">
@@ -1209,11 +1137,6 @@
     </div>
 </div>
 
-<!-- Modal "Tanda Terima Dokumen" per jamaah — dibuka dari tombol Cetak di tab
-     Kelengkapan Dokumen. Struktur & kop disamakan persis dengan modal preview
-     Nota Pembayaran (lihat js/app.js -> buildDokumenTandaTerimaHTML) supaya
-     satu identitas visual, tapi berdiri sendiri (bukan bagian dari modal
-     Kelola Cicilan) karena dipicu dari tab yang berbeda. -->
 <div class="modal-overlay" id="dokTandaTerimaModal">
     <div class="modal-content cicilan-modal-1col" style="max-width:900px;">
         <div class="modal-header">
@@ -1240,10 +1163,6 @@
     </div>
 </div>
 
-<!-- Modal "Manifest Jamaah" per program — dibuka dari tombol Cetak Manifest di
-     tab Keberangkatan. Sama pola dengan modal Tanda Terima Dokumen, cuma lebih
-     lebar (dokumennya landscape, tabel banyak kolom) -- lihat js/app.js ->
-     buildManifestHTML(). -->
 <div class="modal-overlay" id="manifestModal">
     <div class="modal-content cicilan-modal-1col" style="max-width:1150px;">
         <div class="modal-header">
@@ -1270,11 +1189,6 @@
     </div>
 </div>
 
-<!-- Modal "Rooming List" per program — dibuka dari tombol Rooming List di tab
-     Keberangkatan. Beda dari modal Manifest/Tanda Terima (yang cuma preview
-     statis siap unduh): modal ini INTERAKTIF -- admin bisa Auto-Bagi Kamar
-     lalu geser manual per jamaah sebelum Simpan & Cetak. Lihat js/app.js ->
-     bukaRoomingList() dst. -->
 <div class="modal-overlay" id="roomingModal">
     <div class="modal-content cicilan-modal-1col" style="max-width:1100px;">
         <div class="modal-header">
@@ -1311,15 +1225,12 @@
     </div>
 </div>
 
-<!-- Lightbox "Perbesar" Preview Nota: tampilkan nota di ukuran semaksimal
-     mungkin (nyaris layar penuh) untuk pengecekan detail sebelum diunduh. -->
 <div class="nota-lightbox-overlay" id="notaLightboxOverlay" onclick="if(event.target===this) closeNotaLightbox()">
     <button type="button" class="nota-lightbox-close" onclick="closeNotaLightbox()" title="Tutup (Esc)">&times;</button>
     <div class="nota-lightbox-stage" id="notaLightboxStage"></div>
     <div class="nota-lightbox-hint">Klik di luar nota atau tekan Esc untuk menutup</div>
 </div>
 
-<!-- Kontainer tersembunyi untuk render Nota Pembayaran sebelum diekspor ke JPEG -->
 <div id="notaRenderArea" style="position:fixed;left:-99999px;top:0;pointer-events:none;"></div>
 
 <script src="js/app.js" defer></script>
