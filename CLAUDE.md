@@ -24,7 +24,13 @@ Bahasa UI & komentar kode: **Bahasa Indonesia**. Ikuti gaya ini saat menambah fi
 
 ```
 index.html          ← struktur HTML saja, load css/style.css + js/app.js
-css/style.css        ← semua styling (CSS custom properties di :root untuk warna brand)
+css/style.css        ← SATU-SATUNYA CSS aktif (semua styling, CSS custom
+                        properties di :root untuk warna brand). **PENTING:**
+                        ada file `/style.css` lepas di root project yang
+                        BASI/tidak dipakai (sisa restrukturisasi lama, index.html
+                        tidak meng-load-nya) — jangan pernah edit file itu,
+                        selalu edit `css/style.css`. Cek dulu dengan
+                        `grep "style.css" index.html` kalau ragu file mana yang aktif.
 js/app.js            ← SATU-SATUNYA file JS, berisi SEMUA logic + koneksi Supabase
 manifest.json         ← config PWA (name, theme_color, icons)
 service-worker.js     ← precache list, HARUS disinkronkan manual kalau nama file berubah
