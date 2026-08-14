@@ -31,13 +31,15 @@ Stack: Supabase (Postgres + Storage + Edge Functions) + Vanilla JS (di `js/app.j
 
 ### 1. Jalankan SQL Migration
 
-Di Supabase Dashboard → SQL Editor → paste & run:
+Di Supabase Dashboard → SQL Editor → paste & run (urut):
 
 ```
 sql/tambah_ig_scheduler.sql
+sql/tambah_ig_carousel.sql
 ```
 
-Ini membuat 3 tabel (`ig_accounts`, `ig_posts`, `ig_publish_logs`) + RLS policies.
+Yang pertama membuat 3 tabel inti (`ig_accounts`, `ig_posts`, `ig_publish_logs`) + RLS policies.
+Yang kedua menambah tabel `ig_post_media` (item-item carousel, urutan via kolom `position`) + RLS policies — dibutuhkan untuk fitur Carousel.
 
 ### 2. Buat Storage Bucket
 
@@ -111,9 +113,12 @@ Setelah semua setup selesai:
 
 1. **Login** ke Dashboard (hanya admin/user yang bisa akses IG Scheduler).
 2. Buka tab **IG Scheduler** di sidebar (grup "Social Media").
-3. Klik **"Post Baru"** → upload gambar/video → tulis caption → pilih tanggal & jam → klik **Simpan**.
-4. Post otomatis berstatus **Scheduled**, muncul di kalender & daftar post.
+3. Klik **"Post Baru"** → pilih **Tipe Post**:
+   - **Image** / **Video/Reels**: upload 1 file → tulis caption → pilih tanggal & jam.
+   - **Carousel**: klik **Tambah Media** (bisa pilih beberapa file sekaligus, campur gambar & video, min 2 maks 10) → atur urutan pakai tombol panah kiri/kanan di tiap thumbnail → tulis caption → pilih tanggal & jam.
+4. Klik **Simpan**. Post otomatis berstatus **Scheduled**, muncul di kalender & daftar post.
 5. Cloudflare Worker akan mem-publish ke Instagram Graph API pada jadwal yang ditentukan.
+   - Untuk carousel: tiap item dibuat sebagai *child container* dulu (item video menunggu status `FINISHED`), baru digabung jadi 1 *parent container* `CAROUSEL` lalu dipublish.
 6. Jika gagal, post berstatus **Failed** — bisa diklik **Retry** untuk mencoba lagi.
 
 ---

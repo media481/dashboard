@@ -1144,8 +1144,18 @@
                     </select>
                 </div>
 
-                <!-- File Upload -->
+                <!-- Media Type -->
                 <div class="form-group">
+                    <label>Tipe Post</label>
+                    <select id="ig_media_type" onchange="onIgMediaTypeChange()">
+                        <option value="image">Image</option>
+                        <option value="video">Video/Reels</option>
+                        <option value="carousel">Carousel (2-10 media)</option>
+                    </select>
+                </div>
+
+                <!-- File Upload: image/video tunggal -->
+                <div class="form-group" id="igSingleMediaWrap">
                     <label>Media <span style="color:var(--danger);">*</span></label>
                     <div class="ig-file-input-wrap">
                         <input type="file" id="ig_media_file" accept="image/*,.mp4,.mov" style="display:none;" onchange="onIgMediaChange()">
@@ -1157,6 +1167,20 @@
                     <input type="hidden" id="ig_media_url">
                     <div class="form-note">Ukuran maksimal 10MB. Format: JPG/PNG untuk gambar, MP4 untuk video/Reels.</div>
                     <div id="igMediaPreview" class="ig-media-preview"></div>
+                </div>
+
+                <!-- File Upload: carousel (multi media) -->
+                <div class="form-group" id="igCarouselMediaWrap" style="display:none;">
+                    <label>Media Carousel <span style="color:var(--danger);">*</span> <span style="font-weight:400;color:var(--ink-soft);">(min 2, maks 10, urutan sesuai tampilan)</span></label>
+                    <div class="ig-file-input-wrap">
+                        <input type="file" id="ig_carousel_files" accept="image/*,.mp4,.mov" multiple style="display:none;" onchange="onIgCarouselFilesChange()">
+                        <button type="button" class="btn-secondary" id="igCarouselAddBtn" onclick="document.getElementById('ig_carousel_files').click()" style="font-size:12px;padding:6px 14px;">
+                            <i class="bi bi-upload"></i> Tambah Media
+                        </button>
+                        <span class="ig-file-name" id="igCarouselCount">0 item</span>
+                    </div>
+                    <div class="form-note">Ukuran maksimal 10MB per file. Bisa campur gambar &amp; video. Gunakan tombol panah untuk mengatur urutan.</div>
+                    <div id="igCarouselGrid" class="ig-carousel-grid"></div>
                 </div>
 
                 <!-- Caption -->
@@ -1177,13 +1201,6 @@
                         <div style="flex:1;min-width:120px;">
                             <label style="font-size:11px;color:var(--ink-soft);">Jam</label>
                             <input type="time" id="ig_schedule_time" required>
-                        </div>
-                        <div>
-                            <label style="font-size:11px;color:var(--ink-soft);">Media Type</label>
-                            <select id="ig_media_type">
-                                <option value="image">Image</option>
-                                <option value="video">Video/Reels</option>
-                            </select>
                         </div>
                     </div>
                 </div>
