@@ -1125,6 +1125,15 @@ function switchTab(tabId) {
         applyRoleUIVisibility();
     }
 
+    // Sama halnya kalau sedang di halaman IG Scheduler -- tutup dulu supaya
+    // dashboardView kembali tampil, jangan sampai sidebar "tidak merespon"
+    // karena tab sudah berpindah di balik layar IG Scheduler yang masih terbuka.
+    const igView = document.getElementById('igSchedulerPageView');
+    if (igView && igView.style.display !== 'none') {
+        igView.style.display = 'none';
+        document.getElementById('dashboardView').style.display = 'block';
+    }
+
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tabId);
     });
