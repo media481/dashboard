@@ -2043,7 +2043,8 @@ const ADMIN_SUBTAB_META = {
     usersettings: { title: 'Pengaturan User', subtitle: 'Tambah & kelola akun user' },
     snapshot: { title: 'Snapshot / Backup', subtitle: 'Cadangan harian semua data Umroh (maksimal 10)' },
     profil: { title: 'Profil Perusahaan', subtitle: 'Logo, nama, alamat & rekening yang dipakai di nota' },
-    assets: { title: 'Assets', subtitle: 'Link ke dokumen penting & referensi data Hotel Saudi Arabia' }
+    assets: { title: 'Assets', subtitle: 'Link ke dokumen penting & referensi data Hotel Saudi Arabia' },
+    systemstatus: { title: 'System', subtitle: 'Kondisi & kesehatan sistem Dashboard Amiru saat ini' }
 };
 
 function switchAdminSubTab(name) {
@@ -2078,6 +2079,168 @@ function switchAdminSubTab(name) {
     if (name === 'snapshot') { renderSnapshotAdminTable(); }
     if (name === 'usersettings') { switchUsInnerTab('adduser'); loadUserList(); renderRoleMenuAccessMatrix(); }
     if (name === 'assets') { switchAssetsInnerTab('links'); loadAssets().then(renderAssetsAdminTable); }
+    if (name === 'systemstatus') { renderSystemStatusPanel(); }
+}
+
+// ============================================================
+// 12d. SYSTEM STATUS
+// Panel admin-only yang menampilkan kondisi/kesehatan sistem Dashboard
+// Amiru itu sendiri (bukan data operasional Umroh) -- koneksi database,
+// jumlah data, backup terakhir, info aplikasi/perangkat, & sesi login.
+// SEMUA angka di sini diambil LIVE (query count/latency Supabase, Browser
+// API) tiap kali panel dibuka/di-refresh -- tidak ada nilai hardcode yang
+// dipoles supaya selalu terlihat "aman".
+// ============================================================
+const APP_VERSION = '1.0.0'; // ikut package.json -- update manual kalau versi di-bump
+
+function sysRelativeTime(dateInput) {
+    if (!dateInput) return '-';
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return '-';
+    const diffMin = Math.floor((Date.now() - d.getTime()) / 60000);
+    if (diffMin < 1) return 'baru saja';
+    if (diffMin < 60) return `${diffMin} menit lalu`;
+    const diffJam = Math.floor(diffMin / 60);
+    if (diffJam < 24) return `${diffJam} jam lalu`;
+    return `${Math.floor(diffJam / 24)} hari lalu`;
+}
+
+function sysStatusRow(label, valueHtml) {
+    return `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);">
+        <span style="font-size:12.5px;color:var(--ink-soft);">${label}</span>
+        <span style="font-size:13px;font-weight:600;text-align:right;">${valueHtml}</span>
+    </div>`;
+}
+
+function sysCardHtml(title, icon, bodyHtml) {
+    return `
+    <div style="border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <i class="bi ${icon}" style="font-size:15px;color:var(--ink-soft);"></i>
+            <h3 style="font-size:13.5px;font-weight:700;margin:0;color:var(--ink);">${title}</h3>
+        </div>
+        ${bodyHtml}
+    </div>`;
+}
+
+function sysBadge(ok, textOk, textFail) {
+    return ok
+        ? `<span class="status-badge available pill-sm"><i class="bi bi-check-circle-fill"></i> ${textOk}</span>`
+        : `<span class="status-badge full pill-sm"><i class="bi bi-x-circle-fill"></i> ${textFail}</span>`;
+}
+
+async function renderSystemStatusPanel() {
+    const el = document.getElementById('sysStatusContent');
+    if (!el) return;
+    if (currentRole !== 'admin') {
+        el.innerHTML = `<div class="kb-no-program" style="color:var(--danger);"><i class="bi bi-shield-lock-fill"></i><p>Halaman ini khusus admin.</p></div>`;
+        return;
+    }
+    el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--ink-soft);"><i class="bi bi-hourglass-split"></i> Memeriksa kondisi sistem...</div>`;
+
+    // ---- 1. Koneksi Supabase -- tes langsung (latency diukur betulan, bukan asumsi) ----
+    let dbOk = false, dbError = '';
+    const t0 = performance.now();
+    try {
+        const { error } = await supabaseClient.from('programs').select('id', { count: 'exact', head: true });
+        if (error) throw error;
+        dbOk = true;
+    } catch (err) {
+        dbError = err.message || String(err);
+    }
+    const dbLatency = Math.round(performance.now() - t0);
+
+    // ---- 2. Ringkasan jumlah data -- count query per tabel, bukan dari cache ----
+    const countTables = [
+        { table: 'programs', label: 'Program' },
+        { table: 'kb_jamaah', label: 'Data Jamaah (aktif)', filter: q => q.eq('diarsipkan', false) },
+        { table: 'pendaftaran', label: 'Pendaftaran' },
+        { table: 'pembayaran_jamaah', label: 'Baris Pembayaran' },
+        { table: 'jadwal_tamu', label: 'Jadwal Tamu' },
+    ];
+    const counts = await Promise.all(countTables.map(async t => {
+        try {
+            let q = supabaseClient.from(t.table).select('id', { count: 'exact', head: true });
+            if (t.filter) q = t.filter(q);
+            const { count, error } = await q;
+            if (error) throw error;
+            return { ...t, count, ok: true };
+        } catch (err) {
+            return { ...t, count: null, ok: false };
+        }
+    }));
+
+    // ---- 3. Snapshot / backup terakhir ----
+    let lastSnapshot = null, snapshotCount = null, snapshotError = '';
+    try {
+        const { data, error } = await supabaseClient.from('snapshot_backup').select('id, created_at').order('created_at', { ascending: false });
+        if (error) throw error;
+        snapshotCount = (data || []).length;
+        lastSnapshot = (data && data[0]) ? data[0].created_at : null;
+    } catch (err) {
+        snapshotError = err.message || String(err);
+    }
+
+    // ---- 4. Info aplikasi & perangkat -- dicek live lewat Browser API, TERMASUK
+    // Service Worker (jujur ditampilkan "Tidak terdaftar" kalau memang belum ada
+    // navigator.serviceWorker.register() dipanggil di manapun -- tidak dipoles). ----
+    const online = navigator.onLine;
+    const standalone = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    let swRegistered = false, swCount = 0;
+    if ('serviceWorker' in navigator) {
+        try {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            swCount = regs.length;
+            swRegistered = swCount > 0;
+        } catch (e) {}
+    }
+    let storageInfo = null;
+    if (navigator.storage && navigator.storage.estimate) {
+        try { storageInfo = await navigator.storage.estimate(); } catch (e) {}
+    }
+
+    // ---- 5. Sesi login saat ini ----
+    let sessionEmail = '-';
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        sessionEmail = (session && session.user && session.user.email) || '-';
+    } catch (e) {}
+    let sessionExpiryText = '-';
+    const loginTimeRaw = sessionStorage.getItem('admin_login_time');
+    if (loginTimeRaw) {
+        const sisaMs = SESSION_DURATION - (Date.now() - parseInt(loginTimeRaw));
+        sessionExpiryText = sisaMs > 0 ? `${Math.max(1, Math.round(sisaMs / 60000))} menit lagi` : 'kedaluwarsa';
+    }
+
+    el.innerHTML = `
+        ${sysCardHtml('Koneksi Database (Supabase)', 'bi-hdd-network-fill',
+            sysStatusRow('Status', sysBadge(dbOk, 'Terhubung', 'Gagal terhubung')) +
+            sysStatusRow('Latency', `${dbLatency} ms`) +
+            (dbError ? sysStatusRow('Detail Error', `<span style="color:var(--danger);font-weight:500;">${escapeHtml(dbError)}</span>`) : '')
+        )}
+        ${sysCardHtml('Ringkasan Data', 'bi-database-fill',
+            counts.map(c => sysStatusRow(c.label, c.ok ? `${c.count ?? 0}` : `<span style="color:var(--danger);">gagal dimuat</span>`)).join('')
+        )}
+        ${sysCardHtml('Snapshot / Backup', 'bi-camera2',
+            snapshotError
+                ? sysStatusRow('Status', `<span style="color:var(--danger);">${escapeHtml(snapshotError)}</span>`)
+                : sysStatusRow('Backup Terakhir', lastSnapshot ? `${formatDateToIndonesian(new Date(lastSnapshot))} (${sysRelativeTime(lastSnapshot)})` : 'Belum pernah backup') +
+                  sysStatusRow('Total Tersimpan', `${snapshotCount ?? 0} / 10`)
+        )}
+        ${sysCardHtml('Aplikasi & Perangkat', 'bi-phone-fill',
+            sysStatusRow('Versi Aplikasi', APP_VERSION) +
+            sysStatusRow('Koneksi Internet', sysBadge(online, 'Online', 'Offline')) +
+            sysStatusRow('Mode Tampilan', standalone ? 'PWA Terinstal (standalone)' : 'Browser Tab') +
+            sysStatusRow('Service Worker', sysBadge(swRegistered, `Terdaftar (${swCount})`, 'Tidak terdaftar')) +
+            (storageInfo ? sysStatusRow('Penyimpanan Cache', `${((storageInfo.usage || 0) / 1048576).toFixed(1)} MB / ${((storageInfo.quota || 0) / 1048576).toFixed(0)} MB`) : '')
+        )}
+        ${sysCardHtml('Sesi Login', 'bi-person-badge-fill',
+            sysStatusRow('Login sebagai', escapeHtml(sessionEmail)) +
+            sysStatusRow('Role', currentRole || '-') +
+            sysStatusRow('Sesi berakhir', sessionExpiryText)
+        )}
+    `;
 }
 
 async function renderAdminPanel() {
@@ -2404,6 +2567,13 @@ async function renderAdminPanel() {
                         </table>
                     </div>
                 </div>
+            </div>
+
+            <div class="admin-subtab-panel" id="adminSubTab-systemstatus" style="display:none;">
+                <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+                    <button class="btn-primary btn-sm" onclick="renderSystemStatusPanel()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+                </div>
+                <div id="sysStatusContent"></div>
             </div>
 
             <div class="admin-subtab-panel" id="adminSubTab-crosscheck" style="display:none;">
