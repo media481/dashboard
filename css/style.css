@@ -458,7 +458,9 @@
 
         /* Tombol export di bawah tabel Data Jamaah -- sengaja dibuat TIDAK
            mencolok (netral, bukan warna solid) karena cuma aksi sekunder,
-           beda dgn tombol utama (Cetak Manifest/Rooming List) di header. */
+           beda dgn tombol utama (Cetak Manifest) di header. Rooming List
+           ikut gaya subtle ini juga sejak dipindah ke baris bawah,
+           sejajar dengan Export Excel & Export Pembayaran. */
         .btn-export-subtle {
             background: var(--surface);
             color: var(--ink-soft);
@@ -1219,8 +1221,6 @@
             font-weight: 600;
             white-space: nowrap;
         }
-        .pf-status-pill.baru { color: var(--brand); background: var(--brand-tint); }
-        .pf-status-pill.dihubungi { color: #b45309; background: #fef3c7; }
         .pf-status-pill.deal { color: var(--success); background: var(--success-tint); }
         .pf-status-pill.batal { color: var(--danger); background: var(--danger-tint); }
         .pf-actions { display: flex; gap: 6px; justify-content: flex-end; }
@@ -2150,16 +2150,21 @@
             background: var(--brand-tint);
             color: var(--brand);
             border: none;
-            width: 28px;
             height: 28px;
+            padding: 0 10px;
             border-radius: 8px;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            gap: 5px;
             flex-shrink: 0;
+            font-size: 11.5px;
+            font-weight: 600;
+            white-space: nowrap;
             transition: background .15s, color .15s;
         }
+        .cicilan-nota-btn i { font-size: 12px; }
         .cicilan-nota-btn:hover { background: var(--brand); color: #fff; }
         .cicilan-nota-btn:disabled { opacity: .6; cursor: default; }
 
@@ -2928,7 +2933,7 @@
 }
 .pf-lama-results { margin-top: 8px; max-height: 160px; overflow-y: auto; display: none; }
 
-/* Badge status pendaftaran di header ringkas (baru/dihubungi/deal/batal) */
+/* Badge status pendaftaran di header ringkas (deal/batal) */
 .ms-edit-hero-status {
     display: inline-flex;
     align-items: center;
@@ -2940,8 +2945,6 @@
     margin-left: 8px;
     vertical-align: middle;
 }
-.ms-edit-hero-status.st-baru { background: var(--brand-tint); color: var(--brand-deep); }
-.ms-edit-hero-status.st-dihubungi { background: var(--warn-tint); color: var(--warn); }
 .ms-edit-hero-status.st-deal { background: var(--success-tint); color: #1b6b48; }
 .ms-edit-hero-status.st-batal { background: var(--danger-tint); color: var(--danger); }
 
@@ -3000,45 +3003,291 @@
    indikator kapasitas, legend & stats bar). Lihat js/app.js ->
    renderRoomingListBody() untuk markup yang dihasilkan.
    ============================================================ */
-.rm-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
-.rm-legend-item { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ink-soft); font-weight: 600; white-space: nowrap; }
-.rm-legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.rm-legend-note { font-size: 10.5px; color: var(--ink-soft); font-style: italic; }
 
-.rm-stats { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
-.rm-stat { flex: 1 1 150px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
-.rm-stat-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
-.rm-stat-num { font-size: 17px; font-weight: 800; color: var(--ink); line-height: 1.15; font-family: 'Space Grotesk', sans-serif; }
-.rm-stat-label { font-size: 10.5px; color: var(--ink-soft); font-weight: 600; }
+        /* Toolbar (search + aksi + legend + stats) dibikin sticky di atas
+           #roomingListBody biar tetap kelihatan pas daftar jamaah panjang
+           discroll -- ini bagian utama yang bikin modal lama terasa padat
+           & gampang "kehilangan" konteks progres pembagian kamar. */
+        .rm-toolbar { position: sticky; top: -24px; z-index: 5; background: var(--surface); margin: -24px -24px 16px; padding: 16px 24px 14px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+        .rm-toolbar-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+        .rm-toolbar-actions { display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
 
-.rm-section { margin-bottom: 24px; }
-.rm-section:last-child { margin-bottom: 0; }
-.rm-section-head { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
-.rm-section-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.rm-section-title { font-size: 13.5px; font-weight: 700; color: var(--ink); }
-.rm-section-count { font-size: 10.5px; color: var(--ink-soft); font-weight: 700; background: var(--bg); padding: 2px 9px; border-radius: 100px; }
+        .rm-search { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--line); padding: 7px 12px; border-radius: 10px; flex: 1 1 220px; max-width: 320px; }
+        .rm-search i { color: var(--ink-soft); font-size: 13px; flex-shrink: 0; }
+        .rm-search input { border: none; outline: none; background: transparent; font-size: 12.5px; color: var(--ink); width: 100%; font-family: 'Inter', sans-serif; }
+        .rm-search input::placeholder { color: var(--ink-soft); }
 
-.rm-room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
-.rm-room-card { background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; transition: box-shadow .15s, border-color .15s; }
-.rm-room-card:hover { box-shadow: var(--shadow); }
-.rm-room-card.is-over { border-color: var(--danger); background: var(--danger-tint); }
-.rm-room-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.rm-room-num { font-size: 13px; font-weight: 700; color: var(--ink); }
-.rm-room-badge { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 100px; white-space: nowrap; }
-.rm-dots { display: flex; gap: 3px; margin-bottom: 9px; flex-wrap: wrap; }
-.rm-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line); flex-shrink: 0; }
+        .rm-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+        .rm-legend-item { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ink-soft); font-weight: 600; white-space: nowrap; }
+        .rm-legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+        .rm-legend-note { font-size: 10.5px; color: var(--ink-soft); font-style: italic; }
 
-.rm-occupant { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px dashed var(--line); }
-.rm-occupant:first-child { border-top: none; padding-top: 0; }
-.rm-avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9.5px; font-weight: 700; color: #fff; flex-shrink: 0; font-family: 'Space Grotesk', sans-serif; }
-.rm-occupant-name { flex: 1; font-size: 12.5px; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rm-occupant select { font-size: 11px; padding: 4px 24px 4px 8px; border-radius: 6px; border: 1px solid var(--line); flex-shrink: 0; }
+        .rm-stats { display: flex; flex-wrap: wrap; gap: 10px; }
+        .rm-stat { flex: 1 1 150px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; display: flex; align-items: center; gap: 10px; }
+        .rm-stat.is-attention { border-color: var(--warn); }
+        .rm-stat-icon { width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+        .rm-stat-num { font-size: 16px; font-weight: 800; color: var(--ink); line-height: 1.15; font-family: 'Space Grotesk', sans-serif; }
+        .rm-stat-label { font-size: 10px; color: var(--ink-soft); font-weight: 600; }
 
-.rm-unassigned { border: 1.5px dashed var(--warn); border-radius: 12px; background: var(--warn-tint); padding: 14px 16px; }
-.rm-unassigned-head { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; color: var(--warn); margin-bottom: 10px; }
-.rm-unassigned-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px 16px; }
-.rm-unassigned .rm-occupant { border-top: none; background: var(--surface); border-radius: 8px; padding: 6px 8px; }
-.rm-unassigned .rm-occupant:first-child { padding-top: 6px; }
+        .rm-section { margin-bottom: 26px; }
+        .rm-section:last-child { margin-bottom: 0; }
+        .rm-section-head { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; position: sticky; top: 84px; z-index: 4; background: var(--surface); padding: 4px 0; }
+        .rm-section-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .rm-section-title { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+        .rm-section-count { font-size: 10.5px; color: var(--ink-soft); font-weight: 700; background: var(--bg); padding: 2px 9px; border-radius: 100px; }
 
-.rm-empty { text-align: center; padding: 44px 20px; color: var(--ink-soft); font-size: 12.5px; }
-.rm-empty i { font-size: 28px; display: block; margin-bottom: 10px; opacity: .6; }
+        .rm-room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; }
+        .rm-room-card { background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; transition: box-shadow .15s, border-color .15s; }
+        .rm-room-card:hover { box-shadow: var(--shadow); }
+        .rm-room-card.is-over { border-color: var(--danger); background: var(--danger-tint); }
+        .rm-room-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .rm-room-num { font-size: 13px; font-weight: 700; color: var(--ink); }
+        .rm-room-badge { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 100px; white-space: nowrap; }
+
+        .rm-slot-empty { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-top: 1px dashed var(--line); font-size: 11.5px; color: var(--ink-soft); font-style: italic; }
+        .rm-slot-empty i { font-size: 12px; opacity: .7; }
+
+        .rm-occupant { display: flex; align-items: center; flex-wrap: wrap; row-gap: 4px; gap: 8px; padding: 6px 0; border-top: 1px dashed var(--line); }
+        .rm-occupant:first-child { border-top: none; padding-top: 0; }
+        .rm-avatar { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0; font-family: 'Space Grotesk', sans-serif; }
+        .rm-occupant-name { flex: 1 1 90px; min-width: 60px; font-size: 12.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* Tombol "Pindah kamar" -- select native dibungkus label & dikasih
+           ikon + gaya chip supaya jelas ini AKSI (bukan cuma label statis
+           kamar), dengan target sentuh lebih besar dibanding <select> polos
+           sebelumnya. */
+        .rm-move { position: relative; display: inline-flex; align-items: center; gap: 5px; background: var(--bg); border: 1px solid var(--line); border-radius: 100px; padding: 5px 10px 5px 9px; flex-shrink: 0; cursor: pointer; transition: border-color .15s, background .15s; }
+        .rm-move:hover { border-color: var(--brand); background: var(--brand-tint); }
+        .rm-move i { font-size: 11px; color: var(--ink-soft); pointer-events: none; }
+        .rm-move:hover i { color: var(--brand); }
+        .rm-move select { appearance: none; -webkit-appearance: none; border: none; outline: none; background: transparent; font-size: 11px; font-weight: 600; color: var(--ink); cursor: pointer; width: auto; max-width: 130px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+        .rm-unassigned .rm-move { border-color: var(--warn); background: var(--surface); }
+        .rm-unassigned .rm-move:hover { background: var(--warn-tint); }
+
+        .rm-unassigned { border: 1.5px dashed var(--warn); border-radius: 12px; background: var(--warn-tint); padding: 14px 16px; margin-bottom: 12px; }
+        .rm-unassigned-head { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; color: #9C6A1F; margin-bottom: 10px; }
+        .rm-unassigned-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 16px; }
+        .rm-unassigned .rm-occupant { border-top: none; background: var(--surface); border-radius: 8px; padding: 6px 8px; }
+        .rm-unassigned .rm-occupant:first-child { padding-top: 6px; }
+
+        .rm-empty { text-align: center; padding: 44px 20px; color: var(--ink-soft); font-size: 12.5px; }
+        .rm-empty i { font-size: 28px; display: block; margin-bottom: 10px; opacity: .6; }
+
+        @media (max-width: 640px) {
+            .rm-toolbar { top: -16px; margin: -16px -16px 14px; padding: 12px 16px 12px; }
+            .rm-toolbar-row { flex-direction: column; align-items: stretch; }
+            .rm-search { max-width: none; }
+            .rm-toolbar-actions button { flex: 1 1 auto; }
+            .rm-section-head { top: 128px; }
+            .rm-stats { gap: 8px; }
+            .rm-stat { flex: 1 1 100%; }
+            .rm-room-grid, .rm-unassigned-grid { grid-template-columns: 1fr; }
+            .rm-occupant-name { white-space: normal; }
+        }
+    }
+
+    /* ===== IG SCHEDULER ===== */
+    .ig-scheduler-tab { padding: 16px 0; }
+    .ig-scheduler-toolbar {
+        display: flex; justify-content: space-between; align-items: center;
+        gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .ig-scheduler-count { font-size: 12.5px; color: var(--ink-soft); }
+    .ig-account-status {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 10px 14px; border-radius: 10px; background: var(--surface);
+        border: 1.5px solid var(--line); margin-bottom: 16px;
+    }
+    .ig-account-info { display: flex; align-items: center; gap: 8px; }
+    .ig-account-badge {
+        font-size: 10.5px; padding: 2px 8px; border-radius: 12px;
+        font-weight: 600; text-transform: uppercase;
+    }
+    .ig-account-active { background: var(--success-tint); color: var(--success); }
+    .ig-account-warn { background: var(--warn-tint); color: var(--warn); }
+    .ig-account-expired { background: var(--danger-tint); color: var(--danger); }
+    .ig-account-expiry { font-size: 11.5px; color: var(--ink-soft); }
+
+    /* Calendar */
+    .ig-calendar-container {
+        background: var(--surface); border: 1.5px solid var(--line);
+        border-radius: 12px; padding: 18px; margin: 0 0 20px;
+        width: 100%;
+    }
+    .ig-calendar-header {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 14px; gap: 10px; flex-wrap: wrap;
+    }
+    .ig-calendar-header-left { display: flex; align-items: center; gap: 10px; }
+    .ig-cal-nav {
+        background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+        width: 32px; height: 32px; font-size: 15px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; padding: 0;
+        transition: border-color .15s ease, color .15s ease;
+    }
+    .ig-cal-nav:hover { border-color: var(--brand); color: var(--brand); }
+    .ig-cal-month { font-size: 16.5px; font-weight: 700; margin: 0; min-width: 148px; text-align: center; }
+    .ig-cal-today-btn {
+        font-size: 11.5px; font-weight: 600; padding: 5px 12px; border-radius: 7px;
+        border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft);
+        cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+        transition: border-color .15s ease, color .15s ease;
+    }
+    .ig-cal-today-btn:hover { border-color: var(--brand); color: var(--brand); }
+    .ig-calendar-grid {
+        display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+    }
+    #igCalDays { display: contents; }
+    .ig-cal-day-header {
+        font-size: 11px; font-weight: 700; color: var(--ink-soft);
+        text-align: center; padding: 4px 2px 8px;
+        text-transform: uppercase; letter-spacing: .04em;
+    }
+    .ig-cal-day-header:first-child, .ig-cal-day-header:last-child { color: var(--brand); }
+    .ig-cal-day {
+        min-height: 80px; padding: 6px 6px 7px;
+        border: 1px solid var(--line); border-radius: 9px; position: relative;
+        display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+        cursor: default; background: var(--surface); overflow: hidden;
+        transition: box-shadow .15s ease, border-color .15s ease, transform .1s ease;
+    }
+    .ig-cal-weekend:not(.ig-cal-today) { background: var(--bg); }
+    .ig-cal-day.has-posts { cursor: pointer; }
+    .ig-cal-day.has-posts:hover {
+        border-color: var(--brand); box-shadow: 0 3px 12px rgba(0,0,0,.09);
+        transform: translateY(-1px);
+    }
+    .ig-cal-empty { background: transparent; border-color: transparent; }
+    .ig-cal-today { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+    .ig-cal-day-top {
+        display: flex; align-items: center; justify-content: space-between; width: 100%;
+    }
+    .ig-cal-day-num { font-size: 12.5px; color: var(--ink); font-weight: 600; }
+    .ig-cal-today .ig-cal-day-num {
+        color: #fff; background: var(--brand); border-radius: 50%;
+        width: 19px; height: 19px; display: flex; align-items: center; justify-content: center;
+        font-size: 11px;
+    }
+    .ig-cal-day-count {
+        font-size: 9.5px; font-weight: 700; color: var(--ink-soft);
+        background: var(--bg); border-radius: 8px; padding: 1px 6px;
+    }
+    .ig-cal-thumb {
+        width: 100%; height: 26px; object-fit: cover; border-radius: 5px;
+        margin-top: 1px;
+    }
+    .ig-cal-dots { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; margin-top: auto; }
+    .ig-cal-dot-mark { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .ig-cal-dot-more { font-size: 9px; font-weight: 700; color: var(--ink-soft); }
+    .ig-cal-legend {
+        display: flex; flex-wrap: wrap; gap: 12px 16px; margin-top: 14px;
+        padding-top: 12px; border-top: 1px dashed var(--line);
+    }
+    .ig-cal-legend-item {
+        display: flex; align-items: center; gap: 5px; font-size: 11px;
+        color: var(--ink-soft); font-weight: 600;
+    }
+    .ig-cal-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    @media (max-width: 560px) {
+        .ig-calendar-container { padding: 12px; }
+        .ig-cal-day { min-height: 58px; padding: 4px 4px 5px; gap: 2px; }
+        .ig-cal-thumb { display: none; }
+        .ig-cal-month { font-size: 14.5px; min-width: 118px; }
+        .ig-cal-day-num { font-size: 11px; }
+        .ig-cal-day-count { display: none; }
+    }
+
+    /* Day detail modal (klik tanggal di kalender) */
+    .ig-day-post-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+    .ig-day-post-item {
+        display: flex; align-items: center; gap: 10px;
+        border: 1px solid var(--line); border-radius: 9px; padding: 8px;
+    }
+    .ig-day-post-item .ig-media-thumb { width: 44px; height: 44px; border-radius: 7px; object-fit: cover; flex-shrink: 0; }
+    .ig-day-post-info { flex: 1; min-width: 0; }
+    .ig-day-post-caption {
+        font-size: 12.5px; color: var(--ink); margin: 0 0 4px;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .ig-day-post-meta { display: flex; align-items: center; gap: 8px; }
+    .ig-day-post-time { font-size: 11px; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 3px; }
+
+    /* Post Table */
+    .ig-post-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .ig-post-table th {
+        text-align: left; padding: 8px 12px; background: var(--bg-soft, #f1f5f9);
+        font-weight: 600; color: var(--ink-soft); border-bottom: 1px solid var(--line);
+    }
+    .ig-post-table td { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+    .ig-post-table tbody tr:last-child td { border-bottom: none; }
+    .ig-post-table tbody tr:hover { background: var(--bg); }
+    .ig-post-row.status-draft td:first-child { opacity: 0.6; }
+    .ig-post-row.status-published td:first-child { opacity: 0.8; }
+    .ig-media-thumb {
+        width: 48px; height: 48px; object-fit: cover; border-radius: 6px;
+        border: 1px solid var(--line);
+    }
+    .ig-carousel-thumb {
+        display: flex; align-items: center; justify-content: center;
+        color: var(--ink-soft); font-size: 18px;
+    }
+    .ig-status-pill {
+        display: inline-block; padding: 2px 10px; border-radius: 12px;
+        font-size: 10.5px; font-weight: 600;
+    }
+    .ig-post-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+    .ig-btn-retry, .ig-btn-edit, .ig-btn-delete, .ig-btn-log {
+        padding: 2px 8px; border: none; border-radius: 5px;
+        font-size: 11px; cursor: pointer; display: inline-flex;
+        align-items: center; gap: 3px;
+    }
+    .ig-btn-retry { background: var(--warn-tint); color: var(--warn); }
+    .ig-btn-edit { background: var(--brand-tint); color: var(--brand); }
+    .ig-btn-delete { background: var(--danger-tint); color: var(--danger); }
+    .ig-btn-log { background: var(--bg-soft, #f1f5f9); color: var(--ink-soft); }
+    .ig-empty {
+        text-align: center; padding: 30px; color: var(--ink-soft);
+        display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .ig-file-input-wrap { display: flex; align-items: center; gap: 8px; }
+    .ig-file-name { font-size: 12px; color: var(--ink-soft); }
+    .ig-media-preview { margin-top: 10px; }
+    .ig-media-preview-img { max-width: 120px; max-height: 120px; border-radius: 6px; border: 1px solid var(--line); }
+    .ig-carousel-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+        gap: 10px; margin-top: 12px;
+    }
+    .ig-carousel-item {
+        position: relative; border: 1px solid var(--line); border-radius: 8px;
+        overflow: hidden; background: var(--bg-soft, #f1f5f9); aspect-ratio: 1 / 1;
+    }
+    .ig-carousel-item img, .ig-carousel-item video {
+        width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .ig-carousel-item-badge {
+        position: absolute; top: 4px; left: 4px; background: rgba(0,0,0,.65); color: #fff;
+        font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px;
+    }
+    .ig-carousel-item-actions {
+        position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between;
+        background: linear-gradient(0deg, rgba(0,0,0,.55), transparent); padding: 3px 3px 4px;
+    }
+    .ig-carousel-item-actions button {
+        border: none; background: rgba(255,255,255,.9); color: var(--ink); cursor: pointer;
+        border-radius: 5px; font-size: 10px; padding: 2px 5px; line-height: 1; display: inline-flex; align-items: center;
+    }
+    .ig-carousel-item-actions button:disabled { opacity: .35; cursor: not-allowed; }
+    .ig-carousel-item-actions button.ig-carousel-remove { background: rgba(220,38,38,.92); color: #fff; }
+    .ig-post-carousel-thumb-wrap { position: relative; display: inline-block; }
+    .ig-post-carousel-count {
+        position: absolute; bottom: -2px; right: -2px; background: var(--brand); color: #fff;
+        font-size: 9px; font-weight: 700; border-radius: 8px; padding: 0 4px; line-height: 1.4;
+    }
+    .form-note { font-size: 11.5px; color: var(--ink-soft); margin-top: 4px; }
+    .btn-secondary {
+        background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+        color: var(--ink); cursor: pointer; font-size: 13px;
+        display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-secondary:hover { background: var(--bg-soft, #f1f5f9); }
+    .ig-pagination { display: flex; align-items: center; gap: 8px; justify-content: flex-end; margin-top: 12px; }
