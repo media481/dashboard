@@ -3258,15 +3258,22 @@
         font-size: 10.5px; font-weight: 600;
     }
     .ig-post-actions { display: flex; gap: 4px; flex-wrap: wrap; }
-    .ig-btn-retry, .ig-btn-edit, .ig-btn-delete, .ig-btn-log {
+    .ig-btn-retry, .ig-btn-edit, .ig-btn-delete, .ig-btn-log, .ig-btn-comments {
         padding: 2px 8px; border: none; border-radius: 5px;
         font-size: 11px; cursor: pointer; display: inline-flex;
-        align-items: center; gap: 3px;
+        align-items: center; gap: 3px; position: relative;
     }
     .ig-btn-retry { background: var(--warn-tint); color: var(--warn); }
     .ig-btn-edit { background: var(--brand-tint); color: var(--brand); }
     .ig-btn-delete { background: var(--danger-tint); color: var(--danger); }
     .ig-btn-log { background: var(--bg-soft, #f1f5f9); color: var(--ink-soft); }
+    .ig-btn-comments { background: var(--bg-soft, #f1f5f9); color: var(--ink-soft); }
+    .ig-comment-badge {
+        position: absolute; top: -6px; right: -6px;
+        background: var(--danger); color: #fff; border-radius: 999px;
+        font-size: 9.5px; font-weight: 700; line-height: 1;
+        padding: 2px 5px; min-width: 14px; text-align: center;
+    }
     .ig-empty {
         text-align: center; padding: 30px; color: var(--ink-soft);
         display: flex; flex-direction: column; align-items: center; gap: 8px;

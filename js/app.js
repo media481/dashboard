@@ -1168,6 +1168,7 @@ function openIgSchedulerPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     loadIgPosts();
     loadIgAccounts();
+    loadIgCommentsUnreadCount();
     renderIgCalendar();
 }
 
@@ -11029,6 +11030,7 @@ function addTgRecipientRow(r) {
         { val: 'program', label: '<i class="bi bi-box-seam"></i> Program Baru' },
         { val: 'jadwal', label: '<i class="bi bi-calendar3"></i> Jadwal Tamu' },
         { val: 'reminder', label: '<i class="bi bi-bell-fill"></i> Pengingat 1 Bulan' },
+        { val: 'ig_comment', label: '<i class="bi bi-instagram"></i> Komentar IG Baru' },
     ];
     row.innerHTML = `
         <input class="tg-chat-id" placeholder="Chat ID (mis: -1001234567890)" value="${escapeHtml(r.chatId||'')}">
@@ -11878,6 +11880,10 @@ let igPostsCurrentPage = 1;
 let igPostsTotal = 0;
 let igAccounts = [];           // akun IG aktif (tanpa access_token)
 let igCalendarCurrent = new Date(); // bulan yang sedang ditampilkan di kalender
+let igCommentsUnrepliedCountByPost = {}; // { post_id: jumlah komentar belum dibalas }
+let igCommentsCurrentPostId = null;      // post_id yang sedang dibuka di modal komentar
+const IG_COMMENT_ACTION_URL = `${SUPABASE_URL}/functions/v1/ig-comment-action`;
+const IG_SYNC_COMMENTS_URL = `${SUPABASE_URL}/functions/v1/ig-sync-comments`;
 
 // Badge warna sesuai status post
 const IG_STATUS_COLORS = {
@@ -12029,6 +12035,11 @@ function renderIgPostTable() {
         }
         if (post.last_error) {
             actions.push(`<button type="button" class="ig-btn-log" onclick="openIgActionModal('${post.id}', 'logs', null, '${escapeJsAttr(post.last_error || '')}')" title="Lihat Error"><i class="bi bi-info-circle-fill"></i></button>`);
+        }
+        if (post.status === 'published' && post.ig_media_id) {
+            const unreplied = (igCommentsUnrepliedCountByPost[post.id] || 0);
+            const badge = unreplied > 0 ? `<span class="ig-comment-badge">${unreplied}</span>` : '';
+            actions.push(`<button type="button" class="ig-btn-comments" onclick="openIgCommentsModal('${post.id}')" title="Komentar"><i class="bi bi-chat-dots-fill"></i>${badge}</button>`);
         }
 
         return `<tr class="ig-post-row status-${post.status}">
@@ -12717,6 +12728,192 @@ async function retryIgPost(postId) {
     }
 }
 
+// ============================================================
+// 24b. IG COMMENTS (balas komentar dari dashboard)
+// Memaksimalkan fitur GRATIS Graph API (instagram_manage_comments) yang
+// sebelumnya belum dipakai — cache komentar ada di tabel ig_comments,
+// disinkron oleh edge function ig-sync-comments (cron tiap 15 menit),
+// aksi balas/hide/hapus lewat edge function ig-comment-action.
+// ============================================================
+
+// ---- Hitung jumlah komentar belum dibalas per post (untuk badge) ----
+async function loadIgCommentsUnreadCount() {
+    try {
+        const { data, error } = await supabaseClient
+            .from('ig_comments')
+            .select('post_id')
+            .eq('is_our_reply', false)
+            .eq('replied', false)
+            .eq('hidden', false);
+        if (error) throw error;
+        const counts = {};
+        (data || []).forEach(row => {
+            if (!row.post_id) return;
+            counts[row.post_id] = (counts[row.post_id] || 0) + 1;
+        });
+        igCommentsUnrepliedCountByPost = counts;
+        renderIgPostTable();
+
+        const totalUnread = Object.values(counts).reduce((a, b) => a + b, 0);
+        const countEl = document.getElementById('igSchedulerCount');
+        if (countEl) {
+            countEl.textContent = `${igPosts.length} post` + (totalUnread > 0 ? ` · ${totalUnread} komentar baru` : '');
+        }
+    } catch (err) {
+        console.error('loadIgCommentsUnreadCount error:', err);
+    }
+}
+
+// ---- Trigger sync manual (tombol "Sync Komentar") ----
+async function syncIgCommentsNow() {
+    showToast('Menyinkron komentar dari Instagram...', 'info');
+    try {
+        const res = await fetch(IG_SYNC_COMMENTS_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${(await supabaseClient.auth.getSession()).data.session?.access_token || ''}`
+            },
+            body: JSON.stringify({})
+        });
+        const result = await res.json();
+        if (result.ok) {
+            showToast(`Sync selesai — ${result.new_comments || 0} komentar baru`, 'success');
+        } else {
+            showToast('Sync gagal: ' + (result.error || res.statusText), 'error');
+        }
+        await loadIgCommentsUnreadCount();
+        if (igCommentsCurrentPostId) await renderIgCommentsModalBody(igCommentsCurrentPostId);
+    } catch (err) {
+        showToast('Gagal sync komentar: ' + err.message, 'error');
+    }
+}
+
+// ---- Buka modal komentar untuk 1 post (reuse igActionModal) ----
+async function openIgCommentsModal(postId) {
+    igCommentsCurrentPostId = postId;
+    const modal = document.getElementById('igActionModal');
+    const title = document.getElementById('igActionTitle');
+    if (!modal || !title) return;
+    title.textContent = 'Komentar Post';
+    modal.classList.add('open');
+    await renderIgCommentsModalBody(postId);
+}
+
+async function renderIgCommentsModalBody(postId) {
+    const body = document.getElementById('igActionBody');
+    if (!body) return;
+    body.innerHTML = `<p style="color:var(--ink-soft);font-size:12.5px;"><i class="bi bi-hourglass-split"></i> Memuat komentar...</p>`;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('ig_comments')
+            .select('*')
+            .eq('post_id', postId)
+            .eq('is_our_reply', false)
+            .order('commented_at', { ascending: false });
+        if (error) throw error;
+
+        const canManage = canManageProgramData();
+        const listHtml = (data && data.length)
+            ? data.map(c => `
+                <div class="ig-comment-item" style="border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px;${c.hidden ? 'opacity:.55;' : ''}">
+                    <div style="display:flex;justify-content:space-between;gap:8px;">
+                        <b style="font-size:12.5px;">${escapeHtml(c.username || 'seseorang')}</b>
+                        <span style="font-size:11px;color:var(--ink-soft);">${c.commented_at ? new Date(c.commented_at).toLocaleString('id-ID') : ''}</span>
+                    </div>
+                    <p style="font-size:12.5px;margin:4px 0 8px;">${escapeHtml(c.comment_text || '')}</p>
+                    ${c.replied && c.our_reply_text ? `<div style="background:var(--brand-tint,#eef2ff);border-radius:6px;padding:6px 8px;font-size:12px;margin-bottom:8px;"><i class="bi bi-reply-fill"></i> Balasan kita: ${escapeHtml(c.our_reply_text)}</div>` : ''}
+                    ${canManage ? `
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        ${!c.replied ? `
+                        <input type="text" id="ig_reply_input_${c.ig_comment_id}" placeholder="Tulis balasan..." style="flex:1;min-width:140px;font-size:12px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;">
+                        <button class="btn-primary" style="font-size:11.5px;padding:5px 10px;" onclick="igReplyComment('${c.ig_comment_id}')"><i class="bi bi-reply-fill"></i> Balas</button>
+                        ` : ''}
+                        <button class="btn-cancel" style="font-size:11.5px;padding:5px 10px;" onclick="igToggleHideComment('${c.ig_comment_id}', ${c.hidden ? 'false' : 'true'})">
+                            <i class="bi bi-eye${c.hidden ? '' : '-slash'}-fill"></i> ${c.hidden ? 'Tampilkan' : 'Sembunyikan'}
+                        </button>
+                        <button class="btn-danger" style="font-size:11.5px;padding:5px 10px;" onclick="igDeleteComment('${c.ig_comment_id}')"><i class="bi bi-trash-fill"></i></button>
+                    </div>` : ''}
+                </div>`).join('')
+            : `<div class="ig-empty" style="padding:16px 0;"><i class="bi bi-chat-square-dots"></i> Belum ada komentar (atau belum disinkron).</div>`;
+
+        body.innerHTML = `
+            <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+                <button class="btn-cancel" style="font-size:11.5px;padding:5px 10px;" onclick="syncIgCommentsNow()"><i class="bi bi-arrow-repeat"></i> Sync Sekarang</button>
+            </div>
+            <div style="max-height:360px;overflow-y:auto;">${listHtml}</div>
+            <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+                <button class="btn-cancel" onclick="closeIgActionModal()" style="font-size:12px;padding:6px 14px;">Tutup</button>
+            </div>`;
+    } catch (err) {
+        body.innerHTML = `<p style="color:var(--danger);font-size:12.5px;">Gagal memuat komentar: ${escapeHtml(err.message)}</p>`;
+    }
+}
+
+async function igCommentActionCall(payload) {
+    const res = await fetch(IG_COMMENT_ACTION_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${(await supabaseClient.auth.getSession()).data.session?.access_token || ''}`
+        },
+        body: JSON.stringify(payload)
+    });
+    return res.json();
+}
+
+async function igReplyComment(igCommentId) {
+    if (!canManageProgramData()) return;
+    const input = document.getElementById(`ig_reply_input_${igCommentId}`);
+    const text = input ? input.value.trim() : '';
+    if (!text) { showToast('Tulis balasan dulu', 'error'); return; }
+    try {
+        const result = await igCommentActionCall({ ig_comment_id: igCommentId, action: 'reply', reply_text: text });
+        if (result.ok) {
+            showToast('Balasan terkirim', 'success');
+            await renderIgCommentsModalBody(igCommentsCurrentPostId);
+            await loadIgCommentsUnreadCount();
+        } else {
+            showToast('Gagal membalas: ' + (result.error || ''), 'error');
+        }
+    } catch (err) {
+        showToast('Gagal membalas: ' + err.message, 'error');
+    }
+}
+
+async function igToggleHideComment(igCommentId, hide) {
+    if (!canManageProgramData()) return;
+    try {
+        const result = await igCommentActionCall({ ig_comment_id: igCommentId, action: hide ? 'hide' : 'unhide' });
+        if (result.ok) {
+            showToast(result.message || 'Berhasil', 'success');
+            await renderIgCommentsModalBody(igCommentsCurrentPostId);
+        } else {
+            showToast('Gagal: ' + (result.error || ''), 'error');
+        }
+    } catch (err) {
+        showToast('Gagal: ' + err.message, 'error');
+    }
+}
+
+async function igDeleteComment(igCommentId) {
+    if (!canManageProgramData()) return;
+    if (!confirm('Hapus komentar ini secara permanen dari Instagram?')) return;
+    try {
+        const result = await igCommentActionCall({ ig_comment_id: igCommentId, action: 'delete' });
+        if (result.ok) {
+            showToast('Komentar dihapus', 'success');
+            await renderIgCommentsModalBody(igCommentsCurrentPostId);
+            await loadIgCommentsUnreadCount();
+        } else {
+            showToast('Gagal hapus: ' + (result.error || ''), 'error');
+        }
+    } catch (err) {
+        showToast('Gagal hapus: ' + err.message, 'error');
+    }
+}
+
 // ---- IG Action Modal (Retry / Delete / Logs) ----
 function openIgActionModal(postId, action, post = null, errorDetail = '') {
     const modal = document.getElementById('igActionModal');
@@ -12787,6 +12984,11 @@ window.closeIgDayModal = closeIgDayModal;
 window.igAddPostFromDayModal = igAddPostFromDayModal;
 window.igPrevPage = igPrevPage;
 window.igNextPage = igNextPage;
+window.openIgCommentsModal = openIgCommentsModal;
+window.syncIgCommentsNow = syncIgCommentsNow;
+window.igReplyComment = igReplyComment;
+window.igToggleHideComment = igToggleHideComment;
+window.igDeleteComment = igDeleteComment;
 
 
 // Membungkus <select class="searchable-select"> dengan UI kustom (bisa dicari)

@@ -39,6 +39,19 @@ export default {
 
     console.log(`[IG Scheduler] ig-publish triggered: ${publishRes.status}`);
 
+    // --- ig-sync-comments: tiap 15 menit (bareng publish) ---
+    // Fitur gratis Graph API (instagram_manage_comments) — cek komentar baru
+    // di post yang sudah published & kirim notif Telegram kalau ada.
+    const syncRes = await fetch(`${env.SUPABASE_FUNCTIONS_URL}/ig-sync-comments`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({ service_role_key: env.SUPABASE_SERVICE_ROLE_KEY }),
+    });
+    console.log(`[IG Scheduler] ig-sync-comments triggered: ${syncRes.status}`);
+
     if (isMonday9am && env.SUPABASE_SERVICE_ROLE_KEY) {
       const refreshRes = await fetch(`${env.SUPABASE_FUNCTIONS_URL}/ig-refresh-token`, {
         method: "POST",
@@ -71,6 +84,21 @@ export default {
       });
     }
 
+    if (url.pathname === "/ig-sync-comments" || url.searchParams.get("action") === "sync-comments") {
+      const res = await fetch(`${env.SUPABASE_FUNCTIONS_URL}/ig-sync-comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+        body: JSON.stringify({ service_role_key: env.SUPABASE_SERVICE_ROLE_KEY }),
+      });
+      const result = await res.json().catch(() => ({ status: res.status }));
+      return new Response(JSON.stringify({ action: "sync-comments", ...result }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     if (url.pathname === "/ig-refresh" || url.searchParams.get("action") === "refresh") {
       const res = await fetch(`${env.SUPABASE_FUNCTIONS_URL}/ig-refresh-token`, {
         method: "POST",
@@ -91,8 +119,9 @@ export default {
       message: "IG Scheduler Worker",
       endpoints: {
         "/ig-publish": "Trigger publish cycle sekarang",
+        "/ig-sync-comments": "Trigger sync komentar sekarang",
         "/ig-refresh": "Trigger token refresh sekarang",
-        "scheduled": "Cron tiap 15 menit (publish) + Senin jam 9 (refresh)",
+        "scheduled": "Cron tiap 15 menit (publish + sync komentar) + Senin jam 9 (refresh)",
       },
     }), { headers: { "Content-Type": "application/json" } });
   },
