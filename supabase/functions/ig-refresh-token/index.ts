@@ -44,6 +44,25 @@ async function refreshLongLivedToken(currentToken: string) {
   };
 }
 
+// [KEAMANAN] Hanya 2 jalur yang diterima:
+//   a) Bearer = SERVICE_ROLE_KEY persis (dipanggil oleh cron worker)
+//   b) Bearer = JWT user yang valid & sudah login (dipanggil manual dari dashboard)
+// (Sebelumnya ada fallback header `apikey` yang salah — header itu selalu ikut
+// di tiap request Supabase client sehingga efektif tidak memblokir siapa pun.)
+async function isAuthorized(req: Request, body: Record<string, unknown>): Promise<boolean> {
+  const authHeader = req.headers.get("authorization");
+  const providedKey = body.service_role_key || (authHeader ? authHeader.replace("Bearer ", "") : "");
+
+  if (SERVICE_ROLE_KEY && providedKey === SERVICE_ROLE_KEY) return true;
+
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.replace("Bearer ", "");
+    const { data, error } = await supabase.auth.getUser(token);
+    if (!error && data?.user) return true;
+  }
+  return false;
+}
+
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin");
   const ALLOWED = origin || "*";
@@ -56,12 +75,9 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
 
   // Auth
-  const authHeader = req.headers.get("authorization");
   const body = await req.json().catch(() => ({}));
-  const providedKey = body.service_role_key || (authHeader ? authHeader.replace("Bearer ", "") : "");
-  if (SERVICE_ROLE_KEY && providedKey !== SERVICE_ROLE_KEY) {
-    const anonKey = req.headers.get("apikey");
-    if (!anonKey) return jsonResponse({ error: "Unauthorized" }, 401);
+  if (!(await isAuthorized(req, body))) {
+    return jsonResponse({ error: "Unauthorized" }, 401);
   }
 
   // Optional: bisa specifik refresh akun tertentu via body { account_id }

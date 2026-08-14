@@ -265,6 +265,29 @@ async function processPost(post: Record<string, unknown>, account: Record<string
   }
 }
 
+async function jsonRequestBody(req: Request): Promise<Record<string, unknown>> {
+  return req.json().catch(() => ({}));
+}
+
+// [KEAMANAN] Hanya 2 jalur yang diterima:
+//   a) Bearer = SERVICE_ROLE_KEY persis (dipanggil oleh cron worker)
+//   b) Bearer = JWT user yang valid & sudah login (dipanggil manual dari dashboard)
+// (Sebelumnya ada fallback header `apikey` yang salah — header itu selalu ikut
+// di tiap request Supabase client sehingga efektif tidak memblokir siapa pun.)
+async function isAuthorized(req: Request, body: Record<string, unknown>): Promise<boolean> {
+  const authHeader = req.headers.get("authorization");
+  const providedKey = body.service_role_key || (authHeader ? authHeader.replace("Bearer ", "") : "");
+
+  if (SERVICE_ROLE_KEY && providedKey === SERVICE_ROLE_KEY) return true;
+
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.replace("Bearer ", "");
+    const { data, error } = await supabase.auth.getUser(token);
+    if (!error && data?.user) return true;
+  }
+  return false;
+}
+
 Deno.serve(async (req: Request) => {
   // CORS sederhana — hanya izinkan dari origin yang sama (worker cron)
   const origin = req.headers.get("origin");
@@ -281,23 +304,9 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
 
-  // Verifikasi service role key dari request body atau header
-  const authHeader = req.headers.get("authorization");
-  const expectedBearer = `Bearer ${SERVICE_ROLE_KEY}`;
-  // Izinkan panggilan langsung dari cron worker (bawaan service role)
-  // atau dari dashboard (bawaan anon key + admin login — tapi publish butuh service role)
-  // Simplifikasi: cek via header Authorization Bearer
-  const body = await req.json().catch(() => ({}));
-  const providedKey = body.service_role_key || (authHeader ? authHeader.replace("Bearer ", "") : "");
-
-  // Kalau dipanggil dari cron worker, akan dibawa di header Authorization
-  // Kalau dipanggil manual dari dashboard (testing), butuh service_role di body
-  if (SERVICE_ROLE_KEY && providedKey !== SERVICE_ROLE_KEY) {
-    // Izinkan juga anon key yang sudah ter-autentikasi sebagai admin
-    const anonKey = req.headers.get("apikey");
-    if (!anonKey) {
-      return jsonResponse({ error: "Unauthorized" }, 401);
-    }
+  const body = await jsonRequestBody(req);
+  if (!(await isAuthorized(req, body))) {
+    return jsonResponse({ error: "Unauthorized" }, 401);
   }
 
   try {

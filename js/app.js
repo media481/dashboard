@@ -12096,7 +12096,9 @@ function igNextPage() {
 
 function updateIgSchedulerCount() {
     const el = document.getElementById('igSchedulerCount');
-    if (el) el.textContent = `${igPosts.length} post`;
+    if (!el) return;
+    const totalUnread = Object.values(igCommentsUnrepliedCountByPost).reduce((a, b) => a + b, 0);
+    el.textContent = `${igPosts.length} post` + (totalUnread > 0 ? ` · ${totalUnread} komentar baru` : '');
 }
 
 // ---- Calendar ----
@@ -12706,6 +12708,7 @@ async function deleteIgPost(postId) {
         const { error } = await supabaseClient.from('ig_posts').delete().eq('id', postId);
         if (error) throw error;
         showToast('Post dihapus', 'success');
+        closeIgActionModal();
         igPostsCurrentPage = 1;
         await loadIgPosts(true);
     } catch (err) {
@@ -12733,6 +12736,7 @@ async function retryIgPost(postId) {
         } else {
             showToast('Retry gagal: ' + (result.error || res.statusText), 'error');
         }
+        closeIgActionModal();
         await loadIgPosts(true);
     } catch (err) {
         showToast('Gagal retry: ' + err.message, 'error');
@@ -12764,12 +12768,7 @@ async function loadIgCommentsUnreadCount() {
         });
         igCommentsUnrepliedCountByPost = counts;
         renderIgPostTable();
-
-        const totalUnread = Object.values(counts).reduce((a, b) => a + b, 0);
-        const countEl = document.getElementById('igSchedulerCount');
-        if (countEl) {
-            countEl.textContent = `${igPosts.length} post` + (totalUnread > 0 ? ` · ${totalUnread} komentar baru` : '');
-        }
+        updateIgSchedulerCount();
     } catch (err) {
         console.error('loadIgCommentsUnreadCount error:', err);
     }
