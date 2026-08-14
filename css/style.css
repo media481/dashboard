@@ -1713,20 +1713,18 @@
         }
         .row-actions .btn-pay:hover { background: #a03226; border-color: #a03226; }
 
-        /* Kolom AKSI di tabel "Daftar Pembayaran Jamaah" -- tombol Update
-           Pembayaran & Reminder WA ditumpuk rapi (bukan sejajar mepet ke
-           kanan) supaya konsisten lebar & tidak "pecah" ke baris baru. */
+        /* Kolom AKSI di tabel "Daftar Pembayaran Jamaah" -- tombol Reminder WA
+           & Update Pembayaran sejajar satu baris (rata kanan), bukan
+           ditumpuk atas-bawah. */
         .pb-actions {
             display: flex;
-            flex-direction: column;
-            align-items: stretch;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-end;
             gap: 6px;
-            min-width: 148px;
         }
         .pb-actions .btn-primary,
         .pb-actions .btn-wa-reminder {
-            width: 100%;
-            justify-content: center;
             white-space: nowrap;
         }
         .btn-wa-reminder {
