@@ -141,6 +141,38 @@ Setelah semua setup selesai:
 
 ---
 
+## Fitur Komentar (Balas dari Dashboard)
+
+Memaksimalkan izin **`instagram_manage_comments`** — bagian dari Instagram Graph API yang gratis dari Meta (tidak ada biaya per-call), tapi belum dipakai sebelumnya (sebelumnya IG Scheduler cuma publish saja).
+
+### Yang didapat
+- Semua komentar di post yang sudah *published* disinkron otomatis tiap 15 menit (bareng cron publish) ke tabel `ig_comments`.
+- Notifikasi Telegram otomatis untuk komentar baru — reuse konfigurasi Telegram yang sudah ada (Pengaturan → Notifikasi Telegram), tinggal centang tipe **"Komentar IG Baru"** di penerima yang diinginkan.
+- Balas, sembunyikan (hide), atau hapus komentar langsung dari tombol 💬 di tabel post — tidak perlu buka aplikasi Instagram.
+- Badge merah di tombol 💬 menunjukkan jumlah komentar yang belum dibalas.
+
+### Setup tambahan
+1. Jalankan migration baru di SQL Editor:
+   ```
+   sql/tambah_ig_comments.sql
+   ```
+2. Deploy 2 edge function baru:
+   ```bash
+   supabase functions deploy ig-sync-comments --no-verify-jwt
+   supabase functions deploy ig-comment-action
+   ```
+3. Redeploy Cloudflare Worker (sudah diupdate untuk trigger `ig-sync-comments` tiap tick 15 menit):
+   ```bash
+   cd scheduler && wrangler deploy
+   ```
+4. Pastikan permission **`instagram_manage_comments`** sudah disetujui di Meta App Review untuk akun IG yang dipakai (`ig_accounts`). Tanpa ini, sync komentar akan gagal dengan error permission dari Graph API.
+5. (Opsional) Buka Pengaturan → Notifikasi Telegram → centang "Komentar IG Baru" pada penerima yang mau dapat notif.
+
+### Catatan
+- Sync dibatasi ke post yang published dalam 30 hari terakhir, biar tidak boros API call ke post lawas.
+- Balasan yang muncul di kolom komentar Instagram (dari siapa pun) otomatis ditandai membuat status komentar induk jadi "sudah dibalas" — bukan cuma balasan yang dikirim lewat dashboard ini.
+- RLS tabel `ig_comments` pakai `current_dashboard_role()` (bukan `auth.role()='authenticated'` seperti migrasi awal IG Scheduler) — guest tidak bisa lihat/balas komentar sama sekali, konsisten dengan hardening yang sudah diterapkan di tabel lain (lihat `sql/tambah_role_guest_readonly.sql`).
+
 ## Alur Status Post
 
 ```
