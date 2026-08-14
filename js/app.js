@@ -2130,6 +2130,65 @@ function sysBadge(ok, textOk, textFail) {
         : `<span class="status-badge full pill-sm"><i class="bi bi-x-circle-fill"></i> ${textFail}</span>`;
 }
 
+// Badge 4-state (dipakai khusus panel Kondisi API & Edge Function, karena
+// "gagal" bisa berarti beberapa hal berbeda: fungsi belum di-deploy sama
+// sekali vs error di server vs memang tidak bisa dijangkau dari browser).
+function sysApiBadge(state, text) {
+    const map = {
+        ok:         { cls: 'available', icon: 'bi-check-circle-fill' },
+        missing:    { cls: 'limited',   icon: 'bi-question-circle-fill' },
+        error:      { cls: 'full',      icon: 'bi-exclamation-triangle-fill' },
+        unreachable:{ cls: 'full',      icon: 'bi-x-circle-fill' },
+        unset:      { cls: 'neutral',   icon: 'bi-dash-circle' },
+    };
+    const m = map[state] || map.error;
+    return `<span class="status-badge ${m.cls} pill-sm"><i class="bi ${m.icon}"></i> ${text}</span>`;
+}
+
+// ---- Daftar Edge Function (Supabase) yang benar-benar dipanggil dari
+// dashboard ini -- URL-nya ikut const yang sudah didefinisikan di atas,
+// jadi kalau nama function berubah, daftar ini otomatis ikut berubah juga. ----
+const SYSTEM_EDGE_FUNCTIONS = [
+    { label: 'generate-wa-caption', desc: 'AI Caption WA (Gemini)', url: WA_CAPTION_FUNCTION_URL },
+    { label: 'parse-broadcast-ai', desc: 'AI Parse Broadcast (Gemini)', url: PARSE_BROADCAST_AI_FUNCTION_URL },
+    { label: 'generate-tg-reminder', desc: 'AI Reminder Telegram (Gemini)', url: TG_REMINDER_AI_FUNCTION_URL },
+    { label: 'generate-payment-reminder-wa', desc: 'AI Reminder Pembayaran (Gemini)', url: PAYMENT_REMINDER_WA_FUNCTION_URL },
+    { label: 'scan-poster-ocr', desc: 'OCR Poster (Crosscheck)', url: CX_OCR_FUNCTION_URL },
+    { label: 'generate-ig-caption', desc: 'AI Caption Instagram (Gemini)', url: IG_CAPTION_FUNCTION_URL },
+    { label: 'admin-create-user', desc: 'Buat User (Supabase Auth Admin API)', url: ADMIN_CREATE_USER_URL },
+    { label: 'admin-reset-user-password', desc: 'Reset Password User', url: ADMIN_RESET_USER_PASSWORD_URL },
+    { label: 'ig-manual-retry', desc: 'Retry Publish Instagram', url: `${SUPABASE_URL}/functions/v1/ig-manual-retry` },
+];
+
+// Cek satu Edge Function dengan request OPTIONS (preflight CORS) -- BUKAN
+// panggilan fungsional (tidak mengirim payload/aksi apapun ke Telegram,
+// Gemini, dsb). Semua Edge Function di repo ini menjawab OPTIONS di baris
+// paling atas Deno.serve() sebelum logic bisnis jalan, jadi aman dipakai
+// sebagai health-check tanpa efek samping. Dibungkus timeout manual karena
+// fetch() tidak punya timeout bawaan.
+async function checkEdgeFunctionStatus(url, timeoutMs = 6000) {
+    const t0 = performance.now();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const res = await fetch(url, {
+            method: 'OPTIONS',
+            headers: { apikey: SUPABASE_ANON_KEY },
+            signal: controller.signal
+        });
+        const latency = Math.round(performance.now() - t0);
+        if (res.status === 404) return { state: 'missing', status: res.status, latency };
+        if (res.ok) return { state: 'ok', status: res.status, latency };
+        return { state: 'error', status: res.status, latency };
+    } catch (err) {
+        const latency = Math.round(performance.now() - t0);
+        const timedOut = err && err.name === 'AbortError';
+        return { state: 'unreachable', status: null, latency, detail: timedOut ? 'Timeout' : (err.message || String(err)) };
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 async function renderSystemStatusPanel() {
     const el = document.getElementById('sysStatusContent');
     if (!el) return;
@@ -2137,7 +2196,7 @@ async function renderSystemStatusPanel() {
         el.innerHTML = `<div class="kb-no-program" style="color:var(--danger);"><i class="bi bi-shield-lock-fill"></i><p>Halaman ini khusus admin.</p></div>`;
         return;
     }
-    el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--ink-soft);"><i class="bi bi-hourglass-split"></i> Memeriksa kondisi sistem...</div>`;
+    el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--ink-soft);"><i class="bi bi-hourglass-split"></i> Memeriksa kondisi sistem &amp; Edge Function...</div>`;
 
     // ---- 1. Koneksi Supabase -- tes langsung (latency diukur betulan, bukan asumsi) ----
     let dbOk = false, dbError = '';
@@ -2200,7 +2259,21 @@ async function renderSystemStatusPanel() {
         try { storageInfo = await navigator.storage.estimate(); } catch (e) {}
     }
 
-    // ---- 5. Sesi login saat ini ----
+    // ---- 5. Kondisi API & Edge Function -- ping OPTIONS ke tiap Edge Function
+    // yang dipakai dashboard (lihat SYSTEM_EDGE_FUNCTIONS), sekaligus cek
+    // apakah URL Edge Function Telegram (send-telegram) sudah diisi di
+    // Pengaturan Telegram. Semua dijalankan paralel supaya panel tidak lama. ----
+    const edgeResults = await Promise.all(
+        SYSTEM_EDGE_FUNCTIONS.map(async fn => ({ ...fn, ...(await checkEdgeFunctionStatus(fn.url)) }))
+    );
+    let tgEdgeResult = null, tgEdgeUrl = '';
+    try {
+        const tgCfg = await getTgConfig();
+        tgEdgeUrl = (tgCfg && tgCfg.edgeUrl) ? tgCfg.edgeUrl : '';
+        if (tgEdgeUrl) tgEdgeResult = await checkEdgeFunctionStatus(tgEdgeUrl);
+    } catch (e) {}
+
+    // ---- 6. Sesi login saat ini ----
     let sessionEmail = '-';
     try {
         const { data: { session } } = await supabaseClient.auth.getSession();
@@ -2227,6 +2300,24 @@ async function renderSystemStatusPanel() {
                 ? sysStatusRow('Status', `<span style="color:var(--danger);">${escapeHtml(snapshotError)}</span>`)
                 : sysStatusRow('Backup Terakhir', lastSnapshot ? `${formatDateToIndonesian(new Date(lastSnapshot))} (${sysRelativeTime(lastSnapshot)})` : 'Belum pernah backup') +
                   sysStatusRow('Total Tersimpan', `${snapshotCount ?? 0} / 10`)
+        )}
+        ${sysCardHtml('Kondisi API &amp; Edge Function', 'bi-cloud-arrow-up-fill',
+            edgeResults.map(r => {
+                const stateText = {
+                    ok: `Aktif (${r.latency} ms)`,
+                    missing: 'Belum ter-deploy (404)',
+                    error: `Error (status ${r.status})`,
+                    unreachable: r.detail === 'Timeout' ? 'Timeout' : 'Tidak terjangkau'
+                }[r.state] || 'Tidak diketahui';
+                return sysStatusRow(`${r.label} <span style="color:var(--ink-soft);font-weight:400;">— ${r.desc}</span>`, sysApiBadge(r.state, stateText));
+            }).join('') +
+            (tgEdgeUrl
+                ? sysStatusRow('send-telegram <span style="color:var(--ink-soft);font-weight:400;">— Notifikasi Telegram</span>', sysApiBadge(
+                    tgEdgeResult ? tgEdgeResult.state : 'error',
+                    tgEdgeResult ? ({ ok: `Aktif (${tgEdgeResult.latency} ms)`, missing: 'Belum ter-deploy (404)', error: `Error (status ${tgEdgeResult.status})`, unreachable: tgEdgeResult.detail === 'Timeout' ? 'Timeout' : 'Tidak terjangkau' }[tgEdgeResult.state] || 'Tidak diketahui') : 'Gagal cek'
+                  ))
+                : sysStatusRow('send-telegram <span style="color:var(--ink-soft);font-weight:400;">— Notifikasi Telegram</span>', sysApiBadge('unset', 'URL belum diatur'))
+            )
         )}
         ${sysCardHtml('Aplikasi & Perangkat', 'bi-phone-fill',
             sysStatusRow('Versi Aplikasi', APP_VERSION) +
