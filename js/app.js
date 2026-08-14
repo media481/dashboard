@@ -590,6 +590,11 @@ const PARSE_BROADCAST_AI_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/parse-broa
 // & informatif (pendamping formatTgReminder() -- lihat generateTgReminderAI()
 // di bawah untuk detail & fallback).
 const TG_REMINDER_AI_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/generate-tg-reminder`;
+// Edge Function AI untuk menyusun draft pesan WA reminder pembayaran per
+// jamaah (dipakai tombol "Reminder WA" di menu Pembayaran -- lihat
+// generatePaymentReminderWA() di bawah). Admin tetap kirim manual lewat
+// link wa.me, ini cuma menyusun draft teksnya.
+const PAYMENT_REMINDER_WA_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/generate-payment-reminder-wa`;
 
 
 function waCaptionGaugeColor(pct) {
@@ -6423,9 +6428,95 @@ function renderPembayaranTable() {
                     <button class="btn-primary btn-pay" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${r.j.id}')" ${!canEdit ? 'disabled title="Tidak punya izin"' : ''}>
                         Update Pembayaran
                     </button>
+                    ${(r.status === 'belum' || r.status === 'cicilan') && r.j.wa ? `
+                    <button class="btn-cancel btn-pay" style="font-size:11px;padding:5px 10px;margin-left:4px;" id="pbWaBtn_${r.j.id}" onclick="generatePaymentReminderWA('${r.j.id}')" title="Susun & kirim reminder WA">
+                        <i class="bi bi-whatsapp"></i> Reminder WA
+                    </button>` : ''}
                 </td>
             </tr>`;
     }).join('');
+}
+
+// Susun draft reminder pembayaran personal per jamaah pakai AI, lalu buka
+// wa.me dengan teks sudah terisi -- admin TETAP yang menekan kirim di
+// WhatsApp (bukan pengiriman otomatis/massal, tidak butuh WhatsApp Business
+// API). Dipanggil dari tombol "Reminder WA" di menu Pembayaran.
+// Edge Function: PAYMENT_REMINDER_WA_FUNCTION_URL (generate-payment-reminder-wa).
+async function generatePaymentReminderWA(jamaahId) {
+    const btn = document.getElementById('pbWaBtn_' + jamaahId);
+    if (!pbCacheJamaahAll) { showToast('Data pembayaran belum siap, coba lagi', 'error'); return; }
+    const j = pbCacheJamaahAll.find(x => String(x.id) === String(jamaahId));
+    if (!j) { showToast('Data jamaah tidak ditemukan', 'error'); return; }
+    if (!j.wa) { showToast('Jamaah ini tidak punya nomor WA', 'error'); return; }
+
+    const program = dataUmroh.find(p => String(p.id) === String(j.program_id));
+    const hargaProgram = getHargaKamarJamaah(program, j);
+    const dibayar = (pbCacheTotalPerJamaah && pbCacheTotalPerJamaah[j.id]) || 0;
+    const sisa = Math.max(hargaProgram - dibayar, 0);
+    const pct = hargaProgram > 0 ? Math.min(100, Math.round((dibayar / hargaProgram) * 100)) : 0;
+    let status = 'belum';
+    if (hargaProgram > 0 && dibayar >= hargaProgram) status = 'lunas';
+    else if (dibayar > 0) status = 'cicilan';
+    if (status === 'lunas') { showToast('Jamaah ini sudah lunas', 'error'); return; }
+
+    let sisaHari = null;
+    if (program && program.tgl) {
+        const tglBerangkat = parseDateFromString(program.tgl);
+        if (tglBerangkat && !isNaN(tglBerangkat.getTime())) {
+            const today = new Date(); today.setHours(0,0,0,0);
+            tglBerangkat.setHours(0,0,0,0);
+            sisaHari = Math.ceil((tglBerangkat - today) / (1000 * 60 * 60 * 24));
+        }
+    }
+
+    // Buka tab kosong SEKARANG (masih dalam gesture klik user) supaya browser
+    // tidak memblokirnya sebagai popup -- URL-nya diisi setelah draft AI
+    // selesai disusun (lihat winRef.location.href di bawah).
+    const winRef = window.open('', '_blank');
+
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Menyusun...'; }
+    try {
+        const payload = {
+            namaJamaah: j.nama, namaProgram: program ? program.nama : '-',
+            tglBerangkat: program ? program.tgl : '-', sisaHari,
+            hargaProgram: formatRupiah(hargaProgram), dibayar: formatRupiah(dibayar),
+            sisa: formatRupiah(sisa), pct, status,
+            companyName: NOTA_PERUSAHAAN.nama,
+            kontakWa: getWaCaptionContacts(),
+        };
+        const response = await fetch(PAYMENT_REMINDER_WA_FUNCTION_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "apikey": SUPABASE_ANON_KEY,
+                "Authorization": "Bearer " + SUPABASE_ANON_KEY
+            },
+            body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+            let detail = '';
+            try { detail = (await response.json()).error || ''; } catch (e) {}
+            throw new Error(detail || 'Gagal memanggil API (status ' + response.status + ')');
+        }
+        const data = await response.json();
+        const message = (data.message || '').trim();
+        if (!message) throw new Error('Tidak ada hasil teks dari model.');
+
+        const waLink = `https://wa.me/${j.wa.replace(/\D/g,'')}?text=${encodeURIComponent(message)}`;
+        if (winRef) { winRef.location.href = waLink; }
+        else { window.open(waLink, '_blank'); } // fallback kalau window.open awal diblokir
+        showToast('Draft reminder WA siap — cek tab baru untuk kirim');
+    } catch (err) {
+        console.error(err);
+        if (winRef) winRef.close();
+        // Fallback: kalau AI gagal, tetap buka WA dengan sapaan polos (non-AI)
+        // supaya admin tidak buntu, tinggal ketik manual sisanya.
+        const fallbackText = `Assalamualaikum ${j.nama || ''}, kami dari ${NOTA_PERUSAHAAN.nama} ingin mengingatkan sisa tagihan program ${program ? program.nama : ''} sebesar ${formatRupiah(sisa)}. Mohon konfirmasinya, terima kasih.`;
+        window.open(`https://wa.me/${j.wa.replace(/\D/g,'')}?text=${encodeURIComponent(fallbackText)}`, '_blank');
+        showToast('AI gagal (' + err.message + ') — dipakai draft polos sebagai cadangan', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-whatsapp"></i> Reminder WA'; }
+    }
 }
 
 // ============================================================
