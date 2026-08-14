@@ -25,20 +25,19 @@
 // Deploy:
 //   supabase functions deploy generate-wa-caption --no-verify-jwt
 
+import { callGeminiWithFallback } from "../_shared/gemini.ts";
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 // Pakai "gemini-3.5-flash" (bukan flash-lite) karena ini tugas copywriting
 // kreatif (menyusun kalimat, pilih emoji relevan, memadatkan teks) yang
 // hasilnya lebih baik di model non-lite, beda dengan scan-poster-ocr yang
 // murni ekstraksi terstruktur.
 const GEMINI_MODEL = "gemini-3.5-flash";
-const GEMINI_URL =
-  `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 // Sama persis dengan WA_CAPTION_SYSTEM_PROMPT yang dulu ada di js/app.js —
 // dipindah ke sini supaya API key tidak perlu lewat browser sama sekali.
@@ -114,13 +113,6 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  if (!GEMINI_API_KEY) {
-    return new Response(
-      JSON.stringify({ error: "GEMINI_API_KEY belum di-set di Supabase secrets" }),
-      { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
-    );
-  }
-
   try {
     const { userMsg } = await req.json();
     if (!userMsg || typeof userMsg !== "string") {
@@ -130,21 +122,11 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const geminiRes = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: WA_CAPTION_SYSTEM_PROMPT }] },
-        contents: [{ role: "user", parts: [{ text: userMsg }] }],
-      }),
+    const geminiData = await callGeminiWithFallback(GEMINI_MODEL, {
+      system_instruction: { parts: [{ text: WA_CAPTION_SYSTEM_PROMPT }] },
+      contents: [{ role: "user", parts: [{ text: userMsg }] }],
     });
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      throw new Error(`Gemini API error (${geminiRes.status}): ${errText.slice(0, 300)}`);
-    }
-
-    const geminiData = await geminiRes.json();
     // Gabungkan semua part teks (bukan cuma parts[0]) — sama seperti di
     // scan-poster-ocr, model kadang mengembalikan lebih dari satu part.
     const parts = geminiData?.candidates?.[0]?.content?.parts || [];

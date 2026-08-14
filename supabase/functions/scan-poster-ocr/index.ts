@@ -16,21 +16,20 @@
 //   supabase functions deploy scan-poster-ocr --no-verify-jwt
 //   supabase secrets set GEMINI_API_KEY=xxxxx
 
+import { callGeminiWithFallback } from "../_shared/gemini.ts";
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 // [FIX] "gemini-2.0-flash" resmi di-shutdown Google per 1 Juni 2026 (lihat
 // https://ai.google.dev/gemini-api/docs/models/gemini-2.0-flash) — setiap
 // request ke model ini akan gagal (404/error). Diganti ke "gemini-3.5-flash-lite",
 // model GA (stable) termurah & tercepat di keluarga 3.x, cocok untuk tugas
 // ekstraksi terstruktur seperti OCR poster ini.
 const GEMINI_MODEL = "gemini-3.5-flash-lite";
-const GEMINI_URL =
-  `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const EXTRACTION_PROMPT = `Kamu membaca poster promosi program umroh/haji berbahasa Indonesia.
 Baca seluruh teks pada gambar, lalu kembalikan HANYA JSON valid (tanpa markdown, tanpa penjelasan)
@@ -98,13 +97,6 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  if (!GEMINI_API_KEY) {
-    return new Response(
-      JSON.stringify({ error: "GEMINI_API_KEY belum di-set di Supabase secrets" }),
-      { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
-    );
-  }
-
   try {
     const { imageUrl } = await req.json();
     if (!imageUrl) {
@@ -116,34 +108,24 @@ Deno.serve(async (req: Request) => {
 
     const { data: base64Image, mimeType } = await fetchImageAsBase64(imageUrl);
 
-    const geminiRes = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { text: EXTRACTION_PROMPT },
-              { inline_data: { mime_type: mimeType, data: base64Image } },
-            ],
-          },
-        ],
-        generationConfig: {
-          // [FIX] "temperature"/"top_p"/"top_k" sudah deprecated untuk model
-          // keluarga Gemini 3.x (gemini-3.5-flash-lite) — cukup andalkan default
-          // model untuk task ekstraksi. responseMimeType tetap dipakai supaya
-          // output selalu berupa JSON valid tanpa perlu strip markdown fences.
-          responseMimeType: "application/json",
+    const geminiData = await callGeminiWithFallback(GEMINI_MODEL, {
+      contents: [
+        {
+          parts: [
+            { text: EXTRACTION_PROMPT },
+            { inline_data: { mime_type: mimeType, data: base64Image } },
+          ],
         },
-      }),
+      ],
+      generationConfig: {
+        // [FIX] "temperature"/"top_p"/"top_k" sudah deprecated untuk model
+        // keluarga Gemini 3.x (gemini-3.5-flash-lite) — cukup andalkan default
+        // model untuk task ekstraksi. responseMimeType tetap dipakai supaya
+        // output selalu berupa JSON valid tanpa perlu strip markdown fences.
+        responseMimeType: "application/json",
+      },
     });
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      throw new Error(`Gemini API error (${geminiRes.status}): ${errText.slice(0, 300)}`);
-    }
-
-    const geminiData = await geminiRes.json();
     // [FIX] Gabungkan semua part teks (bukan cuma ambil parts[0]) — model keluarga
     // Gemini 3.x kadang mengembalikan lebih dari satu part (mis. bila thinking
     // level tidak minimal), jadi ambil part[0] saja bisa memotong hasil JSON.
