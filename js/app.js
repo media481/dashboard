@@ -66,6 +66,7 @@ let cicilanJamaahInfo = null, cicilanProgramInfo = null, cicilanHargaProgram = 0
 let pbCacheJamaahAll = null, pbCacheTotalPerJamaah = null, pbSearchDebounce = null;
 let notaGenerating = false;
 let dokSelectedProgram = null;
+let dokCacheJamaahAll = null; // cache list jamaah program aktif, dipakai tombol "Reminder WA" (generateDocumentReminderWA)
 // type 'copy'   -> dua checkbox terpisah: Fotocopy & Asli (disimpan sbg {key}_fc / {key}_asli)
 // type 'single' -> satu checkbox "Sudah" (disimpan sbg {key})
 // Struktur ini mengikuti form fisik "Tanda Terima Dokumen" PT Amiru Haramain Indonesia.
@@ -8278,6 +8279,7 @@ async function loadDokumenForProgram(programId) {
         );
         if (error) throw error;
         const jamaah = data || [];
+        dokCacheJamaahAll = jamaah;
 
         if (!jamaah.length) {
             container.innerHTML = `<div class="kb-no-program"><i class="bi bi-person-dash-fill"></i><p>Belum ada jamaah terdaftar untuk program ini.</p></div>`;
@@ -8300,12 +8302,12 @@ async function loadDokumenForProgram(programId) {
 
         container.innerHTML = `
             <div class="table-container" style="overflow-x:auto;">
-                <table style="width:100%;min-width:${900 + DOKUMEN_JENIS.filter(d => d.type === 'copy').length * 88}px;border-collapse:collapse;font-size:13px;table-layout:fixed;">
+                <table style="width:100%;min-width:${1010 + DOKUMEN_JENIS.filter(d => d.type === 'copy').length * 88}px;border-collapse:collapse;font-size:13px;table-layout:fixed;">
                     <colgroup>
                         <col style="width:190px;">
                         ${DOKUMEN_JENIS.map(d => d.type === 'copy' ? '<col style="width:44px;"><col style="width:44px;">' : '<col style="width:110px;">').join('')}
                         <col style="width:140px;">
-                        <col style="width:80px;">
+                        <col style="width:190px;">
                     </colgroup>
                     <thead style="background:var(--bg);">
                         <tr>
@@ -8353,8 +8355,14 @@ async function loadDokumenForProgram(programId) {
                                     <span class="status-badge ${lengkap ? 'available' : 'full'}">${lengkap ? '<i class="bi bi-check-circle-fill"></i> Lengkap' : '<i class="bi bi-hourglass-split"></i> Belum Lengkap'}</span>
                                 </td>
                                 <td style="padding:10px 14px;border-left:1px solid var(--line);">
-                                    <div class="action-btns">
-                                        <button onclick="bukaTandaTerimaDokumen('${j.id}', this)" title="Cetak Tanda Terima Dokumen"><i class="bi bi-printer-fill"></i></button>
+                                    <div class="pb-actions" style="justify-content:flex-start;">
+                                        ${!lengkap && j.wa ? `
+                                        <button class="btn-wa-reminder" style="font-size:11px;padding:5px 10px;" id="dokWaBtn_${j.id}" onclick="generateDocumentReminderWA('${j.id}')" title="Kirim reminder WA dokumen kurang">
+                                            <i class="bi bi-whatsapp"></i> Reminder WA
+                                        </button>` : ''}
+                                        <div class="action-btns">
+                                            <button onclick="bukaTandaTerimaDokumen('${j.id}', this)" title="Cetak Tanda Terima Dokumen"><i class="bi bi-printer-fill"></i></button>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>`;
@@ -8379,6 +8387,33 @@ function isDokumenLengkap(dok, jamaah) {
     return dokumenJenisUntukJamaah(jamaah).every(d => d.type === 'copy'
         ? !!(dok[d.key + '_fc'] || dok[d.key + '_asli'])
         : !!dok[d.key]);
+}
+
+// Kirim reminder WA ke jamaah soal dokumen yang masih kurang. Beda dari
+// generatePaymentReminderWA (bagian 19): ini disusun langsung di klien
+// (bukan lewat Edge Function/AI) karena isinya cuma daftar dokumen yang
+// belum lengkap, tidak butuh nada persuasif. Admin tetap yang menekan
+// kirim di WhatsApp (buka wa.me dengan teks sudah terisi).
+// Dipanggil dari tombol "Reminder WA" di tabel Kelengkapan Dokumen.
+function generateDocumentReminderWA(jamaahId) {
+    if (!dokCacheJamaahAll) { showToast('Data dokumen belum siap, coba lagi', 'error'); return; }
+    const j = dokCacheJamaahAll.find(x => String(x.id) === String(jamaahId));
+    if (!j) { showToast('Data jamaah tidak ditemukan', 'error'); return; }
+    if (!j.wa) { showToast('Jamaah ini tidak punya nomor WA', 'error'); return; }
+
+    const dok = j.dokumen || {};
+    const kurang = dokumenJenisUntukJamaah(j).filter(d => d.type === 'copy'
+        ? !(dok[d.key + '_fc'] || dok[d.key + '_asli'])
+        : !dok[d.key]
+    ).map(d => d.label);
+
+    if (!kurang.length) { showToast('Dokumen jamaah ini sudah lengkap', 'error'); return; }
+
+    const program = dataUmroh.find(p => String(p.id) === String(dokSelectedProgram));
+    const daftarDokumen = kurang.map(label => `- ${label}`).join('\n');
+    const message = `Assalamualaikum ${j.nama || ''}, kami dari ${NOTA_PERUSAHAAN.nama} ingin mengingatkan kelengkapan dokumen untuk program ${program ? program.nama : '-'}. Dokumen yang masih kami perlukan:\n${daftarDokumen}\n\nMohon segera dilengkapi ya, terima kasih.`;
+
+    window.open(`https://wa.me/${j.wa.replace(/\D/g,'')}?text=${encodeURIComponent(message)}`, '_blank');
 }
 
 async function toggleDokumenJamaah(jamaahId, key, checked) {
