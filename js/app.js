@@ -10983,6 +10983,7 @@ window.hidePosterPopup = hidePosterPopup;
 const IG_STORAGE_BUCKET = 'ig-media';
 const IG_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const IG_POSTS_PAGE_SIZE = 50;
+const IG_CAPTION_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/generate-ig-caption`;
 
 let igPosts = [];              // cache post list
 let igPostsCurrentPage = 1;
@@ -11383,6 +11384,8 @@ function openIgUploadModal(postId = null, presetDateKey = null) {
     document.getElementById('igMediaFileName').textContent = '-';
     document.getElementById('igCaptionCount').textContent = '2200';
     document.getElementById('ig_media_type').value = 'image';
+    const ideaEl = document.getElementById('ig_caption_idea');
+    if (ideaEl) ideaEl.value = '';
     igCarouselItems = [];
     renderIgCarouselGrid();
 
@@ -11656,6 +11659,58 @@ function renderIgCarouselGrid() {
             </div>
         </div>`;
     }).join('');
+}
+
+// ---- Generate caption IG dengan AI (gaya feed IG, beda dari caption WA) ----
+async function generateIgCaptionAI() {
+    const btn = document.getElementById('btnGenIgCaptionAI');
+    const btnText = document.getElementById('btnGenIgCaptionAIText');
+    const captionEl = document.getElementById('ig_caption');
+    if (!captionEl) return;
+
+    // Sumber konsep: kotak "Ide/Konsep Singkat" kalau diisi, kalau kosong
+    // pakai isi caption yang sudah ada (misal mau dipoles ulang jadi gaya IG).
+    let raw = (document.getElementById('ig_caption_idea')?.value || '').trim();
+    if (!raw) raw = (captionEl.value || '').trim();
+    if (!raw) {
+        showToast('Isi dulu Ide/Konsep Singkat, atau tulis draft caption', 'error');
+        return;
+    }
+
+    if (btn) btn.disabled = true;
+    if (btnText) btnText.textContent = 'Menyusun...';
+
+    try {
+        const response = await fetch(IG_CAPTION_FUNCTION_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+            },
+            body: JSON.stringify({ userMsg: `KONSEP/IDE:\n${raw}` })
+        });
+        if (!response.ok) {
+            let detail = '';
+            try { detail = (await response.json()).error || ''; } catch (e) {}
+            throw new Error(detail || 'Gagal memanggil API (status ' + response.status + ')');
+        }
+        const data = await response.json();
+        const result = (data.text || '').trim();
+        if (!result) throw new Error('Tidak ada hasil teks dari model.');
+
+        captionEl.value = result;
+        const remaining = 2200 - result.length;
+        const countEl = document.getElementById('igCaptionCount');
+        if (countEl) countEl.textContent = Math.max(0, remaining);
+        showToast('Caption IG berhasil dibuat dengan AI');
+    } catch (err) {
+        console.error('generateIgCaptionAI error:', err);
+        showToast('Gagal generate caption: ' + err.message, 'error');
+    } finally {
+        if (btn) btn.disabled = false;
+        if (btnText) btnText.textContent = 'Generate dengan AI';
+    }
 }
 
 // ---- Save post (create / update) ----
