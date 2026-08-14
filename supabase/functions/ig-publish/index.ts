@@ -54,7 +54,7 @@ async function updatePost(postId: string, patch: Record<string, unknown>) {
   if (error) throw error;
 }
 
-// Instagram Graph API: create media container
+// Instagram Graph API: create media container (post tunggal image/video)
 async function createContainer(igUserId: string, token: string, post: Record<string, unknown>) {
   const params = new URLSearchParams({
     caption: post.caption || "",
@@ -64,7 +64,7 @@ async function createContainer(igUserId: string, token: string, post: Record<str
   const mediaType = post.media_type;
   const mediaUrl = post.media_url;
 
-  if (mediaType === "video" || mediaType === "carousel") {
+  if (mediaType === "video") {
     params.set("media_type", "REELS");
     params.set("video_url", mediaUrl);
   } else {
@@ -78,6 +78,57 @@ async function createContainer(igUserId: string, token: string, post: Record<str
   const data = await res.json();
   if (data.error) throw new Error(data.error.message || "createContainer failed");
   return data.id; // ig_container_id
+}
+
+// --- Carousel helpers ---
+// Item carousel TIDAK pakai media_type=REELS (itu khusus post video tunggal).
+// Item video di dalam carousel pakai media_type=VIDEO + is_carousel_item=true.
+async function createCarouselChildContainer(
+  igUserId: string,
+  token: string,
+  item: { media_url: string; media_type: string }
+) {
+  const params = new URLSearchParams({
+    is_carousel_item: "true",
+    access_token: token,
+  });
+  if (item.media_type === "video") {
+    params.set("media_type", "VIDEO");
+    params.set("video_url", item.media_url);
+  } else {
+    params.set("image_url", item.media_url);
+  }
+
+  const res = await fetch(
+    `https://graph.facebook.com/${GRAPH_API_VERSION}/${igUserId}/media?${params}`,
+    { method: "POST" }
+  );
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || "createCarouselChildContainer failed");
+  return data.id;
+}
+
+// Parent container carousel: menggabungkan child container ids
+async function createCarouselParentContainer(
+  igUserId: string,
+  token: string,
+  caption: string,
+  childIds: string[]
+) {
+  const params = new URLSearchParams({
+    media_type: "CAROUSEL",
+    caption: caption || "",
+    children: childIds.join(","),
+    access_token: token,
+  });
+
+  const res = await fetch(
+    `https://graph.facebook.com/${GRAPH_API_VERSION}/${igUserId}/media?${params}`,
+    { method: "POST" }
+  );
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || "createCarouselParentContainer failed");
+  return data.id;
 }
 
 // Cek status container (untuk video/reels)
@@ -110,19 +161,63 @@ async function publishContainer(igUserId: string, token: string, containerId: st
   return data.id; // ig_media_id
 }
 
+// Proses khusus post carousel: bikin child container per item,
+// tunggu tiap item video (kalau ada) FINISHED, baru bikin parent
+// container CAROUSEL, lalu publish.
+async function processCarouselPost(post: Record<string, unknown>, account: Record<string, unknown>) {
+  const { data: items, error: itemsError } = await supabase
+    .from("ig_post_media")
+    .select("*")
+    .eq("post_id", post.id)
+    .order("position", { ascending: true });
+
+  if (itemsError) throw itemsError;
+  if (!items || items.length < 2) {
+    throw new Error(`Carousel butuh minimal 2 item media (ditemukan ${items?.length || 0})`);
+  }
+  if (items.length > 10) {
+    throw new Error(`Carousel maksimal 10 item media (ditemukan ${items.length})`);
+  }
+
+  const childIds: string[] = [];
+  for (const item of items) {
+    const childId = await createCarouselChildContainer(account.ig_user_id, account.access_token, item);
+    await supabase.from("ig_post_media").update({ ig_child_container_id: childId }).eq("id", item.id);
+
+    if (item.media_type === "video") {
+      await waitForContainerReady(childId, account.access_token);
+    }
+    childIds.push(childId);
+  }
+
+  await logStep(post.id, "create_carousel_children", true, null, { child_ids: childIds });
+
+  const parentId = await createCarouselParentContainer(
+    account.ig_user_id,
+    account.access_token,
+    post.caption || "",
+    childIds
+  );
+
+  await logStep(post.id, "create_container", true, null, { container_id: parentId });
+  return parentId;
+}
+
 // Proses satu post
 async function processPost(post: Record<string, unknown>, account: Record<string, unknown>) {
   try {
-    const containerId = await createContainer(
-      account.ig_user_id,
-      account.access_token,
-      post
-    );
+    let containerId: string;
 
-    await logStep(post.id, "create_container", true, null, { container_id: containerId });
+    if (post.media_type === "carousel") {
+      containerId = await processCarouselPost(post, account);
+    } else {
+      containerId = await createContainer(account.ig_user_id, account.access_token, post);
+      await logStep(post.id, "create_container", true, null, { container_id: containerId });
+    }
+
     await updatePost(post.id, { ig_container_id: containerId, status: "publishing", updated_at: new Date().toISOString() });
 
-    if (post.media_type !== "image") {
+    if (post.media_type === "video") {
       await logStep(post.id, "check_status", true, null, { waited: true });
       await waitForContainerReady(containerId, account.access_token);
     }

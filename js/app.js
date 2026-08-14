@@ -11111,12 +11111,18 @@ function renderIgPostTable() {
         const statusColor = IG_STATUS_COLORS[post.status] || IG_STATUS_COLORS.draft;
         const statusLabel = IG_STATUS_LABELS[post.status] || post.status;
 
-        // Preview media
+        // Preview media (untuk carousel, media_url berisi item pertama —
+        // ditandai badge kecil biar kelihatan itu carousel bukan single image)
         let mediaPreview = '';
         if (post.media_type === 'image') {
             mediaPreview = `<img src="${post.media_url}" alt="media" class="ig-media-thumb" loading="lazy">`;
         } else if (post.media_type === 'video') {
             mediaPreview = `<video src="${post.media_url}" class="ig-media-thumb" preload="none"></video>`;
+        } else if (post.media_type === 'carousel' && post.media_url) {
+            mediaPreview = `<div class="ig-post-carousel-thumb-wrap">
+                <img src="${post.media_url}" alt="carousel" class="ig-media-thumb" loading="lazy">
+                <span class="ig-post-carousel-count" title="Carousel"><i class="bi bi-images"></i></span>
+            </div>`;
         } else {
             mediaPreview = `<div class="ig-media-thumb ig-carousel-thumb"><i class="bi bi-images"></i></div>`;
         }
@@ -11316,6 +11322,11 @@ function igOpenDayModal(dateKey) {
                 mediaPreview = `<img src="${post.media_url}" alt="media" class="ig-media-thumb" loading="lazy">`;
             } else if (post.media_type === 'video') {
                 mediaPreview = `<video src="${post.media_url}" class="ig-media-thumb" preload="none"></video>`;
+            } else if (post.media_type === 'carousel' && post.media_url) {
+                mediaPreview = `<div class="ig-post-carousel-thumb-wrap">
+                    <img src="${post.media_url}" alt="carousel" class="ig-media-thumb" loading="lazy">
+                    <span class="ig-post-carousel-count" title="Carousel"><i class="bi bi-images"></i></span>
+                </div>`;
             } else {
                 mediaPreview = `<div class="ig-media-thumb ig-carousel-thumb"><i class="bi bi-images"></i></div>`;
             }
@@ -11350,6 +11361,12 @@ function igAddPostFromDayModal() {
 }
 
 // ---- Modal: Upload/Edit Post ----
+// Item-item carousel yang sedang diedit di modal (state sementara sebelum Simpan).
+// Tiap item: { media_url, media_type: 'image'|'video' }
+let igCarouselItems = [];
+const IG_CAROUSEL_MIN = 2;
+const IG_CAROUSEL_MAX = 10;
+
 function openIgUploadModal(postId = null, presetDateKey = null) {
     if (!canManageProgramData()) {
         showToast('Akun Anda tidak punya izin untuk mengelola post IG', 'error');
@@ -11366,6 +11383,8 @@ function openIgUploadModal(postId = null, presetDateKey = null) {
     document.getElementById('igMediaFileName').textContent = '-';
     document.getElementById('igCaptionCount').textContent = '2200';
     document.getElementById('ig_media_type').value = 'image';
+    igCarouselItems = [];
+    renderIgCarouselGrid();
 
     // Default tanggal/jam = besok pagi (atau tanggal yang dipilih dari kalender)
     const tomorrow = new Date();
@@ -11399,12 +11418,16 @@ function openIgUploadModal(postId = null, presetDateKey = null) {
             document.getElementById('ig_media_type').value = post.media_type || 'image';
             document.getElementById('ig_media_url').value = post.media_url || '';
 
-            // Show preview media yang sudah ada
-            if (post.media_url) {
+            if (post.media_type === 'carousel') {
+                // Ambil item carousel dari tabel ig_post_media
+                loadIgCarouselItemsForEdit(post.id);
+            } else if (post.media_url) {
                 const pre = document.getElementById('igMediaPreview');
                 if (pre) {
                     if (post.media_type === 'image') {
                         pre.innerHTML = `<img src="${post.media_url}" class="ig-media-preview-img">`;
+                    } else {
+                        pre.innerHTML = `<video src="${post.media_url}" class="ig-media-preview-img" controls></video>`;
                     }
                 }
             }
@@ -11428,6 +11451,7 @@ function openIgUploadModal(postId = null, presetDateKey = null) {
         pickerWrap.style.display = igAccounts.length ? 'block' : 'none';
     }
 
+    onIgMediaTypeChange();
     modal.classList.add('open');
 
     // Caption counter
@@ -11441,12 +11465,49 @@ function openIgUploadModal(postId = null, presetDateKey = null) {
     }
 }
 
+// ---- Ambil item carousel yang sudah tersimpan (mode edit) ----
+async function loadIgCarouselItemsForEdit(postId) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('ig_post_media')
+            .select('media_url, media_type, position')
+            .eq('post_id', postId)
+            .order('position', { ascending: true });
+        if (error) throw error;
+        igCarouselItems = (data || []).map(item => ({ media_url: item.media_url, media_type: item.media_type }));
+        renderIgCarouselGrid();
+    } catch (err) {
+        console.error('loadIgCarouselItemsForEdit error:', err);
+        showToast('Gagal memuat item carousel: ' + err.message, 'error');
+    }
+}
+
 function closeIgUploadModal() {
     const modal = document.getElementById('igUploadModal');
     if (modal) modal.classList.remove('open');
+    igCarouselItems = [];
 }
 
-// ---- Handle media file change ----
+// ---- Toggle tampilan form sesuai tipe media yang dipilih ----
+function onIgMediaTypeChange() {
+    const mediaType = document.getElementById('ig_media_type')?.value || 'image';
+    const singleWrap = document.getElementById('igSingleMediaWrap');
+    const carouselWrap = document.getElementById('igCarouselMediaWrap');
+    if (!singleWrap || !carouselWrap) return;
+
+    if (mediaType === 'carousel') {
+        singleWrap.style.display = 'none';
+        carouselWrap.style.display = 'block';
+    } else {
+        singleWrap.style.display = 'block';
+        carouselWrap.style.display = 'none';
+        // Ganti accept sesuai tipe supaya validasi lebih jelas ke user
+        const fileInput = document.getElementById('ig_media_file');
+        if (fileInput) fileInput.accept = mediaType === 'video' ? '.mp4,.mov' : 'image/jpeg,image/png,image/webp';
+    }
+}
+
+// ---- Handle media file change (image/video tunggal) ----
 async function onIgMediaChange() {
     const input = document.getElementById('ig_media_file');
     const fileNameEl = document.getElementById('igMediaFileName');
@@ -11480,22 +11541,7 @@ async function onIgMediaChange() {
     showToast('Mengupload media...', 'info');
 
     try {
-        // Upload ke Supabase Storage bucket ig-media
-        const fileName = `ig_${Date.now()}_${file.name}`;
-        const { data, error } = await supabaseClient.storage
-            .from(IG_STORAGE_BUCKET)
-            .upload(fileName, file, {
-                cacheControl: '3600',
-                upsert: false
-            });
-
-        if (error) throw error;
-
-        // Dapatkan public URL
-        const { data: { publicUrl } } = supabaseClient.storage
-            .from(IG_STORAGE_BUCKET)
-            .getPublicUrl(data.path);
-
+        const publicUrl = await uploadIgMediaFile(file);
         if (urlEl) urlEl.value = publicUrl;
 
         // Preview
@@ -11514,6 +11560,104 @@ async function onIgMediaChange() {
     }
 }
 
+// ---- Helper: upload 1 file ke bucket ig-media, return public URL ----
+async function uploadIgMediaFile(file) {
+    const fileName = `ig_${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${file.name}`;
+    const { data, error } = await supabaseClient.storage
+        .from(IG_STORAGE_BUCKET)
+        .upload(fileName, file, { cacheControl: '3600', upsert: false });
+    if (error) throw error;
+
+    const { data: { publicUrl } } = supabaseClient.storage
+        .from(IG_STORAGE_BUCKET)
+        .getPublicUrl(data.path);
+    return publicUrl;
+}
+
+// ---- Handle multi-file change (carousel) ----
+async function onIgCarouselFilesChange() {
+    const input = document.getElementById('ig_carousel_files');
+    if (!input.files || !input.files.length) return;
+
+    const files = Array.from(input.files);
+    const allowedImage = ['image/jpeg', 'image/png', 'image/webp'];
+    const allowedVideo = ['video/mp4', 'video/quicktime'];
+
+    if (igCarouselItems.length + files.length > IG_CAROUSEL_MAX) {
+        showToast(`Carousel maksimal ${IG_CAROUSEL_MAX} item media`, 'error');
+        input.value = '';
+        return;
+    }
+
+    for (const file of files) {
+        if (file.size > IG_MAX_FILE_SIZE) {
+            showToast(`File "${file.name}" terlalu besar (maks 10MB)`, 'error');
+            continue;
+        }
+        let itemType;
+        if (allowedImage.includes(file.type)) itemType = 'image';
+        else if (allowedVideo.includes(file.type)) itemType = 'video';
+        else {
+            showToast(`Format "${file.name}" tidak didukung`, 'error');
+            continue;
+        }
+
+        try {
+            showToast(`Mengupload ${file.name}...`, 'info');
+            const publicUrl = await uploadIgMediaFile(file);
+            igCarouselItems.push({ media_url: publicUrl, media_type: itemType });
+            renderIgCarouselGrid();
+        } catch (err) {
+            console.error('IG carousel upload error:', err);
+            showToast(`Gagal upload ${file.name}: ` + err.message, 'error');
+        }
+    }
+
+    input.value = '';
+    showToast('Media carousel berhasil diupload', 'success');
+}
+
+function igCarouselMoveItem(index, direction) {
+    const target = index + direction;
+    if (target < 0 || target >= igCarouselItems.length) return;
+    const tmp = igCarouselItems[index];
+    igCarouselItems[index] = igCarouselItems[target];
+    igCarouselItems[target] = tmp;
+    renderIgCarouselGrid();
+}
+
+function igCarouselRemoveItem(index) {
+    igCarouselItems.splice(index, 1);
+    renderIgCarouselGrid();
+}
+
+function renderIgCarouselGrid() {
+    const grid = document.getElementById('igCarouselGrid');
+    const countEl = document.getElementById('igCarouselCount');
+    if (countEl) countEl.textContent = `${igCarouselItems.length} item`;
+    if (!grid) return;
+
+    if (!igCarouselItems.length) {
+        grid.innerHTML = '';
+        return;
+    }
+
+    grid.innerHTML = igCarouselItems.map((item, i) => {
+        const media = item.media_type === 'video'
+            ? `<video src="${item.media_url}" muted></video>`
+            : `<img src="${item.media_url}" alt="item ${i + 1}">`;
+        return `<div class="ig-carousel-item">
+            ${media}
+            <span class="ig-carousel-item-badge">${i + 1}</span>
+            <div class="ig-carousel-item-actions">
+                <button type="button" onclick="igCarouselMoveItem(${i}, -1)" ${i === 0 ? 'disabled' : ''} title="Geser ke kiri"><i class="bi bi-arrow-left"></i></button>
+                <button type="button" class="ig-carousel-remove" onclick="igCarouselRemoveItem(${i})" title="Hapus"><i class="bi bi-trash-fill"></i></button>
+                <button type="button" onclick="igCarouselMoveItem(${i}, 1)" ${i === igCarouselItems.length - 1 ? 'disabled' : ''} title="Geser ke kanan"><i class="bi bi-arrow-right"></i></button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
 // ---- Save post (create / update) ----
 async function saveIgPost(e) {
     e.preventDefault();
@@ -11521,13 +11665,23 @@ async function saveIgPost(e) {
 
     const postId = document.getElementById('ig_post_id').value;
     const caption = document.getElementById('ig_caption').value.trim();
-    const mediaUrl = document.getElementById('ig_media_url').value;
     const mediaType = document.getElementById('ig_media_type').value;
     const scheduleDate = document.getElementById('ig_schedule_date').value;
     const scheduleTime = document.getElementById('ig_schedule_time').value;
 
-    if (!mediaUrl) { showToast('Media belum diupload', 'error'); return; }
     if (!scheduleDate || !scheduleTime) { showToast('Jadwal wajib diisi', 'error'); return; }
+
+    let mediaUrl;
+    if (mediaType === 'carousel') {
+        if (igCarouselItems.length < IG_CAROUSEL_MIN) {
+            showToast(`Carousel butuh minimal ${IG_CAROUSEL_MIN} item media`, 'error');
+            return;
+        }
+        mediaUrl = igCarouselItems[0].media_url; // dipakai buat thumbnail di tabel/kalender
+    } else {
+        mediaUrl = document.getElementById('ig_media_url').value;
+        if (!mediaUrl) { showToast('Media belum diupload', 'error'); return; }
+    }
 
     const scheduleISO = `${scheduleDate}T${scheduleTime}:00`;
 
@@ -11541,6 +11695,7 @@ async function saveIgPost(e) {
 
     try {
         let result;
+        let savedPostId = postId;
         if (postId) {
             result = await supabaseClient.from('ig_posts').update(postData).eq('id', postId).select();
         } else {
@@ -11548,6 +11703,26 @@ async function saveIgPost(e) {
         }
 
         if (result.error) throw result.error;
+        if (!savedPostId && result.data && result.data[0]) savedPostId = result.data[0].id;
+
+        // Sinkronkan item carousel: hapus dulu item lama punya post ini, lalu insert ulang
+        // sesuai urutan sekarang. Simpel & aman untuk jumlah item yang kecil (maks 10).
+        if (mediaType === 'carousel' && savedPostId) {
+            const { error: delErr } = await supabaseClient.from('ig_post_media').delete().eq('post_id', savedPostId);
+            if (delErr) throw delErr;
+
+            const rows = igCarouselItems.map((item, i) => ({
+                post_id: savedPostId,
+                media_url: item.media_url,
+                media_type: item.media_type,
+                position: i
+            }));
+            const { error: insErr } = await supabaseClient.from('ig_post_media').insert(rows);
+            if (insErr) throw insErr;
+        } else if (postId) {
+            // Kalau edit dan tipe diganti dari carousel ke image/video, bersihkan sisa item lama
+            await supabaseClient.from('ig_post_media').delete().eq('post_id', postId);
+        }
 
         showToast(`Post ${postId ? 'diperbarui' : 'ditambahkan'}`, 'success');
         closeIgUploadModal();
