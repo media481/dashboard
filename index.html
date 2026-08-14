@@ -58,6 +58,9 @@
             </button>
 
             <div class="nav-label nav-group-label" style="display:none;">Siklus Jamaah</div>
+            <button class="nav-item nav-loggedin-only" data-tab="todocs" style="display:none;" title="To-Do CS">
+                <i class="bi bi-list-check"></i> <span class="nav-text">To-Do CS</span>
+            </button>
             <button class="nav-item nav-loggedin-only" data-tab="pendaftaran" style="display:none;" title="Pendaftaran">
                 <i class="bi bi-clipboard-check-fill"></i> <span class="nav-text">Pendaftaran</span>
             </button>
@@ -191,6 +194,9 @@
                     <i class="bi bi-calendar-check-fill"></i> <span>Jadwal Tamu</span>
                     <span class="badge" id="jadwalBadge" style="display:none;">0</span>
                 </button>
+                <button class="tab-btn nav-loggedin-only" data-tab="todocs" style="display:none;">
+                    <i class="bi bi-list-check"></i> <span>To-Do CS</span>
+                </button>
                 <button class="tab-btn nav-loggedin-only" data-tab="pendaftaran" style="display:none;">
                     <i class="bi bi-clipboard-check-fill"></i> <span>Pendaftaran</span>
                 </button>
@@ -297,6 +303,13 @@
                         </table>
                     </div>
                     <div class="pf-pagination" id="jfPagination"></div>
+                </div>
+
+                <div class="tab-panel" id="tab-todocs">
+                    <div style="margin-bottom:14px;">
+                        <p style="color:var(--ink-soft);font-size:13px;margin:0;">Ringkasan harian: siapa yang perlu ditindaklanjuti hari ini — cicilan mendekati keberangkatan, leads belum di-follow-up, dokumen kurang, dan paspor mepet.</p>
+                    </div>
+                    <div id="todoCsContent"></div>
                 </div>
 
                 <div class="tab-panel" id="tab-pendaftaran">
@@ -517,6 +530,9 @@
             </button>
 
             <div class="nav-label nav-group-label" style="display:none;">Siklus Jamaah</div>
+            <button class="nav-item nav-loggedin-only" data-tab="todocs" style="display:none;" onclick="switchTab('todocs'); toggleMobileSidebar();">
+                <i class="bi bi-list-check"></i> To-Do CS
+            </button>
             <button class="nav-item nav-loggedin-only" data-tab="pendaftaran" style="display:none;" onclick="switchTab('pendaftaran'); toggleMobileSidebar();">
                 <i class="bi bi-clipboard-check-fill"></i> Pendaftaran
             </button>
