@@ -6425,13 +6425,15 @@ function renderPembayaranTable() {
                 </td>
                 <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
                 <td style="text-align:right;white-space:nowrap;">
-                    <button class="btn-primary btn-pay" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${r.j.id}')" ${!canEdit ? 'disabled title="Tidak punya izin"' : ''}>
-                        Update Pembayaran
-                    </button>
-                    ${(r.status === 'belum' || r.status === 'cicilan') && r.j.wa ? `
-                    <button class="btn-cancel btn-pay" style="font-size:11px;padding:5px 10px;margin-left:4px;" id="pbWaBtn_${r.j.id}" onclick="generatePaymentReminderWA('${r.j.id}')" title="Susun & kirim reminder WA">
-                        <i class="bi bi-whatsapp"></i> Reminder WA
-                    </button>` : ''}
+                    <div class="pb-actions">
+                        <button class="btn-primary btn-pay" style="font-size:11px;padding:5px 10px;" onclick="openCicilanModal('${r.j.id}')" ${!canEdit ? 'disabled title="Tidak punya izin"' : ''}>
+                            Update Pembayaran
+                        </button>
+                        ${(r.status === 'belum' || r.status === 'cicilan') && r.j.wa ? `
+                        <button class="btn-wa-reminder" style="font-size:11px;padding:5px 10px;" id="pbWaBtn_${r.j.id}" onclick="generatePaymentReminderWA('${r.j.id}')" title="Susun & kirim reminder WA">
+                            <i class="bi bi-whatsapp"></i> Reminder WA
+                        </button>` : ''}
+                    </div>
                 </td>
             </tr>`;
     }).join('');
