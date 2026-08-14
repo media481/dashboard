@@ -2146,19 +2146,27 @@ function sysApiBadge(state, text) {
 }
 
 // ---- Daftar Edge Function (Supabase) yang benar-benar dipanggil dari
-// dashboard ini -- URL-nya ikut const yang sudah didefinisikan di atas,
-// jadi kalau nama function berubah, daftar ini otomatis ikut berubah juga. ----
-const SYSTEM_EDGE_FUNCTIONS = [
-    { label: 'generate-wa-caption', desc: 'AI Caption WA (Gemini)', url: WA_CAPTION_FUNCTION_URL },
-    { label: 'parse-broadcast-ai', desc: 'AI Parse Broadcast (Gemini)', url: PARSE_BROADCAST_AI_FUNCTION_URL },
-    { label: 'generate-tg-reminder', desc: 'AI Reminder Telegram (Gemini)', url: TG_REMINDER_AI_FUNCTION_URL },
-    { label: 'generate-payment-reminder-wa', desc: 'AI Reminder Pembayaran (Gemini)', url: PAYMENT_REMINDER_WA_FUNCTION_URL },
-    { label: 'scan-poster-ocr', desc: 'OCR Poster (Crosscheck)', url: CX_OCR_FUNCTION_URL },
-    { label: 'generate-ig-caption', desc: 'AI Caption Instagram (Gemini)', url: IG_CAPTION_FUNCTION_URL },
-    { label: 'admin-create-user', desc: 'Buat User (Supabase Auth Admin API)', url: ADMIN_CREATE_USER_URL },
-    { label: 'admin-reset-user-password', desc: 'Reset Password User', url: ADMIN_RESET_USER_PASSWORD_URL },
-    { label: 'ig-manual-retry', desc: 'Retry Publish Instagram', url: `${SUPABASE_URL}/functions/v1/ig-manual-retry` },
-];
+// dashboard ini. Sengaja dibungkus FUNGSI (bukan const array langsung) dan
+// baru dipanggil saat panel System dibuka -- kalau ditulis sebagai const
+// di top-level, referensi ke CX_OCR_FUNCTION_URL / IG_CAPTION_FUNCTION_URL
+// (yang const-nya baru dideklarasikan jauh di bawah file ini) akan kena
+// temporal-dead-zone ReferenceError saat script pertama kali di-parse,
+// dan itu bikin SELURUH app.js berhenti jalan. Dengan dibungkus fungsi,
+// isinya baru dievaluasi belakangan (event/onclick), saat semua const di
+// atas sudah pasti terinisialisasi. ----
+function getSystemEdgeFunctions() {
+    return [
+        { label: 'generate-wa-caption', desc: 'AI Caption WA (Gemini)', url: WA_CAPTION_FUNCTION_URL },
+        { label: 'parse-broadcast-ai', desc: 'AI Parse Broadcast (Gemini)', url: PARSE_BROADCAST_AI_FUNCTION_URL },
+        { label: 'generate-tg-reminder', desc: 'AI Reminder Telegram (Gemini)', url: TG_REMINDER_AI_FUNCTION_URL },
+        { label: 'generate-payment-reminder-wa', desc: 'AI Reminder Pembayaran (Gemini)', url: PAYMENT_REMINDER_WA_FUNCTION_URL },
+        { label: 'scan-poster-ocr', desc: 'OCR Poster (Crosscheck)', url: CX_OCR_FUNCTION_URL },
+        { label: 'generate-ig-caption', desc: 'AI Caption Instagram (Gemini)', url: IG_CAPTION_FUNCTION_URL },
+        { label: 'admin-create-user', desc: 'Buat User (Supabase Auth Admin API)', url: ADMIN_CREATE_USER_URL },
+        { label: 'admin-reset-user-password', desc: 'Reset Password User', url: ADMIN_RESET_USER_PASSWORD_URL },
+        { label: 'ig-manual-retry', desc: 'Retry Publish Instagram', url: `${SUPABASE_URL}/functions/v1/ig-manual-retry` },
+    ];
+}
 
 // Cek satu Edge Function dengan request OPTIONS (preflight CORS) -- BUKAN
 // panggilan fungsional (tidak mengirim payload/aksi apapun ke Telegram,
@@ -2264,7 +2272,7 @@ async function renderSystemStatusPanel() {
     // apakah URL Edge Function Telegram (send-telegram) sudah diisi di
     // Pengaturan Telegram. Semua dijalankan paralel supaya panel tidak lama. ----
     const edgeResults = await Promise.all(
-        SYSTEM_EDGE_FUNCTIONS.map(async fn => ({ ...fn, ...(await checkEdgeFunctionStatus(fn.url)) }))
+        getSystemEdgeFunctions().map(async fn => ({ ...fn, ...(await checkEdgeFunctionStatus(fn.url)) }))
     );
     let tgEdgeResult = null, tgEdgeUrl = '';
     try {
