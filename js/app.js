@@ -586,6 +586,10 @@ const WA_CAPTION_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/generate-wa-captio
 // Edge Function AI untuk parsing teks broadcast (pendamping parseBroadcastText()
 // yang berbasis regex -- lihat parseBroadcastTextAI() di bawah untuk detail).
 const PARSE_BROADCAST_AI_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/parse-broadcast-ai`;
+// Edge Function AI untuk menyusun pesan reminder Telegram yang lebih natural
+// & informatif (pendamping formatTgReminder() -- lihat generateTgReminderAI()
+// di bawah untuk detail & fallback).
+const TG_REMINDER_AI_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/generate-tg-reminder`;
 
 
 function waCaptionGaugeColor(pct) {
@@ -2441,6 +2445,7 @@ async function renderAdminPanel() {
                 <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;">
                     <button class="btn-primary" onclick="saveTgConfig()"><i class="bi bi-floppy-fill"></i> Simpan Konfigurasi</button>
                     <button class="btn-cancel" onclick="testTgNotif()"><i class="bi bi-send-fill"></i> Test Kirim</button>
+                    <button class="btn-cancel" onclick="testTgReminderAI()"><i class="bi bi-stars"></i> Test Reminder AI</button>
                 </div>
                 <div id="tgStatusMsg" style="margin-top:12px;"></div>
                 <div class="tg-notif-log" id="tgNotifLog" style="display:none;">
@@ -10462,6 +10467,67 @@ function formatTgReminder(data, sisaHari) {
 🕐 ${new Date().toLocaleString('id-ID')}`;
 }
 
+// Ambil ringkasan status jamaah 1 program (dipakai generateTgReminderAI supaya
+// pesan reminder bisa menyoroti hal yang perlu ditindaklanjuti admin, bukan
+// cuma "sisa X hari"). Query ringan -- hanya ambil kolom status & dokumen,
+// bukan semua data jamaah.
+async function getJamaahStatsForProgram(programId) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('kb_jamaah')
+            .select('id, status, dokumen')
+            .eq('program_id', programId)
+            .eq('diarsipkan', false);
+        if (error || !data) return { totalJamaah: 0, jamaahLunas: 0, jamaahBelumLunas: 0, jamaahBatal: 0, dokumenBelumLengkap: 0 };
+
+        let jamaahLunas = 0, jamaahBelumLunas = 0, jamaahBatal = 0, dokumenBelumLengkap = 0;
+        data.forEach(j => {
+            if (j.status === 'batal') { jamaahBatal++; return; }
+            if (j.status === 'lunas') jamaahLunas++; else jamaahBelumLunas++;
+            if (!isDokumenLengkap(j.dokumen, j)) dokumenBelumLengkap++;
+        });
+        return { totalJamaah: data.length, jamaahLunas, jamaahBelumLunas, jamaahBatal, dokumenBelumLengkap };
+    } catch (err) {
+        console.error('getJamaahStatsForProgram error:', err);
+        return { totalJamaah: 0, jamaahLunas: 0, jamaahBelumLunas: 0, jamaahBatal: 0, dokumenBelumLengkap: 0 };
+    }
+}
+
+// Versi AI dari formatTgReminder() -- menyusun pesan reminder yang lebih
+// variatif & menyoroti hal yang perlu ditindaklanjuti (jamaah belum lunas /
+// dokumen belum lengkap), bukan template statis yang bunyinya sama tiap hari
+// selama 30 hari ke grup admin yang sama. Kalau gagal (limit Gemini habis/
+// internet putus/dll), caller (checkAndSendReminders) fallback ke
+// formatTgReminder() lama.
+async function generateTgReminderAI(prog, sisaHari, stats) {
+    const payload = {
+        nama: prog.nama, tgl: prog.tgl, durasi: prog.durasi, maskapai: prog.maskapai,
+        harga_quint: prog.harga_quint, sisaHari,
+        totalJamaah: stats.totalJamaah, jamaahLunas: stats.jamaahLunas,
+        jamaahBelumLunas: stats.jamaahBelumLunas, jamaahBatal: stats.jamaahBatal,
+        dokumenBelumLengkap: stats.dokumenBelumLengkap,
+        companyName: NOTA_PERUSAHAAN.nama,
+    };
+    const response = await fetch(TG_REMINDER_AI_FUNCTION_URL, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": "Bearer " + SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+        let detail = '';
+        try { detail = (await response.json()).error || ''; } catch (e) {}
+        throw new Error(detail || 'Gagal memanggil API (status ' + response.status + ')');
+    }
+    const data = await response.json();
+    const message = (data.message || '').trim();
+    if (!message) throw new Error('Tidak ada hasil teks dari model.');
+    return message;
+}
+
 async function checkAndSendReminders() {
     const cfg = await getTgConfig();
     if (!cfg.botToken || !cfg.edgeUrl) return;
@@ -10492,7 +10558,17 @@ async function checkAndSendReminders() {
         const key = String(prog.id);
         if (sentLog[key] === todayStr) continue;
 
-        const msg = formatTgReminder(prog, sisaHari);
+        // Coba versi AI dulu (lebih natural & menyoroti hal yang perlu
+        // ditindaklanjuti); kalau gagal, jatuhkan ke template statis lama
+        // supaya reminder tetap terkirim walau AI sedang bermasalah.
+        let msg;
+        try {
+            const stats = await getJamaahStatsForProgram(prog.id);
+            msg = await generateTgReminderAI(prog, sisaHari, stats);
+        } catch (err) {
+            console.error('generateTgReminderAI gagal, fallback ke template statis:', err);
+            msg = formatTgReminder(prog, sisaHari);
+        }
         await sendTelegramNotif(msg, 'reminder');
         sentLog[key] = todayStr;
         changed = true;
@@ -10515,6 +10591,26 @@ async function testTgNotif() {
     await sendTelegramNotif(msgJadwal, 'jadwal');
     await sendTelegramNotif(msgReminder, 'reminder');
     showTgStatus('Test selesai! Cek log di bawah.', 'ok');
+}
+
+// Test terpisah khusus untuk reminder versi AI (generateTgReminderAI) --
+// dipakai admin untuk cek kualitas & variasi kalimat AI tanpa perlu menunggu
+// ada program yang benar-benar H-30 s/d H-0. Pakai data contoh dengan skenario
+// "masih ada yang belum lunas & dokumen belum lengkap" supaya kelihatan beda
+// dari template statis lama.
+async function testTgReminderAI() {
+    await saveTgConfig();
+    showTgStatus('Menyusun reminder dengan AI...', 'ok');
+    const progContoh = { nama: 'Umroh Spesial Akbar', tgl: '15 Februari 2027', durasi: '9 Hari', maskapai: 'Saudia Airlines', harga_quint: 'Rp 32.500.000' };
+    const statsContoh = { totalJamaah: 12, jamaahLunas: 7, jamaahBelumLunas: 5, jamaahBatal: 0, dokumenBelumLengkap: 3 };
+    try {
+        const msg = await generateTgReminderAI(progContoh, 20, statsContoh);
+        await sendTelegramNotif(msg, 'reminder');
+        showTgStatus('Test AI selesai! Cek log di bawah.', 'ok');
+    } catch (err) {
+        console.error(err);
+        showTgStatus('AI gagal: ' + err.message + ' — cek GEMINI_API_KEY di Supabase secrets', 'err');
+    }
 }
 
 // ============================================================
