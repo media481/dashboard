@@ -8466,9 +8466,14 @@ function todoCsDaysToDeparture(program) {
 }
 
 // Rombongan yang sudah pulang/batal tidak perlu lagi diingatkan cicilan,
-// dokumen, atau paspor -- kecualikan dari agregasi Reminder.
-function todoCsProgramMasihRelevan(programId) {
-    const st = statusKepulanganProgram(programId);
+// dokumen, atau paspor -- kecualikan dari agregasi Reminder. statusMap
+// (opsional) dipakai kalau sudah ada hasil fetch fresh dari DB (lihat
+// renderTodoCsPanel) -- LEBIH DIPERCAYA daripada dataUmroh cache, karena
+// dataUmroh.status_kepulangan cuma ter-isi di sesi ini KALAU admin sempat
+// membuka/mengubah tab Status Kepulangan (tidak ikut ter-load awal saat
+// loadPrograms(), lihat juga pola serupa di arsipkanSemuaJamaah()).
+function todoCsProgramMasihRelevan(programId, statusMap) {
+    const st = statusMap ? (statusMap[programId] || 'belum_berangkat') : statusKepulanganProgram(programId);
     return st !== 'sudah_pulang' && st !== 'batal';
 }
 
@@ -8489,7 +8494,20 @@ async function renderTodoCsPanel() {
         // pagi ini", bukan sesuatu yang di-cache lama.
         await Promise.all([loadKbJamaah(), loadPendaftaran()]);
 
-        const jamaahAll = (kbJamaahList || []).filter(j => todoCsProgramMasihRelevan(j.program_id));
+        // Ambil status_kepulangan LANGSUNG dari DB (bukan dari dataUmroh
+        // cache) -- dataUmroh tidak selalu punya kolom ini ter-load di awal
+        // sesi (baru ter-isi kalau admin sempat buka/ubah tab Status
+        // Kepulangan di sesi berjalan). Tanpa ini, rombongan yang sebenarnya
+        // sudah "Sudah Pulang"/"Batal" bisa salah ikut muncul di Reminder.
+        const { data: statusRows, error: srErr } = await withRetry(
+            () => supabaseClient.from('programs').select('id, status_kepulangan'),
+            { label: 'Muat status kepulangan program' }
+        );
+        if (srErr) throw srErr;
+        const statusKepulanganMap = {};
+        (statusRows || []).forEach(r => { statusKepulanganMap[r.id] = r.status_kepulangan || 'belum_berangkat'; });
+
+        const jamaahAll = (kbJamaahList || []).filter(j => todoCsProgramMasihRelevan(j.program_id, statusKepulanganMap));
 
         let totalPerJamaah = {};
         if (jamaahAll.length) {
