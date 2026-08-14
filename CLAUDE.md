@@ -194,3 +194,11 @@ satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
   `service-worker.js` (`APP_SHELL` array) supaya PWA cache-nya ikut sinkron, dan naikkan
   `CACHE_NAME` versinya
 - Akurasi data finansial adalah prioritas karena datanya dipakai untuk laporan resmi
+
+## Cara kirim hasil kerja (deploy ke GitHub)
+
+Kalau perubahan cuma menyentuh sebagian kecil file (bukan restrukturisasi besar),
+**kirim file yang berubah saja satu-satu**, JANGAN re-zip seluruh folder proyek.
+User tinggal replace file itu langsung di repo lalu push — re-zip seluruh proyek
+cuma buang-buang waktu/token dan bikin user harus extract & diff manual buat
+cari apa yang sebenarnya berubah.
