@@ -3064,7 +3064,7 @@ function applyRoleUIVisibility() {
 // dengan atribut data-tab / data-subtab pada tombol nav di index.html.
 const SIDEBAR_MENU_REGISTRY = [
     { key: 'info', label: 'Jadwal Tamu', group: 'Navigasi' },
-    { key: 'todocs', label: 'To-Do CS', group: 'Navigasi' },
+    { key: 'todocs', label: 'Reminder', group: 'Navigasi' },
     { key: 'pendaftaran', label: 'Pendaftaran', group: 'Navigasi' },
     { key: 'keberangkatan', label: 'Data Jamaah', group: 'Navigasi' },
     { key: 'dokumen', label: 'Dokumen', group: 'Navigasi' },
@@ -8466,7 +8466,7 @@ function todoCsDaysToDeparture(program) {
 }
 
 // Rombongan yang sudah pulang/batal tidak perlu lagi diingatkan cicilan,
-// dokumen, atau paspor -- kecualikan dari agregasi To-Do CS.
+// dokumen, atau paspor -- kecualikan dari agregasi Reminder.
 function todoCsProgramMasihRelevan(programId) {
     const st = statusKepulanganProgram(programId);
     return st !== 'sudah_pulang' && st !== 'batal';
@@ -8598,10 +8598,10 @@ async function renderTodoCsPanel() {
             )}
         `;
     } catch (err) {
-        console.error('Render To-Do CS error:', err);
+        console.error('Render Reminder error:', err);
         el.innerHTML = `<div class="kb-no-program" style="color:var(--danger);">
             <i class="bi bi-exclamation-circle-fill"></i>
-            <p>Gagal memuat data To-Do CS — periksa koneksi internet.</p>
+            <p>Gagal memuat data Reminder — periksa koneksi internet.</p>
         </div>`;
     }
 }
@@ -8634,7 +8634,7 @@ function todoCsRowHtml(nama, asal, sub, detailHtml, waBtnHtml) {
 
 // Sama seperti generateDocumentReminderWA, tapi program-nya diambil dari
 // j.program_id (bukan variabel global dokSelectedProgram) karena daftar di
-// To-Do CS berisi jamaah lintas-program sekaligus, bukan hasil pilih satu
+// Reminder berisi jamaah lintas-program sekaligus, bukan hasil pilih satu
 // program di dropdown seperti tab Dokumen.
 function generateTodoDokReminderWA(jamaahId) {
     if (!todoCsCacheJamaah) { showToast('Data belum siap, coba lagi', 'error'); return; }
@@ -8658,7 +8658,7 @@ function generateTodoDokReminderWA(jamaahId) {
 // Reminder WA perpanjangan paspor -- disusun langsung di klien (bukan lewat
 // AI) karena isinya cuma pemberitahuan tanggal kadaluarsa & anjuran
 // perpanjang. Dipanggil dari tombol "Reminder WA" bagian Paspor Mepet di
-// tab To-Do CS.
+// tab Reminder.
 function generateTodoPasporReminderWA(jamaahId) {
     if (!todoCsCacheJamaah) { showToast('Data belum siap, coba lagi', 'error'); return; }
     const j = todoCsCacheJamaah.find(x => String(x.id) === String(jamaahId));
@@ -8676,7 +8676,7 @@ function generateTodoPasporReminderWA(jamaahId) {
 }
 
 // Follow-up WA untuk leads Pendaftaran yang belum di-follow-up -- dipanggil
-// dari tombol "Follow-up WA" bagian Leads di tab To-Do CS.
+// dari tombol "Follow-up WA" bagian Leads di tab Reminder.
 function generateTodoLeadReminderWA(pendaftaranId) {
     const p = (pendaftaranList || []).find(x => String(x.id) === String(pendaftaranId));
     if (!p) { showToast('Data pendaftaran tidak ditemukan', 'error'); return; }
