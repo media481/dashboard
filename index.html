@@ -452,32 +452,51 @@
                     <span class="ig-account-expiry" id="igAccountExpiry"></span>
                 </div>
 
-                <!-- Calendar View -->
-                <div class="ig-calendar-container">
-                    <div class="ig-calendar-header">
-                        <div class="ig-calendar-header-left">
-                            <button class="ig-cal-nav" id="igCalPrev" onclick="igPrevMonth()" title="Bulan sebelumnya">‹</button>
-                            <h3 class="ig-cal-month" id="igCalMonth">Agustus 2026</h3>
-                            <button class="ig-cal-nav" id="igCalNext" onclick="igNextMonth()" title="Bulan berikutnya">›</button>
+                <!-- Calendar + Komentar (split layar utama) -->
+                <div class="ig-scheduler-split">
+                    <div class="ig-calendar-container">
+                        <div class="ig-calendar-header">
+                            <div class="ig-calendar-header-left">
+                                <button class="ig-cal-nav" id="igCalPrev" onclick="igPrevMonth()" title="Bulan sebelumnya">‹</button>
+                                <h3 class="ig-cal-month" id="igCalMonth">Agustus 2026</h3>
+                                <button class="ig-cal-nav" id="igCalNext" onclick="igNextMonth()" title="Bulan berikutnya">›</button>
+                            </div>
+                            <button class="ig-cal-today-btn" onclick="igGotoToday()"><i class="bi bi-calendar-check"></i> Hari Ini</button>
                         </div>
-                        <button class="ig-cal-today-btn" onclick="igGotoToday()"><i class="bi bi-calendar-check"></i> Hari Ini</button>
+                        <div class="ig-calendar-grid">
+                            <div class="ig-cal-day-header">Min</div>
+                            <div class="ig-cal-day-header">Sen</div>
+                            <div class="ig-cal-day-header">Sel</div>
+                            <div class="ig-cal-day-header">Rab</div>
+                            <div class="ig-cal-day-header">Kam</div>
+                            <div class="ig-cal-day-header">Jum</div>
+                            <div class="ig-cal-day-header">Sab</div>
+                            <div id="igCalDays"></div>
+                        </div>
+                        <div class="ig-cal-legend">
+                            <span class="ig-cal-legend-item"><span class="ig-cal-legend-dot" style="background:var(--ink-soft);"></span>Draft</span>
+                            <span class="ig-cal-legend-item"><span class="ig-cal-legend-dot" style="background:var(--brand);"></span>Terjadwal</span>
+                            <span class="ig-cal-legend-item"><span class="ig-cal-legend-dot" style="background:var(--warn);"></span>Mempublikasi</span>
+                            <span class="ig-cal-legend-item"><span class="ig-cal-legend-dot" style="background:var(--success);"></span>Dipublikasi</span>
+                            <span class="ig-cal-legend-item"><span class="ig-cal-legend-dot" style="background:var(--danger);"></span>Gagal</span>
+                        </div>
                     </div>
-                    <div class="ig-calendar-grid">
-                        <div class="ig-cal-day-header">Min</div>
-                        <div class="ig-cal-day-header">Sen</div>
-                        <div class="ig-cal-day-header">Sel</div>
-                        <div class="ig-cal-day-header">Rab</div>
-                        <div class="ig-cal-day-header">Kam</div>
-                        <div class="ig-cal-day-header">Jum</div>
-                        <div class="ig-cal-day-header">Sab</div>
-                        <div id="igCalDays"></div>
-                    </div>
-                    <div class="ig-cal-legend">
-                        <span class="ig-cal-legend-item"><span class="ig-cal-legend-dot" style="background:var(--ink-soft);"></span>Draft</span>
-                        <span class="ig-cal-legend-item"><span class="ig-cal-legend-dot" style="background:var(--brand);"></span>Terjadwal</span>
-                        <span class="ig-cal-legend-item"><span class="ig-cal-legend-dot" style="background:var(--warn);"></span>Mempublikasi</span>
-                        <span class="ig-cal-legend-item"><span class="ig-cal-legend-dot" style="background:var(--success);"></span>Dipublikasi</span>
-                        <span class="ig-cal-legend-item"><span class="ig-cal-legend-dot" style="background:var(--danger);"></span>Gagal</span>
+
+                    <div class="ig-comments-panel" id="igCommentsPanel">
+                        <div class="ig-comments-panel-header">
+                            <h3><i class="bi bi-chat-dots-fill"></i> Komentar <span class="ig-comments-panel-count" id="igCommentsPanelCount"></span></h3>
+                            <div class="ig-comments-panel-header-actions">
+                                <button class="ig-cal-today-btn" id="igCommentsPanelClearBtn" onclick="filterIgCommentsPanel(null)" style="display:none;" title="Tampilkan semua komentar">
+                                    <i class="bi bi-x-lg"></i> Semua
+                                </button>
+                                <button class="ig-cal-today-btn" onclick="syncIgCommentsNow()" title="Tarik komentar terbaru dari Instagram">
+                                    <i class="bi bi-arrow-repeat"></i> Sync
+                                </button>
+                            </div>
+                        </div>
+                        <div class="ig-comments-panel-body" id="igCommentsPanelBody">
+                            <div class="ig-empty"><i class="bi bi-hourglass-split"></i> Memuat komentar...</div>
+                        </div>
                     </div>
                 </div>
 

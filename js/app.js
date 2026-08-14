@@ -1169,6 +1169,8 @@ function openIgSchedulerPage() {
     loadIgPosts();
     loadIgAccounts();
     loadIgCommentsUnreadCount();
+    igCommentsPanelFilterPostId = null;
+    loadIgCommentsPanel();
     renderIgCalendar();
 }
 
@@ -12039,7 +12041,7 @@ function renderIgPostTable() {
         if (post.status === 'published' && post.ig_media_id) {
             const unreplied = (igCommentsUnrepliedCountByPost[post.id] || 0);
             const badge = unreplied > 0 ? `<span class="ig-comment-badge">${unreplied}</span>` : '';
-            actions.push(`<button type="button" class="ig-btn-comments" onclick="openIgCommentsModal('${post.id}')" title="Komentar"><i class="bi bi-chat-dots-fill"></i>${badge}</button>`);
+            actions.push(`<button type="button" class="ig-btn-comments" onclick="filterIgCommentsPanel('${post.id}')" title="Komentar"><i class="bi bi-chat-dots-fill"></i>${badge}</button>`);
         }
 
         return `<tr class="ig-post-row status-${post.status}">
@@ -12783,11 +12785,81 @@ async function syncIgCommentsNow() {
             showToast('Sync gagal: ' + (result.error || res.statusText), 'error');
         }
         await loadIgCommentsUnreadCount();
+        await loadIgCommentsPanel();
         if (igCommentsCurrentPostId) await renderIgCommentsModalBody(igCommentsCurrentPostId);
     } catch (err) {
         showToast('Gagal sync komentar: ' + err.message, 'error');
     }
 }
+
+// ---- Panel komentar di layar utama (sisi kanan, sebelah kalender) ----
+let igCommentsPanelFilterPostId = null; // null = tampilkan semua komentar
+
+async function filterIgCommentsPanel(postId) {
+    igCommentsPanelFilterPostId = postId;
+    const panel = document.getElementById('igCommentsPanel') || document.querySelector('.ig-comments-panel');
+    if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    await loadIgCommentsPanel();
+}
+
+async function loadIgCommentsPanel() {
+    const body = document.getElementById('igCommentsPanelBody');
+    const clearBtn = document.getElementById('igCommentsPanelClearBtn');
+    const countEl = document.getElementById('igCommentsPanelCount');
+    if (!body) return;
+    if (clearBtn) clearBtn.style.display = igCommentsPanelFilterPostId ? 'inline-flex' : 'none';
+    body.innerHTML = `<div class="ig-empty"><i class="bi bi-hourglass-split"></i> Memuat komentar...</div>`;
+
+    try {
+        let query = supabaseClient
+            .from('ig_comments')
+            .select('*, ig_posts(caption, media_url, media_type)')
+            .eq('is_our_reply', false)
+            .order('commented_at', { ascending: false })
+            .limit(50);
+        if (igCommentsPanelFilterPostId) query = query.eq('post_id', igCommentsPanelFilterPostId);
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        if (countEl) countEl.textContent = data && data.length ? `(${data.length})` : '';
+
+        const canManage = canManageProgramData();
+        body.innerHTML = (data && data.length) ? data.map(c => {
+            const post = c.ig_posts || {};
+            const captionSnippet = post.caption ? escapeHtml(post.caption.slice(0, 60)) + (post.caption.length > 60 ? '…' : '') : '(tanpa caption)';
+            return `
+                <div class="ig-comment-item${c.hidden ? ' ig-comment-hidden' : ''}">
+                    ${!igCommentsPanelFilterPostId ? `
+                    <button type="button" class="ig-comment-post-ref" onclick="filterIgCommentsPanel('${c.post_id}')" title="Lihat komentar post ini saja">
+                        ${post.media_url ? `<img src="${post.media_url}" class="ig-comment-post-thumb" loading="lazy">` : `<span class="ig-comment-post-thumb ig-comment-post-thumb-empty"><i class="bi bi-images"></i></span>`}
+                        <span class="ig-comment-post-caption">${captionSnippet}</span>
+                    </button>` : ''}
+                    <div class="ig-comment-item-head">
+                        <b>${escapeHtml(c.username || 'seseorang')}</b>
+                        <span class="ig-comment-time">${c.commented_at ? new Date(c.commented_at).toLocaleString('id-ID') : ''}</span>
+                    </div>
+                    <p class="ig-comment-text">${escapeHtml(c.comment_text || '')}</p>
+                    ${c.replied && c.our_reply_text ? `<div class="ig-comment-our-reply"><i class="bi bi-reply-fill"></i> Balasan kita: ${escapeHtml(c.our_reply_text)}</div>` : ''}
+                    ${canManage ? `
+                    <div class="ig-comment-item-actions">
+                        ${!c.replied ? `
+                        <input type="text" id="ig_reply_input_${c.ig_comment_id}" placeholder="Tulis balasan...">
+                        <button class="btn-primary" onclick="igReplyComment('${c.ig_comment_id}')"><i class="bi bi-reply-fill"></i> Balas</button>
+                        ` : ''}
+                        <button class="btn-cancel" onclick="igToggleHideComment('${c.ig_comment_id}', ${c.hidden ? 'false' : 'true'})">
+                            <i class="bi bi-eye${c.hidden ? '' : '-slash'}-fill"></i> ${c.hidden ? 'Tampilkan' : 'Sembunyikan'}
+                        </button>
+                        <button class="btn-danger" onclick="igDeleteComment('${c.ig_comment_id}')"><i class="bi bi-trash-fill"></i></button>
+                    </div>` : ''}
+                </div>`;
+        }).join('') : `<div class="ig-empty"><i class="bi bi-chat-square-dots"></i> ${igCommentsPanelFilterPostId ? 'Belum ada komentar untuk post ini.' : 'Belum ada komentar (atau belum disinkron).'}</div>`;
+    } catch (err) {
+        body.innerHTML = `<p style="color:var(--danger);font-size:12.5px;">Gagal memuat komentar: ${escapeHtml(err.message)}</p>`;
+    }
+}
+window.filterIgCommentsPanel = filterIgCommentsPanel;
+window.loadIgCommentsPanel = loadIgCommentsPanel;
 
 // ---- Buka modal komentar untuk 1 post (reuse igActionModal) ----
 async function openIgCommentsModal(postId) {
@@ -12872,7 +12944,8 @@ async function igReplyComment(igCommentId) {
         const result = await igCommentActionCall({ ig_comment_id: igCommentId, action: 'reply', reply_text: text });
         if (result.ok) {
             showToast('Balasan terkirim', 'success');
-            await renderIgCommentsModalBody(igCommentsCurrentPostId);
+            await loadIgCommentsPanel();
+            if (igCommentsCurrentPostId) await renderIgCommentsModalBody(igCommentsCurrentPostId);
             await loadIgCommentsUnreadCount();
         } else {
             showToast('Gagal membalas: ' + (result.error || ''), 'error');
@@ -12888,7 +12961,8 @@ async function igToggleHideComment(igCommentId, hide) {
         const result = await igCommentActionCall({ ig_comment_id: igCommentId, action: hide ? 'hide' : 'unhide' });
         if (result.ok) {
             showToast(result.message || 'Berhasil', 'success');
-            await renderIgCommentsModalBody(igCommentsCurrentPostId);
+            await loadIgCommentsPanel();
+            if (igCommentsCurrentPostId) await renderIgCommentsModalBody(igCommentsCurrentPostId);
         } else {
             showToast('Gagal: ' + (result.error || ''), 'error');
         }
@@ -12904,7 +12978,8 @@ async function igDeleteComment(igCommentId) {
         const result = await igCommentActionCall({ ig_comment_id: igCommentId, action: 'delete' });
         if (result.ok) {
             showToast('Komentar dihapus', 'success');
-            await renderIgCommentsModalBody(igCommentsCurrentPostId);
+            await loadIgCommentsPanel();
+            if (igCommentsCurrentPostId) await renderIgCommentsModalBody(igCommentsCurrentPostId);
             await loadIgCommentsUnreadCount();
         } else {
             showToast('Gagal hapus: ' + (result.error || ''), 'error');
