@@ -583,6 +583,9 @@ function getWaCaptionContacts() {
 // Gemini API dilakukan di server, bukan langsung dari browser (lihat
 // catatan di generateCaptionAI() di bawah untuk detail alasannya).
 const WA_CAPTION_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/generate-wa-caption`;
+// Edge Function AI untuk parsing teks broadcast (pendamping parseBroadcastText()
+// yang berbasis regex -- lihat parseBroadcastTextAI() di bawah untuk detail).
+const PARSE_BROADCAST_AI_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/parse-broadcast-ai`;
 
 
 function waCaptionGaugeColor(pct) {
@@ -2146,6 +2149,7 @@ async function renderAdminPanel() {
                         <textarea id="parseBroadcastInput" rows="3" placeholder="Paste teks broadcast program umroh di sini..." oninput="autoGrowTextarea(this); syncBroadcastRefBox();"></textarea>
                         <div class="bc-actions">
                             <button onclick="parseBroadcastText()"><i class="bi bi-magic"></i> Isi Otomatis</button>
+                            <button type="button" id="btnParseBroadcastAI" onclick="parseBroadcastTextAI()"><i class="bi bi-stars"></i> <span id="btnParseBroadcastAIText">Parse dengan AI</span></button>
                             <span id="parseStatus" style="font-size:12px;color:var(--success);font-weight:600;display:none;"></span>
                         </div>
                     </details>
@@ -3647,6 +3651,131 @@ function parseBroadcastText() {
     status.style.display = 'inline';
     setTimeout(() => status.style.display = 'none', 6000);
     showToast('Form berhasil diisi otomatis (' + parts.length + ' field)');
+}
+
+// Versi AI dari parseBroadcastText() di atas -- dipanggil lewat tombol
+// terpisah "Parse dengan AI" (parseBroadcastText() regex-based tetap ada
+// sebagai tombol "Isi Otomatis", dua-duanya dibiarkan berdampingan karena
+// AI butuh koneksi + kena limit Gemini, sedangkan versi regex selalu jalan
+// instan offline sebagai cadangan).
+// Edge Function: PARSE_BROADCAST_AI_FUNCTION_URL (supabase/functions/parse-broadcast-ai).
+async function parseBroadcastTextAI() {
+    const btn = document.getElementById('btnParseBroadcastAI');
+    const btnText = document.getElementById('btnParseBroadcastAIText');
+    const rawInput = document.getElementById('parseBroadcastInput').value.trim();
+    if (!rawInput) { showToast('Paste teks broadcast dulu', 'error'); return; }
+
+    if (btn) btn.disabled = true;
+    if (btnText) btnText.textContent = 'Membaca...';
+
+    try {
+        const response = await fetch(PARSE_BROADCAST_AI_FUNCTION_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "apikey": SUPABASE_ANON_KEY,
+                "Authorization": "Bearer " + SUPABASE_ANON_KEY
+            },
+            body: JSON.stringify({ text: rawInput })
+        });
+        if (!response.ok) {
+            let detail = '';
+            try { detail = (await response.json()).error || ''; } catch (e) {}
+            throw new Error(detail || 'Gagal memanggil API (status ' + response.status + ')');
+        }
+        const data = await response.json();
+        const f = data.fields;
+        if (!f) throw new Error('Tidak ada hasil dari model.');
+
+        // Isi form -- sama persis dengan bagian akhir parseBroadcastText(),
+        // cuma sumber datanya dari field hasil ekstraksi AI (nama field
+        // sedikit berbeda, lihat kontrak di supabase/functions/parse-broadcast-ai).
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+        setVal('admin_nama', f.nama);
+        setVal('admin_durasi', f.durasi);
+        setVal('admin_harga_quint', f.harga_quint);
+        setVal('admin_harga_quad', f.harga_quad);
+        setVal('admin_harga_triple', f.harga_triple);
+        setVal('admin_harga_double', f.harga_double);
+        ['admin_harga_quint', 'admin_harga_quad', 'admin_harga_triple', 'admin_harga_double'].forEach(id => {
+            formatRupiahInput(document.getElementById(id));
+        });
+
+        const combineHotel = (nama, hari, jarak) => {
+            if (!nama) return '';
+            const detail = [];
+            if (hari) detail.push(hari + ' malam');
+            if (jarak) detail.push(jarak);
+            return detail.length ? `${nama} (${detail.join(', ')})` : nama;
+        };
+        const hotelMakkahFull = combineHotel(f.hotel_makkah, f.hotel_makkah_hari, f.hotel_makkah_jarak);
+        const hotelMadinahFull = combineHotel(f.hotel_madinah, f.hotel_madinah_hari, f.hotel_madinah_jarak);
+        setVal('admin_hotel_makkah', hotelMakkahFull);
+        setVal('admin_hotel_madinah', hotelMadinahFull);
+        // Validasi otomatis vs data referensi Hotel Saudi Arabia, sama seperti parseBroadcastText().
+        if (f.hotel_makkah) { ensureHotelReferenceLoaded().then(() => updateHotelRefHint('admin_hotel_makkah', 'hotelRefHint_makkah', 'makkah')); }
+        if (f.hotel_madinah) { ensureHotelReferenceLoaded().then(() => updateHotelRefHint('admin_hotel_madinah', 'hotelRefHint_madinah', 'madinah')); }
+
+        if (f.termasuk && f.termasuk.length) setVal('admin_termasuk', f.termasuk.join('\n'));
+        if (f.tidak_termasuk && f.tidak_termasuk.length) setVal('admin_tidak_termasuk', f.tidak_termasuk.join('\n'));
+        if (f.catatan_admin) setVal('admin_catatan_cx', f.catatan_admin);
+
+        if (f.tgl_iso) {
+            const tglInput = document.getElementById('admin_tgl_date');
+            if (tglInput) { tglInput.value = f.tgl_iso; tglInput.dispatchEvent(new Event('change')); }
+        }
+
+        const sel = document.getElementById('admin_maskapai');
+        if (sel && f.maskapai) {
+            const opts = Array.from(sel.options);
+            const kata = f.maskapai.toLowerCase().split(' ')[0];
+            const found = opts.find(o => o.value.toLowerCase().includes(kata));
+            if (found) sel.value = found.value;
+        }
+
+        // Generate teks WA (fallback lokal non-AI -- sama seperti parseBroadcastText(),
+        // supaya konsisten; kalau admin mau caption versi AI kreatif, tetap
+        // pakai tombol "Generate dengan AI" terpisah di sebelah kotak Teks WA).
+        const parsedData = {
+            nama: f.nama, durasi: f.durasi, tgl: f.tgl_display, maskapai: f.maskapai,
+            harga_quad: f.harga_quad, harga_triple: f.harga_triple, harga_double: f.harga_double, harga_quint: f.harga_quint,
+            hotel_makkah: hotelMakkahFull, hotel_madinah: hotelMadinahFull,
+            termasuk: (f.termasuk || []).join('\n'),
+            tidak_termasuk: (f.tidak_termasuk || []).join('\n')
+        };
+        document.getElementById('admin_teks_wa').value = generateAutoWAText(parsedData);
+        updateWaCaptionGauge(document.getElementById('admin_teks_wa').value);
+        autoGrowTextarea(document.getElementById('admin_teks_wa'));
+        syncBroadcastRefBox();
+
+        const parts = [];
+        if (f.nama) parts.push('Nama');
+        if (f.durasi) parts.push('Durasi');
+        if (f.maskapai) parts.push('Maskapai');
+        if (f.harga_quint) parts.push('Harga Quint');
+        if (f.harga_quad) parts.push('Quad');
+        if (f.harga_triple) parts.push('Triple');
+        if (f.harga_double) parts.push('Double');
+        if (f.hotel_makkah) parts.push('Hotel Makkah');
+        if (f.hotel_madinah) parts.push('Hotel Madinah');
+        if (f.tgl_iso) parts.push('Tanggal');
+        if (f.termasuk && f.termasuk.length) parts.push('Fasilitas (' + f.termasuk.length + ' item)');
+
+        const status = document.getElementById('parseStatus');
+        status.textContent = '✓ (AI) Terisi: ' + parts.join(', ');
+        status.style.display = 'inline';
+        setTimeout(() => status.style.display = 'none', 6000);
+        showToast('Form berhasil diisi otomatis dengan AI (' + parts.length + ' field)');
+    } catch (err) {
+        console.error(err);
+        // Fallback: kalau AI gagal (Gemini error/limit habis/internet putus),
+        // jatuhkan ke parser regex biasa supaya admin tetap terbantu.
+        showToast('AI gagal (' + err.message + ') — dipakai parser biasa sebagai cadangan', 'error');
+        parseBroadcastText();
+    } finally {
+        if (btn) btn.disabled = false;
+        if (btnText) btnText.textContent = 'Parse dengan AI';
+    }
 }
 
 // ============================================================
