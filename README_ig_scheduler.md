@@ -69,6 +69,22 @@ supabase secrets set IG_APP_SECRET=<app_secret_dari_meta_for_developer>
 > `SUPABASE_URL` & `SUPABASE_SERVICE_ROLE_KEY` sudah tersedia otomatis di environment edge function.
 > `GEMINI_API_KEY` dipakai bareng dengan fitur "Generate dengan AI" caption WhatsApp yang sudah ada — kalau sudah pernah di-set sebelumnya (`supabase secrets set GEMINI_API_KEY=xxxxx`), tidak perlu diulang.
 
+### 3b. (Opsional) Fallback Multi-API-Key Gemini
+
+Semua fungsi AI (`scan-poster-ocr`, `generate-wa-caption`, `generate-ig-caption`) sekarang mendukung lebih dari 1 `GEMINI_API_KEY` sebagai fallback — kalau key utama kena rate limit/kuota habis, otomatis coba key berikutnya sebelum menyerah. Tambahkan sebanyak yang kamu mau (maks 5), urut angka:
+
+```bash
+supabase secrets set GEMINI_API_KEY=key_pertama       # wajib — key utama, sudah ada
+supabase secrets set GEMINI_API_KEY_2=key_kedua        # opsional — fallback 1
+supabase secrets set GEMINI_API_KEY_3=key_ketiga       # opsional — fallback 2
+```
+
+Kalau `GEMINI_API_KEY_2` dst tidak di-set, sistem tetap jalan normal pakai 1 key saja (backward compatible, tidak ada yang perlu diubah kalau tidak butuh fallback).
+
+> **Penting**: pakai API key dari akun Google/project GCP yang **berbeda-beda** untuk tiap key. Kalau semua key berasal dari 1 project yang sama, mereka berbagi kuota yang sama — fallback jadi tidak menolong saat kuota project itu habis. Bikin API key gratis tambahan di https://aistudio.google.com/apikey pakai akun Google lain.
+
+Setelah menambah/mengubah secret, tidak perlu deploy ulang function — Supabase langsung memakai secret terbaru di request berikutnya.
+
 ### 4. Isi Akun Instagram
 
 Masukkan akun IG Business/Creator Anda ke tabel `ig_accounts` via SQL Editor:
