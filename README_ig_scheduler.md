@@ -55,10 +55,11 @@ Di Supabase Dashboard → Storage → New Bucket:
 supabase login
 supabase link --project-ref <PROJECT_REF_ANDA>
 
-# Deploy ketiga function:
+# Deploy keempat function:
 supabase functions deploy ig-publish --no-verify-jwt
 supabase functions deploy ig-refresh-token --no-verify-jwt
 supabase functions deploy ig-manual-retry
+supabase functions deploy generate-ig-caption --no-verify-jwt
 
 # Set secrets yang dibutuhkan:
 supabase secrets set IG_APP_ID=<app_id_dari_meta_for_developer>
@@ -66,6 +67,7 @@ supabase secrets set IG_APP_SECRET=<app_secret_dari_meta_for_developer>
 ```
 
 > `SUPABASE_URL` & `SUPABASE_SERVICE_ROLE_KEY` sudah tersedia otomatis di environment edge function.
+> `GEMINI_API_KEY` dipakai bareng dengan fitur "Generate dengan AI" caption WhatsApp yang sudah ada — kalau sudah pernah di-set sebelumnya (`supabase secrets set GEMINI_API_KEY=xxxxx`), tidak perlu diulang.
 
 ### 4. Isi Akun Instagram
 
@@ -114,7 +116,7 @@ Setelah semua setup selesai:
 1. **Login** ke Dashboard (hanya admin/user yang bisa akses IG Scheduler).
 2. Buka tab **IG Scheduler** di sidebar (grup "Social Media").
 3. Klik **"Post Baru"** → pilih **Tipe Post**:
-   - **Image** / **Video/Reels**: upload 1 file → tulis caption → pilih tanggal & jam.
+   - **Image** / **Video/Reels**: upload 1 file → tulis caption (atau isi "Ide/Konsep Singkat" lalu klik **Generate dengan AI**) → pilih tanggal & jam.
    - **Carousel**: klik **Tambah Media** (bisa pilih beberapa file sekaligus, campur gambar & video, min 2 maks 10) → atur urutan pakai tombol panah kiri/kanan di tiap thumbnail → tulis caption → pilih tanggal & jam.
 4. Klik **Simpan**. Post otomatis berstatus **Scheduled**, muncul di kalender & daftar post.
 5. Cloudflare Worker akan mem-publish ke Instagram Graph API pada jadwal yang ditentukan.

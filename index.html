@@ -1185,6 +1185,16 @@
 
                 <!-- Caption -->
                 <div class="form-group">
+                    <label>Ide/Konsep Singkat <span style="font-weight:400;color:var(--ink-soft);">(opsional, buat bahan AI)</span></label>
+                    <textarea id="ig_caption_idea" placeholder="Contoh: Umroh 9 hari berangkat 12 Januari, harga mulai 28 juta, hotel dekat Masjidil Haram, kuota terbatas..." rows="2" style="width:100%;font-family:'Inter',sans-serif;padding:10px;border:1.5px solid var(--line);border-radius:10px;resize:vertical;"></textarea>
+                    <div style="margin-top:6px;">
+                        <button type="button" class="btn-ai-caption" id="btnGenIgCaptionAI" onclick="generateIgCaptionAI()" style="font-size:12px;padding:6px 14px;border:1px solid var(--brand);background:var(--brand-tint);color:var(--brand);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                            <i class="bi bi-stars"></i> <span id="btnGenIgCaptionAIText">Generate dengan AI</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
                     <label>Caption</label>
                     <textarea id="ig_caption" placeholder="Tulis caption Instagram..." rows="4" maxlength="2200" style="width:100%;font-family:'Inter',sans-serif;padding:10px;border:1.5px solid var(--line);border-radius:10px;resize:vertical;"></textarea>
                     <div class="form-note">Karakter tersisa: <span id="igCaptionCount">2200</span></div>
