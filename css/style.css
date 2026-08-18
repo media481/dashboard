@@ -3320,18 +3320,15 @@
     }
     .ig-plan-caption-preview {
         font-size: 11.5px; color: var(--ink-soft); margin: 0 0 4px;
-        line-height: 1.4; cursor: pointer;
+        line-height: 1.4;
         display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
         overflow: hidden;
     }
-    .ig-plan-caption-preview.expanded {
-        -webkit-line-clamp: unset; display: block; overflow: visible;
-        white-space: pre-wrap;
-    }
-    .ig-day-post-info:has(.ig-plan-caption-preview) { cursor: pointer; }
+    .ig-plan-view { cursor: pointer; }
     .ig-plan-expand-hint {
         font-size: 10.5px; color: var(--brand); display: inline-flex; align-items: center; gap: 2px;
     }
+    .ig-plan-edit-wrap { padding-top: 2px; }
     .ig-plan-item-actions { display: flex; flex-direction: column; gap: 4px; }
     .ig-status-pill-plan { background: var(--brand-tint); color: var(--brand); }
     .ig-btn-danger { background: var(--danger-tint) !important; color: var(--danger) !important; }
