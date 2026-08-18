@@ -2667,7 +2667,7 @@
     opacity: 0;
     visibility: hidden;
     transform: scale(0.96);
-    transition: opacity .15s ease, transform .15s ease, visibility .15s;
+    transition: opacity .15s ease, transform .15s ease, visibility .15s, left .12s ease, top .12s ease;
     pointer-events: none;
 }
 .poster-popup.visible {
@@ -2694,7 +2694,12 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    display: none;
+    display: block;
+    opacity: 0;
+    transition: opacity .25s ease;
+}
+.poster-popup-img-wrap img.loaded {
+    opacity: 1;
 }
 .poster-popup-loading,
 .poster-popup-error {

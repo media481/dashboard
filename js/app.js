@@ -1225,7 +1225,7 @@ document.querySelectorAll('.sidebar .nav-item[data-tab]').forEach(item => {
 // apps-script/infografis-drive-listing.gs untuk setup-nya).
 // ============================================================
 // [KONFIG] Ganti dengan URL "Web app" hasil deploy Apps Script (diakhiri /exec).
-const INFOGRAFIS_API_URL = 'https://script.google.com/macros/s/AKfycbz2nIc6Tvt6dKrQuHdg1C8T0vebaxDRw79qq9HR181Qt8587EmoA_lX2dzxoiAGEnG7Eg/exec';
+const INFOGRAFIS_API_URL = 'GANTI_DENGAN_URL_WEB_APP_ANDA';
 
 let infografisItems = [];
 let infografisLoaded = false;
@@ -11969,7 +11969,7 @@ function showPosterPopup(e, el) {
     const posterUrl = resolveImageUrl(el.getAttribute('data-poster'));
     const posterNama = el.getAttribute('data-nama');
     // Reset state
-    img.style.display = 'none';
+    img.classList.remove('loaded');
     img.src = '';
     loading.style.display = 'flex';
     errEl.style.display = 'none';
@@ -12002,7 +12002,7 @@ function showPosterPopup(e, el) {
     popup.style.left = x + 'px';
     popup.style.top = y + 'px';
     popup.classList.add('visible');
-    img.onload = () => { loading.style.display = 'none'; img.style.display = 'block'; };
+    img.onload = () => { loading.style.display = 'none'; img.classList.add('loaded'); };
     img.onerror = () => { loading.style.display = 'none'; errEl.style.display = 'flex'; };
     img.src = posterUrl;
 }
