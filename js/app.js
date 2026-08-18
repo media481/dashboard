@@ -12255,16 +12255,17 @@ function igOpenDayModal(dateKey) {
             const typeIcon = pl.tipe_konten === 'video' ? 'bi-camera-reels' : (pl.tipe_konten === 'carousel' ? 'bi-images' : 'bi-image');
             return `<div class="ig-day-post-item ig-day-plan-item">
                 <div class="ig-media-thumb ig-plan-thumb"><i class="bi ${typeIcon}"></i></div>
-                <div class="ig-day-post-info">
+                <div class="ig-day-post-info" onclick="igTogglePlanCaption(this)">
                     <p class="ig-day-post-caption"><strong>${escapeHtml(pl.tema)}</strong></p>
-                    <p class="ig-day-post-caption ig-plan-caption-preview">${escapeHtml((pl.draft_caption || '').slice(0, 90))}${(pl.draft_caption || '').length > 90 ? '…' : ''}</p>
+                    <p class="ig-day-post-caption ig-plan-caption-preview">${escapeHtml(pl.draft_caption || '')}</p>
                     <div class="ig-day-post-meta">
                         <span class="ig-status-pill ig-status-pill-plan"><i class="bi bi-magic"></i> Rencana AI</span>
+                        <span class="ig-plan-expand-hint"><i class="bi bi-chevron-down"></i> Lihat lengkap</span>
                     </div>
                 </div>
                 <div class="ig-plan-item-actions">
-                    <button type="button" class="ig-btn-edit" onclick="igConvertPlanToPost('${pl.id}')" title="Jadikan Post"><i class="bi bi-arrow-up-right-circle-fill"></i></button>
-                    <button type="button" class="ig-btn-edit ig-btn-danger" onclick="igDeletePlanItem('${pl.id}')" title="Hapus rencana ini"><i class="bi bi-trash-fill"></i></button>
+                    <button type="button" class="ig-btn-edit" onclick="event.stopPropagation();igConvertPlanToPost('${pl.id}')" title="Jadikan Post"><i class="bi bi-arrow-up-right-circle-fill"></i></button>
+                    <button type="button" class="ig-btn-edit ig-btn-danger" onclick="event.stopPropagation();igDeletePlanItem('${pl.id}')" title="Hapus rencana ini"><i class="bi bi-trash-fill"></i></button>
                 </div>
             </div>`;
         }).join('');
@@ -12310,6 +12311,22 @@ function closeIgDayModal() {
     const modal = document.getElementById('igDayModal');
     if (modal) modal.classList.remove('open');
     igDayModalDateKey = null;
+}
+
+// ---- Expand/collapse draft caption penuh di item rencana (day modal) ----
+// Klik di mana pun pada info item (tema/caption/badge) toggle caption dari
+// terpotong (line-clamp 2 baris via CSS) jadi teks penuh. Tombol aksi
+// (Jadikan Post/Hapus) pakai stopPropagation supaya tidak ikut toggle.
+function igTogglePlanCaption(infoEl) {
+    const captionEl = infoEl.querySelector('.ig-plan-caption-preview');
+    const hintEl = infoEl.querySelector('.ig-plan-expand-hint');
+    if (!captionEl) return;
+    const expanded = captionEl.classList.toggle('expanded');
+    if (hintEl) {
+        hintEl.innerHTML = expanded
+            ? '<i class="bi bi-chevron-up"></i> Sembunyikan'
+            : '<i class="bi bi-chevron-down"></i> Lihat lengkap';
+    }
 }
 
 function igAddPostFromDayModal() {
@@ -13470,6 +13487,7 @@ window.igNextMonth = igNextMonth;
 window.igGotoToday = igGotoToday;
 window.igOnDayClick = igOnDayClick;
 window.closeIgDayModal = closeIgDayModal;
+window.igTogglePlanCaption = igTogglePlanCaption;
 window.igAddPostFromDayModal = igAddPostFromDayModal;
 window.igPrevPage = igPrevPage;
 window.igNextPage = igNextPage;
