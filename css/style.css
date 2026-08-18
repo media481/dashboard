@@ -2625,7 +2625,8 @@
 }
 .infografis-card {
     position: relative;
-    aspect-ratio: 4 / 5;
+    display: flex;
+    flex-direction: column;
     border-radius: 12px;
     overflow: hidden;
     border: 1px solid var(--line, #e2e8f0);
@@ -2639,18 +2640,18 @@
 }
 .infografis-card img {
     width: 100%;
-    height: 100%;
+    aspect-ratio: 4 / 5;
     object-fit: cover;
     display: block;
 }
 .infografis-card-name {
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    padding: 8px 10px 7px;
+    order: -1;
+    padding: 8px 10px;
     font-size: 11.5px;
     font-weight: 600;
-    color: #fff;
-    background: linear-gradient(to top, rgba(0,0,0,.65), rgba(0,0,0,0));
+    color: var(--ink, #1e293b);
+    background: var(--card-bg, #fff);
+    border-bottom: 1px solid var(--line, #e2e8f0);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
