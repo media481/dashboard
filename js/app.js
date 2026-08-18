@@ -3892,7 +3892,13 @@ async function renderSidebarNav() {
 
     const whoEl = document.getElementById('sidebarWho');
     const avatarEl = document.getElementById('sidebarAvatar');
-    const label = loggedIn ? (roleLabels[currentRole] || 'User') : 'Guest';
+    // Tampilkan NAMA akun (kolom "label" di dashboard_profiles, disimpan ke
+    // sessionStorage saat login -- lihat checkAdminLogin()) alih-alih sekadar
+    // teks role "Admin"/"User". Kalau nama belum tersedia (mis. sesi lama
+    // sebelum kolom label dipakai), fallback ke label role seperti semula.
+    let namaAkun = '';
+    try { namaAkun = loggedIn ? (sessionStorage.getItem('admin_login_label') || '') : ''; } catch (_) { namaAkun = ''; }
+    const label = loggedIn ? (namaAkun || roleLabels[currentRole] || 'User') : 'Guest';
     if (whoEl) whoEl.textContent = label;
     if (avatarEl) avatarEl.textContent = label.slice(0, 2).toUpperCase();
 
