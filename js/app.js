@@ -12253,14 +12253,32 @@ function igOpenDayModal(dateKey) {
     } else {
         const planHtml = dayPlans.map(pl => {
             const typeIcon = pl.tipe_konten === 'video' ? 'bi-camera-reels' : (pl.tipe_konten === 'carousel' ? 'bi-images' : 'bi-image');
-            return `<div class="ig-day-post-item ig-day-plan-item">
+            return `<div class="ig-day-post-item ig-day-plan-item" id="igDayPlanItem-${pl.id}">
                 <div class="ig-media-thumb ig-plan-thumb"><i class="bi ${typeIcon}"></i></div>
-                <div class="ig-day-post-info" onclick="igTogglePlanCaption(this)">
-                    <p class="ig-day-post-caption"><strong>${escapeHtml(pl.tema)}</strong></p>
-                    <p class="ig-day-post-caption ig-plan-caption-preview">${escapeHtml(pl.draft_caption || '')}</p>
-                    <div class="ig-day-post-meta">
-                        <span class="ig-status-pill ig-status-pill-plan"><i class="bi bi-magic"></i> Rencana AI</span>
-                        <span class="ig-plan-expand-hint"><i class="bi bi-chevron-down"></i> Lihat lengkap</span>
+                <div class="ig-day-post-info">
+                    <div class="ig-plan-view" onclick="igTogglePlanEdit('${pl.id}')">
+                        <p class="ig-day-post-caption"><strong>${escapeHtml(pl.tema)}</strong></p>
+                        <p class="ig-day-post-caption ig-plan-caption-preview">${escapeHtml(pl.draft_caption || '')}</p>
+                        <div class="ig-day-post-meta">
+                            <span class="ig-status-pill ig-status-pill-plan"><i class="bi bi-magic"></i> Rencana AI</span>
+                            <span class="ig-plan-expand-hint"><i class="bi bi-pencil-fill"></i> Edit</span>
+                        </div>
+                    </div>
+                    <div class="ig-plan-edit-wrap" style="display:none;">
+                        <div class="ig-plan-result-top">
+                            <input type="text" class="ig-plan-edit-tema" value="${escapeHtml(pl.tema)}"
+                                onblur="igPlanUpdateField('${pl.id}','tema',this.value)"
+                                onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">
+                            <select class="ig-plan-edit-tipe" onchange="igPlanUpdateField('${pl.id}','tipe_konten',this.value)">
+                                <option value="image"${pl.tipe_konten === 'image' ? ' selected' : ''}>Image</option>
+                                <option value="video"${pl.tipe_konten === 'video' ? ' selected' : ''}>Video/Reels</option>
+                                <option value="carousel"${pl.tipe_konten === 'carousel' ? ' selected' : ''}>Carousel</option>
+                            </select>
+                            <span class="ig-plan-save-indicator" id="igPlanSaved-${pl.id}"></span>
+                        </div>
+                        <textarea class="ig-plan-edit-caption" rows="5"
+                            onblur="igPlanUpdateField('${pl.id}','draft_caption',this.value)">${escapeHtml(pl.draft_caption || '')}</textarea>
+                        <button type="button" class="btn-secondary" style="font-size:11px;padding:4px 10px;margin-top:6px;" onclick="igTogglePlanEdit('${pl.id}')"><i class="bi bi-check2"></i> Selesai</button>
                     </div>
                 </div>
                 <div class="ig-plan-item-actions">
@@ -12313,19 +12331,30 @@ function closeIgDayModal() {
     igDayModalDateKey = null;
 }
 
-// ---- Expand/collapse draft caption penuh di item rencana (day modal) ----
-// Klik di mana pun pada info item (tema/caption/badge) toggle caption dari
-// terpotong (line-clamp 2 baris via CSS) jadi teks penuh. Tombol aksi
-// (Jadikan Post/Hapus) pakai stopPropagation supaya tidak ikut toggle.
-function igTogglePlanCaption(infoEl) {
-    const captionEl = infoEl.querySelector('.ig-plan-caption-preview');
-    const hintEl = infoEl.querySelector('.ig-plan-expand-hint');
-    if (!captionEl) return;
-    const expanded = captionEl.classList.toggle('expanded');
-    if (hintEl) {
-        hintEl.innerHTML = expanded
-            ? '<i class="bi bi-chevron-up"></i> Sembunyikan'
-            : '<i class="bi bi-chevron-down"></i> Lihat lengkap';
+// ---- Buka/tutup mode edit langsung di item rencana (day modal) ----
+// Klik area info (tema/caption/badge) -> sembunyikan tampilan ringkas,
+// tampilkan field editable (tema/tipe_konten/draft_caption) -- field yang
+// sama & auto-save yang sama (igPlanUpdateField) dengan list di Content
+// Planner, cuma sekarang bisa diakses langsung dari kalender tanpa buka
+// modal lain. Klik "Selesai" -> render ulang day modal supaya tampilan
+// ringkas ikut ter-update dengan data terbaru yang baru disimpan.
+function igTogglePlanEdit(planId) {
+    const itemEl = document.getElementById(`igDayPlanItem-${planId}`);
+    if (!itemEl) return;
+    const viewEl = itemEl.querySelector('.ig-plan-view');
+    const editEl = itemEl.querySelector('.ig-plan-edit-wrap');
+    if (!viewEl || !editEl) return;
+
+    const isEditing = editEl.style.display !== 'none';
+    if (isEditing) {
+        // "Selesai" -- render ulang day modal supaya tampilan ringkas sinkron
+        // dengan perubahan yang baru disimpan (blur sudah trigger save duluan).
+        if (igDayModalDateKey) igOpenDayModal(igDayModalDateKey);
+    } else {
+        viewEl.style.display = 'none';
+        editEl.style.display = 'block';
+        const temaInput = editEl.querySelector('.ig-plan-edit-tema');
+        if (temaInput) { temaInput.focus(); temaInput.select(); }
     }
 }
 
@@ -13487,7 +13516,7 @@ window.igNextMonth = igNextMonth;
 window.igGotoToday = igGotoToday;
 window.igOnDayClick = igOnDayClick;
 window.closeIgDayModal = closeIgDayModal;
-window.igTogglePlanCaption = igTogglePlanCaption;
+window.igTogglePlanEdit = igTogglePlanEdit;
 window.igAddPostFromDayModal = igAddPostFromDayModal;
 window.igPrevPage = igPrevPage;
 window.igNextPage = igNextPage;
