@@ -1175,6 +1175,16 @@ function openIgSchedulerPage() {
         adminView.style.display = 'none';
     }
 
+    // Tutup Infografis kalau kebetulan sedang terbuka -- BUG FIX: sebelumnya
+    // kalau pindah langsung Infografis -> IG Scheduler lewat sidebar, halaman
+    // infografisPageView tidak pernah di-hide (switchTab short-circuit ke sini
+    // tanpa lewat closeInfografisPage()). Akibatnya dua halaman besar
+    // bertumpuk display:block sekaligus -> terasa lemot/flicker.
+    const infografisView = document.getElementById('infografisPageView');
+    if (infografisView && infografisView.style.display !== 'none') {
+        infografisView.style.display = 'none';
+    }
+
     const activeTabBtn = document.querySelector('.sidebar .nav-item[data-tab].active');
     previousActiveTabForIg = activeTabBtn ? activeTabBtn.dataset.tab : null;
 
@@ -1186,12 +1196,11 @@ function openIgSchedulerPage() {
     if (navBtn) navBtn.classList.add('active');
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    loadIgPosts();
+    loadIgPosts();          // renderIgCalendar() sudah dipanggil di dalam loadIgPosts()
     loadIgAccounts();
     loadIgCommentsUnreadCount();
     igCommentsPanelFilterPostId = null;
     loadIgCommentsPanel();
-    renderIgCalendar();
 }
 
 function closeIgSchedulerPage() {
@@ -1239,6 +1248,14 @@ function openInfografisPage() {
     const adminView = document.getElementById('adminPageView');
     if (adminView && adminView.style.display !== 'none') {
         adminView.style.display = 'none';
+    }
+
+    // Tutup IG Scheduler kalau kebetulan sedang terbuka -- BUG FIX: sama
+    // seperti di openIgSchedulerPage(), supaya dua halaman besar tidak
+    // pernah bertumpuk display:block sekaligus.
+    const igView = document.getElementById('igSchedulerPageView');
+    if (igView && igView.style.display !== 'none') {
+        igView.style.display = 'none';
     }
 
     const activeTabBtn = document.querySelector('.sidebar .nav-item[data-tab].active');
