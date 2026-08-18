@@ -1225,7 +1225,7 @@ document.querySelectorAll('.sidebar .nav-item[data-tab]').forEach(item => {
 // apps-script/infografis-drive-listing.gs untuk setup-nya).
 // ============================================================
 // [KONFIG] Ganti dengan URL "Web app" hasil deploy Apps Script (diakhiri /exec).
-const INFOGRAFIS_API_URL = 'GANTI_DENGAN_URL_WEB_APP_ANDA';
+const INFOGRAFIS_API_URL = 'https://script.google.com/macros/s/AKfycbz2nIc6Tvt6dKrQuHdg1C8T0vebaxDRw79qq9HR181Qt8587EmoA_lX2dzxoiAGEnG7Eg/exec';
 
 let infografisItems = [];
 let infografisLoaded = false;
