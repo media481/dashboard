@@ -3471,7 +3471,7 @@ async function showAdminForm() {
 // semua field lain (harga, hotel, termasuk/tidak termasuk, dll) tetap ikut
 // tersimpan persis seperti alur Tambah Program biasa.
 async function openQuickAddProgramModal() {
-    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menambah program', 'error'); return; }
+    if (!canQuickAddProgram()) { showToast('Fitur Tambah Cepat khusus admin', 'error'); return; }
 
     const modal = document.getElementById('quickAddProgramModal');
     const input = document.getElementById('quickAddBroadcastInput');
@@ -3670,6 +3670,14 @@ function canManageProgramData() {
     return adminLoggedIn && (currentRole === 'admin' || currentRole === 'user');
 }
 
+// Guard KHUSUS "Tambah Cepat" (topbar kanan atas): berbeda dari
+// canManageProgramData() -- role 'user' TIDAK diberi izin walau boleh
+// tambah/edit program lewat form biasa. Hanya 'admin' yang boleh pakai
+// jalur cepat (paste broadcast langsung tersimpan) ini.
+function canQuickAddProgram() {
+    return adminLoggedIn && currentRole === 'admin';
+}
+
 // Guard KHUSUS Assets: berbeda dari canManageProgramData() -- di sini role
 // 'user' (editor) SENGAJA TIDAK diberi izin tambah/edit/hapus walau menu
 // "Assets" boleh diaktifkan untuknya lewat Akses Menu per Role (dia cuma
@@ -3686,7 +3694,7 @@ function applyRoleUIVisibility() {
     const btnJadwal = document.getElementById('btnTambahJadwal');
     const btnProgram = document.getElementById('btnTambahProgram');
     if (btnJadwal) btnJadwal.style.display = canEdit ? '' : 'none';
-    if (btnProgram) btnProgram.style.display = canEdit ? '' : 'none';
+    if (btnProgram) btnProgram.style.display = canQuickAddProgram() ? '' : 'none';
 }
 
 // ============================================================
