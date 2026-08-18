@@ -1221,11 +1221,15 @@ document.querySelectorAll('.sidebar .nav-item[data-tab]').forEach(item => {
 
 // ============================================================
 // 5c. INFOGRAFIS — halaman mandiri, galeri gambar dari folder
-// Google Drive publik (dibaca lewat Apps Script Web App, lihat
-// apps-script/infografis-drive-listing.gs untuk setup-nya).
+// Google Drive publik. Data metadata (nama file, URL thumbnail)
+// di-cache di tabel Supabase `infografis_items` (Level 1 caching,
+// lihat sql/tambah_infografis_items.sql) supaya dashboard baca
+// dari Supabase (cepat, tidak kena CSP), bukan langsung fetch ke
+// script.google.com tiap buka menu. Sinkronisasi data yang
+// sebenarnya (Drive -> tabel) dikerjakan Edge Function
+// sync-infografis (server-side), dipanggil lewat tombol "Refresh".
 // ============================================================
-// [KONFIG] Ganti dengan URL "Web app" hasil deploy Apps Script (diakhiri /exec).
-const INFOGRAFIS_API_URL = 'GANTI_DENGAN_URL_WEB_APP_ANDA';
+const SYNC_INFOGRAFIS_URL = `${SUPABASE_URL}/functions/v1/sync-infografis`;
 
 let infografisItems = [];
 let infografisLoaded = false;
@@ -1269,14 +1273,15 @@ function closeInfografisPage() {
     }
 }
 
-async function loadInfografisGallery(forceRefresh = false) {
+// forceSync = true kalau dipanggil dari tombol "Refresh" -> minta Edge
+// Function tarik ulang data terbaru dari Apps Script/Drive dulu sebelum
+// query tabel. Kalau false, langsung baca cache tabel Supabase (cepat).
+async function loadInfografisGallery(forceSync = false) {
     const body = document.getElementById('infografisGalleryBody');
     const countEl = document.getElementById('infografisCount');
     if (!body) return;
 
-    // Sudah pernah dimuat & bukan refresh manual -> tampilkan cache di memori,
-    // tidak perlu hit Apps Script lagi tiap buka menu ini.
-    if (infografisLoaded && !forceRefresh) {
+    if (infografisLoaded && !forceSync) {
         renderInfografisGallery();
         return;
     }
@@ -1285,16 +1290,37 @@ async function loadInfografisGallery(forceRefresh = false) {
     if (countEl) countEl.textContent = '';
 
     try {
-        if (!INFOGRAFIS_API_URL || INFOGRAFIS_API_URL.indexOf('GANTI_DENGAN') === 0) {
-            throw new Error('URL Apps Script belum diatur (INFOGRAFIS_API_URL di js/app.js).');
+        if (forceSync) {
+            showToast('Menyinkron galeri dari Google Drive...', 'info');
+            const syncRes = await fetch(SYNC_INFOGRAFIS_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${(await supabaseClient.auth.getSession()).data.session?.access_token || ''}`
+                },
+                body: JSON.stringify({})
+            });
+            const syncResult = await syncRes.json().catch(() => ({}));
+            if (!syncResult.ok) {
+                showToast('Sync gagal: ' + (syncResult.error || syncRes.statusText), 'error');
+                // tetap lanjut baca cache lama di tabel supaya galeri tidak kosong total
+            } else {
+                showToast(`Sync selesai — ${syncResult.synced || 0} gambar`, 'success');
+            }
         }
-        const res = await fetch(INFOGRAFIS_API_URL);
-        if (!res.ok) throw new Error(`Gagal memuat (status ${res.status})`);
-        const data = await res.json();
-        if (!data || data.ok !== true || !Array.isArray(data.items)) {
-            throw new Error('Respons tidak valid dari Apps Script.');
-        }
-        infografisItems = data.items;
+
+        const { data, error } = await supabaseClient
+            .from('infografis_items')
+            .select('id, name, thumb_url, full_url, drive_updated_at')
+            .order('drive_updated_at', { ascending: false, nullsFirst: false });
+        if (error) throw error;
+
+        infografisItems = (data || []).map(row => ({
+            id: row.id,
+            name: row.name,
+            thumbUrl: row.thumb_url,
+            fullUrl: row.full_url
+        }));
         infografisLoaded = true;
         renderInfografisGallery();
     } catch (err) {
