@@ -13309,23 +13309,75 @@ function renderIgPlanResultList(year, month) {
     listEl.innerHTML = items.map(pl => {
         const [, , d] = pl.tanggal.split('-');
         const tglLabel = `${parseInt(d, 10)} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][month]}`;
-        const actions = pl.status === 'idea'
+        const isIdea = pl.status === 'idea';
+        const actions = isIdea
             ? `<button type="button" class="btn-secondary" onclick="igConvertPlanToPost('${pl.id}')" style="font-size:11px;padding:4px 10px;"><i class="bi bi-arrow-up-right-circle"></i> Jadikan Post</button>
                <button type="button" class="btn-secondary" onclick="igSkipPlanItem('${pl.id}')" style="font-size:11px;padding:4px 10px;" title="Lewati (sembunyikan dari kalender)"><i class="bi bi-eye-slash"></i></button>
                <button type="button" class="btn-secondary ig-btn-danger" onclick="igDeletePlanItem('${pl.id}')" style="font-size:11px;padding:4px 10px;" title="Hapus"><i class="bi bi-trash"></i></button>`
             : '';
-        return `<div class="ig-plan-result-item">
-            <div class="ig-plan-result-date">${tglLabel}</div>
-            <div class="ig-plan-result-body">
-                <div class="ig-plan-result-top">
+
+        // Item 'idea' bisa diedit langsung di sini (tema, tipe konten, draft caption) --
+        // auto-save saat blur/change (tanpa perlu tombol Simpan terpisah), supaya admin
+        // bisa poles hasil AI sebelum "Jadikan Post" tanpa keluar-masuk modal.
+        const topAndCaption = isIdea
+            ? `<div class="ig-plan-result-top">
+                    <input type="text" class="ig-plan-edit-tema" value="${escapeHtml(pl.tema)}"
+                        onblur="igPlanUpdateField('${pl.id}','tema',this.value)"
+                        onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">
+                    <select class="ig-plan-edit-tipe" onchange="igPlanUpdateField('${pl.id}','tipe_konten',this.value)">
+                        <option value="image"${pl.tipe_konten === 'image' ? ' selected' : ''}>Image</option>
+                        <option value="video"${pl.tipe_konten === 'video' ? ' selected' : ''}>Video/Reels</option>
+                        <option value="carousel"${pl.tipe_konten === 'carousel' ? ' selected' : ''}>Carousel</option>
+                    </select>
+                    <span class="ig-plan-save-indicator" id="igPlanSaved-${pl.id}"></span>
+               </div>
+               <textarea class="ig-plan-edit-caption" rows="3"
+                   onblur="igPlanUpdateField('${pl.id}','draft_caption',this.value)">${escapeHtml(pl.draft_caption || '')}</textarea>`
+            : `<div class="ig-plan-result-top">
                     <strong>${escapeHtml(pl.tema)}</strong>
                     ${statusBadge[pl.status] || ''}
                 </div>
-                <p class="ig-plan-caption-preview">${escapeHtml((pl.draft_caption || '').slice(0, 140))}${(pl.draft_caption || '').length > 140 ? '…' : ''}</p>
+                <p class="ig-plan-caption-preview">${escapeHtml((pl.draft_caption || '').slice(0, 140))}${(pl.draft_caption || '').length > 140 ? '…' : ''}</p>`;
+
+        return `<div class="ig-plan-result-item">
+            <div class="ig-plan-result-date">${tglLabel}</div>
+            <div class="ig-plan-result-body">
+                ${topAndCaption}
                 <div class="ig-plan-result-actions">${actions}</div>
             </div>
         </div>`;
     }).join('');
+}
+
+// ---- Auto-save 1 field hasil edit inline di list rencana (tema/tipe_konten/draft_caption) ----
+async function igPlanUpdateField(planId, field, value) {
+    const allowedFields = ['tema', 'tipe_konten', 'draft_caption'];
+    if (!allowedFields.includes(field)) return;
+
+    const plan = igContentPlan.find(pl => pl.id === planId);
+    if (!plan) return;
+    const oldValue = plan[field] || '';
+    const newValue = (value || '').trim();
+    if (newValue === oldValue) return; // tidak berubah, skip request
+    if (field === 'tema' && !newValue) { showToast('Tema tidak boleh kosong', 'error'); return; }
+
+    try {
+        const { error } = await supabaseClient.from('ig_content_plan').update({ [field]: newValue }).eq('id', planId);
+        if (error) throw error;
+        plan[field] = newValue; // update cache lokal langsung, tanpa reload penuh
+
+        const indicator = document.getElementById(`igPlanSaved-${planId}`);
+        if (indicator) {
+            indicator.innerHTML = '<i class="bi bi-check-circle-fill"></i> Tersimpan';
+            indicator.classList.add('show');
+            clearTimeout(indicator._hideTimer);
+            indicator._hideTimer = setTimeout(() => indicator.classList.remove('show'), 1800);
+        }
+        if (field === 'tema') renderIgCalendar(); // tema dipakai di tooltip dot kalender
+    } catch (err) {
+        console.error('igPlanUpdateField error:', err);
+        showToast('Gagal menyimpan perubahan: ' + err.message, 'error');
+    }
 }
 
 // ---- Konversi 1 item rencana jadi post asli (buka modal upload, caption pre-fill) ----
@@ -13427,6 +13479,7 @@ window.generateIgContentPlanAI = generateIgContentPlanAI;
 window.igConvertPlanToPost = igConvertPlanToPost;
 window.igSkipPlanItem = igSkipPlanItem;
 window.igDeletePlanItem = igDeletePlanItem;
+window.igPlanUpdateField = igPlanUpdateField;
 window.loadIgContentPlan = loadIgContentPlan;
 
 

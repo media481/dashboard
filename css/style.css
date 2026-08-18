@@ -3343,6 +3343,29 @@
     .ig-plan-result-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
     .ig-plan-result-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 
+    /* Edit inline (tema/tipe/caption) di item rencana 'idea' */
+    .ig-plan-edit-tema {
+        flex: 1; min-width: 100px; border: 1px solid transparent; border-radius: 6px;
+        padding: 3px 6px; font-size: 12.5px; font-weight: 700; color: var(--ink);
+        font-family: 'Inter', sans-serif; background: transparent;
+    }
+    .ig-plan-edit-tema:hover, .ig-plan-edit-tema:focus { border-color: var(--line); background: #fff; outline: none; }
+    .ig-plan-edit-tipe {
+        border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px;
+        font-size: 11px; color: var(--ink-soft); background: #fff; font-family: 'Inter', sans-serif;
+    }
+    .ig-plan-save-indicator {
+        font-size: 10.5px; color: var(--success); font-weight: 600; opacity: 0;
+        transition: opacity 0.25s; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap;
+    }
+    .ig-plan-save-indicator.show { opacity: 1; }
+    .ig-plan-edit-caption {
+        width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 8px;
+        font-size: 12px; font-family: 'Inter', sans-serif; color: var(--ink);
+        resize: vertical; margin-top: 4px;
+    }
+    .ig-plan-edit-caption:focus { outline: none; border-color: var(--brand); }
+
     /* Post Table */
     .ig-post-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
     .ig-post-table th {
