@@ -2104,6 +2104,169 @@ async function saveRoleMenuAccessMatrix() {
     }
 }
 
+// ============================================================
+// 12b-4. AKSES MENU SIDEBAR PER USER (override, admin only) — pengecualian
+// per akun individual di atas default role_menu_access. Simpan ke tabel
+// user_menu_access (sql/tambah_akses_menu_user.sql). Baris yang tidak
+// diubah (tetap "Ikuti Role") sengaja TIDAK disimpan sbg baris di tabel --
+// supaya kalau default role-nya diubah nanti lewat matrix per role, akun
+// yang belum pernah dikecualikan otomatis ikut berubah juga.
+// ============================================================
+let umaCachedUsers = []; // {id, label, email, dashboard_role} non-admin, diisi populateUmaUserSelect()
+
+async function populateUmaUserSelect() {
+    const sel = document.getElementById('umaUserSelect');
+    if (!sel || currentRole !== 'admin') return;
+    const { data, error } = await supabaseClient
+        .from('dashboard_profiles')
+        .select('id, email, label, dashboard_role')
+        .order('label');
+    if (error) return; // biarkan diam -- tab "Daftar User" di sebelah sudah menampilkan pesan error setup kalau relevan
+    umaCachedUsers = data || [];
+    const prevValue = sel.value;
+    sel.innerHTML = '<option value="">-- Pilih akun --</option>' + umaCachedUsers.map(u => {
+        const roleTag = u.dashboard_role === 'admin' ? ' (Admin — selalu penuh)' : ` (${u.dashboard_role === 'guest' ? 'Guest' : 'User'})`;
+        return `<option value="${escapeJsAttr(u.id)}">${escapeHtml(u.label || u.email || u.id)}${roleTag}</option>`;
+    }).join('');
+    if (prevValue && umaCachedUsers.some(u => u.id === prevValue)) sel.value = prevValue;
+}
+
+async function renderUserMenuAccessMatrix() {
+    const sel = document.getElementById('umaUserSelect');
+    const wrap = document.getElementById('userMenuAccessWrap');
+    const actions = document.getElementById('userMenuAccessActions');
+    if (!wrap || !actions) return;
+    const userId = sel?.value || '';
+    const statusEl = document.getElementById('userMenuAccessStatus');
+    if (statusEl) statusEl.innerHTML = '';
+
+    if (!userId) { wrap.innerHTML = ''; actions.style.display = 'none'; return; }
+
+    const targetUser = umaCachedUsers.find(u => u.id === userId);
+    if (targetUser && targetUser.dashboard_role === 'admin') {
+        wrap.innerHTML = '<div style="padding:14px;color:var(--ink-soft);font-size:12.5px;">Akun Admin selalu punya akses menu penuh dan tidak bisa dibatasi di sini (supaya admin tidak terkunci dari akun sendiri).</div>';
+        actions.style.display = 'none';
+        return;
+    }
+
+    wrap.innerHTML = '<div style="text-align:center;padding:20px;color:var(--ink-soft);">Memuat...</div>';
+    actions.style.display = 'none';
+
+    const [{ data: roleRows, error: roleErr }, { data: userRows, error: userErr }] = await Promise.all([
+        supabaseClient.from('role_menu_access').select('role, menu_key, allowed').eq('role', targetUser ? targetUser.dashboard_role : 'user'),
+        supabaseClient.from('user_menu_access').select('menu_key, allowed').eq('user_id', userId)
+    ]);
+    if (roleErr || userErr) {
+        const err = roleErr || userErr;
+        const isMissingSetup = /relation .*user_menu_access.* does not exist/i.test(err.message || '');
+        wrap.innerHTML = isMissingSetup
+            ? `<div style="padding:14px;color:var(--danger);font-size:12.5px;">Setup belum lengkap: jalankan <code>sql/tambah_akses_menu_user.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.</div>`
+            : `<div style="padding:14px;color:var(--danger);font-size:12.5px;">Gagal memuat akses menu user: ${escapeHtml(err.message)}</div>`;
+        return;
+    }
+
+    const roleDefault = {}; // menu_key -> boolean, default role akun ini
+    (roleRows || []).forEach(r => { roleDefault[r.menu_key] = !!r.allowed; });
+    const override = {}; // menu_key -> boolean, cuma yg PUNYA baris override
+    (userRows || []).forEach(r => { override[r.menu_key] = !!r.allowed; });
+
+    const groups = [...new Set(SIDEBAR_MENU_REGISTRY.map(m => m.group))];
+    const rowsHtml = groups.map(group => {
+        const itemsHtml = SIDEBAR_MENU_REGISTRY.filter(m => m.group === group).map(m => {
+            const hasOverride = Object.prototype.hasOwnProperty.call(override, m.key);
+            const state = hasOverride ? (override[m.key] ? 'allow' : 'deny') : 'inherit';
+            const defaultLabel = roleDefault[m.key] ? 'boleh' : 'tidak boleh';
+            return `
+            <tr>
+                <td style="padding:7px 10px;font-size:12px;">${escapeHtml(m.label)}<div style="font-size:10.5px;color:var(--ink-soft);">default role: ${defaultLabel}</div></td>
+                <td style="padding:7px 10px;text-align:center;">
+                    <select class="uma-select" data-menu-key="${m.key}" style="font-size:12px;padding:4px 6px;">
+                        <option value="inherit" ${state === 'inherit' ? 'selected' : ''}>Ikuti Role</option>
+                        <option value="allow" ${state === 'allow' ? 'selected' : ''}>Izinkan</option>
+                        <option value="deny" ${state === 'deny' ? 'selected' : ''}>Larang</option>
+                    </select>
+                </td>
+            </tr>`;
+        }).join('');
+        return `
+            <tr><td colspan="2" style="padding:10px 10px 4px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);">${escapeHtml(group)}</td></tr>
+            ${itemsHtml}`;
+    }).join('');
+
+    wrap.innerHTML = `
+        <div class="admin-table-wrap" style="margin-top:12px;">
+            <table>
+                <thead><tr><th>Menu</th><th style="text-align:center;">Akses</th></tr></thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>
+        </div>`;
+    actions.style.display = 'flex';
+}
+window.renderUserMenuAccessMatrix = renderUserMenuAccessMatrix;
+
+async function saveUserMenuAccessMatrix() {
+    if (currentRole !== 'admin') { showToast('Hanya Admin yang boleh mengubah akses menu', 'error'); return; }
+    const userId = document.getElementById('umaUserSelect')?.value || '';
+    const statusEl = document.getElementById('userMenuAccessStatus');
+    if (!userId) return;
+    const selects = document.querySelectorAll('#userMenuAccessWrap .uma-select');
+    if (!selects.length) return;
+
+    // "inherit" -> hapus baris (kalau ada) supaya kembali ikut role.
+    // "allow"/"deny" -> upsert baris dgn allowed sesuai pilihan.
+    const toUpsert = [];
+    const inheritKeys = [];
+    selects.forEach(el => {
+        const menuKey = el.dataset.menuKey;
+        if (el.value === 'inherit') inheritKeys.push(menuKey);
+        else toUpsert.push({ user_id: userId, menu_key: menuKey, allowed: el.value === 'allow', updated_at: new Date().toISOString() });
+    });
+
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--ink-soft);font-size:12.5px;"><i class="bi bi-hourglass-split"></i> Menyimpan...</span>';
+    try {
+        if (toUpsert.length) {
+            const { error } = await supabaseClient.from('user_menu_access').upsert(toUpsert, { onConflict: 'user_id,menu_key' });
+            if (error) throw error;
+        }
+        if (inheritKeys.length) {
+            const { error } = await supabaseClient.from('user_menu_access').delete().eq('user_id', userId).in('menu_key', inheritKeys);
+            if (error) throw error;
+        }
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--success);font-size:12.5px;"><i class="bi bi-check-circle-fill"></i> Tersimpan.</span>';
+        showToast('Akses menu user berhasil disimpan');
+        // Kalau admin sedang menyunting akses akun dirinya sendiri (mis. login
+        // sbg user biasa di tab lain buat testing), sidebar sesi ini ikut diperbarui.
+        await loadUserMenuAccess(true);
+        renderSidebarNav();
+    } catch (err) {
+        console.error('saveUserMenuAccessMatrix error:', err);
+        if (statusEl) statusEl.innerHTML = `<span style="color:var(--danger);font-size:12.5px;"><i class="bi bi-exclamation-circle-fill"></i> Gagal menyimpan: ${escapeHtml(err.message)}</span>`;
+        showToast('Gagal menyimpan akses menu user', 'error');
+    }
+}
+window.saveUserMenuAccessMatrix = saveUserMenuAccessMatrix;
+
+async function resetUserMenuAccessMatrix() {
+    if (currentRole !== 'admin') { showToast('Hanya Admin yang boleh mengubah akses menu', 'error'); return; }
+    const userId = document.getElementById('umaUserSelect')?.value || '';
+    if (!userId) return;
+    if (!confirm('Hapus semua pengecualian akses menu untuk akun ini? Akun ini akan kembali murni ikut default role-nya.')) return;
+    const statusEl = document.getElementById('userMenuAccessStatus');
+    try {
+        const { error } = await supabaseClient.from('user_menu_access').delete().eq('user_id', userId);
+        if (error) throw error;
+        showToast('Akses user dikembalikan ke default role');
+        await renderUserMenuAccessMatrix();
+        await loadUserMenuAccess(true);
+        renderSidebarNav();
+    } catch (err) {
+        console.error('resetUserMenuAccessMatrix error:', err);
+        if (statusEl) statusEl.innerHTML = `<span style="color:var(--danger);font-size:12.5px;"><i class="bi bi-exclamation-circle-fill"></i> Gagal: ${escapeHtml(err.message)}</span>`;
+        showToast('Gagal reset akses user', 'error');
+    }
+}
+window.resetUserMenuAccessMatrix = resetUserMenuAccessMatrix;
+
 async function logoutAdmin() {
     adminLoggedIn = false;
     currentRole = null;
@@ -2267,7 +2430,7 @@ function switchAdminSubTab(name) {
     if (name === 'pembayaran') { renderPembayaranPanel(); }
     if (name === 'unggulan') { renderFeaturedAdminTable(); }
     if (name === 'snapshot') { renderSnapshotAdminTable(); }
-    if (name === 'usersettings') { switchUsInnerTab('adduser'); loadUserList(); renderRoleMenuAccessMatrix(); }
+    if (name === 'usersettings') { switchUsInnerTab('adduser'); loadUserList(); renderRoleMenuAccessMatrix(); populateUmaUserSelect(); }
     if (name === 'assets') { switchAssetsInnerTab('links'); loadAssets().then(renderAssetsAdminTable); }
     if (name === 'systemstatus') { renderSystemStatusPanel(); }
 }
@@ -3022,6 +3185,23 @@ async function renderAdminPanel() {
                             <span id="roleMenuAccessStatus"></span>
                         </div>
                     </div>
+
+                    <div class="admin-fieldset" style="margin-top:20px;">
+                        <div class="admin-fieldset-title"><i class="bi bi-person-lock"></i> Akses Menu per User (Pengecualian)</div>
+                        <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;">Atur pengecualian akses menu untuk 1 akun tertentu -- misal 2 akun sama-sama role <b>User</b>, tapi salah satunya mau dibatasi lebih ketat/longgar dari default role-nya. Menu yang <b>tidak</b> diubah di sini tetap ikut aturan role di atas.</p>
+                        <div class="form-group" style="max-width:360px;">
+                            <label>Pilih User</label>
+                            <select id="umaUserSelect" onchange="renderUserMenuAccessMatrix()">
+                                <option value="">-- Pilih akun --</option>
+                            </select>
+                        </div>
+                        <div id="userMenuAccessWrap"></div>
+                        <div id="userMenuAccessActions" style="display:none;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center;">
+                            <button class="btn-primary" id="userMenuAccessSaveBtn" onclick="saveUserMenuAccessMatrix()"><i class="bi bi-save-fill"></i> Simpan Akses User Ini</button>
+                            <button class="btn-cancel" id="userMenuAccessResetBtn" onclick="resetUserMenuAccessMatrix()"><i class="bi bi-arrow-counterclockwise"></i> Kembalikan ke Default Role</button>
+                            <span id="userMenuAccessStatus"></span>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="usPanel-list" style="display:none;">
@@ -3573,6 +3753,39 @@ async function loadRoleMenuAccess(forceReload = false) {
     return roleMenuAccessMap;
 }
 
+// Cache override akses menu PER AKUN (bukan per role) dari tabel
+// user_menu_access -- lihat sql/tambah_akses_menu_user.sql. Beda dari
+// roleMenuAccessMap (di-cache utk SEMUA role sekaligus), cache ini cuma
+// menyimpan override milik akun yang sedang login saja: { menu_key: true/false }.
+// undefined utk sebuah menu_key = tidak ada override, ikuti role_menu_access.
+// null = belum pernah dimuat ATAU migrasinya belum dijalankan (tabel belum
+// ada) -- dalam kondisi ini dianggap "tidak ada override sama sekali",
+// jadi perilaku lama (murni per role) tidak berubah.
+let userMenuAccessMap = null;
+let userMenuAccessLoadedForUserId = null;
+
+async function loadUserMenuAccess(forceReload = false) {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const uid = session?.user?.id || null;
+    if (!uid) { userMenuAccessMap = null; userMenuAccessLoadedForUserId = null; return null; }
+    if (userMenuAccessLoadedForUserId === uid && !forceReload) return userMenuAccessMap;
+    try {
+        const { data, error } = await supabaseClient.from('user_menu_access').select('menu_key, allowed').eq('user_id', uid);
+        if (error) throw error;
+        const map = {};
+        (data || []).forEach(row => { map[row.menu_key] = !!row.allowed; });
+        userMenuAccessMap = map;
+    } catch (err) {
+        // Tabel belum ada (migrasi sql/tambah_akses_menu_user.sql belum
+        // dijalankan) atau gagal koneksi -- diamkan saja, anggap tidak ada
+        // override individual sama sekali (fallback penuh ke role).
+        console.warn('loadUserMenuAccess: pakai fallback role saja —', err.message);
+        userMenuAccessMap = null;
+    }
+    userMenuAccessLoadedForUserId = uid;
+    return userMenuAccessMap;
+}
+
 // Minimize sidebar jadi ikon saja (desktop). Preferensi disimpan di localStorage
 // supaya tetap ciut/lebar yang sama tiap kali dashboard dibuka lagi.
 const SIDEBAR_COLLAPSE_KEY = 'amiru_sidebar_collapsed';
@@ -3602,9 +3815,11 @@ async function renderSidebarNav() {
     // digating di sini secara individual dulu -- hanya tombol nav yang punya
     // salah satu atribut itu yang diperiksa lewat konfigurasi per role.
     let allowedSet = null; // null = fallback lama, Set = daftar menu_key yang boleh
+    let userOverride = null; // { menu_key: true/false } override akun ini, atau null
     if (loggedIn && !isAdminRole) {
         const map = await loadRoleMenuAccess();
         allowedSet = map ? (map[currentRole] || new Set()) : null;
+        userOverride = await loadUserMenuAccess();
     }
 
     document.querySelectorAll('.nav-loggedin-only, .nav-admin-only').forEach(el => {
@@ -3614,6 +3829,13 @@ async function renderSidebarNav() {
         if (!menuKey) {
             // Section label ("Manajemen"/"System") -- visibilitasnya disamakan
             // lagi di bawah berdasar isi section, jangan diputuskan di sini.
+            return;
+        }
+        // Override per akun (user_menu_access) menang kalau ada; kalau
+        // tidak ada baris utk menu_key ini, baru fallback ke allowedSet
+        // (role_menu_access) -- lihat catatan di loadUserMenuAccess().
+        if (userOverride && Object.prototype.hasOwnProperty.call(userOverride, menuKey)) {
+            el.style.display = userOverride[menuKey] ? '' : 'none';
             return;
         }
         if (allowedSet) {
