@@ -3333,6 +3333,21 @@
     .ig-status-pill-plan { background: var(--brand-tint); color: var(--brand); }
     .ig-btn-danger { background: var(--danger-tint) !important; color: var(--danger) !important; }
 
+    /* Mode edit item rencana diperluas -- keluar dari baris sempit
+       (thumb 44px + info + kolom aksi) jadi kolom penuh-lebar modal, supaya
+       textarea caption tidak terjepit dan lebih nyaman diedit. */
+    .ig-day-plan-item--editing { align-items: stretch; flex-wrap: wrap; padding: 12px; }
+    .ig-day-plan-item--editing > .ig-media-thumb,
+    .ig-day-plan-item--editing > .ig-plan-item-actions { display: none; }
+    .ig-day-plan-item--editing > .ig-day-post-info { width: 100%; flex-basis: 100%; }
+    .ig-plan-edit-caption--lg { min-height: 160px; line-height: 1.5; }
+    .ig-plan-edit-footer {
+        display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+        gap: 8px; margin-top: 8px;
+    }
+    .ig-plan-char-count { font-size: 11px; color: var(--ink-soft); white-space: nowrap; }
+    .ig-plan-edit-footer-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
     /* Modal Content Planner */
     .ig-plan-result-header {
         display: flex; align-items: center; justify-content: space-between;

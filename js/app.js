@@ -12276,11 +12276,15 @@ function igOpenDayModal(dateKey) {
                             </select>
                             <span class="ig-plan-save-indicator" id="igPlanSaved-${pl.id}"></span>
                         </div>
-                        <textarea class="ig-plan-edit-caption" rows="5"
+                        <textarea class="ig-plan-edit-caption ig-plan-edit-caption--lg" rows="10" maxlength="2200"
+                            oninput="igUpdatePlanCharCount('${pl.id}',this.value.length)"
                             onblur="igPlanUpdateField('${pl.id}','draft_caption',this.value)">${escapeHtml(pl.draft_caption || '')}</textarea>
-                        <div style="display:flex;gap:6px;margin-top:6px;">
-                            <button type="button" class="btn-secondary" style="font-size:11px;padding:4px 10px;" onclick="event.stopPropagation();igAppendRelevantHashtags(this.closest('.ig-plan-edit-wrap').querySelector('.ig-plan-edit-caption'))" title="Tambah 5 hashtag relevan"><i class="bi bi-hash"></i> +5 Hashtag</button>
-                            <button type="button" class="btn-secondary" style="font-size:11px;padding:4px 10px;" onclick="igTogglePlanEdit('${pl.id}')"><i class="bi bi-check2"></i> Selesai</button>
+                        <div class="ig-plan-edit-footer">
+                            <span class="ig-plan-char-count" id="igPlanCharCount-${pl.id}">${(pl.draft_caption || '').length} / 2200 karakter</span>
+                            <div class="ig-plan-edit-footer-actions">
+                                <button type="button" class="btn-secondary" onclick="event.stopPropagation();igAppendRelevantHashtags(this.closest('.ig-plan-edit-wrap').querySelector('.ig-plan-edit-caption'))" title="Tambah 5 hashtag relevan"><i class="bi bi-hash"></i> +5 Hashtag</button>
+                                <button type="button" class="btn-primary" onclick="igTogglePlanEdit('${pl.id}')"><i class="bi bi-check2"></i> Selesai</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -12356,9 +12360,19 @@ function igTogglePlanEdit(planId) {
     } else {
         viewEl.style.display = 'none';
         editEl.style.display = 'block';
+        // Item pindah dari layout baris sempit (thumb+info+aksi sejajar) ke
+        // layout kolom penuh-lebar -- supaya textarea caption tidak terjepit
+        // di antara thumbnail & tombol aksi, lebih lega buat edit panjang.
+        itemEl.classList.add('ig-day-plan-item--editing');
         const temaInput = editEl.querySelector('.ig-plan-edit-tema');
         if (temaInput) { temaInput.focus(); temaInput.select(); }
     }
+}
+
+// ---- Update counter karakter live saat mengetik di textarea edit rencana ----
+function igUpdatePlanCharCount(planId, length) {
+    const el = document.getElementById(`igPlanCharCount-${planId}`);
+    if (el) el.textContent = `${length} / 2200 karakter`;
 }
 
 function igAddPostFromDayModal() {
@@ -13587,6 +13601,7 @@ window.igGotoToday = igGotoToday;
 window.igOnDayClick = igOnDayClick;
 window.closeIgDayModal = closeIgDayModal;
 window.igTogglePlanEdit = igTogglePlanEdit;
+window.igUpdatePlanCharCount = igUpdatePlanCharCount;
 window.igAddPostFromDayModal = igAddPostFromDayModal;
 window.igPrevPage = igPrevPage;
 window.igNextPage = igNextPage;
