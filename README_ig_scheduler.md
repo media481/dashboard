@@ -36,10 +36,14 @@ Di Supabase Dashboard → SQL Editor → paste & run (urut):
 ```
 sql/tambah_ig_scheduler.sql
 sql/tambah_ig_carousel.sql
+sql/tambah_ig_comments.sql
+sql/tambah_ig_content_plan.sql
 ```
 
 Yang pertama membuat 3 tabel inti (`ig_accounts`, `ig_posts`, `ig_publish_logs`) + RLS policies.
 Yang kedua menambah tabel `ig_post_media` (item-item carousel, urutan via kolom `position`) + RLS policies — dibutuhkan untuk fitur Carousel.
+Yang ketiga menambah tabel `ig_comments` — lihat bagian "Fitur Komentar" di bawah.
+Yang keempat menambah tabel `ig_content_plan` — lihat bagian "Content Planner Bulanan (AI)" di bawah.
 
 ### 2. Buat Storage Bucket
 
@@ -172,6 +176,36 @@ Memaksimalkan izin **`instagram_manage_comments`** — bagian dari Instagram Gra
 - Sync dibatasi ke post yang published dalam 30 hari terakhir, biar tidak boros API call ke post lawas.
 - Balasan yang muncul di kolom komentar Instagram (dari siapa pun) otomatis ditandai membuat status komentar induk jadi "sudah dibalas" — bukan cuma balasan yang dikirim lewat dashboard ini.
 - RLS tabel `ig_comments` pakai `current_dashboard_role()` (bukan `auth.role()='authenticated'` seperti migrasi awal IG Scheduler) — guest tidak bisa lihat/balas komentar sama sekali, konsisten dengan hardening yang sudah diterapkan di tabel lain (lihat `sql/tambah_role_guest_readonly.sql`).
+
+## Content Planner Bulanan (AI)
+
+Tombol **"Rencana Bulanan AI"** di toolbar IG Scheduler menyusun daftar IDE post untuk
+1 bulan penuh sekaligus (tersebar per tanggal, campuran promosi/edukasi/testimoni/
+engagement) lewat Gemini — otomatis memakai konteks program Umroh yang berangkat di
+bulan tsb (tabel `programs`) supaya harga/tanggal yang disebut tidak asal karang.
+
+Rencana disimpan di tabel **terpisah** `ig_content_plan` (bukan `ig_posts`, karena
+`ig_posts.media_url` wajib diisi sedangkan rencana baru berupa ide+draft caption, belum
+ada media). Item rencana tetap tampil di **kalender yang sama** dengan post asli, dibedakan
+lewat gaya dashed/muted + label "Rencana AI". Klik tombol **"Jadikan Post"** pada satu
+rencana → membuka modal Post Baru dengan caption & tipe konten sudah ter-isi, tinggal
+upload media & simpan (rencana otomatis ditandai `dijadikan_post` setelah post tersimpan).
+
+### Setup tambahan
+1. Jalankan migration baru di SQL Editor:
+   ```
+   sql/tambah_ig_content_plan.sql
+   ```
+2. Deploy edge function baru:
+   ```bash
+   supabase functions deploy generate-ig-content-plan --no-verify-jwt
+   ```
+   (pakai `GEMINI_API_KEY` yang sama — tidak perlu secret baru, ikut fallback multi-key kalau sudah di-set)
+
+### Catatan
+- RLS `ig_content_plan` dibatasi ke `admin`/`user` (guest tidak bisa lihat/kelola rencana).
+- Rencana yang tidak relevan bisa **dilewati** (disembunyikan dari kalender, tidak dihapus)
+  atau **dihapus permanen** langsung dari modal harian / modal Content Planner.
 
 ## Alur Status Post
 
