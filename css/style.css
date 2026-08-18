@@ -2607,6 +2607,58 @@
             .cx-divider { display: none; }
         }
 
+/* ===== INFOGRAFIS GALLERY ===== */
+.infografis-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.infografis-count {
+    color: var(--ink-soft, #64748b);
+    font-size: 12.5px;
+}
+.infografis-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 14px;
+}
+.infografis-card {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--line, #e2e8f0);
+    background: var(--bg, #f0f4f8);
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+.infografis-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px rgba(0,0,0,.14);
+}
+.infografis-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.infografis-card-name {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    padding: 8px 10px 7px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(to top, rgba(0,0,0,.65), rgba(0,0,0,0));
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+@media (max-width: 640px) {
+    .infografis-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+}
+
 /* ===== POSTER HOVER POPUP ===== */
 .poster-popup {
     position: fixed;

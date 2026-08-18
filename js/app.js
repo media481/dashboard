@@ -1113,6 +1113,10 @@ function switchTab(tabId) {
         openIgSchedulerPage();
         return;
     }
+    if (tabId === 'infografis') {
+        openInfografisPage();
+        return;
+    }
 
     // Kalau sedang di halaman Admin Panel, otomatis kembali dulu ke dashboard
     // supaya menu navigasi (Program, Unggulan, Jadwal Tamu, Keberangkatan)
@@ -1131,6 +1135,13 @@ function switchTab(tabId) {
     const igView = document.getElementById('igSchedulerPageView');
     if (igView && igView.style.display !== 'none') {
         igView.style.display = 'none';
+        document.getElementById('dashboardView').style.display = 'block';
+    }
+
+    // Sama halnya kalau sedang di halaman Infografis
+    const infografisView = document.getElementById('infografisPageView');
+    if (infografisView && infografisView.style.display !== 'none') {
+        infografisView.style.display = 'none';
         document.getElementById('dashboardView').style.display = 'block';
     }
 
@@ -1207,6 +1218,126 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 document.querySelectorAll('.sidebar .nav-item[data-tab]').forEach(item => {
     item.addEventListener('click', () => switchTab(item.dataset.tab));
 });
+
+// ============================================================
+// 5c. INFOGRAFIS — halaman mandiri, galeri gambar dari folder
+// Google Drive publik (dibaca lewat Apps Script Web App, lihat
+// apps-script/infografis-drive-listing.gs untuk setup-nya).
+// ============================================================
+// [KONFIG] Ganti dengan URL "Web app" hasil deploy Apps Script (diakhiri /exec).
+const INFOGRAFIS_API_URL = 'GANTI_DENGAN_URL_WEB_APP_ANDA';
+
+let infografisItems = [];
+let infografisLoaded = false;
+let previousActiveTabForInfografis = null;
+
+function openInfografisPage() {
+    const adminView = document.getElementById('adminPageView');
+    if (adminView && adminView.style.display !== 'none') {
+        adminView.style.display = 'none';
+    }
+
+    const activeTabBtn = document.querySelector('.sidebar .nav-item[data-tab].active');
+    previousActiveTabForInfografis = activeTabBtn ? activeTabBtn.dataset.tab : null;
+
+    document.getElementById('dashboardView').style.display = 'none';
+    document.getElementById('infografisPageView').style.display = 'block';
+
+    document.querySelectorAll('.sidebar .nav-item').forEach(item => item.classList.remove('active'));
+    const navBtn = document.querySelector('.sidebar .nav-item[data-tab="infografis"]');
+    if (navBtn) navBtn.classList.add('active');
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    loadInfografisGallery();
+}
+
+function closeInfografisPage() {
+    document.getElementById('infografisPageView').style.display = 'none';
+    document.getElementById('dashboardView').style.display = 'block';
+
+    document.querySelectorAll('.sidebar .nav-item').forEach(item => item.classList.remove('active'));
+    if (previousActiveTabForInfografis) {
+        document.querySelectorAll('.sidebar .nav-item[data-tab]').forEach(item => {
+            item.classList.toggle('active', item.dataset.tab === previousActiveTabForInfografis);
+        });
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === previousActiveTabForInfografis);
+        });
+    } else {
+        const umrohNav = document.querySelector('.sidebar .nav-item[data-tab="umroh"]');
+        if (umrohNav) umrohNav.classList.add('active');
+    }
+}
+
+async function loadInfografisGallery(forceRefresh = false) {
+    const body = document.getElementById('infografisGalleryBody');
+    const countEl = document.getElementById('infografisCount');
+    if (!body) return;
+
+    // Sudah pernah dimuat & bukan refresh manual -> tampilkan cache di memori,
+    // tidak perlu hit Apps Script lagi tiap buka menu ini.
+    if (infografisLoaded && !forceRefresh) {
+        renderInfografisGallery();
+        return;
+    }
+
+    body.innerHTML = '<div class="ig-empty"><i class="bi bi-hourglass-split"></i> Memuat...</div>';
+    if (countEl) countEl.textContent = '';
+
+    try {
+        if (!INFOGRAFIS_API_URL || INFOGRAFIS_API_URL.indexOf('GANTI_DENGAN') === 0) {
+            throw new Error('URL Apps Script belum diatur (INFOGRAFIS_API_URL di js/app.js).');
+        }
+        const res = await fetch(INFOGRAFIS_API_URL);
+        if (!res.ok) throw new Error(`Gagal memuat (status ${res.status})`);
+        const data = await res.json();
+        if (!data || data.ok !== true || !Array.isArray(data.items)) {
+            throw new Error('Respons tidak valid dari Apps Script.');
+        }
+        infografisItems = data.items;
+        infografisLoaded = true;
+        renderInfografisGallery();
+    } catch (err) {
+        body.innerHTML = `
+            <div class="ig-empty">
+                <i class="bi bi-exclamation-triangle"></i>
+                Gagal memuat galeri infografis.<br>
+                <span style="font-size:11.5px;color:var(--ink-soft);">${escapeHtml(err.message || String(err))}</span>
+            </div>`;
+    }
+}
+
+function renderInfografisGallery() {
+    const body = document.getElementById('infografisGalleryBody');
+    const countEl = document.getElementById('infografisCount');
+    if (!body) return;
+
+    if (countEl) countEl.textContent = infografisItems.length ? `${infografisItems.length} gambar` : '';
+
+    if (!infografisItems.length) {
+        body.innerHTML = '<div class="ig-empty"><i class="bi bi-images"></i> Belum ada gambar di folder ini.</div>';
+        return;
+    }
+
+    body.innerHTML = `<div class="infografis-grid">
+        ${infografisItems.map(item => `
+            <div class="infografis-card"
+                 data-poster="${escapeHtmlAttr(item.thumbUrl || '')}"
+                 data-nama="${escapeHtmlAttr(item.name || '')}"
+                 onmouseenter="showPosterPopup(event,this)"
+                 onmouseleave="hidePosterPopup()"
+                 onclick="window.open('${escapeJsAttr(item.fullUrl || item.thumbUrl || '')}','_blank')"
+                 title="${escapeHtmlAttr(item.name || '')}">
+                <img src="${escapeHtmlAttr(item.thumbUrl || '')}" alt="${escapeHtmlAttr(item.name || '')}" loading="lazy">
+                <div class="infografis-card-name">${escapeHtml(item.name || '')}</div>
+            </div>
+        `).join('')}
+    </div>`;
+}
+
+window.openInfografisPage = openInfografisPage;
+window.closeInfografisPage = closeInfografisPage;
+window.loadInfografisGallery = loadInfografisGallery;
 
 // ============================================================
 // 6. MOBILE SIDEBAR
@@ -1960,10 +2091,14 @@ async function openAdminPanel(subtab) {
         maybeDailySnapshot();
     }
 
-    // Kalau sedang di halaman IG Scheduler, tutup dulu supaya tidak tumpang tindih
+    // Kalau sedang di halaman IG Scheduler / Infografis, tutup dulu supaya tidak tumpang tindih
     const igPageView = document.getElementById('igSchedulerPageView');
     if (igPageView && igPageView.style.display !== 'none') {
         igPageView.style.display = 'none';
+    }
+    const infografisPageView = document.getElementById('infografisPageView');
+    if (infografisPageView && infografisPageView.style.display !== 'none') {
+        infografisPageView.style.display = 'none';
     }
 
     // Remember which dashboard tab was active so we can restore it on close
@@ -3352,6 +3487,7 @@ const SIDEBAR_MENU_REGISTRY = [
     { key: 'kepulangan', label: 'Status Kepulangan', group: 'Navigasi' },
     { key: 'arsip', label: 'Arsip Jamaah', group: 'Navigasi' },
     { key: 'igScheduler', label: 'IG Scheduler', group: 'Social Media' },
+    { key: 'infografis', label: 'Infografis', group: 'Social Media' },
     { key: 'program', label: 'Tambah Program', group: 'Manajemen' },
     { key: 'pembayaran', label: 'Pembayaran', group: 'Manajemen' },
     { key: 'unggulan', label: 'Unggulan (Admin)', group: 'Manajemen' },
@@ -3498,6 +3634,11 @@ async function renderSidebarNav() {
         const igPageView = document.getElementById('igSchedulerPageView');
         if (igPageView && igPageView.style.display !== 'none') {
             closeIgSchedulerPage();
+            switchTab('umroh');
+        }
+        const infografisPageView = document.getElementById('infografisPageView');
+        if (infografisPageView && infografisPageView.style.display !== 'none') {
+            closeInfografisPage();
             switchTab('umroh');
         }
     }

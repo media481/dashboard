@@ -78,6 +78,9 @@
             <button class="nav-item nav-loggedin-only" data-tab="igScheduler" style="display:none;" title="IG Scheduler">
                 <i class="bi bi-instagram"></i> <span class="nav-text">IG Scheduler</span>
             </button>
+            <button class="nav-item nav-loggedin-only" data-tab="infografis" style="display:none;" title="Infografis">
+                <i class="bi bi-images"></i> <span class="nav-text">Infografis</span>
+            </button>
 
             <div class="nav-label nav-group-label" style="display:none;">Arsip</div>
             <button class="nav-item nav-loggedin-only" data-tab="arsip" style="display:none;" title="Arsip Jamaah">
@@ -526,6 +529,29 @@
         </div>
     </div>
 
+    <div id="infografisPageView" class="admin-page" style="display:none;">
+        <div class="admin-page-header">
+            <button class="admin-back-btn" onclick="closeInfografisPage()" title="Kembali ke Dashboard">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <div>
+                <h1><span>Infografis</span></h1>
+                <p>Galeri infografis dari folder Google Drive tim konten</p>
+            </div>
+        </div>
+        <div class="admin-page-body">
+            <div class="infografis-toolbar">
+                <button class="btn-secondary" id="btnInfografisRefresh" onclick="loadInfografisGallery(true)" style="font-size:12px;padding:6px 14px;">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+                <span class="infografis-count" id="infografisCount"></span>
+            </div>
+            <div id="infografisGalleryBody">
+                <div class="ig-empty"><i class="bi bi-hourglass-split"></i> Memuat...</div>
+            </div>
+        </div>
+    </div>
+
     <div id="adminPageView" class="admin-page" style="display:none;">
         <div class="admin-page-header">
             <button class="admin-back-btn" onclick="closeAdminPanel()" title="Kembali ke Dashboard">
@@ -578,6 +604,9 @@
             <div class="nav-label nav-group-label" style="display:none;">Social Media</div>
             <button class="nav-item nav-loggedin-only" data-tab="igScheduler" style="display:none;" onclick="switchTab('igScheduler'); toggleMobileSidebar();">
                 <i class="bi bi-instagram"></i> IG Scheduler
+            </button>
+            <button class="nav-item nav-loggedin-only" data-tab="infografis" style="display:none;" onclick="switchTab('infografis'); toggleMobileSidebar();">
+                <i class="bi bi-images"></i> Infografis
             </button>
 
             <div class="nav-label nav-group-label" style="display:none;">Arsip</div>
