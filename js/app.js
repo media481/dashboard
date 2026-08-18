@@ -13175,11 +13175,17 @@ function showIgPlanGenerateForm() {
 async function buildIgPlanProgramContext(year, month) {
     try {
         const { data, error } = await supabaseClient.from('programs')
-            .select('nama, tgl, durasi, harga_quint, harga_quad, harga_triple, harga_double, is_active, admin_data_lengkap')
+            .select('nama, tgl, durasi, harga_quint, is_active, admin_data_lengkap')
             .eq('is_active', true);
         if (error) throw error;
 
-        const relevant = (data || []).filter(p => {
+        // harga_quad/harga_triple/harga_double BUKAN kolom di tabel programs —
+        // field itu disimpan di dalam JSON admin_data_lengkap (lihat komentar
+        // unpackProgramAdminData di sekitar baris 3063). Harus dibongkar dulu
+        // sebelum bisa dipakai, kalau tidak p.harga_quad selalu undefined.
+        const unpacked = (data || []).map(p => unpackProgramAdminData(p));
+
+        const relevant = unpacked.filter(p => {
             if (!p.tgl) return false;
             const d = parseDateFromString(p.tgl);
             return d && d.getFullYear() === year && d.getMonth() === month;
