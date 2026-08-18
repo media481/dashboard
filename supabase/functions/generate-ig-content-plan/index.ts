@@ -50,7 +50,7 @@ ATURAN PENTING:
   - ~20% testimoni/social proof (boleh fiktif-generik tanpa nama spesifik, mis. "kesan jamaah setelah pulang dari Madinah" — jangan mengarang nama orang asli)
   - ~15% engagement/soft content (kuis ringan, pertanyaan ke followers, momen di balik layar kantor/tim)
 - "tema" cukup 1 baris singkat (judul internal untuk admin, BUKAN caption).
-- "draft_caption" ikuti gaya caption IG Amiru Tour: hook 1 baris di awal, body 2-4 kalimat pendek mengalir (bukan daftar fasilitas kaku), CTA jelas, ditutup blok hashtag 8-15 buah (campur brand/niche umroh/umum). Ejaan selalu "Umroh" (bukan "Umrah"). Target panjang tiap caption 400-800 karakter.
+- "draft_caption" ikuti gaya caption IG Amiru Tour: hook 1 baris di awal, body 2-4 kalimat pendek mengalir (bukan daftar fasilitas kaku), CTA jelas, ditutup blok hashtag maksimal 5 buah (campur brand/niche umroh/umum). Ejaan selalu "Umroh" (bukan "Umrah"). Target panjang tiap caption 400-800 karakter.
 - JANGAN mengarang harga/tanggal keberangkatan yang tidak ada di KONTEKS PROGRAM — kalau konten edukatif/testimoni/engagement, tidak perlu sebut harga/tanggal spesifik sama sekali.
 - Kalau KONTEKS PROGRAM kosong/tidak ada program aktif, tetap buat rencana penuh tapi fokuskan ke konten edukatif/testimoni/engagement (kurangi porsi promosi program, ganti dengan ajakan umum follow-up ke DM/WA).`;
 

@@ -12282,7 +12282,6 @@ function igOpenDayModal(dateKey) {
                         <div class="ig-plan-edit-footer">
                             <span class="ig-plan-char-count" id="igPlanCharCount-${pl.id}">${(pl.draft_caption || '').length} / 2200 karakter</span>
                             <div class="ig-plan-edit-footer-actions">
-                                <button type="button" class="btn-secondary" onclick="event.stopPropagation();igAppendRelevantHashtags(this.closest('.ig-plan-edit-wrap').querySelector('.ig-plan-edit-caption'))" title="Tambah 5 hashtag relevan"><i class="bi bi-hash"></i> +5 Hashtag</button>
                                 <button type="button" class="btn-primary" onclick="igTogglePlanEdit('${pl.id}')"><i class="bi bi-check2"></i> Selesai</button>
                             </div>
                         </div>
@@ -13347,72 +13346,6 @@ async function generateIgContentPlanAI() {
     }
 }
 
-// ---- Bank hashtag lokal untuk fitur "+5 Hashtag" (TANPA panggil AI -- ----
-// instan & tanpa kena kuota Gemini). Dipetakan dari kata kunci yang mungkin
-// muncul di tema/caption -> hashtag yang relevan. Kalau tidak ada kata kunci
-// yang cocok, sisa slot diisi dari pool umum (brand/niche umroh) supaya
-// selalu dapat 5 walau caption-nya generic (edukatif/testimoni/engagement).
-const IG_HASHTAG_BANK = [
-    { keywords: ['ramadhan', 'ramadan'], tags: ['#UmrohRamadhan'] },
-    { keywords: ['promo', 'diskon', 'murah', 'hemat', 'cicilan'], tags: ['#UmrohPromo', '#UmrohMurah'] },
-    { keywords: ['keluarga', 'anak', 'family', 'orang tua'], tags: ['#UmrohKeluarga'] },
-    { keywords: ['rombongan', 'grup', 'group', 'komunitas'], tags: ['#UmrohRombongan'] },
-    { keywords: ['plus', 'turki', 'dubai', 'aqsa', 'mesir'], tags: ['#UmrohPlus'] },
-    { keywords: ['vip', 'eksklusif', 'mewah', 'bintang 5'], tags: ['#UmrohVIP'] },
-    { keywords: ['backpacker', 'ekonomis', 'reguler'], tags: ['#UmrohBackpacker'] },
-    { keywords: ['makkah', 'mekah', 'mekkah', 'kabah', "ka'bah"], tags: ['#Makkah', '#Kabah'] },
-    { keywords: ['madinah', 'nabawi'], tags: ['#Madinah', '#MasjidNabawi'] },
-    { keywords: ['pesawat', 'maskapai', 'saudia', 'garuda', 'lion air', 'penerbangan'], tags: ['#UmrohNyaman'] },
-    { keywords: ['testimoni', 'jamaah pulang', 'kesan', 'pengalaman'], tags: ['#TestimoniJamaah'] },
-    { keywords: ['tips', 'persiapan', 'panduan', 'faq', 'doa'], tags: ['#TipsUmroh'] },
-];
-const IG_HASHTAG_CORE = ['#AmiruTour', '#UmrohIndonesia', '#TravelUmroh', '#WisataReligi', '#PaketUmroh', '#UmrohTerpercaya', '#TanahSuci'];
-
-function igSuggestHashtags(text) {
-    const lower = (text || '').toLowerCase();
-    const already = new Set((text.match(/#\w+/g) || []).map(t => t.toLowerCase()));
-    const picked = [];
-    IG_HASHTAG_BANK.forEach(entry => {
-        if (picked.length >= 5) return;
-        if (entry.keywords.some(k => lower.includes(k))) {
-            entry.tags.forEach(tag => {
-                if (picked.length < 5 && !already.has(tag.toLowerCase()) && !picked.includes(tag)) picked.push(tag);
-            });
-        }
-    });
-    for (const tag of IG_HASHTAG_CORE) {
-        if (picked.length >= 5) break;
-        if (!already.has(tag.toLowerCase()) && !picked.includes(tag)) picked.push(tag);
-    }
-    return picked.slice(0, 5);
-}
-
-// ---- Tambahkan 5 hashtag relevan ke akhir textarea caption manapun ----
-// Reusable -- dipakai bareng oleh form upload post IG (ig_caption), edit
-// inline rencana AI di Content Planner, & edit inline rencana AI di day
-// modal kalender. Terima elemen textarea langsung (bukan ID hardcoded).
-function igAppendRelevantHashtags(textareaEl) {
-    if (!textareaEl) return;
-    const current = textareaEl.value || '';
-    const suggested = igSuggestHashtags(current);
-    if (!suggested.length) {
-        showToast('Semua hashtag relevan sudah ada di caption ini', 'info');
-        return;
-    }
-    const trimmed = current.replace(/\s+$/, '');
-    // Kalau baris terakhir caption sudah berupa blok hashtag, sambung di
-    // baris yang sama (spasi) -- kalau belum, buka blok hashtag baru
-    // (baris kosong pemisah dulu), sama seperti gaya caption bikinan AI.
-    const lastLine = trimmed.split('\n').pop() || '';
-    const lastLineIsHashtagBlock = /^#\S+(\s+#\S+)*$/.test(lastLine.trim());
-    const sep = !trimmed ? '' : (lastLineIsHashtagBlock ? ' ' : '\n\n');
-    textareaEl.value = trimmed + sep + suggested.join(' ');
-    textareaEl.dispatchEvent(new Event('input', { bubbles: true }));
-    textareaEl.dispatchEvent(new Event('blur', { bubbles: true }));
-    showToast(`${suggested.length} hashtag relevan ditambahkan`, 'success');
-}
-window.igAppendRelevantHashtags = igAppendRelevantHashtags;
-
 // ---- Render daftar hasil rencana (dalam modal, setelah generate) ----
 function renderIgPlanResultList(year, month) {
     const listEl = document.getElementById('igPlanResultList');
@@ -13447,7 +13380,6 @@ function renderIgPlanResultList(year, month) {
         const isIdea = pl.status === 'idea';
         const actions = isIdea
             ? `<button type="button" class="btn-secondary" onclick="igConvertPlanToPost('${pl.id}')" style="font-size:11px;padding:4px 10px;"><i class="bi bi-arrow-up-right-circle"></i> Jadikan Post</button>
-               <button type="button" class="btn-secondary" onclick="igAppendRelevantHashtags(this.closest('.ig-plan-result-body').querySelector('.ig-plan-edit-caption'))" style="font-size:11px;padding:4px 10px;" title="Tambah 5 hashtag relevan"><i class="bi bi-hash"></i> +5 Hashtag</button>
                <button type="button" class="btn-secondary" onclick="igSkipPlanItem('${pl.id}')" style="font-size:11px;padding:4px 10px;" title="Lewati (sembunyikan dari kalender)"><i class="bi bi-eye-slash"></i></button>
                <button type="button" class="btn-secondary ig-btn-danger" onclick="igDeletePlanItem('${pl.id}')" style="font-size:11px;padding:4px 10px;" title="Hapus"><i class="bi bi-trash"></i></button>`
             : '';

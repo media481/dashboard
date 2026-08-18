@@ -32,7 +32,7 @@ STRUKTUR YANG HARUS DIIKUTI:
 1. HOOK — 1 baris pembuka yang menarik perhatian dalam 3 detik pertama (pertanyaan, ajakan, atau pernyataan yang related ke pembaca). Boleh pakai 1 emoji relevan di awal atau akhir hook.
 2. BODY — 2-4 kalimat pendek yang mengalir natural (bukan bullet list panjang), menonjolkan 1-2 hal paling menarik dari konsep (misal: harga mulai dari, tanggal keberangkatan, fasilitas unggulan, atau momen spesial). Boleh sisipkan emoji sewajarnya, jangan berlebihan.
 3. CTA — 1 baris ajakan bertindak yang jelas (contoh: "DM/WA kami sekarang buat info lengkap & kuota" atau "Klik link di bio buat detail paketnya"). Kalau ada nomor WA di konsep, boleh disebut di sini secara ringkas.
-4. HASHTAG — di baris/blok terpisah setelah CTA (dipisah 1 baris kosong), 8-15 hashtag relevan campuran: nama/brand ("#AmiruTour"), niche umroh ("#UmrohMurah #TravelUmroh #UmrohSemarang" dst sesuaikan kalau ada info lokasi), dan umum ("#UmrohIndonesia #WisataReligi"). Tanpa spasi di dalam tiap hashtag, dipisah spasi antar hashtag.
+4. HASHTAG — di baris/blok terpisah setelah CTA (dipisah 1 baris kosong), MAKSIMAL 5 hashtag relevan campuran: nama/brand ("#AmiruTour"), niche umroh ("#UmrohMurah #TravelUmroh #UmrohSemarang" dst sesuaikan kalau ada info lokasi), dan umum ("#UmrohIndonesia #WisataReligi"). Jangan lebih dari 5. Tanpa spasi di dalam tiap hashtag, dipisah spasi antar hashtag.
 
 ATURAN ISI:
 - JANGAN mengubah, membulatkan, atau mengarang angka harga maupun tanggal — salin persis dari konsep kalau disebutkan.
