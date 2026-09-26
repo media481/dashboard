@@ -2865,11 +2865,6 @@ async function renderAdminPanel() {
                     </button>`;
                         return html;
                     })() : ''}
-                    ${isAdmin ? `
-                    <button class="btn-icon-ghost" onclick="exportAdminData()" title="Export Data"><i class="bi bi-download"></i></button>
-                    <button class="btn-icon-ghost" onclick="importAdminData()" title="Import Data"><i class="bi bi-upload"></i></button>
-                    <button class="btn-icon-ghost danger" onclick="clearAllAdminData()" title="Hapus Semua Data"><i class="bi bi-trash-fill"></i></button>
-                    ` : ''}
                 </div>
             </div>
 
@@ -3054,6 +3049,16 @@ async function renderAdminPanel() {
                         <tbody id="adminTableBody"></tbody>
                     </table>
                 </div>
+                ${isAdmin ? `
+                <div class="admin-table-foot-actions">
+                    <span class="admin-table-foot-label"><i class="bi bi-shield-lock"></i> Kelola Data Program (Zona Berisiko)</span>
+                    <div class="admin-table-foot-btns">
+                        <button class="btn-footer-action" onclick="exportAdminData()" title="Export Data"><i class="bi bi-download"></i> Export</button>
+                        <button class="btn-footer-action" onclick="importAdminData()" title="Import Data"><i class="bi bi-upload"></i> Import</button>
+                        <button class="btn-footer-action danger" onclick="clearAllAdminData()" title="Hapus Semua Data"><i class="bi bi-trash-fill"></i> Hapus Semua</button>
+                    </div>
+                </div>
+                ` : ''}
             </div>
             </div>
 
