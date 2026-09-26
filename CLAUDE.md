@@ -209,6 +209,15 @@ satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
 - Kalau nanti mau tambah tombol lain yang sifatnya "kelola data" (bukan
   filter/search/tambah-baru biasa) di panel admin lain, pertimbangkan pola
   yang sama (taruh di footer tabel, bukan toolbar atas) demi konsistensi.
+- `clearAllAdminData()` (tombol "Hapus Semua") sekarang **memblokir total**
+  kalau masih ada program dengan jamaah aktif (`kb_jamaah.diarsipkan = false`)
+  dan/atau pendaftaran yang belum `batal` — konsisten dengan pengecekan di
+  `openDeleteModal()`/`confirmDeleteAction()` untuk hapus satu program.
+  Sebelumnya fungsi ini loop `deleteProgramById()` langsung tanpa cek apa pun,
+  jadi program aktif ikut cascade-delete (kb_jamaah & pembayaran_jamaah-nya)
+  cuma bisa dipulihkan lewat snapshot — sekarang dicegah dari awal. Program
+  yang jamaahnya SUDAH diarsip (`diarsipkan = true`, lewat "Arsipkan Semua")
+  tidak dihitung, jadi tetap boleh ikut kehapus.
 
 ## Kalau menambah/mengubah fitur
 

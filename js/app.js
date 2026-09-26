@@ -4381,6 +4381,38 @@ async function updateProgramById(id, patch) {
 
 async function clearAllAdminData() {
     if (currentRole !== 'admin') { showToast('Halaman Admin hanya untuk Administrator', 'error'); return; }
+
+    // Konsisten dengan hapus SATU program (lihat confirmDeleteAction()): jangan
+    // izinkan Hapus Semua kalau masih ada program yang punya jamaah terdaftar
+    // dan/atau pendaftaran yang belum Batal. Tanpa cek ini, deleteProgramById()
+    // di bawah akan cascade-delete kb_jamaah & pembayaran_jamaah program itu
+    // secara permanen (bisa lewat kalau program masih aktif/jamaahnya belum
+    // lunas) -- sebelumnya cuma bisa dipulihkan lewat snapshot, sekarang
+    // dicegah dari awal seperti alur hapus satu-satu.
+    try {
+        const [{ data: jamaahRows, error: jErr }, { data: pfRows, error: pfErr }] = await Promise.all([
+            // Jamaah yang sudah diarsip (diarsipkan=true) sengaja TIDAK dihitung
+            // di sini -- program yang seluruh jamaahnya sudah diarsip
+            // (is_active=false) memang boleh dihapus, konsisten dengan
+            // kbJamaahList (sudah difilter diarsipkan=false) yang dipakai
+            // pengecekan hapus satu program di openDeleteModal().
+            supabaseClient.from('kb_jamaah').select('program_id').eq('diarsipkan', false),
+            supabaseClient.from('pendaftaran').select('program_id').neq('status', 'batal')
+        ]);
+        if (jErr) throw jErr;
+        if (pfErr) throw pfErr;
+        const programIdBermasalah = new Set();
+        (jamaahRows || []).forEach(r => { if (r.program_id) programIdBermasalah.add(r.program_id); });
+        (pfRows || []).forEach(r => { if (r.program_id) programIdBermasalah.add(r.program_id); });
+        if (programIdBermasalah.size > 0) {
+            showToast(`Tidak bisa Hapus Semua — ${programIdBermasalah.size} program masih punya jamaah terdaftar dan/atau pendaftaran yang belum Batal. Selesaikan/pindahkan/hapus dulu data itu (atau arsipkan programnya lewat "Arsipkan Semua" di tab Data Jamaah kalau sudah berangkat), baru Hapus Semua bisa dipakai lagi.`, 'error');
+            return;
+        }
+    } catch (err) {
+        showToast('Gagal memverifikasi data jamaah/pendaftaran sebelum Hapus Semua: ' + (err.message || err), 'error');
+        return;
+    }
+
     let jumlahProgram = null;
     try {
         const { count } = await supabaseClient.from('programs').select('id', { count: 'exact', head: true });
