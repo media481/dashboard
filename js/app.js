@@ -153,6 +153,17 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
+// Ambil nama hotel saja untuk tampilan ringkas di tabel (mis. kolom Hotel
+// Makkah/Madinah di "Edit & Tambah Program"), buang bagian "/ Setaraf
+// (X malam, Ym Z menit jalan kaki)" supaya kolom tidak makan tempat.
+// Data aslinya (hotel_makkah/hotel_madinah) TIDAK diubah, ini cuma untuk
+// ditampilkan. Mis. "Wahat Ajyad / Setaraf (5 malam, 700m 10 menit jalan
+// kaki)" -> "Wahat Ajyad".
+function hotelNamaSingkat(str) {
+    if (!str) return '';
+    return String(str).split('/')[0].trim();
+}
+
 // Retry helper untuk request baca (SELECT) yang gagal karena masalah jaringan
 // (mis. ERR_CONNECTION_TIMED_OUT, ERR_QUIC_PROTOCOL_ERROR, ERR_CONNECTION_ABORTED).
 // HANYA dipakai untuk operasi baca — jangan dipakai untuk insert/update/upsert
@@ -3426,8 +3437,8 @@ function renderAdminTable() {
             <td>${escapeHtml(p.harga_triple||'-')}</td>
             <td>${escapeHtml(p.harga_double||'-')}</td>
             <td>${escapeHtml(p.maskapai||'-')}</td>
-            <td>${escapeHtml(p.hotel_makkah||'-')}</td>
-            <td>${escapeHtml(p.hotel_madinah||'-')}</td>
+            <td>${escapeHtml(hotelNamaSingkat(p.hotel_makkah)||'-')}</td>
+            <td>${escapeHtml(hotelNamaSingkat(p.hotel_madinah)||'-')}</td>
             ${canEditData ? `
             <td style="text-align:right;">
                 <div class="action-btns" style="justify-content:flex-end;">
