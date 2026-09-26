@@ -3369,6 +3369,7 @@ function renderAdminTable() {
         tbody.innerHTML = `<tr><td colspan="${canEditData ? 8 : 7}" style="text-align:center;padding:30px;color:var(--ink-soft);">Belum ada program.${canEditData ? ' Klik "Tambah Program" untuk mulai.' : ''}</td></tr>`;
         return;
     }
+    const duplikatInfo = computeDuplicateProgramGroups();
     tbody.innerHTML = adminPrograms.map(p => {
         const pDate = p.tgl ? parseDateFromString(p.tgl) : null;
         const isExpiredRow = !!(pDate && pDate < new Date());
@@ -3399,11 +3400,14 @@ function renderAdminTable() {
 
         // Tandai program yang punya kembaran (Nama + Tanggal Berangkat sama
         // persis) -- paling sering kejadian dari broadcast yang kepaste ulang
-        // lewat "Tambah Cepat". Cuma yang ditambahkan PALING TERAKHIR yang
-        // ditandai (bukan keduanya), supaya jelas mana yang perlu dicek/dihapus
-        // -- program yang lebih dulu ada (aslinya) dibiarkan tanpa badge.
-        const duplikatBadge = isLatestAddedDuplicate(p)
-            ? `<span class="cx-status-bar warn" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;" title="Program ini ditambahkan belakangan dengan Nama & Tanggal Berangkat yang sama persis dengan program lain"><i class="bi bi-exclamation-triangle-fill" style="font-size:10px;"></i>Duplikat</span>`
+        // lewat "Tambah Cepat". Semua anggota satu kelompok duplikat dikasih
+        // nomor yang SAMA (mis. "Duplikat #1" muncul di 2 baris) supaya
+        // langsung ketahuan duplikat sama program yang mana; yang ditambahkan
+        // PALING TERAKHIR dikasih tambahan "· Terbaru" karena itu yang paling
+        // perlu dicek/dihapus duluan.
+        const dupInfo = duplikatInfo.get(String(p.id));
+        const duplikatBadge = dupInfo
+            ? `<span class="cx-status-bar warn" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;" title="Nama & Tanggal Berangkat sama persis dengan program lain bernomor sama di tabel ini"><i class="bi bi-exclamation-triangle-fill" style="font-size:10px;"></i>Duplikat #${dupInfo.nomor}${dupInfo.terbaru ? ' &middot; Terbaru' : ''}</span>`
             : '';
         return `
         <tr${isExpiredRow ? ' class="admin-row-expired" style="opacity:.55;"' : ''}>
@@ -3537,20 +3541,34 @@ function findDuplicateProgram(nama, tgl, excludeId) {
     }) || null;
 }
 
-// Dari sekelompok program yang Nama & Tanggal Berangkat-nya sama persis, cuma
-// yang PALING TERAKHIR ditambahkan yang ditandai "Duplikat" di tabel -- program
-// yang lebih dulu ada dianggap yang asli/original, jadi tidak ikut ditandai.
-// Dipakai created_at buat nentuin urutan tambah; kalau created_at kosong,
-// fallback ke urutan dataUmroh apa adanya (created_at ascending dari query).
-function isLatestAddedDuplicate(p) {
-    if (!p.nama || !p.tgl) return false;
-    const namaN = normalizeProgramNameForDup(p.nama);
-    const tglN = (p.tgl || '').trim();
-    const grup = (dataUmroh || []).filter(x => normalizeProgramNameForDup(x.nama) === namaN && (x.tgl || '').trim() === tglN);
-    if (grup.length < 2) return false;
-    const waktuTambah = x => x.created_at ? new Date(x.created_at).getTime() : 0;
-    const palingAkhir = grup.reduce((a, b) => (waktuTambah(b) >= waktuTambah(a) ? b : a));
-    return String(palingAkhir.id) === String(p.id);
+// Kelompokkan seluruh program di dataUmroh yang Nama & Tanggal Berangkat-nya
+// sama persis, lalu kasih nomor urut per kelompok (1, 2, 3, ...) -- supaya
+// badge "Duplikat #<nomor>" di tabel Admin bisa saling menunjuk: program yang
+// duplikat & program rujukannya ditandai nomor yang SAMA, jadi langsung
+// ketahuan duplikat itu kembarannya program yang mana. created_at dipakai
+// buat nentuin mana yang "Terbaru" (ditambahkan paling akhir) di tiap kelompok.
+// Return: Map id(String) -> { nomor, terbaru }.
+function computeDuplicateProgramGroups() {
+    const groupsByKey = new Map();
+    (dataUmroh || []).forEach(p => {
+        if (!p.nama || !p.tgl) return;
+        const key = normalizeProgramNameForDup(p.nama) + '|' + (p.tgl || '').trim();
+        if (!groupsByKey.has(key)) groupsByKey.set(key, []);
+        groupsByKey.get(key).push(p);
+    });
+
+    const infoById = new Map();
+    let nomorUrut = 0;
+    groupsByKey.forEach(grup => {
+        if (grup.length < 2) return; // bukan duplikat, cuma 1 program dengan kombinasi ini
+        nomorUrut++;
+        const waktuTambah = x => x.created_at ? new Date(x.created_at).getTime() : 0;
+        const palingAkhir = grup.reduce((a, b) => (waktuTambah(b) >= waktuTambah(a) ? b : a));
+        grup.forEach(p => {
+            infoById.set(String(p.id), { nomor: nomorUrut, terbaru: String(p.id) === String(palingAkhir.id) });
+        });
+    });
+    return infoById;
 }
 
 async function quickSaveProgramFromBroadcast() {
