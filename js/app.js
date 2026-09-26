@@ -11383,10 +11383,11 @@ function cxIsProgramExpired(p) {
 function cxGetProgramStatus(p) {
     const adl = (() => { try { return p.admin_data_lengkap ? (typeof p.admin_data_lengkap === 'string' ? JSON.parse(p.admin_data_lengkap) : p.admin_data_lengkap) : null; } catch(e) { return null; } })();
     const hasData = !!(adl && Object.keys(adl).length > 0);
+    const hasPoster = !!(p && p.link_poster);
     const mismatchCount = adl && adl.poster_data ? cxCountMismatchForProgram(p) : 0;
     // priority: 0 = ada yang tidak cocok (paling urgent), 1 = belum ada data lengkap, 2 = aman
     const priority = mismatchCount > 0 ? 0 : (!hasData ? 1 : 2);
-    return { adl, hasData, mismatchCount, priority };
+    return { adl, hasData, hasPoster, mismatchCount, priority };
 }
 
 // Program dianggap "Verified" (lulus OCR) kalau: sudah pernah di-scan OCR poster
@@ -11404,15 +11405,17 @@ function renderCxStatsBar() {
     if (!bar) return;
     const cxPrograms = (adminPrograms || []).filter(p => !cxIsProgramExpired(p));
     if (!cxPrograms.length) { bar.innerHTML = ''; return; }
-    let mismatch = 0, missing = 0, ok = 0;
+    let mismatch = 0, missing = 0, ok = 0, noPoster = 0;
     cxPrograms.forEach(p => {
-        const { priority } = cxGetProgramStatus(p);
+        const { priority, hasPoster } = cxGetProgramStatus(p);
         if (priority === 0) mismatch++; else if (priority === 1) missing++; else ok++;
+        if (!hasPoster) noPoster++;
     });
     bar.innerHTML = `
         <div class="cx-stat-chip ok"><i class="bi bi-check-circle-fill"></i> ${ok} cocok</div>
         <div class="cx-stat-chip warn"><i class="bi bi-exclamation-triangle-fill"></i> ${mismatch} tidak cocok</div>
         <div class="cx-stat-chip missing"><i class="bi bi-info-circle-fill"></i> ${missing} belum ada data</div>
+        ${noPoster > 0 ? `<div class="cx-stat-chip noposter"><i class="bi bi-image"></i> ${noPoster} belum ada poster</div>` : ''}
     `;
 }
 
@@ -11437,11 +11440,12 @@ function renderCxProgramSelector() {
     }
 
     sel.innerHTML = list.map(({ p, status }) => {
-        const { hasData, mismatchCount } = status;
+        const { hasData, hasPoster, mismatchCount } = status;
         const isActive = String(cxSelectedProgram) === String(p.id);
         const isScanning = cxScanningIds.has(String(p.id));
-        return `<button class="cx-program-pill${isActive?' active':''}${mismatchCount>0?' has-warning':''}" onclick="selectCxProgram('${p.id}')">
+        return `<button class="cx-program-pill${isActive?' active':''}${mismatchCount>0?' has-warning':''}${!hasPoster?' no-poster':''}" onclick="selectCxProgram('${p.id}')">
             <span class="cx-pill-name">${escapeHtml(p.nama||'Program')}</span>
+            ${!isScanning && !hasPoster ? '<i class="bi bi-image cx-pill-noposter" title="Belum ada link poster"></i>' : ''}
             ${isScanning ? '<i class="bi bi-arrow-repeat bi-spin" style="color:var(--brand);font-size:11px;" title="Sedang scan poster..."></i>' : ''}
             ${!isScanning && hasData ? '<i class="bi bi-check-circle-fill" style="color:var(--success);font-size:11px;" title="Ada data lengkap"></i>' : ''}
             ${!isScanning && mismatchCount>0 ? `<i class="bi bi-exclamation-triangle-fill cx-pill-warn" title="${mismatchCount} data tidak cocok"></i>` : ''}
@@ -11557,6 +11561,7 @@ function renderCxPanel(progId) {
         <div style="font-size:14px;font-weight:700;color:var(--brand-deep);">${escapeHtml(prog.nama||'Program')}</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             ${mismatchCount > 0 ? `<span class="cx-mismatch-count"><i class="bi bi-exclamation-triangle-fill"></i> ${mismatchCount} tidak cocok</span>` : ''}
+            ${!hasPoster ? `<button type="button" class="poster-missing-badge" onclick="quickAddPosterLink('${prog.id}')" title="Klik untuk langsung tambahkan link poster program ini"><i class="bi bi-image"></i>Belum ada poster<i class="bi bi-plus-lg"></i></button>` : ''}
             <button class="cx-parse-btn" onclick="openCxEditModal('${prog.id}')"><i class="bi bi-pencil-square"></i> Input Manual</button>
             ${hasPoster ? `<button class="cx-parse-btn" onclick="autoScanPosterForProgram('${prog.id}')" ${isScanning?'disabled':''}><i class="bi ${isScanning?'bi-arrow-repeat bi-spin':'bi-arrow-repeat'}"></i> ${isScanning?'Memindai...':'Scan Ulang Poster'}</button>` : ''}
             ${hasPoster ? `<button class="cx-parse-btn" onclick="window.open('${escapeJsAttr(prog.link_poster)}','_blank')"><i class="bi bi-image-fill"></i> Lihat Poster</button>` : ''}

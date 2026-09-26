@@ -2572,6 +2572,7 @@
         .cx-stat-chip.ok { background: var(--success-tint); color: #1b6b48; }
         .cx-stat-chip.warn { background: var(--warn-tint); color: #8a4a12; }
         .cx-stat-chip.missing { background: var(--bg); color: var(--ink-soft); border: 1px solid var(--line); }
+        .cx-stat-chip.noposter { background: var(--bg); color: #8a4a12; border: 1px dashed var(--warn); }
 
         .cx-search-wrap { position: relative; margin-bottom: 12px; }
         .cx-search-wrap > i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--ink-soft); pointer-events: none; }
@@ -2587,6 +2588,8 @@
         .cx-program-pill:hover { background: var(--surface); }
         .cx-program-pill.active { background: var(--brand-tint); border-left-color: var(--brand); color: var(--brand-deep); }
         .cx-program-pill.has-warning { border-left-color: var(--warn); }
+        .cx-program-pill.no-poster { border-left-style: dashed; }
+        .cx-pill-noposter { color: #a86414; font-size: 12px; flex-shrink: 0; }
         .cx-pill-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .cx-pill-warn { color: var(--warn); font-size: 10px; flex-shrink: 0; }
         .cx-empty { text-align: center; padding: 40px 20px; color: var(--ink-soft); }
