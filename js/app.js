@@ -2932,6 +2932,7 @@ async function renderAdminPanel() {
                 </div>
                 <div id="adminNoPosterBanner"></div>
                 <div id="adminNoCaptionBanner"></div>
+                <div id="adminDuplikatBanner"></div>
                 <div class="admin-table-wrap">
                     <table>
                         <thead>
@@ -3360,6 +3361,10 @@ function renderAdminTable() {
     const countEl = document.querySelector('.admin-table-head .count');
     if (countEl) countEl.textContent = `${adminPrograms.length} program`;
 
+    // Dihitung di atas (sebelum banner-banner) karena dipakai baik oleh
+    // banner "Duplikat" di bawah maupun badge per-baris nanti di bawahnya.
+    const duplikatInfo = computeDuplicateProgramGroups();
+
     // [POSTER] Banner peringatan kuning (gaya sama dengan status bar Crosscheck)
     // di atas tabel kalau ada program yang belum punya link poster sama sekali
     // — tanpa poster, OCR & auto-isi field tidak bisa jalan untuk program itu.
@@ -3392,11 +3397,27 @@ function renderAdminTable() {
             : '';
     }
 
+    // [DUPLIKAT] Banner peringatan kuning kalau ada program yang kembar persis
+    // (Nama + Tanggal Berangkat + Harga [semua tipe kamar] + Maskapai sama
+    // semua persis dengan program lain -- lihat computeDuplicateProgramGroups()
+    // di bawah) -- paling sering kejadian dari broadcast yang kepaste ulang
+    // lewat "Tambah Cepat". Sama gaya dengan banner poster & caption di atas.
+    const duplikatBanner = document.getElementById('adminDuplikatBanner');
+    if (duplikatBanner) {
+        const programDuplikatCount = duplikatInfo.size;
+        const grupDuplikatCount = new Set([...duplikatInfo.values()].map(v => v.nomor)).size;
+        duplikatBanner.innerHTML = programDuplikatCount > 0
+            ? `<div class="cx-status-bar warn" style="margin:0 0 14px;">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <div>${programDuplikatCount} program terindikasi duplikat dalam ${grupDuplikatCount} kelompok (nama, tanggal berangkat, harga semua tipe kamar & maskapai sama persis) — biasanya kejadian karena teks broadcast yang sama kepaste ulang lewat "Tambah Cepat". Program yang kembar ditandai <span style="color:var(--warn);font-weight:700;">"Duplikat #N"</span> dengan warna &amp; nomor yang sama di tabel di bawah (anggota satu kelompok = warna/nomor sama), dan yang ditambahkan paling terakhir dikasih tambahan <span style="color:var(--warn);font-weight:700;">"· Terbaru"</span> karena itu yang paling perlu dicek/dihapus duluan.</div>
+                </div>`
+            : '';
+    }
+
     if (!adminPrograms.length) {
         tbody.innerHTML = `<tr><td colspan="${canEditData ? 10 : 9}" style="text-align:center;padding:30px;color:var(--ink-soft);">Belum ada program.${canEditData ? ' Klik "Tambah Program" untuk mulai.' : ''}</td></tr>`;
         return;
     }
-    const duplikatInfo = computeDuplicateProgramGroups();
     tbody.innerHTML = adminPrograms.map(p => {
         const pDate = p.tgl ? parseDateFromString(p.tgl) : null;
         const isExpiredRow = !!(pDate && pDate < new Date());
