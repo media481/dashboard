@@ -1123,6 +1123,43 @@ window.batchGenerateIncompleteCaptions = batchGenerateIncompleteCaptions;
 
 
 // ============================================================
+// 4c. PERSIST HALAMAN TERAKHIR
+// Supaya tekan F5 (reload) tetap balik ke halaman/tab/subtab yang
+// terakhir dibuka, bukan selalu dilempar ke Dashboard (tab Program
+// Umroh). Disimpan di localStorage (bukan per-session), dipulihkan
+// sekali di akhir alur DOMContentLoaded setelah data awal & status
+// login (checkSession) siap.
+// ============================================================
+const LAST_VIEW_KEY = 'amiruDashboardLastView';
+
+function saveLastView(view) {
+    try { localStorage.setItem(LAST_VIEW_KEY, JSON.stringify(view)); } catch (e) { /* localStorage penuh/diblokir -- abaikan, bukan fatal */ }
+}
+
+function getLastView() {
+    try {
+        const raw = localStorage.getItem(LAST_VIEW_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+}
+
+async function restoreLastView() {
+    const last = getLastView();
+    if (!last || !last.view) return;
+    if (last.view === 'admin' && last.subtab) {
+        // Kalau sesi admin ternyata sudah habis, openAdminPanel() otomatis
+        // nampilin layar login biasa (subtab-nya diabaikan) -- tidak error.
+        await openAdminPanel(last.subtab);
+    } else if (last.view === 'igScheduler') {
+        openIgSchedulerPage();
+    } else if (last.view === 'infografis') {
+        openInfografisPage();
+    } else if (last.view === 'dashboard' && last.tab && last.tab !== 'umroh') {
+        switchTab(last.tab);
+    }
+}
+
+// ============================================================
 // 5. TAB SWITCHING
 // ============================================================
 function switchTab(tabId) {
@@ -1180,6 +1217,8 @@ function switchTab(tabId) {
     if (tabId === 'dokumen') renderDokProgramSelector();
     if (tabId === 'kepulangan') renderKepulanganProgramSelector();
     if (tabId === 'arsip') { loadArsipJamaah().then(renderArsipProgramSelector); }
+
+    saveLastView({ view: 'dashboard', tab: tabId });
 }
 
 // ============================================================
@@ -1220,6 +1259,8 @@ function openIgSchedulerPage() {
     loadIgCommentsUnreadCount();
     igCommentsPanelFilterPostId = null;
     loadIgCommentsPanel();
+
+    saveLastView({ view: 'igScheduler' });
 }
 
 function closeIgSchedulerPage() {
@@ -1238,6 +1279,8 @@ function closeIgSchedulerPage() {
         const umrohNav = document.querySelector('.sidebar .nav-item[data-tab="umroh"]');
         if (umrohNav) umrohNav.classList.add('active');
     }
+
+    saveLastView({ view: 'dashboard', tab: previousActiveTabForIg || 'umroh' });
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1289,6 +1332,8 @@ function openInfografisPage() {
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
     loadInfografisGallery();
+
+    saveLastView({ view: 'infografis' });
 }
 
 function closeInfografisPage() {
@@ -1307,6 +1352,8 @@ function closeInfografisPage() {
         const umrohNav = document.querySelector('.sidebar .nav-item[data-tab="umroh"]');
         if (umrohNav) umrohNav.classList.add('active');
     }
+
+    saveLastView({ view: 'dashboard', tab: previousActiveTabForInfografis || 'umroh' });
 }
 
 // forceSync = true kalau dipanggil dari tombol "Refresh" -> minta Edge
@@ -2342,6 +2389,11 @@ async function openAdminPanel(subtab) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     await renderAdminPanel();
     if (subtab && adminLoggedIn) switchAdminSubTab(subtab);
+
+    // Simpan subtab yang benar-benar aktif (kalau tanpa param & belum login,
+    // subtab default program tetap disimpan -- setelah login ulang otomatis
+    // balik ke sini, bukan cuma ke layar login kosong).
+    saveLastView({ view: 'admin', subtab: subtab || 'program' });
 }
 
 function closeAdminPanel() {
@@ -2358,6 +2410,8 @@ function closeAdminPanel() {
     // render ulang tabel utama supaya tombol Edit/Hapus ikut menyesuaikan role terbaru
     if (currentData && currentData.length) renderTable(currentData);
     applyRoleUIVisibility();
+
+    saveLastView({ view: 'dashboard', tab: previousActiveTab || 'umroh' });
 }
 
 function renderMaskapaiOptions(selected = '') {
@@ -2432,6 +2486,8 @@ function switchAdminSubTab(name) {
     // Tombol "+ Tambah Program" di header cuma nyambung ke subtab Program.
     const headerActionsEl = document.getElementById('adminPageHeaderActions');
     if (headerActionsEl) headerActionsEl.style.display = (name === 'program') ? '' : 'none';
+
+    saveLastView({ view: 'admin', subtab: name });
 
     if (name === 'crosscheck') {
         if (!cxSelectedProgram && adminPrograms && adminPrograms.length) {
@@ -12387,6 +12443,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Render sambutan user di header (menggantikan info lokasi & cuaca lama)
     renderHeaderWelcome();
+
+    // Pulihkan halaman/tab/subtab terakhir yang dibuka (lihat 4c) -- dipanggil
+    // paling akhir, setelah data awal & status login siap, supaya F5 tidak
+    // selalu dilempar balik ke Dashboard (tab Program Umroh).
+    await restoreLastView();
 });
 
 // ============================================================
