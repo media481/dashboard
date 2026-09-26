@@ -200,8 +200,14 @@ satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
   `buildProgramRowHTML()`.
 - `buildProgramRowHTML()` dipakai bareng oleh tab "Program Umroh" DAN
   "Unggulan", jadi badge ini otomatis tampil di keduanya.
-- CSS: class `.new-badge` di `css/style.css` (pola sama dengan
-  `.verified-badge`/`.nearest-badge` di atasnya).
+- Badge yang sama (logika & durasi identik, `renderAdminTable()`) juga
+  tampil di panel **Manajemen > Edit Program**, tapi teksnya cuma **"Baru"**
+  (bukan "Program Baru") — beda variabel (`newBadgeAdmin`/`isProgramBaruAdmin`)
+  karena tabelnya beda fungsi render, tapi ambang waktu 3 hari HARUS
+  disinkronkan manual kalau salah satu diubah.
+- CSS: class `.new-badge` di `css/style.css`, palet orange muda
+  (`background:#FFEDD5; color:#C2410C;`), pola sama dengan
+  `.verified-badge`/`.nearest-badge` di atasnya.
 
 ## Catatan UI panel "Edit & Tambah Program" (Manajemen > Edit Program)
 

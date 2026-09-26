@@ -3575,11 +3575,24 @@ function renderAdminTable() {
         const duplikatBadge = dupInfo
             ? `<span class="cx-status-bar" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;background:${dupInfo.warna.bg};color:${dupInfo.warna.fg};font-weight:${dupInfo.terbaru ? 700 : 600};" title="Nama, Tanggal Berangkat, Harga & Maskapai sama persis dengan program lain berwarna & bernomor sama di tabel ini"><i class="bi bi-exclamation-triangle-fill" style="font-size:10px;"></i>Duplikat #${dupInfo.nomor}${dupInfo.terbaru ? ' &middot; Terbaru' : ''}</span>`
             : '';
+
+        // [BADGE BARU] Sama seperti .new-badge di tabel Program Umroh depan
+        // (buildProgramRowHTML) -- dihitung dari created_at, muncul selama 3
+        // hari lalu hilang sendiri. Di sini teksnya cuma "Baru" (bukan "Program
+        // Baru") karena kolomnya sudah pasti berisi program (beda dari tabel
+        // depan yang butuh kata "Program" biar jelas konteksnya).
+        const createdAtAdmin = p.created_at ? new Date(p.created_at) : null;
+        const umurProgramAdminMs = createdAtAdmin && !isNaN(createdAtAdmin) ? (Date.now() - createdAtAdmin.getTime()) : null;
+        const isProgramBaruAdmin = umurProgramAdminMs != null && umurProgramAdminMs >= 0 && umurProgramAdminMs < (3 * 24 * 60 * 60 * 1000);
+        const newBadgeAdmin = isProgramBaruAdmin
+            ? `<span class="new-badge" style="margin:4px 0 0;" title="Ditambahkan dalam 3 hari terakhir"><i class="bi bi-stars"></i>Baru</span>`
+            : '';
         return `
         <tr${isExpiredRow ? ' class="admin-row-expired" style="opacity:.55;"' : ''}>
             <td>
                 <strong>${escapeHtml(p.nama||'-')}</strong>
                 ${expiredBadge}
+                ${newBadgeAdmin}
                 ${posterBadge}
                 ${captionBadge}
                 ${duplikatBadge}
