@@ -2930,6 +2930,8 @@ async function renderAdminPanel() {
                                 <th>Triple</th>
                                 <th>Double</th>
                                 <th>Maskapai</th>
+                                <th>Hotel Makkah</th>
+                                <th>Hotel Madinah</th>
                                 ${canEditData ? `<th style="text-align:right;">Aksi</th>` : ''}
                             </tr>
                         </thead>
@@ -3366,7 +3368,7 @@ function renderAdminTable() {
     }
 
     if (!adminPrograms.length) {
-        tbody.innerHTML = `<tr><td colspan="${canEditData ? 8 : 7}" style="text-align:center;padding:30px;color:var(--ink-soft);">Belum ada program.${canEditData ? ' Klik "Tambah Program" untuk mulai.' : ''}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${canEditData ? 10 : 9}" style="text-align:center;padding:30px;color:var(--ink-soft);">Belum ada program.${canEditData ? ' Klik "Tambah Program" untuk mulai.' : ''}</td></tr>`;
         return;
     }
     const duplikatInfo = computeDuplicateProgramGroups();
@@ -3424,6 +3426,8 @@ function renderAdminTable() {
             <td>${escapeHtml(p.harga_triple||'-')}</td>
             <td>${escapeHtml(p.harga_double||'-')}</td>
             <td>${escapeHtml(p.maskapai||'-')}</td>
+            <td>${escapeHtml(p.hotel_makkah||'-')}</td>
+            <td>${escapeHtml(p.hotel_madinah||'-')}</td>
             ${canEditData ? `
             <td style="text-align:right;">
                 <div class="action-btns" style="justify-content:flex-end;">
