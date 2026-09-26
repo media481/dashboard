@@ -22,9 +22,12 @@
 
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+    <!-- jsPDF, html2canvas & XLSX SENGAJA TIDAK dimuat di sini lagi -- ketiganya
+         cukup besar tapi cuma dipakai saat export Nota (PDF/JPEG) atau Excel.
+         Sekarang di-lazy-load dari js/app.js (lihat ensureLibLoaded()) pas
+         benar-benar dipakai, supaya load awal dashboard lebih ringan. Preconnect
+         ke cdnjs.cloudflare.com sudah ada di atas (buat bootstrap-icons), jadi
+         request lazy-load ketiganya nanti tetap ikut kebagian koneksi cepat. -->
 
     <link rel="stylesheet" href="css/style.css">
 </head>

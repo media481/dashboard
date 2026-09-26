@@ -164,6 +164,52 @@ function hotelNamaSingkat(str) {
     return String(str).split('/')[0].trim();
 }
 
+// ============================================================
+// [OPTIMASI LOAD] Lazy-load library CDN berat (jsPDF, html2canvas, XLSX).
+// Sebelumnya ketiganya di-<script defer> di <head> dan selalu ikut ke-download
+// & di-parse di SETIAP kali dashboard dibuka, padahal cuma dipakai kalau user
+// benar-benar export Nota (PDF/JPEG) atau Excel. Sekarang baru diambil dari
+// CDN pas dipakai pertama kali (lalu di-cache, tidak diambil ulang), supaya
+// load awal dashboard lebih ringan & cepat -- fungsi export-nya sendiri
+// TIDAK berubah sama sekali, cuma nunggu modulnya siap dulu sebelum jalan.
+// ============================================================
+const LAZY_LIB_URLS = {
+    jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+    html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+    xlsx: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+};
+const _lazyLibPromises = {};
+
+function loadScriptOnce(src) {
+    return new Promise((resolve, reject) => {
+        const existing = document.querySelector(`script[src="${src}"]`);
+        if (existing) {
+            if (existing.dataset.loaded === 'true') { resolve(); return; }
+            existing.addEventListener('load', () => resolve());
+            existing.addEventListener('error', () => reject(new Error('Gagal memuat ' + src)));
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = () => { script.dataset.loaded = 'true'; resolve(); };
+        script.onerror = () => reject(new Error('Gagal memuat ' + src));
+        document.head.appendChild(script);
+    });
+}
+
+// key: 'jspdf' | 'html2canvas' | 'xlsx'. Aman dipanggil berkali-kali --
+// request CDN cuma sekali per key (di-cache di _lazyLibPromises), pemanggil
+// berikutnya cukup nebeng promise yang sama/sudah selesai.
+function ensureLibLoaded(key) {
+    if (!_lazyLibPromises[key]) {
+        _lazyLibPromises[key] = loadScriptOnce(LAZY_LIB_URLS[key]).catch(err => {
+            _lazyLibPromises[key] = null; // gagal (mis. offline) -> boleh dicoba lagi lain kali
+            throw err;
+        });
+    }
+    return _lazyLibPromises[key];
+}
+
 // Retry helper untuk request baca (SELECT) yang gagal karena masalah jaringan
 // (mis. ERR_CONNECTION_TIMED_OUT, ERR_QUIC_PROTOCOL_ERROR, ERR_CONNECTION_ABORTED).
 // HANYA dipakai untuk operasi baca — jangan dipakai untuk insert/update/upsert
@@ -8463,7 +8509,10 @@ function buildKuitansiHTML(data, kodeVerifikasi) {
 // render & pengelolaan spinner tombol tidak dobel ditulis di dua tempat.
 async function captureNotaCanvas(htmlString, btn) {
     if (notaGenerating) return null;
-    if (typeof html2canvas === 'undefined') { showToast('Modul export gambar belum termuat, coba refresh halaman', 'error'); return null; }
+    if (typeof html2canvas === 'undefined') {
+        try { await ensureLibLoaded('html2canvas'); }
+        catch (_) { showToast('Modul export gambar gagal dimuat — periksa koneksi internet lalu coba lagi', 'error'); return null; }
+    }
 
     notaGenerating = true;
     const originalIcon = btn ? btn.innerHTML : null;
@@ -8512,8 +8561,8 @@ async function exportNotaElementAsJpeg(htmlString, filename, btn) {
 
 async function exportNotaElementAsPdf(htmlString, filename, btn) {
     if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
-        showToast('Modul export PDF belum termuat, coba refresh halaman', 'error');
-        return false;
+        try { await ensureLibLoaded('jspdf'); }
+        catch (_) { showToast('Modul export PDF gagal dimuat — periksa koneksi internet lalu coba lagi', 'error'); return false; }
     }
 
     const canvas = await captureNotaCanvas(htmlString, btn);
@@ -10276,7 +10325,10 @@ window.addEventListener('resize', () => {
 // ============================================================
 async function exportJamaahExcel(btn) {
     if (!kbSelectedProgram) { showToast('Pilih program dulu', 'error'); return; }
-    if (typeof XLSX === 'undefined') { showToast('Modul Excel belum siap, coba lagi sebentar', 'error'); return; }
+    if (typeof XLSX === 'undefined') {
+        try { await ensureLibLoaded('xlsx'); }
+        catch (_) { showToast('Modul Excel gagal dimuat — periksa koneksi internet lalu coba lagi', 'error'); return; }
+    }
     const originalIcon = btn ? btn.innerHTML : null;
     if (btn) { btn.innerHTML = '<i class="bi bi-arrow-repeat bi-spin"></i>'; btn.disabled = true; }
     try {
@@ -10355,7 +10407,10 @@ async function exportJamaahExcel(btn) {
 // bisa dicek histori tanggal & metode bayarnya satu-satu, bukan cuma total.
 async function exportPembayaranExcel(btn) {
     if (!kbSelectedProgram) { showToast('Pilih program dulu', 'error'); return; }
-    if (typeof XLSX === 'undefined') { showToast('Modul Excel belum siap, coba lagi sebentar', 'error'); return; }
+    if (typeof XLSX === 'undefined') {
+        try { await ensureLibLoaded('xlsx'); }
+        catch (_) { showToast('Modul Excel gagal dimuat — periksa koneksi internet lalu coba lagi', 'error'); return; }
+    }
     const originalIcon = btn ? btn.innerHTML : null;
     if (btn) { btn.innerHTML = '<i class="bi bi-arrow-repeat bi-spin"></i>'; btn.disabled = true; }
     try {
@@ -12410,17 +12465,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         </tr>
     `).join('');
 
-    // Load data
-    await loadCompanyProfile();
-    await loadUserRoles();
-    await checkSession(); // pulihkan status login (kalau ada) sebelum render tabel utama
+    // [OPTIMASI LOAD] Sebelumnya 8 request awal ini di-await SATU-SATU secara
+    // berurutan (total waktu tunggu = jumlah semua latensinya). Padahal
+    // masing-masing baca tabel/endpoint yang berbeda dan tidak saling
+    // bergantung satu sama lain (checkSession() cuma sinkronisasi status
+    // login versi app dari sessionStorage -- JWT Supabase Auth-nya sendiri
+    // sudah dipulihkan otomatis oleh client saat script dimuat, jadi request
+    // lain tidak perlu menunggu checkSession() selesai dulu). Sekarang
+    // dijalankan PARALEL per kelompok (Promise.all) -- hasil & urutan render
+    // akhirnya sama persis, cuma total waktu tunggu jadi jauh lebih singkat
+    // (mendekati request paling lambat, bukan jumlah semuanya).
+    await Promise.all([
+        loadCompanyProfile(),
+        loadUserRoles(),
+        checkSession() // pulihkan status login (kalau ada) sebelum render tabel utama
+    ]);
     applyRoleUIVisibility();
     renderSidebarNav();
-    await loadFeaturedIds();
-    await loadJadwal();
-    await loadPendaftaran();
-    await loadKbJamaah();
-    await loadDataFromSupabase();
+    await Promise.all([
+        loadFeaturedIds(),
+        loadJadwal(),
+        loadPendaftaran(),
+        loadKbJamaah(),
+        loadDataFromSupabase()
+    ]);
 
     // Render sections
     renderJadwalSection();
