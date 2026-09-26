@@ -1615,7 +1615,7 @@ function renderTable(data) {
 }
 
 function updateMetrics() {
-    document.getElementById('totalPrograms').textContent = dataUmroh.filter(p => p.is_active !== false).length;
+    document.getElementById('totalPrograms').textContent = dataUmroh.filter(p => p.is_active !== false && !isProgramExpired(p)).length;
     document.getElementById('totalFeatured').textContent = featuredIds.filter(id => {
         const p = dataUmroh.find(x => String(x.id) === id);
         return p && p.is_active !== false;
