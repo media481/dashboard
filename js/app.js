@@ -11527,7 +11527,13 @@ function renderCxPanel(progId) {
             return rank(a) - rank(b);
         });
         if (!visibleRows.length) return '<div class="cx-empty" style="padding:20px;"><p>Belum ada data untuk dibandingkan.</p></div>';
-        return visibleRows.map(r => {
+        const headHtml = `<div class="cx-compare-head">
+            <div>Field</div>
+            <div><i class="bi bi-file-earmark-text-fill"></i> Teks</div>
+            <div><i class="bi bi-image-fill"></i> Poster</div>
+            <div class="cx-compare-head-status">Status</div>
+        </div>`;
+        return headHtml + visibleRows.map(r => {
             const hasBoth = r.plain && r.poster;
             // Field 'tgl' punya status ke-3: 'warning' -- tanggal tunggal
             // masih termasuk rentang tanggal poster, dianggap benar tapi
@@ -11543,10 +11549,10 @@ function renderCxPanel(progId) {
                     : `<span class="cx-match-pill ${isMatch?'ok':'no'}">${isMatch?'<i class="bi bi-check-lg"></i> Cocok':'<i class="bi bi-x-lg"></i> Beda'}</span>`)
                 : `<span class="cx-match-pill skip">—</span>`;
             return `<div class="cx-compare-row ${rowClass}"${isMismatchRow ? ` onclick="cxGoToEditField('${progId}','${r.field}')" title="Klik untuk langsung edit field ini"` : ''}>
-                <div class="cx-compare-field"><div class="cx-compare-label">${escapeHtml(r.label)}</div>${pill}</div>
-                <div class="cx-compare-col"><div class="cx-compare-label"><i class="bi bi-file-earmark-text-fill"></i> Teks</div><div class="cx-compare-val ${r.plain?'':'empty'}">${r.plain ? escapeHtml(r.plain) : '—'}</div></div>
-                <div class="cx-divider"></div>
-                <div class="cx-compare-col"><div class="cx-compare-label"><i class="bi bi-image-fill"></i> Poster</div><div class="cx-compare-val ${r.poster?'':'empty'}">${r.poster ? escapeHtml(r.poster) : '—'}</div></div>
+                <div class="cx-compare-field">${escapeHtml(r.label)}</div>
+                <div class="cx-compare-col"><span class="cx-mobile-tag"><i class="bi bi-file-earmark-text-fill"></i> Teks</span><div class="cx-compare-val ${r.plain?'':'empty'}">${r.plain ? escapeHtml(r.plain) : '—'}</div></div>
+                <div class="cx-compare-col cx-compare-col-poster"><span class="cx-mobile-tag"><i class="bi bi-image-fill"></i> Poster</span><div class="cx-compare-val ${r.poster?'':'empty'}">${r.poster ? escapeHtml(r.poster) : '—'}</div></div>
+                <div class="cx-compare-status">${pill}</div>
                 ${cxHotelRefLine(r.field, r.plain, r.poster)}
             </div>`;
         }).join('');

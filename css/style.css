@@ -2618,21 +2618,36 @@
         .cx-parse-btn:hover { border-color: var(--brand); color: var(--brand); }
         .cx-parse-btn:disabled { opacity: .5; cursor: not-allowed; }
         .cx-section-title { font-size: 13px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-        .cx-compare-row { display: grid; grid-template-columns: 140px 1fr auto 1fr; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 10px; margin-bottom: 8px; background: var(--bg); border: 1px solid var(--line); transition: filter .12s; }
-        .cx-compare-row.cx-match { border-color: var(--success); background: var(--success-tint); }
-        .cx-compare-row.cx-mismatch { border-color: var(--danger); background: var(--danger-tint); }
-        .cx-compare-row.cx-mismatch { cursor: pointer; }
+        /* Baris perbandingan Teks vs Poster: format ala tabel dengan header
+           sekali di atas (.cx-compare-head), supaya baris yang "cocok" tampil
+           tenang/netral dan baris yang beda/perlu perhatian (mismatch/warning)
+           yang justru menonjol -- lebih mudah dipindai saat field-nya banyak. */
+        .cx-compare-head {
+            display: grid; grid-template-columns: 160px 1fr 1fr 96px; gap: 14px; align-items: center;
+            padding: 0 14px 6px; margin-top: 4px;
+            font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-soft); letter-spacing: .4px;
+        }
+        .cx-compare-head > div { display: flex; align-items: center; gap: 4px; }
+        .cx-compare-head-status { justify-content: flex-end; }
+        .cx-compare-row {
+            display: grid; grid-template-columns: 160px 1fr 1fr 96px; gap: 14px; align-items: center;
+            padding: 10px 14px; border-radius: 10px; margin-bottom: 6px;
+            background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--line);
+            transition: filter .12s, border-color .12s;
+        }
+        .cx-compare-row.cx-match { border-left-color: var(--success); }
+        .cx-compare-row.cx-mismatch { border-left-color: var(--danger); background: var(--danger-tint); cursor: pointer; }
         .cx-compare-row.cx-mismatch:hover { filter: brightness(0.97); }
-        .cx-compare-row.cx-match-warn { border-color: var(--warn); background: var(--warn-tint); }
-        .cx-compare-field { display: flex; flex-direction: column; gap: 4px; }
-        .cx-compare-field .cx-compare-label { font-size: 11.5px; font-weight: 700; text-transform: none; color: var(--ink); letter-spacing: 0; }
+        .cx-compare-row.cx-match-warn { border-left-color: var(--warn); background: var(--warn-tint); }
+        .cx-compare-field { font-size: 12.5px; font-weight: 700; color: var(--ink); }
         .cx-compare-col { min-width: 0; }
-        .cx-compare-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-soft); letter-spacing: .3px; display: flex; align-items: center; gap: 4px; }
+        .cx-compare-col-poster { border-left: 1px solid var(--line); padding-left: 14px; }
+        .cx-mobile-tag { display: none; }
         .cx-compare-val { font-size: 12.5px; font-weight: 600; color: var(--ink); word-break: break-word; }
         .cx-compare-val.empty { color: var(--ink-soft); font-style: italic; font-weight: 400; }
-        .cx-divider { width: 1px; align-self: stretch; background: var(--line); }
+        .cx-compare-status { display: flex; justify-content: flex-end; }
         .cx-match-pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
-        .cx-match-pill.ok { background: var(--success); color: #fff; }
+        .cx-match-pill.ok { background: transparent; color: var(--success); border: 1px solid var(--success); }
         .cx-match-pill.no { background: var(--danger); color: #fff; }
         .cx-match-pill.warn { background: var(--warn); color: #fff; }
         .cx-match-pill.skip { background: var(--line); color: var(--ink-soft); }
@@ -2660,7 +2675,10 @@
         @media (max-width: 760px) {
             .tg-settings-grid { grid-template-columns: 1fr; }
             .cx-compare-row { grid-template-columns: 1fr; }
-            .cx-divider { display: none; }
+            .cx-compare-head { display: none; }
+            .cx-compare-col-poster { border-left: none; padding-left: 0; margin-top: 6px; }
+            .cx-compare-status { justify-content: flex-start; margin-top: 6px; }
+            .cx-mobile-tag { display: flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-soft); letter-spacing: .3px; margin-bottom: 3px; }
             .cx-layout { grid-template-columns: 1fr; }
             .cx-sidebar { position: static; }
             .cx-program-selector { max-height: 280px; }
