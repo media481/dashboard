@@ -3172,10 +3172,6 @@ async function renderAdminPanel() {
             </div>
 
             <div class="admin-subtab-panel" id="adminSubTab-crosscheck" style="display:none;">
-                <div class="admin-section-header">
-                    <div><h4>Crosscheck Data Program</h4>
-                    <p>Poster dibaca otomatis (OCR) & dibandingkan dengan data teks program saat disimpan</p></div>
-                </div>
                 <div class="cx-layout">
                     <div class="cx-sidebar">
                         <div class="cx-stats-bar" id="cxStatsBar"></div>
