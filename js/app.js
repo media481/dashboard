@@ -3388,6 +3388,15 @@ function renderAdminTable() {
                 ? `<button type="button" class="poster-missing-badge" onclick="quickFixCaption('${p.id}')" title="Klik untuk periksa & lengkapi Teks WA program ini"><i class="bi bi-chat-square-text"></i>Caption belum lengkap<i class="bi bi-plus-lg"></i></button>`
                 : `<span class="cx-status-bar warn" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;"><i class="bi bi-chat-square-text" style="font-size:10px;"></i>Caption belum lengkap</span>`;
         }
+
+        // Tandai program yang punya kembaran (Nama + Tanggal Berangkat sama
+        // persis) -- paling sering kejadian dari broadcast yang kepaste ulang
+        // lewat "Tambah Cepat". Dicek ke dataUmroh penuh (bukan cuma baris yang
+        // sedang tampil), supaya tetap ketahuan walau kembarannya kefilter/kesort ke tempat lain.
+        const programKembar = findDuplicateProgram(p.nama, p.tgl, p.id);
+        const duplikatBadge = programKembar
+            ? `<span class="cx-status-bar warn" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;" title="Ada program lain dengan Nama & Tanggal Berangkat yang sama persis"><i class="bi bi-exclamation-triangle-fill" style="font-size:10px;"></i>Duplikat</span>`
+            : '';
         return `
         <tr${isExpiredRow ? ' class="admin-row-expired" style="opacity:.55;"' : ''}>
             <td>
@@ -3395,6 +3404,7 @@ function renderAdminTable() {
                 ${expiredBadge}
                 ${posterBadge}
                 ${captionBadge}
+                ${duplikatBadge}
             </td>
             <td>${escapeHtml(p.tgl||'-')}</td>
             <td>${escapeHtml(p.durasi||'-')}</td>
@@ -3502,6 +3512,23 @@ function closeQuickAddProgramModal() {
     closeAdminPanel(); // kembalikan tampilan ke tab dashboard semula
 }
 
+// Deteksi program duplikat -- dicek dari kombinasi Nama + Tanggal Berangkat
+// yang sama persis (case/spasi diabaikan). Dipakai jalur "Tambah Cepat" supaya
+// broadcast yang kepaste ulang (atau sudah pernah diinput admin lain) tidak
+// diam-diam kesimpan jadi 2 baris program yang sama.
+function normalizeProgramNameForDup(s) {
+    return (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+function findDuplicateProgram(nama, tgl, excludeId) {
+    const namaN = normalizeProgramNameForDup(nama);
+    const tglN = (tgl || '').trim();
+    if (!namaN || !tglN) return null;
+    return (dataUmroh || []).find(p => {
+        if (excludeId && String(p.id) === String(excludeId)) return false;
+        return normalizeProgramNameForDup(p.nama) === namaN && (p.tgl || '').trim() === tglN;
+    }) || null;
+}
+
 async function quickSaveProgramFromBroadcast() {
     const input = document.getElementById('quickAddBroadcastInput');
     const text = (input.value || '').trim();
@@ -3511,6 +3538,25 @@ async function quickSaveProgramFromBroadcast() {
     if (!bcInput) { showToast('Form belum siap, coba lagi sebentar', 'error'); return; }
     bcInput.value = text;
     parseBroadcastText();
+
+    // Cek duplikat SEBELUM disimpan (Nama + Tanggal Berangkat sama persis
+    // dengan program yang sudah ada) -- kalau ketemu, tandai & minta konfirmasi
+    // dulu supaya tidak diam-diam tersimpan dobel.
+    const { nama: namaCekDup, tgl: tglCekDup } = getAdminFormData();
+    const programDuplikat = findDuplicateProgram(namaCekDup, tglCekDup, editingProgramId);
+    if (programDuplikat) {
+        const tetapSimpan = await openActionConfirm({
+            title: 'Program Duplikat Terdeteksi',
+            message: `Sudah ada program dengan Nama &amp; Tanggal Berangkat yang sama persis:<br>`
+                + `<strong>${escapeHtml(programDuplikat.nama || '-')}</strong><br>`
+                + `<i class="bi bi-calendar-event"></i> ${escapeHtml(programDuplikat.tgl || '-')}`
+                + `${programDuplikat.harga_quint || programDuplikat.harga_quad ? ' &middot; ' + escapeHtml(programDuplikat.harga_quint || programDuplikat.harga_quad) : ''}`
+                + `<br><br>Tetap simpan teks broadcast ini sebagai program baru (duplikat)?`,
+            confirmLabel: 'Simpan Sebagai Duplikat',
+            danger: true
+        });
+        if (!tetapSimpan) return; // batal -> modal Tambah Cepat tetap terbuka, teks broadcast tidak hilang
+    }
 
     const saveBtn = document.getElementById('quickAddProgramSaveBtn');
     const originalLabel = saveBtn.innerHTML;
