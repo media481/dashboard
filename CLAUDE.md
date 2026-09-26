@@ -190,7 +190,7 @@ satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
   sempat terjadi untuk `kepulangan`, sudah diperbaiki, jangan diulang kalau
   nambah tab lagi).
 
-## Badge "Baru" di tabel Program Umroh (dashboard utama)
+## Badge "Program Baru" di tabel Program Umroh (dashboard utama)
 
 - Muncul otomatis di kolom Nama Program (sebelah badge Verified ✅) selama
   **3 hari** sejak `programs.created_at`, lalu hilang sendiri — dihitung

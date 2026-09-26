@@ -1689,7 +1689,7 @@ function buildProgramRowHTML(item, now, nearestIds) {
     const umurProgramMs = createdAt && !isNaN(createdAt) ? (now - createdAt) : null;
     const isProgramBaru = umurProgramMs != null && umurProgramMs >= 0 && umurProgramMs < (3 * 24 * 60 * 60 * 1000);
     const newBadge = isProgramBaru
-        ? ` <span class="new-badge" title="Ditambahkan dalam 3 hari terakhir"><i class="bi bi-stars"></i> Baru</span>`
+        ? ` <span class="new-badge" title="Ditambahkan dalam 3 hari terakhir"><i class="bi bi-stars"></i> Program Baru</span>`
         : '';
 
     return `<tr class="${isNearest ? 'row-nearest-departure' : ''}">
