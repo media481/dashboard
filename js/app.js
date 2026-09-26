@@ -2429,6 +2429,9 @@ function switchAdminSubTab(name) {
     const subtitleEl = document.getElementById('adminPageSubtitle');
     if (titleEl) titleEl.textContent = meta.title;
     if (subtitleEl) subtitleEl.textContent = meta.subtitle;
+    // Tombol "+ Tambah Program" di header cuma nyambung ke subtab Program.
+    const headerActionsEl = document.getElementById('adminPageHeaderActions');
+    if (headerActionsEl) headerActionsEl.style.display = (name === 'program') ? '' : 'none';
 
     if (name === 'crosscheck') {
         if (!cxSelectedProgram && adminPrograms && adminPrograms.length) {
@@ -2745,7 +2748,6 @@ async function renderAdminPanel() {
         container.innerHTML = `
             <div class="admin-subtab-panel" id="adminSubTab-program" style="display:block;">
             <div class="admin-toolbar">
-                ${canEditData ? `<button class="btn-primary" onclick="showAdminForm()"><i class="bi bi-plus-lg"></i> Tambah Program</button>` : `<span class="admin-role-note"><i class="bi bi-eye-fill"></i> Mode lihat saja (Guest)</span>`}
                 <div class="admin-toolbar-right">
                     ${canEditData ? (() => {
                         const missingCount = getProgramsMissingCaption().length;
@@ -3307,6 +3309,18 @@ async function renderAdminPanel() {
                 </div>
             </div>
         `;
+
+        // Tombol "+ Tambah Program" ditaruh di slot header (sejajar dengan
+        // judul "Edit & Tambah Program", rata kanan), bukan di toolbar lagi.
+        // Cuma relevan buat subtab Program, jadi visibilitasnya diatur juga
+        // di switchAdminSubTab() supaya hilang saat pindah ke subtab lain.
+        const headerActionsEl = document.getElementById('adminPageHeaderActions');
+        if (headerActionsEl) {
+            headerActionsEl.innerHTML = canEditData
+                ? `<button class="btn-primary" onclick="showAdminForm()"><i class="bi bi-plus-lg"></i> Tambah Program</button>`
+                : `<span class="admin-role-note"><i class="bi bi-eye-fill"></i> Mode lihat saja (Guest)</span>`;
+            headerActionsEl.style.display = (adminSubTab === 'program') ? '' : 'none';
+        }
 
         // Render tabel & siapkan form untuk role yang boleh mengedit
         renderAdminTable();
