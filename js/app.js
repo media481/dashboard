@@ -3407,7 +3407,7 @@ function renderAdminTable() {
         // perlu dicek/dihapus duluan.
         const dupInfo = duplikatInfo.get(String(p.id));
         const duplikatBadge = dupInfo
-            ? `<span class="cx-status-bar warn" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;" title="Nama & Tanggal Berangkat sama persis dengan program lain bernomor sama di tabel ini"><i class="bi bi-exclamation-triangle-fill" style="font-size:10px;"></i>Duplikat #${dupInfo.nomor}${dupInfo.terbaru ? ' &middot; Terbaru' : ''}</span>`
+            ? `<span class="cx-status-bar" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;background:${dupInfo.warna.bg};color:${dupInfo.warna.fg};font-weight:${dupInfo.terbaru ? 700 : 600};" title="Nama & Tanggal Berangkat sama persis dengan program lain berwarna & bernomor sama di tabel ini"><i class="bi bi-exclamation-triangle-fill" style="font-size:10px;"></i>Duplikat #${dupInfo.nomor}${dupInfo.terbaru ? ' &middot; Terbaru' : ''}</span>`
             : '';
         return `
         <tr${isExpiredRow ? ' class="admin-row-expired" style="opacity:.55;"' : ''}>
@@ -3541,13 +3541,27 @@ function findDuplicateProgram(nama, tgl, excludeId) {
     }) || null;
 }
 
+// Palet warna badge duplikat -- tiap kelompok duplikat kebagian 1 warna beda
+// (dirotasi kalau kelompoknya lebih banyak dari jumlah warna), supaya kembaran
+// program bisa langsung dikenali sekilas dari warnanya, tidak cuma dari angka.
+const WARNA_BADGE_DUPLIKAT = [
+    { bg: '#fee2e2', fg: '#991b1b' }, // merah
+    { bg: '#dbeafe', fg: '#1e40af' }, // biru
+    { bg: '#fef3c7', fg: '#92400e' }, // amber
+    { bg: '#dcfce7', fg: '#166534' }, // hijau
+    { bg: '#f3e8ff', fg: '#6b21a8' }, // ungu
+    { bg: '#ffe4e6', fg: '#9f1239' }, // rose
+    { bg: '#e0f2fe', fg: '#075985' }, // biru langit
+    { bg: '#fef9c3', fg: '#854d0e' }, // kuning
+];
+
 // Kelompokkan seluruh program di dataUmroh yang Nama & Tanggal Berangkat-nya
-// sama persis, lalu kasih nomor urut per kelompok (1, 2, 3, ...) -- supaya
-// badge "Duplikat #<nomor>" di tabel Admin bisa saling menunjuk: program yang
-// duplikat & program rujukannya ditandai nomor yang SAMA, jadi langsung
-// ketahuan duplikat itu kembarannya program yang mana. created_at dipakai
-// buat nentuin mana yang "Terbaru" (ditambahkan paling akhir) di tiap kelompok.
-// Return: Map id(String) -> { nomor, terbaru }.
+// sama persis, lalu kasih nomor urut + warna per kelompok (1, 2, 3, ...) --
+// supaya badge "Duplikat #<nomor>" di tabel Admin bisa saling menunjuk:
+// program yang duplikat & program rujukannya ditandai nomor DAN warna yang
+// SAMA, jadi langsung ketahuan duplikat itu kembarannya program yang mana.
+// created_at dipakai buat nentuin mana yang "Terbaru" (ditambahkan paling
+// akhir) di tiap kelompok. Return: Map id(String) -> { nomor, terbaru, warna }.
 function computeDuplicateProgramGroups() {
     const groupsByKey = new Map();
     (dataUmroh || []).forEach(p => {
@@ -3562,10 +3576,11 @@ function computeDuplicateProgramGroups() {
     groupsByKey.forEach(grup => {
         if (grup.length < 2) return; // bukan duplikat, cuma 1 program dengan kombinasi ini
         nomorUrut++;
+        const warna = WARNA_BADGE_DUPLIKAT[(nomorUrut - 1) % WARNA_BADGE_DUPLIKAT.length];
         const waktuTambah = x => x.created_at ? new Date(x.created_at).getTime() : 0;
         const palingAkhir = grup.reduce((a, b) => (waktuTambah(b) >= waktuTambah(a) ? b : a));
         grup.forEach(p => {
-            infoById.set(String(p.id), { nomor: nomorUrut, terbaru: String(p.id) === String(palingAkhir.id) });
+            infoById.set(String(p.id), { nomor: nomorUrut, terbaru: String(p.id) === String(palingAkhir.id), warna });
         });
     });
     return infoById;
