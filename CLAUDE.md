@@ -190,6 +190,26 @@ satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
   sempat terjadi untuk `kepulangan`, sudah diperbaiki, jangan diulang kalau
   nambah tab lagi).
 
+## Catatan UI panel "Edit & Tambah Program" (Manajemen > Edit Program)
+
+- Tombol **Export Data**, **Import Data**, **Hapus Semua Data** (khusus role
+  `admin`) sengaja dipindah dari toolbar atas (sejajar tombol Caption Kosong/
+  Caption Belum Lengkap) ke **footer di bawah tabel Daftar Program**, supaya
+  aksi destruktif (terutama Hapus Semua) tidak nempel dekat tombol lain yang
+  sering diklik dan lebih sulit ke-tap tidak sengaja. Markup-nya ada di
+  `renderAdminPanel()`, blok `.admin-table-foot-actions` tepat setelah
+  `</table>` dan sebelum `.admin-table-card` ditutup.
+- Class CSS baru buat footer ini (di `css/style.css`, tepat setelah rule
+  `.admin-table-card`): `.admin-table-foot-actions`, `.admin-table-foot-label`,
+  `.admin-table-foot-btns`, `.btn-footer-action` (varian `.danger`). Beda dari
+  `.btn-icon-ghost` (kotak 36×36 icon-only) yang masih dipakai di toolbar
+  Assets/Perusahaan — `.btn-footer-action` punya lebar auto + label teks di
+  sebelah ikon, karena berdiri sendiri di footer (bukan sebaris dengan tombol
+  ikon lain).
+- Kalau nanti mau tambah tombol lain yang sifatnya "kelola data" (bukan
+  filter/search/tambah-baru biasa) di panel admin lain, pertimbangkan pola
+  yang sama (taruh di footer tabel, bukan toolbar atas) demi konsistensi.
+
 ## Kalau menambah/mengubah fitur
 
 - Edit langsung di `js/app.js`, ikuti pola section comment yang sudah ada
