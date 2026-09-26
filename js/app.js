@@ -3398,16 +3398,16 @@ function renderAdminTable() {
                 : `<span class="cx-status-bar warn" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;"><i class="bi bi-chat-square-text" style="font-size:10px;"></i>Caption belum lengkap</span>`;
         }
 
-        // Tandai program yang punya kembaran (Nama + Tanggal Berangkat sama
-        // persis) -- paling sering kejadian dari broadcast yang kepaste ulang
-        // lewat "Tambah Cepat". Semua anggota satu kelompok duplikat dikasih
-        // nomor yang SAMA (mis. "Duplikat #1" muncul di 2 baris) supaya
-        // langsung ketahuan duplikat sama program yang mana; yang ditambahkan
-        // PALING TERAKHIR dikasih tambahan "· Terbaru" karena itu yang paling
-        // perlu dicek/dihapus duluan.
+        // Tandai program yang punya kembaran (Nama + Tanggal Berangkat + Harga
+        // [semua tipe kamar] + Maskapai sama semua persis) -- paling sering
+        // kejadian dari broadcast yang kepaste ulang lewat "Tambah Cepat".
+        // Semua anggota satu kelompok duplikat dikasih nomor yang SAMA (mis.
+        // "Duplikat #1" muncul di 2 baris) supaya langsung ketahuan duplikat
+        // sama program yang mana; yang ditambahkan PALING TERAKHIR dikasih
+        // tambahan "· Terbaru" karena itu yang paling perlu dicek/dihapus duluan.
         const dupInfo = duplikatInfo.get(String(p.id));
         const duplikatBadge = dupInfo
-            ? `<span class="cx-status-bar" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;background:${dupInfo.warna.bg};color:${dupInfo.warna.fg};font-weight:${dupInfo.terbaru ? 700 : 600};" title="Nama & Tanggal Berangkat sama persis dengan program lain berwarna & bernomor sama di tabel ini"><i class="bi bi-exclamation-triangle-fill" style="font-size:10px;"></i>Duplikat #${dupInfo.nomor}${dupInfo.terbaru ? ' &middot; Terbaru' : ''}</span>`
+            ? `<span class="cx-status-bar" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;background:${dupInfo.warna.bg};color:${dupInfo.warna.fg};font-weight:${dupInfo.terbaru ? 700 : 600};" title="Nama, Tanggal Berangkat, Harga & Maskapai sama persis dengan program lain berwarna & bernomor sama di tabel ini"><i class="bi bi-exclamation-triangle-fill" style="font-size:10px;"></i>Duplikat #${dupInfo.nomor}${dupInfo.terbaru ? ' &middot; Terbaru' : ''}</span>`
             : '';
         return `
         <tr${isExpiredRow ? ' class="admin-row-expired" style="opacity:.55;"' : ''}>
@@ -3524,20 +3524,40 @@ function closeQuickAddProgramModal() {
     closeAdminPanel(); // kembalikan tampilan ke tab dashboard semula
 }
 
-// Deteksi program duplikat -- dicek dari kombinasi Nama + Tanggal Berangkat
-// yang sama persis (case/spasi diabaikan). Dipakai jalur "Tambah Cepat" supaya
-// broadcast yang kepaste ulang (atau sudah pernah diinput admin lain) tidak
-// diam-diam kesimpan jadi 2 baris program yang sama.
+// Deteksi program duplikat -- kriteria "ketat": Nama + Tanggal Berangkat +
+// Harga (Quint/Quad/Triple/Double) + Maskapai harus sama semua baru dianggap
+// duplikat. Dipakai jalur "Tambah Cepat" supaya broadcast yang kepaste ulang
+// (atau sudah pernah diinput admin lain, dengan harga & maskapai yang juga
+// sama) tidak diam-diam kesimpan jadi 2 baris program yang sama.
 function normalizeProgramNameForDup(s) {
     return (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
-function findDuplicateProgram(nama, tgl, excludeId) {
-    const namaN = normalizeProgramNameForDup(nama);
-    const tglN = (tgl || '').trim();
-    if (!namaN || !tglN) return null;
+// Harga tersimpan sebagai string berformat ("Rp 12.345.000") -- ambil angkanya
+// saja supaya "Rp 12.345.000" & "12345000" dianggap nilai yang sama.
+function normalizeHargaForDup(s) {
+    return (s || '').replace(/[^\d]/g, '');
+}
+// Bangun 1 kunci pembanding dari kombinasi Nama+Tanggal+Harga(4 tipe kamar)+Maskapai.
+// Program tanpa Nama/Tanggal tidak pernah dianggap "punya kunci" (null) supaya
+// baris kosong/belum lengkap tidak ikut kehitung saling duplikat satu sama lain.
+function getDuplicateKey(p) {
+    if (!p || !p.nama || !(p.tgl || '').trim()) return null;
+    return [
+        normalizeProgramNameForDup(p.nama),
+        (p.tgl || '').trim(),
+        normalizeHargaForDup(p.harga_quint),
+        normalizeHargaForDup(p.harga_quad),
+        normalizeHargaForDup(p.harga_triple),
+        normalizeHargaForDup(p.harga_double),
+        normalizeProgramNameForDup(p.maskapai)
+    ].join('|');
+}
+function findDuplicateProgram(formData, excludeId) {
+    const key = getDuplicateKey(formData);
+    if (!key) return null;
     return (dataUmroh || []).find(p => {
         if (excludeId && String(p.id) === String(excludeId)) return false;
-        return normalizeProgramNameForDup(p.nama) === namaN && (p.tgl || '').trim() === tglN;
+        return getDuplicateKey(p) === key;
     }) || null;
 }
 
@@ -3555,18 +3575,18 @@ const WARNA_BADGE_DUPLIKAT = [
     { bg: '#fef9c3', fg: '#854d0e' }, // kuning
 ];
 
-// Kelompokkan seluruh program di dataUmroh yang Nama & Tanggal Berangkat-nya
-// sama persis, lalu kasih nomor urut + warna per kelompok (1, 2, 3, ...) --
-// supaya badge "Duplikat #<nomor>" di tabel Admin bisa saling menunjuk:
-// program yang duplikat & program rujukannya ditandai nomor DAN warna yang
-// SAMA, jadi langsung ketahuan duplikat itu kembarannya program yang mana.
-// created_at dipakai buat nentuin mana yang "Terbaru" (ditambahkan paling
-// akhir) di tiap kelompok. Return: Map id(String) -> { nomor, terbaru, warna }.
+// Kelompokkan seluruh program di dataUmroh yang kunci duplikatnya sama persis
+// (Nama+Tanggal+Harga+Maskapai), lalu kasih nomor urut + warna per kelompok
+// (1, 2, 3, ...) -- supaya badge "Duplikat #<nomor>" di tabel Admin bisa
+// saling menunjuk: program yang duplikat & program rujukannya ditandai nomor
+// DAN warna yang SAMA, jadi langsung ketahuan duplikat itu kembarannya program
+// yang mana. created_at dipakai buat nentuin mana yang "Terbaru" (ditambahkan
+// paling akhir) di tiap kelompok. Return: Map id(String) -> { nomor, terbaru, warna }.
 function computeDuplicateProgramGroups() {
     const groupsByKey = new Map();
     (dataUmroh || []).forEach(p => {
-        if (!p.nama || !p.tgl) return;
-        const key = normalizeProgramNameForDup(p.nama) + '|' + (p.tgl || '').trim();
+        const key = getDuplicateKey(p);
+        if (!key) return;
         if (!groupsByKey.has(key)) groupsByKey.set(key, []);
         groupsByKey.get(key).push(p);
     });
@@ -3596,18 +3616,21 @@ async function quickSaveProgramFromBroadcast() {
     bcInput.value = text;
     parseBroadcastText();
 
-    // Cek duplikat SEBELUM disimpan (Nama + Tanggal Berangkat sama persis
-    // dengan program yang sudah ada) -- kalau ketemu, tandai & minta konfirmasi
-    // dulu supaya tidak diam-diam tersimpan dobel.
-    const { nama: namaCekDup, tgl: tglCekDup } = getAdminFormData();
-    const programDuplikat = findDuplicateProgram(namaCekDup, tglCekDup, editingProgramId);
+    // Cek duplikat SEBELUM disimpan (Nama + Tanggal Berangkat + Harga [semua
+    // tipe kamar] + Maskapai sama semua persis dengan program yang sudah ada)
+    // -- kalau ketemu, tandai & minta konfirmasi dulu supaya tidak diam-diam
+    // tersimpan dobel.
+    const formDataCekDup = getAdminFormData();
+    const programDuplikat = findDuplicateProgram(formDataCekDup, editingProgramId);
     if (programDuplikat) {
+        const hargaDup = programDuplikat.harga_quint || programDuplikat.harga_quad || programDuplikat.harga_triple || programDuplikat.harga_double;
         const tetapSimpan = await openActionConfirm({
             title: 'Program Duplikat Terdeteksi',
-            message: `Sudah ada program dengan Nama &amp; Tanggal Berangkat yang sama persis:<br>`
+            message: `Sudah ada program dengan Nama, Tanggal Berangkat, Harga &amp; Maskapai yang sama persis:<br>`
                 + `<strong>${escapeHtml(programDuplikat.nama || '-')}</strong><br>`
                 + `<i class="bi bi-calendar-event"></i> ${escapeHtml(programDuplikat.tgl || '-')}`
-                + `${programDuplikat.harga_quint || programDuplikat.harga_quad ? ' &middot; ' + escapeHtml(programDuplikat.harga_quint || programDuplikat.harga_quad) : ''}`
+                + `${hargaDup ? ' &middot; ' + escapeHtml(hargaDup) : ''}`
+                + `${programDuplikat.maskapai ? ' &middot; ' + escapeHtml(programDuplikat.maskapai) : ''}`
                 + `<br><br>Tetap simpan teks broadcast ini sebagai program baru (duplikat)?`,
             confirmLabel: 'Simpan Sebagai Duplikat',
             danger: true
