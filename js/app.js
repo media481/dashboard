@@ -3951,7 +3951,7 @@ const SIDEBAR_MENU_REGISTRY = [
     { key: 'arsip', label: 'Arsip Jamaah', group: 'Navigasi' },
     { key: 'igScheduler', label: 'IG Scheduler', group: 'Social Media' },
     { key: 'infografis', label: 'Infografis', group: 'Social Media' },
-    { key: 'program', label: 'Tambah Program', group: 'Manajemen' },
+    { key: 'program', label: 'Edit Program', group: 'Manajemen' },
     { key: 'pembayaran', label: 'Pembayaran', group: 'Manajemen' },
     { key: 'unggulan', label: 'Unggulan (Admin)', group: 'Manajemen' },
     { key: 'auditnota', label: 'Audit Nota', group: 'Manajemen' },
