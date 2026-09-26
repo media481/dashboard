@@ -190,6 +190,19 @@ satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
   sempat terjadi untuk `kepulangan`, sudah diperbaiki, jangan diulang kalau
   nambah tab lagi).
 
+## Badge "Baru" di tabel Program Umroh (dashboard utama)
+
+- Muncul otomatis di kolom Nama Program (sebelah badge Verified ✅) selama
+  **3 hari** sejak `programs.created_at`, lalu hilang sendiri — dihitung
+  ulang tiap render (`buildProgramRowHTML()`), BUKAN kolom/flag terpisah di
+  DB, jadi tidak ada job/cron yang perlu jalan buat "membersihkan" badge-nya.
+  Kalau mau ubah durasinya, cari angka `3 * 24 * 60 * 60 * 1000` di
+  `buildProgramRowHTML()`.
+- `buildProgramRowHTML()` dipakai bareng oleh tab "Program Umroh" DAN
+  "Unggulan", jadi badge ini otomatis tampil di keduanya.
+- CSS: class `.new-badge` di `css/style.css` (pola sama dengan
+  `.verified-badge`/`.nearest-badge` di atasnya).
+
 ## Catatan UI panel "Edit & Tambah Program" (Manajemen > Edit Program)
 
 - Tombol **Export Data**, **Import Data**, **Hapus Semua Data** (khusus role

@@ -1051,6 +1051,26 @@
         }
         .verified-badge i { font-size: 10px; }
 
+        /* Badge "Baru" (kuning/amber) — tampil otomatis di tabel Program Umroh
+           (& tab Unggulan, karena share buildProgramRowHTML) selama 3 hari sejak
+           program ditambahkan (created_at), lalu hilang sendiri. Lihat
+           buildProgramRowHTML() di app.js. */
+        .new-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .02em;
+            padding: 2px 9px;
+            border-radius: 20px;
+            background: #FEF3C7;
+            color: #92400E;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+        .new-badge i { font-size: 9px; }
+
         /* Status Badge */
         .status-badge {
             display: inline-flex;

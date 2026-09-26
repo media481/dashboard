@@ -1681,8 +1681,19 @@ function buildProgramRowHTML(item, now, nearestIds) {
         ? ` <span class="verified-badge" title="Data program ini sudah dicek otomatis (OCR) dan cocok 100% dengan poster resmi"><i class="bi bi-patch-check-fill"></i></span>`
         : '';
 
+    // [BADGE PROGRAM BARU] Tampil otomatis di tampilan depan selama 3 hari
+    // sejak program ditambahkan (created_at), lalu hilang sendiri tanpa perlu
+    // aksi manual apa pun -- murni dihitung dari selisih waktu tiap kali tabel
+    // di-render, bukan disimpan sebagai kolom/flag terpisah di database.
+    const createdAt = item.created_at ? new Date(item.created_at) : null;
+    const umurProgramMs = createdAt && !isNaN(createdAt) ? (now - createdAt) : null;
+    const isProgramBaru = umurProgramMs != null && umurProgramMs >= 0 && umurProgramMs < (3 * 24 * 60 * 60 * 1000);
+    const newBadge = isProgramBaru
+        ? ` <span class="new-badge" title="Ditambahkan dalam 3 hari terakhir"><i class="bi bi-stars"></i> Baru</span>`
+        : '';
+
     return `<tr class="${isNearest ? 'row-nearest-departure' : ''}">
-            <td title="${hasPosterHover?'Hover untuk preview poster — ':''}${escapeHtml(item.nama||'')}"><strong${posterHoverAttrs}>${escapeHtml(item.nama||'')}</strong>${verifiedBadge}</td>
+            <td title="${hasPosterHover?'Hover untuk preview poster — ':''}${escapeHtml(item.nama||'')}"><strong${posterHoverAttrs}>${escapeHtml(item.nama||'')}</strong>${verifiedBadge}${newBadge}</td>
             <td>${escapeHtml(hitungEstimasi(item.dateObj, now))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_quad || item.harga_quint))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_triple))}</td>
