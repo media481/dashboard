@@ -2553,29 +2553,49 @@
 
         /* ===== CROSSCHECK ===== */
         .cx-label-sm { font-size: 11.5px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
-        .cx-stats-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-        .cx-stat-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 20px; }
+
+        /* Layout 2 kolom: sidebar (stats + pencarian + daftar program) di kiri,
+           kartu detail perbandingan di kanan. Struktur & id di dalamnya tidak
+           berubah -- hanya wrapper visual baru (lihat renderAdminPanel/js). */
+        .cx-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 18px; align-items: start; }
+        .cx-sidebar {
+            background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+            padding: 16px; position: sticky; top: 16px;
+        }
+        .cx-detail-card {
+            background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+            padding: 18px 20px; min-height: 220px;
+        }
+
+        .cx-stats-bar { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
+        .cx-stat-chip { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; padding: 8px 12px; border-radius: 10px; }
         .cx-stat-chip.ok { background: var(--success-tint); color: #1b6b48; }
         .cx-stat-chip.warn { background: var(--warn-tint); color: #8a4a12; }
         .cx-stat-chip.missing { background: var(--bg); color: var(--ink-soft); border: 1px solid var(--line); }
-        .cx-selector-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-        .cx-search-input { padding: 6px 12px; border: 1px solid var(--line); border-radius: 20px; font-size: 12.5px; min-width: 200px; background: var(--surface); color: var(--ink); }
-        .cx-search-input:focus { outline: none; border-color: var(--brand); }
-        .cx-program-selector { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+
+        .cx-search-wrap { position: relative; margin-bottom: 12px; }
+        .cx-search-wrap > i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--ink-soft); pointer-events: none; }
+        .cx-search-input { width: 100%; box-sizing: border-box; padding: 8px 12px 8px 32px; border: 1px solid var(--line); border-radius: 10px; font-size: 12.5px; background: var(--bg); color: var(--ink); }
+        .cx-search-input:focus { outline: none; border-color: var(--brand); background: var(--surface); }
+
+        .cx-program-selector { display: flex; flex-direction: column; gap: 5px; max-height: 480px; overflow-y: auto; padding-right: 2px; margin-bottom: 0; }
         .cx-program-pill {
-            border: 1px solid var(--line); background: var(--surface); border-radius: 20px; padding: 7px 14px;
-            font-size: 12.5px; font-weight: 600; color: var(--ink); cursor: pointer; display: flex; align-items: center; gap: 5px;
+            border: 1px solid transparent; border-left: 3px solid var(--line); background: var(--bg); border-radius: 8px; padding: 9px 12px;
+            font-size: 12.5px; font-weight: 600; color: var(--ink); cursor: pointer; display: flex; align-items: center; gap: 6px;
+            width: 100%; text-align: left; transition: background .12s, border-color .12s;
         }
-        .cx-program-pill.active { background: var(--brand); border-color: var(--brand); color: #fff; }
-        .cx-program-pill.has-warning { border-color: var(--warn); }
-        .cx-pill-warn { color: var(--warn); font-size: 9px; margin-left: 2px; }
+        .cx-program-pill:hover { background: var(--surface); }
+        .cx-program-pill.active { background: var(--brand-tint); border-left-color: var(--brand); color: var(--brand-deep); }
+        .cx-program-pill.has-warning { border-left-color: var(--warn); }
+        .cx-pill-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cx-pill-warn { color: var(--warn); font-size: 10px; flex-shrink: 0; }
         .cx-empty { text-align: center; padding: 40px 20px; color: var(--ink-soft); }
         .cx-empty i { font-size: 28px; display: block; margin-bottom: 10px; opacity: .5; }
-        .cx-status-bar { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
-        .cx-status-bar.ok { background: var(--success-tint); color: #1b6b48; }
-        .cx-status-bar.warn { background: var(--warn-tint); color: #8a4a12; }
-        .cx-status-bar.missing { background: var(--bg); color: var(--ink-soft); border: 1px solid var(--line); }
-        .cx-status-bar.scanning { background: var(--brand-tint); color: var(--brand-deep); }
+        .cx-status-bar { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; border-left: 4px solid transparent; }
+        .cx-status-bar.ok { background: var(--success-tint); color: #1b6b48; border-left-color: var(--success); }
+        .cx-status-bar.warn { background: var(--warn-tint); color: #8a4a12; border-left-color: var(--warn); }
+        .cx-status-bar.missing { background: var(--bg); color: var(--ink-soft); border: 1px solid var(--line); border-left: 4px solid var(--line); }
+        .cx-status-bar.scanning { background: var(--brand-tint); color: var(--brand-deep); border-left-color: var(--brand); }
 
         /* Badge "Belum ada poster" di tabel Daftar Program -- diklik langsung
            membuka form edit program itu & fokus ke field Link Poster (lihat
@@ -2587,15 +2607,15 @@
         .poster-missing-badge:active { transform: scale(.96); }
         .cx-ocr-progress-wrap { background: rgba(0,0,0,0.08); border-radius: 6px; height: 5px; margin-top: 8px; overflow: hidden; }
         .cx-ocr-progress-bar { background: var(--brand); height: 100%; transition: width .3s ease; }
-        .cx-mismatch-count { background: var(--danger-tint); color: var(--danger); font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 20px; }
+        .cx-mismatch-count { background: var(--danger-tint); color: var(--danger); font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 5px; }
         .cx-source-tag { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-left: 8px; }
         .cx-source-tag.ocr { background: var(--brand-tint); color: var(--brand-deep); }
         .cx-source-tag.manual { background: var(--warn-tint); color: #8a4a12; }
-        .cx-parse-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; color: var(--ink); cursor: pointer; }
+        .cx-parse-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: border-color .12s, color .12s; }
         .cx-parse-btn:hover { border-color: var(--brand); color: var(--brand); }
         .cx-parse-btn:disabled { opacity: .5; cursor: not-allowed; }
         .cx-section-title { font-size: 13px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-        .cx-compare-row { display: grid; grid-template-columns: 130px 1fr auto 1fr; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 8px; margin-bottom: 6px; background: var(--surface); border: 1px solid var(--line); }
+        .cx-compare-row { display: grid; grid-template-columns: 140px 1fr auto 1fr; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 10px; margin-bottom: 8px; background: var(--bg); border: 1px solid var(--line); transition: filter .12s; }
         .cx-compare-row.cx-match { border-color: var(--success); background: var(--success-tint); }
         .cx-compare-row.cx-mismatch { border-color: var(--danger); background: var(--danger-tint); }
         .cx-compare-row.cx-mismatch { cursor: pointer; }
@@ -2604,11 +2624,11 @@
         .cx-compare-field { display: flex; flex-direction: column; gap: 4px; }
         .cx-compare-field .cx-compare-label { font-size: 11.5px; font-weight: 700; text-transform: none; color: var(--ink); letter-spacing: 0; }
         .cx-compare-col { min-width: 0; }
-        .cx-compare-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-soft); letter-spacing: .3px; display: flex; align-items: center; }
+        .cx-compare-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-soft); letter-spacing: .3px; display: flex; align-items: center; gap: 4px; }
         .cx-compare-val { font-size: 12.5px; font-weight: 600; color: var(--ink); word-break: break-word; }
         .cx-compare-val.empty { color: var(--ink-soft); font-style: italic; font-weight: 400; }
         .cx-divider { width: 1px; align-self: stretch; background: var(--line); }
-        .cx-match-pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+        .cx-match-pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
         .cx-match-pill.ok { background: var(--success); color: #fff; }
         .cx-match-pill.no { background: var(--danger); color: #fff; }
         .cx-match-pill.warn { background: var(--warn); color: #fff; }
@@ -2638,6 +2658,9 @@
             .tg-settings-grid { grid-template-columns: 1fr; }
             .cx-compare-row { grid-template-columns: 1fr; }
             .cx-divider { display: none; }
+            .cx-layout { grid-template-columns: 1fr; }
+            .cx-sidebar { position: static; }
+            .cx-program-selector { max-height: 280px; }
         }
 
 /* ===== INFOGRAFIS GALLERY ===== */

@@ -3176,14 +3176,20 @@ async function renderAdminPanel() {
                     <div><h4>Crosscheck Data Program</h4>
                     <p>Poster dibaca otomatis (OCR) & dibandingkan dengan data teks program saat disimpan</p></div>
                 </div>
-                <div class="cx-stats-bar" id="cxStatsBar"></div>
-                <div class="cx-selector-head">
-                    <div class="cx-label-sm" style="margin-bottom:0;">Pilih Program:</div>
-                    <input type="text" id="cxSearchInput" class="cx-search-input" placeholder="Cari nama program..." oninput="renderCxProgramSelector()">
-                </div>
-                <div class="cx-program-selector" id="cxProgramSelector"></div>
-                <div id="cxPanelContent">
-                    <div class="cx-empty"><i class="bi bi-graph-up-arrow"></i><p>Pilih program di atas untuk melihat data crosscheck.</p></div>
+                <div class="cx-layout">
+                    <div class="cx-sidebar">
+                        <div class="cx-stats-bar" id="cxStatsBar"></div>
+                        <div class="cx-search-wrap">
+                            <i class="bi bi-search"></i>
+                            <input type="text" id="cxSearchInput" class="cx-search-input" placeholder="Cari nama program..." oninput="renderCxProgramSelector()">
+                        </div>
+                        <div class="cx-program-selector" id="cxProgramSelector"></div>
+                    </div>
+                    <div class="cx-detail-card">
+                        <div id="cxPanelContent">
+                            <div class="cx-empty"><i class="bi bi-graph-up-arrow"></i><p>Pilih program di atas untuk melihat data crosscheck.</p></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -11435,9 +11441,9 @@ function renderCxProgramSelector() {
         const isActive = String(cxSelectedProgram) === String(p.id);
         const isScanning = cxScanningIds.has(String(p.id));
         return `<button class="cx-program-pill${isActive?' active':''}${mismatchCount>0?' has-warning':''}" onclick="selectCxProgram('${p.id}')">
-            ${escapeHtml(p.nama||'Program')}
-            ${isScanning ? '<i class="bi bi-arrow-repeat bi-spin" style="color:var(--brand);font-size:9px;margin-left:2px;" title="Sedang scan poster..."></i>' : ''}
-            ${!isScanning && hasData ? '<i class="bi bi-check-circle-fill" style="color:var(--success);font-size:9px;margin-left:2px;" title="Ada data lengkap"></i>' : ''}
+            <span class="cx-pill-name">${escapeHtml(p.nama||'Program')}</span>
+            ${isScanning ? '<i class="bi bi-arrow-repeat bi-spin" style="color:var(--brand);font-size:11px;" title="Sedang scan poster..."></i>' : ''}
+            ${!isScanning && hasData ? '<i class="bi bi-check-circle-fill" style="color:var(--success);font-size:11px;" title="Ada data lengkap"></i>' : ''}
             ${!isScanning && mismatchCount>0 ? `<i class="bi bi-exclamation-triangle-fill cx-pill-warn" title="${mismatchCount} data tidak cocok"></i>` : ''}
         </button>`;
     }).join('');
