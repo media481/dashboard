@@ -48,6 +48,14 @@ let pendaftaranList = [], editingPendaftaranId = null;
 let assetsList = [], editingAssetId = null;
 let hotelSaudiList = [], hotelSaudiLoaded = false;
 
+// Program dianggap expired kalau Tanggal Berangkat-nya sudah lewat hari ini.
+// Dipakai untuk sembunyikan program expired dari tabel dashboard utama
+// (packageTable) -- TIDAK dipakai di tabel Admin, karena admin tetap perlu
+// lihat & kelola program lama (ditandai badge "Expired", bukan disembunyikan).
+function isProgramExpired(p) {
+    return !!(p.dateObj && p.dateObj < new Date());
+}
+
 // Urutkan program: yang masih tersedia dulu (tanggal terdekat), yang sudah expired selalu di baris paling bawah
 function sortProgramsDefault(list) {
     const now = new Date();
@@ -1427,7 +1435,7 @@ async function loadDataFromSupabase(forceRefresh = false) {
                 if (p.tgl && !p.dateObj) p.dateObj = parseDateFromString(p.tgl);
                 p.isAvailable = p.dateObj >= new Date();
             });
-            currentData = sortProgramsDefault(dataUmroh.filter(p => p.is_active !== false));
+            currentData = sortProgramsDefault(dataUmroh.filter(p => p.is_active !== false && !isProgramExpired(p)));
             renderTable(currentData);
             updateMetrics();
             renderFeaturedSection();
@@ -1462,7 +1470,7 @@ async function loadDataFromSupabase(forceRefresh = false) {
             if (p.tgl && !p.dateObj) p.dateObj = parseDateFromString(p.tgl);
             p.isAvailable = p.dateObj >= new Date();
         });
-        currentData = sortProgramsDefault(dataUmroh.filter(p => p.is_active !== false));
+        currentData = sortProgramsDefault(dataUmroh.filter(p => p.is_active !== false && !isProgramExpired(p)));
         renderTable(currentData);
         updateMetrics();
         renderFeaturedSection();
@@ -1642,7 +1650,7 @@ function sortTable(column) {
 
 function filterData(term) {
     const t = term.toLowerCase().trim();
-    const visiblePrograms = dataUmroh.filter(p => p.is_active !== false);
+    const visiblePrograms = dataUmroh.filter(p => p.is_active !== false && !isProgramExpired(p));
     if (!t) {
         currentData = sortProgramsDefault(visiblePrograms);
     } else {
