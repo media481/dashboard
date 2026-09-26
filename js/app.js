@@ -3399,11 +3399,11 @@ function renderAdminTable() {
 
         // Tandai program yang punya kembaran (Nama + Tanggal Berangkat sama
         // persis) -- paling sering kejadian dari broadcast yang kepaste ulang
-        // lewat "Tambah Cepat". Dicek ke dataUmroh penuh (bukan cuma baris yang
-        // sedang tampil), supaya tetap ketahuan walau kembarannya kefilter/kesort ke tempat lain.
-        const programKembar = findDuplicateProgram(p.nama, p.tgl, p.id);
-        const duplikatBadge = programKembar
-            ? `<span class="cx-status-bar warn" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;" title="Ada program lain dengan Nama & Tanggal Berangkat yang sama persis"><i class="bi bi-exclamation-triangle-fill" style="font-size:10px;"></i>Duplikat</span>`
+        // lewat "Tambah Cepat". Cuma yang ditambahkan PALING TERAKHIR yang
+        // ditandai (bukan keduanya), supaya jelas mana yang perlu dicek/dihapus
+        // -- program yang lebih dulu ada (aslinya) dibiarkan tanpa badge.
+        const duplikatBadge = isLatestAddedDuplicate(p)
+            ? `<span class="cx-status-bar warn" style="display:inline-flex;margin:4px 0 0;padding:3px 9px;font-size:10.5px;border-radius:20px;gap:5px;" title="Program ini ditambahkan belakangan dengan Nama & Tanggal Berangkat yang sama persis dengan program lain"><i class="bi bi-exclamation-triangle-fill" style="font-size:10px;"></i>Duplikat</span>`
             : '';
         return `
         <tr${isExpiredRow ? ' class="admin-row-expired" style="opacity:.55;"' : ''}>
@@ -3535,6 +3535,22 @@ function findDuplicateProgram(nama, tgl, excludeId) {
         if (excludeId && String(p.id) === String(excludeId)) return false;
         return normalizeProgramNameForDup(p.nama) === namaN && (p.tgl || '').trim() === tglN;
     }) || null;
+}
+
+// Dari sekelompok program yang Nama & Tanggal Berangkat-nya sama persis, cuma
+// yang PALING TERAKHIR ditambahkan yang ditandai "Duplikat" di tabel -- program
+// yang lebih dulu ada dianggap yang asli/original, jadi tidak ikut ditandai.
+// Dipakai created_at buat nentuin urutan tambah; kalau created_at kosong,
+// fallback ke urutan dataUmroh apa adanya (created_at ascending dari query).
+function isLatestAddedDuplicate(p) {
+    if (!p.nama || !p.tgl) return false;
+    const namaN = normalizeProgramNameForDup(p.nama);
+    const tglN = (p.tgl || '').trim();
+    const grup = (dataUmroh || []).filter(x => normalizeProgramNameForDup(x.nama) === namaN && (x.tgl || '').trim() === tglN);
+    if (grup.length < 2) return false;
+    const waktuTambah = x => x.created_at ? new Date(x.created_at).getTime() : 0;
+    const palingAkhir = grup.reduce((a, b) => (waktuTambah(b) >= waktuTambah(a) ? b : a));
+    return String(palingAkhir.id) === String(p.id);
 }
 
 async function quickSaveProgramFromBroadcast() {
