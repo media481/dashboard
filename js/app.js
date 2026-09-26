@@ -2548,8 +2548,9 @@ function switchAdminSubTab(name) {
 
     if (name === 'crosscheck') {
         if (!cxSelectedProgram && adminPrograms && adminPrograms.length) {
-            const prioritized = [...adminPrograms].sort((a, b) => cxGetProgramStatus(a).priority - cxGetProgramStatus(b).priority);
-            cxSelectedProgram = prioritized[0].id;
+            const cxCandidates = adminPrograms.filter(p => !cxIsProgramExpired(p));
+            const prioritized = [...cxCandidates].sort((a, b) => cxGetProgramStatus(a).priority - cxGetProgramStatus(b).priority);
+            if (prioritized.length) cxSelectedProgram = prioritized[0].id;
         }
         renderCxProgramSelector();
         if (cxSelectedProgram) renderCxPanel(cxSelectedProgram);
@@ -11362,6 +11363,17 @@ function cxCountMismatch(progId) {
 // selector (admin) DAN badge "Verified" di tabel publik Program Umroh
 // (tampilan depan). Menerima objek program langsung (bukan id) supaya jalan
 // baik untuk item dari adminPrograms maupun dataUmroh.
+// Program dianggap expired di modul Crosscheck kalau Tanggal Berangkat-nya
+// (field `tgl` pada baris adminPrograms) sudah lewat hari ini. Modul
+// Crosscheck sengaja tidak menampilkan program yang sudah expired (beda
+// dengan tabel admin Program yang tetap menampilkannya dengan badge
+// "Expired" untuk keperluan arsip/riwayat).
+function cxIsProgramExpired(p) {
+    if (!p || !p.tgl) return false;
+    const d = parseDateFromString(p.tgl);
+    return !!(d && d < new Date());
+}
+
 function cxGetProgramStatus(p) {
     const adl = (() => { try { return p.admin_data_lengkap ? (typeof p.admin_data_lengkap === 'string' ? JSON.parse(p.admin_data_lengkap) : p.admin_data_lengkap) : null; } catch(e) { return null; } })();
     const hasData = !!(adl && Object.keys(adl).length > 0);
@@ -11384,9 +11396,10 @@ function cxIsProgramVerified(p) {
 function renderCxStatsBar() {
     const bar = document.getElementById('cxStatsBar');
     if (!bar) return;
-    if (!adminPrograms || !adminPrograms.length) { bar.innerHTML = ''; return; }
+    const cxPrograms = (adminPrograms || []).filter(p => !cxIsProgramExpired(p));
+    if (!cxPrograms.length) { bar.innerHTML = ''; return; }
     let mismatch = 0, missing = 0, ok = 0;
-    adminPrograms.forEach(p => {
+    cxPrograms.forEach(p => {
         const { priority } = cxGetProgramStatus(p);
         if (priority === 0) mismatch++; else if (priority === 1) missing++; else ok++;
     });
@@ -11401,12 +11414,13 @@ function renderCxProgramSelector() {
     const sel = document.getElementById('cxProgramSelector');
     if (!sel) return;
     renderCxStatsBar();
-    if (!adminPrograms || !adminPrograms.length) {
+    const cxPrograms = (adminPrograms || []).filter(p => !cxIsProgramExpired(p));
+    if (!cxPrograms.length) {
         sel.innerHTML = '<div style="font-size:13px;color:var(--ink-soft);font-style:italic;">Belum ada program.</div>';
         return;
     }
     const query = (document.getElementById('cxSearchInput')?.value || '').trim().toLowerCase();
-    let list = adminPrograms.map(p => ({ p, status: cxGetProgramStatus(p) }));
+    let list = cxPrograms.map(p => ({ p, status: cxGetProgramStatus(p) }));
     if (query) list = list.filter(({ p }) => (p.nama || '').toLowerCase().includes(query));
     // Urutkan: yang bermasalah (tidak cocok) dulu, lalu belum ada data, lalu yang sudah aman
     list.sort((a, b) => a.status.priority - b.status.priority);
