@@ -34,8 +34,13 @@
         html {
             scrollbar-width: none; /* Firefox */
             -ms-overflow-style: none; /* Edge/IE */
+            overflow-x: hidden; /* jaring pengaman: cegah body ke-scroll ke samping kalau ada elemen yang kelebaran di layar sempit */
+            -webkit-tap-highlight-color: transparent; /* hilangkan kotak highlight abu-abu/biru bawaan saat tap di Android Chrome */
         }
         html::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+        button, a, .nav-item, [onclick] {
+            touch-action: manipulation; /* hilangkan jeda 300ms & cegah double-tap-zoom tak sengaja saat tap cepat */
+        }
         body {
             background: var(--bg);
             color: var(--ink);
@@ -3630,4 +3635,19 @@
    supaya tampilan desktop yang sudah rapat tidak berubah. */
 @media (max-width: 768px) {
     input, select, textarea { font-size: 16px !important; }
+}
+
+/* ===== FIX MOBILE: perbesar area tap tombol ikon kecil =====
+   Beberapa tombol aksi (tutup form, hapus, restore backup, navigasi kalender)
+   didesain 28-32px di layar desktop supaya rapat & rapi. Di HP, target sebesar
+   itu gampang salah pencet -- jadi diperbesar jadi ~40px HANYA di layar ponsel,
+   ukuran visual ikonnya tetap sama (cuma area klik yang nambah lewat padding). */
+@media (max-width: 768px) {
+    .admin-form-close,
+    .snap-card-restore,
+    .tg-remove-btn,
+    .ig-cal-nav {
+        width: 40px !important;
+        height: 40px !important;
+    }
 }
