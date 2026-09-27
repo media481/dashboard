@@ -7,7 +7,15 @@
 //   POST body: { imageUrl }
 //   Response : { fields: { nama, tgl, durasi, maskapai, harga_quint,
 //                           harga_quad, harga_triple, harga_double,
-//                           hotel_makkah, hotel_madinah }, raw_text }
+//                           hotel_makkah, hotel_madinah, termasuk (array),
+//                           tidak_termasuk (array), catatan_cx }, raw_text }
+//   [CROSSCHECK] termasuk/tidak_termasuk/catatan_cx ditambahkan supaya modul
+//   Crosscheck bisa memvalidasi daftar fasilitas & disclaimer poster juga --
+//   sebelumnya data ini cuma diisi dari parsing teks broadcast (parseBroadcastText
+//   di js/app.js) dan tidak pernah dibandingkan ke poster sama sekali walau
+//   biasanya tercetak jelas di poster. raw_text tetap dikirim juga supaya sisi
+//   client bisa fallback cek keyword kalau ekstraksi terstruktur ini kosong/meleset
+//   (lihat cxCheckListAgainstRawText di js/app.js).
 //
 // Env var yang wajib di-set (supabase secrets set GEMINI_API_KEY=...):
 //   GEMINI_API_KEY  -> API key dari https://aistudio.google.com/apikey
@@ -46,7 +54,10 @@ dengan struktur persis seperti ini:
     "harga_triple": "",
     "harga_double": "",
     "hotel_makkah": "",
-    "hotel_madinah": ""
+    "hotel_madinah": "",
+    "termasuk": [],
+    "tidak_termasuk": [],
+    "catatan_cx": ""
   },
   "raw_text": ""
 }
@@ -58,8 +69,11 @@ Ketentuan:
 - "maskapai": nama maskapai penerbangan.
 - "harga_*": harga per tipe kamar, format "Rp 00.000.000". Kosongkan jika tipe kamar itu tidak tercantum.
 - "hotel_makkah" / "hotel_madinah": nama hotel di kota tersebut.
+- "termasuk": daftar fasilitas yang tertulis sudah termasuk/didapat (mis. daftar dengan centang/bullet di poster), satu item singkat per elemen array apa adanya. Array kosong kalau poster tidak mencantumkan daftar seperti ini.
+- "tidak_termasuk": daftar hal yang TIDAK termasuk/harus dibayar terpisah, kalau dicantumkan di poster. Array kosong kalau tidak ada.
+- "catatan_cx": catatan kecil/disclaimer di poster (mis. harga atau jadwal sewaktu-waktu bisa berubah, mengikuti kurs, ketentuan Saudi/maskapai, dll). Kosongkan kalau tidak ada.
 - "raw_text": seluruh teks yang berhasil dibaca dari poster apa adanya (untuk arsip).
-- Jika suatu field tidak ditemukan di poster, kosongkan string-nya ("").
+- Jika suatu field tidak ditemukan di poster, kosongkan string-nya ("") atau array-nya ([]).
 - Jangan mengarang data yang tidak ada di gambar.`;
 
 async function fetchImageAsBase64(imageUrl: string): Promise<{ data: string; mimeType: string }> {

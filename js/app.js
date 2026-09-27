@@ -10903,6 +10903,10 @@ const CX_AUTOFILL_FIELD_TO_INPUT = {
     nama: 'admin_nama', tgl: 'admin_tgl', durasi: 'admin_durasi', maskapai: 'admin_maskapai',
     harga_quint: 'admin_harga_quint', harga_quad: 'admin_harga_quad', harga_triple: 'admin_harga_triple',
     harga_double: 'admin_harga_double', hotel_makkah: 'admin_hotel_makkah', hotel_madinah: 'admin_hotel_madinah',
+    // [CROSSCHECK] Fasilitas Termasuk/Tidak Termasuk/Catatan -- dibaca juga dari
+    // poster (lihat EXTRACTION_PROMPT di scan-poster-ocr), bukan cuma dari parsing
+    // teks broadcast, supaya bisa ikut dibandingkan & auto-fill kalau masih kosong.
+    termasuk: 'admin_termasuk', tidak_termasuk: 'admin_tidak_termasuk', catatan_cx: 'admin_catatan_cx',
 };
 
 // Field mismatch di panel Crosscheck ada di section (fieldset) mana di form
@@ -10912,6 +10916,7 @@ const CX_FIELD_TO_SECTION = {
     nama: 'af-info', tgl: 'af-info', durasi: 'af-info', maskapai: 'af-info',
     harga_quint: 'af-harga', harga_quad: 'af-harga', harga_triple: 'af-harga', harga_double: 'af-harga',
     hotel_makkah: 'af-akomodasi', hotel_madinah: 'af-akomodasi',
+    termasuk: 'af-konten', tidak_termasuk: 'af-konten', catatan_cx: 'af-konten',
 };
 
 // [CROSSCHECK] Diklik dari baris "data tidak cocok" di panel Crosscheck ->
@@ -11036,6 +11041,14 @@ async function autoScanPosterForProgram(progId) {
         });
 
         const parsed = { ...result.fields };
+        // [CROSSCHECK] termasuk/tidak_termasuk datang dari Gemini sebagai array
+        // (satu item per elemen) -- gabung jadi string satu-item-per-baris di sini
+        // supaya bentuknya sama persis dengan sisi teks (adl.termasuk/tidak_termasuk,
+        // yang berasal dari textarea admin_termasuk/admin_tidak_termasuk) dan bisa
+        // langsung dibandingkan/dipakai isi ulang textarea tanpa konversi lagi.
+        ['termasuk', 'tidak_termasuk'].forEach(k => {
+            if (Array.isArray(parsed[k])) parsed[k] = parsed[k].filter(Boolean).join('\n');
+        });
         Object.keys(parsed).forEach(k => { if (!parsed[k]) delete parsed[k]; });
         parsed._raw_ocr_text = (result.raw_text || '').slice(0, 4000);
 
@@ -11077,6 +11090,11 @@ async function autoScanPosterForProgram(progId) {
             ['harga_quad', 'adl', 'Harga Quad'], ['harga_triple', 'adl', 'Harga Triple'],
             ['harga_double', 'adl', 'Harga Double'], ['hotel_makkah', 'adl', 'Hotel Makkah'],
             ['hotel_madinah', 'adl', 'Hotel Madinah'],
+            // [CROSSCHECK] where:'adl' karena termasuk/tidak_termasuk/catatan_cx disimpan
+            // langsung di admin_data_lengkap (bukan kolom top-level tabel programs) --
+            // sama seperti hotel_makkah/harga_quad dkk di atas.
+            ['termasuk', 'adl', 'Fasilitas Termasuk'], ['tidak_termasuk', 'adl', 'Tidak Termasuk'],
+            ['catatan_cx', 'adl', 'Catatan/Disclaimer'],
         ];
         CX_AUTOFILL_MAP.forEach(([field, where, label]) => {
             const ocrVal = parsed[field];
@@ -11315,6 +11333,46 @@ function cxHotelValuesMatch(a, b) {
     if (ma && mb && ma !== mb) return false;
     return true;
 }
+// [CROSSCHECK] Pecah textarea "satu item per baris" (admin_termasuk/tidak_termasuk,
+// juga dipakai untuk versi poster yang sudah digabung jadi bentuk sama di
+// autoScanPosterForProgram) jadi array item bersih, huruf kecil, untuk dibandingkan.
+function cxNormalizeListItems(str) {
+    return String(str || '').split('\n').map(s => s.trim().toLowerCase()).filter(Boolean);
+}
+function cxListItemContains(hay, item) {
+    // Poster sering menulis fasilitas lebih ringkas ATAU lebih detail dari teks
+    // admin -- jadi dicek saling contains, bukan harus sama persis satu baris.
+    return hay.some(h => h.includes(item) || item.includes(h));
+}
+// Cocok kalau SETIAP item di sisi poster ketemu (fuzzy) di sisi teks. Teks admin
+// boleh lebih lengkap dari poster (poster sering meringkas daftar fasilitas),
+// tapi kalau poster menyebut sesuatu yang sama sekali tidak ada di teks, itu
+// tanda datanya beda (mis. fasilitas tambahan yang belum diinput admin).
+function cxListItemsMatch(plainStr, posterStr) {
+    const plainItems = cxNormalizeListItems(plainStr);
+    const posterItems = cxNormalizeListItems(posterStr);
+    if (!plainItems.length || !posterItems.length) return false;
+    return posterItems.every(item => cxListItemContains(plainItems, item));
+}
+// [OPSI B] Fallback kalau field termasuk/tidak_termasuk terstruktur GAGAL terbaca
+// dari poster (mis. posternya menulis fasilitas dalam paragraf lepas, bukan daftar
+// rapi, sehingga Gemini tidak bisa memecahnya jadi array) tapi teks mentah hasil
+// OCR (_raw_ocr_text) tetap ada. Di sini tiap item sisi teks dicek apakah kata
+// kunci uniknya (kata >=4 huruf, biar tidak kena kata umum spt "PP"/"1x") muncul
+// di raw text. Ini validasi longgar (bukan pembanding definitif) -- makanya cuma
+// dipakai sbg sinyal "warning" di panel, TIDAK ikut dihitung ke cxCountMismatchForProgram
+// (yang harus tetap konservatif/akurat karena dipakai badge "Verified" publik).
+function cxCheckListAgainstRawText(plainStr, rawText) {
+    const items = cxNormalizeListItems(plainStr);
+    if (!items.length || !rawText) return null;
+    const rt = String(rawText).toLowerCase();
+    const notFound = items.filter(item => {
+        const words = item.split(/\s+/).filter(w => w.length >= 4);
+        if (!words.length) return !rt.includes(item);
+        return !words.some(w => rt.includes(w));
+    });
+    return { total: items.length, notFound };
+}
 function cxValuesMatch(field, a, b) {
     if (!a || !b) return false;
     if (field === 'tgl') {
@@ -11335,6 +11393,16 @@ function cxValuesMatch(field, a, b) {
     if (field === 'hotel_makkah' || field === 'hotel_madinah') {
         return cxHotelValuesMatch(a, b);
     }
+    if (field === 'termasuk' || field === 'tidak_termasuk') {
+        return cxListItemsMatch(a, b);
+    }
+    if (field === 'catatan_cx') {
+        // Disclaimer biasanya boilerplate -- boleh beda sedikit kata/potongan,
+        // jadi dicek containment juga (poster kadang menyingkat kalimatnya).
+        const na = String(a).toLowerCase().trim().replace(/\s+/g, ' ');
+        const nb = String(b).toLowerCase().trim().replace(/\s+/g, ' ');
+        return na === nb || na.includes(nb) || nb.includes(na);
+    }
     return a.toLowerCase().trim() === b.toLowerCase().trim();
 }
 
@@ -11352,6 +11420,7 @@ function cxCountMismatchForProgram(prog) {
         ['nama', prog.nama, pd.nama], ['tgl', prog.tgl, pd.tgl], ['durasi', prog.durasi, pd.durasi], ['maskapai', prog.maskapai, pd.maskapai],
         ['harga_quint', prog.harga_quint, pd.harga_quint], ['harga_quad', adl.harga_quad, pd.harga_quad], ['harga_triple', adl.harga_triple, pd.harga_triple],
         ['harga_double', adl.harga_double, pd.harga_double], ['hotel_makkah', adl.hotel_makkah, pd.hotel_makkah], ['hotel_madinah', adl.hotel_madinah, pd.hotel_madinah],
+        ['termasuk', adl.termasuk, pd.termasuk], ['tidak_termasuk', adl.tidak_termasuk, pd.tidak_termasuk], ['catatan_cx', adl.catatan_cx, pd.catatan_cx],
     ];
     return pairs.filter(([field, a, b]) => a && b && !cxValuesMatch(field, a, b)).length;
 }
@@ -11499,19 +11568,43 @@ function renderCxPanel(progId) {
             { label: 'Harga Double',  plain: adl.harga_double, poster: null, field: 'harga_double' },
             { label: 'Hotel Makkah',  plain: adl.hotel_makkah, poster: null, field: 'hotel_makkah' },
             { label: 'Hotel Madinah', plain: adl.hotel_madinah,poster: null, field: 'hotel_madinah' },
+            // [CROSSCHECK] Fasilitas Termasuk/Tidak Termasuk/Catatan -- sebelumnya
+            // cuma diisi dari teks broadcast & tidak pernah dibandingkan ke poster.
+            { label: 'Fasilitas Termasuk', plain: adl.termasuk,       poster: null, field: 'termasuk' },
+            { label: 'Tidak Termasuk',     plain: adl.tidak_termasuk, poster: null, field: 'tidak_termasuk' },
+            { label: 'Catatan/Disclaimer', plain: adl.catatan_cx,     poster: null, field: 'catatan_cx' },
         ];
         const pd = (() => { try { return adl.poster_data ? (typeof adl.poster_data === 'string' ? JSON.parse(adl.poster_data) : adl.poster_data) : {}; } catch(e) { return {}; } })();
         rows.forEach(r => { if (pd[r.field]) r.poster = pd[r.field]; });
+        // [OPSI B] Kalau field termasuk/tidak_termasuk terstruktur kosong di sisi
+        // poster (Gemini gagal memecahnya jadi daftar rapi) tapi teks mentah OCR
+        // (_raw_ocr_text) ada, cek tiap item teks admin terhadap raw text sbg
+        // sinyal tambahan yang lebih longgar -- ditandai r.rawTextCheck, dipakai
+        // cuma untuk tampilan (bukan dihitung ke cxCountMismatchForProgram).
+        const rawText = pd._raw_ocr_text || '';
+        rows.forEach(r => {
+            if (r.poster || !rawText || (r.field !== 'termasuk' && r.field !== 'tidak_termasuk')) return;
+            const check = cxCheckListAgainstRawText(r.plain, rawText);
+            if (check) r.rawTextCheck = check;
+        });
+        // List item ditulis satu-per-baris di form (\n) -- dibuat jadi "a · b · c"
+        // di tabel bandingan biar rapi 1 baris (CSS tabel ini tidak pre-wrap).
+        const displayVal = (r, v) => (r.field === 'termasuk' || r.field === 'tidak_termasuk')
+            ? cxNormalizeListItems(v).join(' · ') : v;
         // Sembunyikan baris yang dua-duanya kosong (tidak ada info untuk dibandingkan)
         // Urutkan: yang beda (mismatch) paling atas supaya langsung kelihatan yang perlu dibenerin
         const visibleRows = rows.filter(r => r.plain || r.poster);
         visibleRows.sort((a, b) => {
-            // Urutan: 0 = benar-benar mismatch (paling urgent), 1 = belum ada
-            // salah satu sisi data, 2 = cocok dengan peringatan (rentang
-            // tanggal), 3 = cocok penuh.
+            // Urutan: 0 = benar-benar mismatch (paling urgent), 0.5 = sinyal
+            // "cek manual" dari raw-text fallback, 1 = belum ada salah satu sisi
+            // data, 2 = cocok dengan peringatan (rentang tanggal / raw-text cocok
+            // longgar), 3 = cocok penuh.
             const rank = r => {
                 const hasBoth = r.plain && r.poster;
-                if (!hasBoth) return 1;
+                if (!hasBoth) {
+                    if (r.rawTextCheck) return r.rawTextCheck.notFound.length > 0 ? 0.5 : 2;
+                    return 1;
+                }
                 if (r.field === 'tgl') {
                     const status = cxCompareTgl(r.plain, r.poster);
                     if (status === 'mismatch') return 0;
@@ -11537,17 +11630,32 @@ function renderCxPanel(progId) {
             const tglStatus = (hasBoth && r.field === 'tgl') ? cxCompareTgl(r.plain, r.poster) : null;
             const isWarning = tglStatus === 'warning';
             const isMatch = hasBoth && (tglStatus ? tglStatus === 'match' : cxValuesMatch(r.field, r.plain, r.poster));
-            const rowClass = hasBoth ? (isWarning ? 'cx-match-warn' : (isMatch ? 'cx-match' : 'cx-mismatch')) : '';
-            const isMismatchRow = hasBoth && !isWarning && !isMatch;
-            const pill = hasBoth
-                ? (isWarning
+            const rtNotFound = r.rawTextCheck ? r.rawTextCheck.notFound.length : 0;
+            const rowClass = hasBoth
+                ? (isWarning ? 'cx-match-warn' : (isMatch ? 'cx-match' : 'cx-mismatch'))
+                : (r.rawTextCheck ? (rtNotFound > 0 ? 'cx-match-warn' : 'cx-match') : '');
+            const isMismatchRow = (hasBoth && !isWarning && !isMatch) || (!hasBoth && r.rawTextCheck && rtNotFound > 0);
+            let pill;
+            if (hasBoth) {
+                pill = isWarning
                     ? `<span class="cx-match-pill warn" title="Tanggal keberangkatan termasuk dalam rentang poster, tapi bukan tanggal yang persis sama"><i class="bi bi-exclamation-triangle-fill"></i> Cocok (Rentang)</span>`
-                    : `<span class="cx-match-pill ${isMatch?'ok':'no'}">${isMatch?'<i class="bi bi-check-lg"></i> Cocok':'<i class="bi bi-x-lg"></i> Beda'}</span>`)
-                : `<span class="cx-match-pill skip">—</span>`;
+                    : `<span class="cx-match-pill ${isMatch?'ok':'no'}">${isMatch?'<i class="bi bi-check-lg"></i> Cocok':'<i class="bi bi-x-lg"></i> Beda'}</span>`;
+            } else if (r.rawTextCheck) {
+                pill = rtNotFound > 0
+                    ? `<span class="cx-match-pill warn" title="${rtNotFound} dari ${r.rawTextCheck.total} item tidak ditemukan di teks mentah OCR poster -- cek manual, poster mungkin tidak mencantumkan item ini atau field belum terbaca rapi"><i class="bi bi-question-diamond-fill"></i> Cek Manual</span>`
+                    : `<span class="cx-match-pill ok" title="Poster tidak mencantumkan daftar rapi, tapi semua item teks ditemukan di teks mentah hasil OCR"><i class="bi bi-check-lg"></i> Kemungkinan Cocok</span>`;
+            } else {
+                pill = `<span class="cx-match-pill skip">—</span>`;
+            }
+            const posterCellVal = r.poster
+                ? escapeHtml(displayVal(r, r.poster))
+                : (r.rawTextCheck
+                    ? `<span style="font-style:italic;">${rtNotFound > 0 ? `${rtNotFound}/${r.rawTextCheck.total} item tidak ditemukan di teks mentah OCR` : 'Semua item ditemukan di teks mentah OCR (bukan daftar rapi poster)'}</span>`
+                    : '—');
             return `<div class="cx-compare-row ${rowClass}"${isMismatchRow ? ` onclick="cxGoToEditField('${progId}','${r.field}')" title="Klik untuk langsung edit field ini"` : ''}>
                 <div class="cx-compare-field">${escapeHtml(r.label)}</div>
-                <div class="cx-compare-col"><span class="cx-mobile-tag"><i class="bi bi-file-earmark-text-fill"></i> Teks</span><div class="cx-compare-val ${r.plain?'':'empty'}">${r.plain ? escapeHtml(r.plain) : '—'}</div></div>
-                <div class="cx-compare-col cx-compare-col-poster"><span class="cx-mobile-tag"><i class="bi bi-image-fill"></i> Poster</span><div class="cx-compare-val ${r.poster?'':'empty'}">${r.poster ? escapeHtml(r.poster) : '—'}</div></div>
+                <div class="cx-compare-col"><span class="cx-mobile-tag"><i class="bi bi-file-earmark-text-fill"></i> Teks</span><div class="cx-compare-val ${r.plain?'':'empty'}">${r.plain ? escapeHtml(displayVal(r, r.plain)) : '—'}</div></div>
+                <div class="cx-compare-col cx-compare-col-poster"><span class="cx-mobile-tag"><i class="bi bi-image-fill"></i> Poster</span><div class="cx-compare-val ${(r.poster||r.rawTextCheck)?'':'empty'}">${posterCellVal}</div></div>
                 <div class="cx-compare-status">${pill}</div>
                 ${cxHotelRefLine(r.field, r.plain, r.poster)}
             </div>`;
@@ -11615,6 +11723,12 @@ function openCxEditModal(progId) {
         { key: 'harga_double', label: 'Harga Double', val: pd.harga_double || adl.harga_double || '' },
         { key: 'hotel_makkah', label: 'Hotel Makkah', val: pd.hotel_makkah || adl.hotel_makkah || '' },
         { key: 'hotel_madinah', label: 'Hotel Madinah', val: pd.hotel_madinah || adl.hotel_madinah || '' },
+        // [CROSSCHECK] Fasilitas Termasuk/Tidak Termasuk/Catatan -- multiline, jadi
+        // ditandai isList supaya dirender sbg textarea (bukan input satu baris)
+        // dan disimpan dalam bentuk yang sama dengan sisi teks (\n per item).
+        { key: 'termasuk', label: 'Fasilitas Termasuk', val: pd.termasuk || adl.termasuk || '', isList: true },
+        { key: 'tidak_termasuk', label: 'Tidak Termasuk', val: pd.tidak_termasuk || adl.tidak_termasuk || '', isList: true },
+        { key: 'catatan_cx', label: 'Catatan/Disclaimer', val: pd.catatan_cx || adl.catatan_cx || '' },
     ];
     modal.innerHTML = `
     <div class="modal-content" style="max-width:600px;">
@@ -11630,7 +11744,9 @@ function openCxEditModal(progId) {
                 <div style="margin-top:8px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px;font-size:11.5px;white-space:pre-wrap;max-height:140px;overflow-y:auto;">${escapeHtml(pd._raw_ocr_text)}</div>
             </details>` : ''}
             <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                ${fields.map(f => `<div class="form-group"><label>${escapeHtml(f.label)}</label><input type="text" id="cxp_${f.key}" value="${escapeHtml(f.val)}" placeholder="Dari poster..."></div>`).join('')}
+                ${fields.map(f => `<div class="form-group"${f.isList ? ' style="grid-column:1/-1;"' : ''}><label>${escapeHtml(f.label)}</label>${f.isList
+                    ? `<textarea id="cxp_${f.key}" rows="3" placeholder="Satu item per baris...">${escapeHtml(f.val)}</textarea>`
+                    : `<input type="text" id="cxp_${f.key}" value="${escapeHtml(f.val)}" placeholder="Dari poster...">`}</div>`).join('')}
             </div>
             <div class="form-actions" style="border-top:none;padding-top:14px;">
                 <button class="btn-submit" onclick="saveCxPosterData('${prog.id}')"><i class="bi bi-floppy-fill"></i> Simpan & Bandingkan</button>
@@ -11645,7 +11761,7 @@ async function saveCxPosterData(progId) {
     const prog = adminPrograms.find(p => String(p.id) === String(progId));
     if (!prog) return;
     const adl = (() => { try { return prog.admin_data_lengkap ? (typeof prog.admin_data_lengkap === 'string' ? JSON.parse(prog.admin_data_lengkap) : prog.admin_data_lengkap) : {}; } catch(e) { return {}; } })();
-    const keys = ['nama','tgl','durasi','maskapai','harga_quint','harga_quad','harga_triple','harga_double','hotel_makkah','hotel_madinah'];
+    const keys = ['nama','tgl','durasi','maskapai','harga_quint','harga_quad','harga_triple','harga_double','hotel_makkah','hotel_madinah','termasuk','tidak_termasuk','catatan_cx'];
     const pd = {};
     keys.forEach(k => { const el = document.getElementById('cxp_' + k); if (el && el.value.trim()) pd[k] = el.value.trim(); });
     adl.poster_data = pd;
