@@ -16,6 +16,13 @@
             --line: #E1E8F0;
             --radius: 14px;
             --shadow: 0 4px 24px rgba(0,0,0,0.08);
+            /* Jarak aman dari notch/status bar & home-indicator (iOS/Android).
+               Nilainya 0 di browser yang tidak butuh (desktop, Android lama),
+               dan otomatis terisi env(safe-area-inset-*) di layar yang punya notch. */
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-left: env(safe-area-inset-left, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -40,7 +47,8 @@
         .app {
             display: grid;
             grid-template-columns: 200px 1fr;
-            min-height: 100vh;
+            min-height: 100vh; /* fallback untuk browser lama */
+            min-height: 100dvh; /* tinggi layar sebenarnya, tidak ikut naik-turun saat address bar HP muncul/hilang */
             transition: grid-template-columns .2s ease;
         }
         @media (min-width: 769px) {
@@ -61,7 +69,8 @@
             flex-direction: column;
             position: sticky;
             top: 0;
-            height: 100vh;
+            height: 100vh; /* fallback */
+            height: 100dvh;
             overflow-y: auto;
             overflow-x: hidden;
             z-index: 100;
@@ -857,7 +866,7 @@
             text-align: center;
         }
         .admin-fieldset-title i { font-size: 11px; }
-        .admin-form-footer { display: flex; gap: 10px; padding: 16px 20px; border-top: 1px solid var(--line); background: var(--bg); position: sticky; bottom: 0; }
+        .admin-form-footer { display: flex; gap: 10px; padding: 16px 20px calc(16px + var(--safe-bottom)); border-top: 1px solid var(--line); background: var(--bg); position: sticky; bottom: 0; }
         .admin-form-footer button { padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all .15s; font-family: 'Inter', sans-serif; border: none; }
         .admin-form-footer .btn-submit { background: var(--brand); color: #fff; }
         .admin-form-footer .btn-submit:hover { background: var(--brand-deep); }
@@ -1496,7 +1505,7 @@
             z-index: 1000;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: calc(20px + var(--safe-top)) calc(20px + var(--safe-right)) calc(20px + var(--safe-bottom)) calc(20px + var(--safe-left));
         }
         .modal-overlay.open { display: flex; }
         .modal-content {
@@ -1955,7 +1964,7 @@
             z-index: 2000;
             align-items: center;
             justify-content: center;
-            padding: 28px;
+            padding: calc(28px + var(--safe-top)) calc(28px + var(--safe-right)) calc(28px + var(--safe-bottom)) calc(28px + var(--safe-left));
         }
         .nota-lightbox-overlay.open { display: flex; }
         .nota-lightbox-close {
@@ -2226,8 +2235,8 @@
         /* ===== TOAST STACK (maks 3 tampil bersamaan, lihat showToast() di app.js) ===== */
         .toast-stack {
             position: fixed;
-            bottom: 30px;
-            right: 30px;
+            bottom: calc(30px + var(--safe-bottom));
+            right: calc(30px + var(--safe-right));
             z-index: 9999;
             display: flex;
             flex-direction: column-reverse;
@@ -2330,7 +2339,7 @@
             bottom: 0;
             width: 272px;
             background: var(--brand);
-            padding: 20px 16px;
+            padding: calc(20px + var(--safe-top)) 16px calc(20px + var(--safe-bottom)) calc(16px + var(--safe-left));
             overflow-y: auto;
             transform: translateX(-100%);
             transition: transform .25s ease;
@@ -3613,3 +3622,12 @@
     }
     .btn-secondary:hover { background: var(--bg-soft, #f1f5f9); }
     .ig-pagination { display: flex; align-items: center; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+
+/* ===== FIX MOBILE: cegah auto-zoom iOS Safari saat tap form field =====
+   Safari iOS otomatis zoom-in kalau font-size elemen form yang di-tap < 16px.
+   Beberapa input/select/textarea di desain compact desktop sengaja dibuat
+   11-13px, jadi override ini HANYA berlaku di lebar layar ponsel (<=768px)
+   supaya tampilan desktop yang sudah rapat tidak berubah. */
+@media (max-width: 768px) {
+    input, select, textarea { font-size: 16px !important; }
+}
