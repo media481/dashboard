@@ -19,18 +19,86 @@
 //
 // Env var yang wajib di-set (supabase secrets set GEMINI_API_KEY=...):
 //   GEMINI_API_KEY  -> API key dari https://aistudio.google.com/apikey
+//   (opsional) GEMINI_API_KEY_2, _3, dst -> key fallback tambahan, dicoba
+//   berurutan kalau key sebelumnya kena limit/quota/error (lihat
+//   callGeminiWithFallback di bawah).
 //
 // Deploy:
 //   supabase functions deploy scan-poster-ocr --no-verify-jwt
 //   supabase secrets set GEMINI_API_KEY=xxxxx
-
-import { callGeminiWithFallback } from "../_shared/gemini.ts";
+//
+// [FIX] Sebelumnya file ini import helper dari "../_shared/gemini.ts". Deploy
+// lewat Supabase Dashboard (paste kode single-file) tidak bisa resolve import
+// relatif ke luar folder function ini, jadi bundling gagal ("Module not found").
+// Fix: helper-nya digabung langsung ke sini (inline) supaya file ini berdiri
+// sendiri, tidak butuh file lain sama sekali -- aman dideploy lewat Dashboard
+// maupun CLI. (generate-wa-caption & generate-ig-caption masih pakai
+// _shared/gemini.ts yang asli -- itu tidak diubah, tidak masalah kalau
+// dideploy lewat CLI dari root project.)
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+const MAX_FALLBACK_KEYS = 5;
+
+function getGeminiApiKeys(): string[] {
+  const keys: string[] = [];
+  const primary = Deno.env.get("GEMINI_API_KEY");
+  if (primary) keys.push(primary);
+  for (let i = 2; i <= MAX_FALLBACK_KEYS; i++) {
+    const k = Deno.env.get(`GEMINI_API_KEY_${i}`);
+    if (k) keys.push(k);
+  }
+  return keys;
+}
+
+// Panggil generateContent untuk 1 model, coba tiap key di getGeminiApiKeys()
+// berurutan sampai ada yang berhasil (HTTP 2xx). Return JSON response Gemini
+// mentah (pemanggil yang parsing candidates/parts sesuai kebutuhan masing-masing).
+async function callGeminiWithFallback(
+  model: string,
+  body: Record<string, unknown>,
+  // deno-lint-ignore no-explicit-any
+): Promise<any> {
+  const keys = getGeminiApiKeys();
+  if (!keys.length) {
+    throw new Error("GEMINI_API_KEY belum di-set di Supabase secrets");
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  let lastError = "";
+
+  for (let i = 0; i < keys.length; i++) {
+    try {
+      const res = await fetch(`${url}?key=${keys[i]}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        return await res.json();
+      }
+
+      const errText = await res.text();
+      lastError = `Gemini API error (${res.status}) [key #${i + 1}/${keys.length}]: ${errText.slice(0, 300)}`;
+      console.warn(lastError);
+      // Lanjut coba key berikutnya (kalau ada) -- baik untuk error kuota/rate
+      // limit (429) maupun error lain, karena murah untuk dicoba ulang dan
+      // kita tidak mau 1 key bermasalah bikin seluruh fitur AI mati total.
+    } catch (networkErr) {
+      lastError = `Network error saat panggil Gemini [key #${i + 1}/${keys.length}]: ${
+        String((networkErr as Error)?.message || networkErr)
+      }`;
+      console.warn(lastError);
+    }
+  }
+
+  throw new Error(`Semua ${keys.length} GEMINI_API_KEY gagal dipakai. Error terakhir: ${lastError}`);
+}
 
 // [FIX] "gemini-2.0-flash" resmi di-shutdown Google per 1 Juni 2026 (lihat
 // https://ai.google.dev/gemini-api/docs/models/gemini-2.0-flash) — setiap
