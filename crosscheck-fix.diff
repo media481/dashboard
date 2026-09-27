@@ -1,6 +1,73 @@
+--- dashboard-main-orig/css/style.css	2026-09-27 02:08:21.487767205 +0000
++++ dashboard-main/css/style.css	2026-09-27 03:47:58.568739462 +0000
+@@ -2579,7 +2579,12 @@
+         .cx-search-input { width: 100%; box-sizing: border-box; padding: 8px 12px 8px 32px; border: 1px solid var(--line); border-radius: 10px; font-size: 12.5px; background: var(--bg); color: var(--ink); }
+         .cx-search-input:focus { outline: none; border-color: var(--brand); background: var(--surface); }
+ 
+-        .cx-program-selector { display: flex; flex-direction: column; gap: 5px; max-height: 480px; overflow-y: auto; padding-right: 2px; margin-bottom: 0; }
++        /* [Sembunyikan indikator scroll] samakan dengan pola scrollbar-hidden
++           yang sudah dipakai di .sidebar/.modal-content/.table-container dst
++           -- konten tetap bisa discroll, cuma indikator visual scrollbar-nya
++           yang disembunyikan. */
++        .cx-program-selector { display: flex; flex-direction: column; gap: 5px; max-height: 480px; overflow-y: auto; padding-right: 2px; margin-bottom: 0; scrollbar-width: none; -ms-overflow-style: none; }
++        .cx-program-selector::-webkit-scrollbar { display: none; }
+         .cx-program-pill {
+             border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 9px 12px;
+             font-size: 12.5px; font-weight: 600; color: var(--ink); cursor: pointer; display: flex; align-items: center; gap: 6px;
 --- dashboard-main-orig/js/app.js	2026-09-27 02:08:21.488172703 +0000
-+++ dashboard-main/js/app.js	2026-09-27 02:15:02.166868239 +0000
-@@ -11285,9 +11285,18 @@
++++ dashboard-main/js/app.js	2026-09-27 07:02:20.835795766 +0000
+@@ -56,6 +56,14 @@
+     return !!(p.dateObj && p.dateObj < new Date());
+ }
+ 
++// [FITUR] Program tanpa poster (link_poster kosong) disembunyikan dari
++// dashboard utama publik -- dipakai bareng dgn syarat aktif & belum expired
++// yang sudah ada, supaya konsisten di semua tempat yang menampilkan/menghitung
++// program publik (tabel utama, search, & counter "Total Program").
++function isProgramVisibleOnDashboard(p) {
++    return p.is_active !== false && !isProgramExpired(p) && !!p.link_poster;
++}
++
+ // Urutkan program: yang masih tersedia dulu (tanggal terdekat), yang sudah expired selalu di baris paling bawah
+ function sortProgramsDefault(list) {
+     const now = new Date();
+@@ -1539,7 +1547,7 @@
+                 if (p.tgl && !p.dateObj) p.dateObj = parseDateFromString(p.tgl);
+                 p.isAvailable = p.dateObj >= new Date();
+             });
+-            currentData = sortProgramsDefault(dataUmroh.filter(p => p.is_active !== false && !isProgramExpired(p)));
++            currentData = sortProgramsDefault(dataUmroh.filter(isProgramVisibleOnDashboard));
+             renderTable(currentData);
+             updateMetrics();
+             renderFeaturedSection();
+@@ -1574,7 +1582,7 @@
+             if (p.tgl && !p.dateObj) p.dateObj = parseDateFromString(p.tgl);
+             p.isAvailable = p.dateObj >= new Date();
+         });
+-        currentData = sortProgramsDefault(dataUmroh.filter(p => p.is_active !== false && !isProgramExpired(p)));
++        currentData = sortProgramsDefault(dataUmroh.filter(isProgramVisibleOnDashboard));
+         renderTable(currentData);
+         updateMetrics();
+         renderFeaturedSection();
+@@ -1730,7 +1738,7 @@
+ }
+ 
+ function updateMetrics() {
+-    document.getElementById('totalPrograms').textContent = dataUmroh.filter(p => p.is_active !== false && !isProgramExpired(p)).length;
++    document.getElementById('totalPrograms').textContent = dataUmroh.filter(isProgramVisibleOnDashboard).length;
+     document.getElementById('totalFeatured').textContent = featuredIds.filter(id => {
+         const p = dataUmroh.find(x => String(x.id) === id);
+         return p && p.is_active !== false;
+@@ -1765,7 +1773,7 @@
+ 
+ function filterData(term) {
+     const t = term.toLowerCase().trim();
+-    const visiblePrograms = dataUmroh.filter(p => p.is_active !== false && !isProgramExpired(p));
++    const visiblePrograms = dataUmroh.filter(isProgramVisibleOnDashboard);
+     if (!t) {
+         currentData = sortProgramsDefault(visiblePrograms);
+     } else {
+@@ -11285,9 +11293,18 @@
      if (cxIsMultiValue(setB) && setA.type === 'single' && cxSetContains(setB, setA.date)) return 'warning';
      // Kedua sisi sama-sama multi-value (mis. dua daftar/rentang beda format)
      // tapi ada tanggal yang beririsan -> tetap dianggap benar dgn peringatan.
@@ -21,7 +88,7 @@
      }
      // Kedua sisi tanggal tunggal, teksnya beda tapi ternyata hari yang sama
      // (mis. beda format penulisan) -> tetap dianggap cocok penuh.
-@@ -11373,8 +11382,55 @@
+@@ -11373,8 +11390,55 @@
      });
      return { total: items.length, notFound };
  }
@@ -77,7 +144,7 @@
      if (field === 'tgl') {
          // 'warning' (tanggal tunggal termasuk dalam rentang poster) dianggap
          // BENAR di sini -- tidak dihitung sebagai mismatch/error. Tampilan
-@@ -11401,7 +11457,15 @@
+@@ -11401,7 +11465,15 @@
          // jadi dicek containment juga (poster kadang menyingkat kalimatnya).
          const na = String(a).toLowerCase().trim().replace(/\s+/g, ' ');
          const nb = String(b).toLowerCase().trim().replace(/\s+/g, ' ');
@@ -94,7 +161,7 @@
      }
      return a.toLowerCase().trim() === b.toLowerCase().trim();
  }
-@@ -11416,9 +11480,23 @@
+@@ -11416,9 +11488,23 @@
      if (!prog) return 0;
      const adl = (() => { try { return prog.admin_data_lengkap ? (typeof prog.admin_data_lengkap === 'string' ? JSON.parse(prog.admin_data_lengkap) : prog.admin_data_lengkap) : {}; } catch(e) { return {}; } })();
      const pd = adl.poster_data || {};
@@ -119,7 +186,7 @@
          ['harga_double', adl.harga_double, pd.harga_double], ['hotel_makkah', adl.hotel_makkah, pd.hotel_makkah], ['hotel_madinah', adl.hotel_madinah, pd.hotel_madinah],
          ['termasuk', adl.termasuk, pd.termasuk], ['tidak_termasuk', adl.tidak_termasuk, pd.tidak_termasuk], ['catatan_cx', adl.catatan_cx, pd.catatan_cx],
      ];
-@@ -11556,14 +11634,21 @@
+@@ -11556,14 +11642,21 @@
          return `<div class="cx-ref-line"><i class="bi bi-building"></i> Referensi Hotel Saudi Arabia — ${chip('Teks', dPlain)} ${chip('Poster', dPoster)}</div>`;
      };
  
@@ -143,3 +210,15 @@
              { label: 'Harga Triple',  plain: adl.harga_triple, poster: null, field: 'harga_triple' },
              { label: 'Harga Double',  plain: adl.harga_double, poster: null, field: 'harga_double' },
              { label: 'Hotel Makkah',  plain: adl.hotel_makkah, poster: null, field: 'hotel_makkah' },
+@@ -11803,7 +11896,10 @@
+     if (!tbody) return;
+ 
+     const now = new Date();
+-    const featuredPrograms = dataUmroh.filter(p => featuredIds.includes(String(p.id)) && p.is_active !== false);
++    // Catatan: sengaja TIDAK ikut pakai isProgramVisibleOnDashboard() di sini
++    // supaya perilaku lama (program expired tetap bisa tampil di tab
++    // Unggulan) tidak berubah -- cuma nambah syarat wajib punya poster.
++    const featuredPrograms = dataUmroh.filter(p => featuredIds.includes(String(p.id)) && p.is_active !== false && !!p.link_poster);
+ 
+     if (!featuredPrograms.length) {
+         tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--ink-soft);">
