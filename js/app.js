@@ -56,6 +56,14 @@ function isProgramExpired(p) {
     return !!(p.dateObj && p.dateObj < new Date());
 }
 
+// [FITUR] Program tanpa poster (link_poster kosong) disembunyikan dari
+// dashboard utama publik -- dipakai bareng dgn syarat aktif & belum expired
+// yang sudah ada, supaya konsisten di semua tempat yang menampilkan/menghitung
+// program publik (tabel utama, search, & counter "Total Program").
+function isProgramVisibleOnDashboard(p) {
+    return p.is_active !== false && !isProgramExpired(p) && !!p.link_poster;
+}
+
 // Urutkan program: yang masih tersedia dulu (tanggal terdekat), yang sudah expired selalu di baris paling bawah
 function sortProgramsDefault(list) {
     const now = new Date();
@@ -1539,7 +1547,7 @@ async function loadDataFromSupabase(forceRefresh = false) {
                 if (p.tgl && !p.dateObj) p.dateObj = parseDateFromString(p.tgl);
                 p.isAvailable = p.dateObj >= new Date();
             });
-            currentData = sortProgramsDefault(dataUmroh.filter(p => p.is_active !== false && !isProgramExpired(p)));
+            currentData = sortProgramsDefault(dataUmroh.filter(isProgramVisibleOnDashboard));
             renderTable(currentData);
             updateMetrics();
             renderFeaturedSection();
@@ -1574,7 +1582,7 @@ async function loadDataFromSupabase(forceRefresh = false) {
             if (p.tgl && !p.dateObj) p.dateObj = parseDateFromString(p.tgl);
             p.isAvailable = p.dateObj >= new Date();
         });
-        currentData = sortProgramsDefault(dataUmroh.filter(p => p.is_active !== false && !isProgramExpired(p)));
+        currentData = sortProgramsDefault(dataUmroh.filter(isProgramVisibleOnDashboard));
         renderTable(currentData);
         updateMetrics();
         renderFeaturedSection();
@@ -1730,7 +1738,7 @@ function renderTable(data) {
 }
 
 function updateMetrics() {
-    document.getElementById('totalPrograms').textContent = dataUmroh.filter(p => p.is_active !== false && !isProgramExpired(p)).length;
+    document.getElementById('totalPrograms').textContent = dataUmroh.filter(isProgramVisibleOnDashboard).length;
     document.getElementById('totalFeatured').textContent = featuredIds.filter(id => {
         const p = dataUmroh.find(x => String(x.id) === id);
         return p && p.is_active !== false;
@@ -1765,7 +1773,7 @@ function sortTable(column) {
 
 function filterData(term) {
     const t = term.toLowerCase().trim();
-    const visiblePrograms = dataUmroh.filter(p => p.is_active !== false && !isProgramExpired(p));
+    const visiblePrograms = dataUmroh.filter(isProgramVisibleOnDashboard);
     if (!t) {
         currentData = sortProgramsDefault(visiblePrograms);
     } else {
@@ -11888,7 +11896,10 @@ function renderFeaturedSection() {
     if (!tbody) return;
 
     const now = new Date();
-    const featuredPrograms = dataUmroh.filter(p => featuredIds.includes(String(p.id)) && p.is_active !== false);
+    // Catatan: sengaja TIDAK ikut pakai isProgramVisibleOnDashboard() di sini
+    // supaya perilaku lama (program expired tetap bisa tampil di tab
+    // Unggulan) tidak berubah -- cuma nambah syarat wajib punya poster.
+    const featuredPrograms = dataUmroh.filter(p => featuredIds.includes(String(p.id)) && p.is_active !== false && !!p.link_poster);
 
     if (!featuredPrograms.length) {
         tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--ink-soft);">
