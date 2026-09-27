@@ -1,0 +1,145 @@
+--- dashboard-main-orig/js/app.js	2026-09-27 02:08:21.488172703 +0000
++++ dashboard-main/js/app.js	2026-09-27 02:15:02.166868239 +0000
+@@ -11285,9 +11285,18 @@
+     if (cxIsMultiValue(setB) && setA.type === 'single' && cxSetContains(setB, setA.date)) return 'warning';
+     // Kedua sisi sama-sama multi-value (mis. dua daftar/rentang beda format)
+     // tapi ada tanggal yang beririsan -> tetap dianggap benar dgn peringatan.
++    // [BUGFIX] Sebelumnya cuma dicek 1 arah (titik representatif sisi B vs
++    // set A) -- kalau sisi A yang berupa daftar tanggal terpisah (list, mis.
++    // "4 & 20 Oktober") dan sisi B rentang (range, mis. "17-26 Oktober"),
++    // baris 17/26 (batas rentang B) dicek ke daftar A [4,20] -> tidak ketemu
++    // -> salah dianggap 'mismatch' padahal tanggal 20 jelas ada di dalam
++    // rentang 17-26. Sekarang dicek 2 arah (titik A ke set B, DAN titik B ke
++    // set A) supaya urutan sisi (mana yang list / mana yang range) tidak
++    // memengaruhi hasil.
+     if (cxIsMultiValue(setA) && cxIsMultiValue(setB)) {
+-        const datesB = setB.type === 'list' ? setB.dates : [setB.start, setB.end];
+-        if (datesB.some(d => cxSetContains(setA, d))) return 'warning';
++        const pointsOf = (set) => set.type === 'list' ? set.dates : [set.start, set.end];
++        const overlap = pointsOf(setA).some(d => cxSetContains(setB, d)) || pointsOf(setB).some(d => cxSetContains(setA, d));
++        if (overlap) return 'warning';
+     }
+     // Kedua sisi tanggal tunggal, teksnya beda tapi ternyata hari yang sama
+     // (mis. beda format penulisan) -> tetap dianggap cocok penuh.
+@@ -11373,8 +11382,55 @@
+     });
+     return { total: items.length, notFound };
+ }
++// Ambil angka pertama dari teks durasi, mis. "9 Hari 7 Malam" -> "9",
++// "9H/7M" -> "9", "9 HARI" -> "9". Dipakai cxValuesMatch('durasi', ...).
++function cxNormalizeDurasi(str) {
++    const m = String(str || '').match(/\d+/);
++    return m ? m[0] : '';
++}
++// Pecah teks bebas jadi daftar kata (huruf/angka), tanda baca umum (koma,
++// strip, garis miring, kurung, titik) diubah jadi spasi dulu supaya
++// "dolar-riyal" ikut kehitung sebagai 2 kata terpisah "dolar" & "riyal" --
++// dipakai cxTextSimilarity() untuk membandingkan 2 kalimat bebas.
++function cxTextWords(str) {
++    return String(str || '').toLowerCase().replace(/[.,\-\/()]/g, ' ').split(/\s+/).filter(Boolean);
++}
++// Skor kemiripan 2 teks bebas (0..1) = rasio Jaccard dari kata unik yang
++// beririsan dibagi total kata unik gabungan keduanya. Dipakai utk mentolerir
++// kalimat yang ditulis ulang beda susunan/kata tapi intinya sama (mis.
++// Catatan/Disclaimer poster yang sering dirangkai ulang oleh admin/desainer),
++// beda dengan pengecekan containment biasa yang butuh salah satu jadi
++// substring persis dari yang lain.
++function cxTextSimilarity(a, b) {
++    const wa = new Set(cxTextWords(a));
++    const wb = new Set(cxTextWords(b));
++    if (!wa.size || !wb.size) return 0;
++    let common = 0;
++    wa.forEach(w => { if (wb.has(w)) common++; });
++    const union = wa.size + wb.size - common;
++    return union ? common / union : 0;
++}
++const CX_CATATAN_SIMILARITY_THRESHOLD = 0.5; // >=50% kata unik sama -> intinya dianggap sama
+ function cxValuesMatch(field, a, b) {
+     if (!a || !b) return false;
++    // [GAP-FIX] Sebelumnya 'nama' & 'durasi' jatuh ke fallback default di bawah
++    // (harus sama persis huruf-demi-huruf setelah lowercase+trim), beda dengan
++    // field lain (maskapai/hotel/termasuk/catatan_cx) yang semuanya sudah
++    // fuzzy/normalized. Padahal nama program & format durasi di poster hampir
++    // selalu ditulis beda dari data admin (mis. poster cuma "UMROH RAMADHAN"
++    // sementara data teks "Umroh Ramadhan 9 Hari 7 Malam", atau durasi poster
++    // "9H/7M" vs teks "9 Hari 7 Malam") -- akibatnya field ini nyaris SELALU
++    // ditandai "Beda" (mismatch) walau sebenarnya cocok, bikin panel Crosscheck
++    // & badge "Verified" jadi kebanyakan noise/false-positive.
++    if (field === 'nama') {
++        const na = String(a).toLowerCase().trim().replace(/\s+/g, ' ');
++        const nb = String(b).toLowerCase().trim().replace(/\s+/g, ' ');
++        return na === nb || na.includes(nb) || nb.includes(na);
++    }
++    if (field === 'durasi') {
++        const na = cxNormalizeDurasi(a), nb = cxNormalizeDurasi(b);
++        return na !== '' && na === nb;
++    }
+     if (field === 'tgl') {
+         // 'warning' (tanggal tunggal termasuk dalam rentang poster) dianggap
+         // BENAR di sini -- tidak dihitung sebagai mismatch/error. Tampilan
+@@ -11401,7 +11457,15 @@
+         // jadi dicek containment juga (poster kadang menyingkat kalimatnya).
+         const na = String(a).toLowerCase().trim().replace(/\s+/g, ' ');
+         const nb = String(b).toLowerCase().trim().replace(/\s+/g, ' ');
+-        return na === nb || na.includes(nb) || nb.includes(na);
++        if (na === nb || na.includes(nb) || nb.includes(na)) return true;
++        // [GAP-FIX] Disclaimer sering ditulis ulang beda kalimat/urutan tapi
++        // intinya sama (mis. teks "...serta kenaikan kurs dolar dan riyal"
++        // vs poster "...Hotel dan kurs dolar-riyal yang berlaku" -- sama-sama
++        // soal kurs berubah, cuma dirangkai beda) -- exact/containment saja
++        // kena tandai "Beda" padahal maksudnya sama. Toleransi tambahan:
++        // kalau kata-kata inti di kedua sisi cukup banyak yang sama (skor
++        // kemiripan Jaccard), dianggap cocok juga.
++        return cxTextSimilarity(a, b) >= CX_CATATAN_SIMILARITY_THRESHOLD;
+     }
+     return a.toLowerCase().trim() === b.toLowerCase().trim();
+ }
+@@ -11416,9 +11480,23 @@
+     if (!prog) return 0;
+     const adl = (() => { try { return prog.admin_data_lengkap ? (typeof prog.admin_data_lengkap === 'string' ? JSON.parse(prog.admin_data_lengkap) : prog.admin_data_lengkap) : {}; } catch(e) { return {}; } })();
+     const pd = adl.poster_data || {};
++    // [BUGFIX] Data lama menyimpan harga Quad di kolom `harga_quint` (lihat
++    // komentar "Data lama: harga_quint sebenarnya dipakai sebagai harga Quad"
++    // di editAdminProgram() & sql/tambah_tipe_kamar_jamaah.sql). Konvensi ini
++    // sudah dipakai konsisten di >8 tempat lain di file ini (mis. baris 461,
++    // 1795, 3605 -- semua pakai `harga_quad || harga_quint`), TAPI modul
++    // Crosscheck sebelumnya membandingkan `harga_quint` & `harga_quad` sebagai
++    // 2 field independen tanpa fallback ini. Akibatnya utk program lama yang
++    // belum pernah diisi `harga_quad` (admin_data_lengkap), harga Quad asli
++    // (yang nyasar tersimpan di kolom harga_quint) TIDAK PERNAH dibandingkan ke
++    // hasil OCR poster sama sekali (field harga_quad-nya selalu kosong di sisi
++    // teks), sementara field "Harga Quint" yang tampil malah membandingkan
++    // nilai itu ke pd.harga_quint (field beda, biasanya kosong di poster).
++    const legacyQuintIsQuad = !adl.harga_quad && !!prog.harga_quint;
+     const pairs = [
+         ['nama', prog.nama, pd.nama], ['tgl', prog.tgl, pd.tgl], ['durasi', prog.durasi, pd.durasi], ['maskapai', prog.maskapai, pd.maskapai],
+-        ['harga_quint', prog.harga_quint, pd.harga_quint], ['harga_quad', adl.harga_quad, pd.harga_quad], ['harga_triple', adl.harga_triple, pd.harga_triple],
++        ['harga_quint', legacyQuintIsQuad ? null : prog.harga_quint, pd.harga_quint],
++        ['harga_quad', adl.harga_quad || prog.harga_quint, pd.harga_quad], ['harga_triple', adl.harga_triple, pd.harga_triple],
+         ['harga_double', adl.harga_double, pd.harga_double], ['hotel_makkah', adl.hotel_makkah, pd.hotel_makkah], ['hotel_madinah', adl.hotel_madinah, pd.hotel_madinah],
+         ['termasuk', adl.termasuk, pd.termasuk], ['tidak_termasuk', adl.tidak_termasuk, pd.tidak_termasuk], ['catatan_cx', adl.catatan_cx, pd.catatan_cx],
+     ];
+@@ -11556,14 +11634,21 @@
+         return `<div class="cx-ref-line"><i class="bi bi-building"></i> Referensi Hotel Saudi Arabia — ${chip('Teks', dPlain)} ${chip('Poster', dPoster)}</div>`;
+     };
+ 
++    // [BUGFIX] Sama seperti cxCountMismatchForProgram() -- program lama
++    // menyimpan harga Quad di kolom `harga_quint` (tidak ada tipe kamar Quint
++    // sungguhan). Tanpa fallback ini baris "Harga Quad" di panel selalu kosong
++    // di sisi Teks utk program lama, dan baris "Harga Quint" menampilkan harga
++    // Quad tapi dibandingkan ke field poster yang salah (pd.harga_quint,
++    // biasanya kosong) -- harga Quad asli jadi tidak pernah tervalidasi ke poster.
++    const legacyQuintIsQuad = !adl.harga_quad && !!prog.harga_quint;
+     const buildCompareRows = () => {
+         const rows = [
+             { label: 'Nama Program',  plain: prog.nama,        poster: null, field: 'nama' },
+             { label: 'Tanggal',       plain: prog.tgl,         poster: null, field: 'tgl' },
+             { label: 'Durasi',        plain: prog.durasi,      poster: null, field: 'durasi' },
+             { label: 'Maskapai',      plain: prog.maskapai,    poster: null, field: 'maskapai' },
+-            { label: 'Harga Quint',   plain: prog.harga_quint, poster: null, field: 'harga_quint' },
+-            { label: 'Harga Quad',    plain: adl.harga_quad,   poster: null, field: 'harga_quad' },
++            { label: 'Harga Quint',   plain: legacyQuintIsQuad ? null : prog.harga_quint, poster: null, field: 'harga_quint' },
++            { label: 'Harga Quad',    plain: adl.harga_quad || prog.harga_quint, poster: null, field: 'harga_quad' },
+             { label: 'Harga Triple',  plain: adl.harga_triple, poster: null, field: 'harga_triple' },
+             { label: 'Harga Double',  plain: adl.harga_double, poster: null, field: 'harga_double' },
+             { label: 'Hotel Makkah',  plain: adl.hotel_makkah, poster: null, field: 'hotel_makkah' },
