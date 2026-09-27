@@ -11388,6 +11388,29 @@ function cxNormalizeDurasi(str) {
     const m = String(str || '').match(/\d+/);
     return m ? m[0] : '';
 }
+// Pecah teks bebas jadi daftar kata (huruf/angka), tanda baca umum (koma,
+// strip, garis miring, kurung, titik) diubah jadi spasi dulu supaya
+// "dolar-riyal" ikut kehitung sebagai 2 kata terpisah "dolar" & "riyal" --
+// dipakai cxTextSimilarity() untuk membandingkan 2 kalimat bebas.
+function cxTextWords(str) {
+    return String(str || '').toLowerCase().replace(/[.,\-\/()]/g, ' ').split(/\s+/).filter(Boolean);
+}
+// Skor kemiripan 2 teks bebas (0..1) = rasio Jaccard dari kata unik yang
+// beririsan dibagi total kata unik gabungan keduanya. Dipakai utk mentolerir
+// kalimat yang ditulis ulang beda susunan/kata tapi intinya sama (mis.
+// Catatan/Disclaimer poster yang sering dirangkai ulang oleh admin/desainer),
+// beda dengan pengecekan containment biasa yang butuh salah satu jadi
+// substring persis dari yang lain.
+function cxTextSimilarity(a, b) {
+    const wa = new Set(cxTextWords(a));
+    const wb = new Set(cxTextWords(b));
+    if (!wa.size || !wb.size) return 0;
+    let common = 0;
+    wa.forEach(w => { if (wb.has(w)) common++; });
+    const union = wa.size + wb.size - common;
+    return union ? common / union : 0;
+}
+const CX_CATATAN_SIMILARITY_THRESHOLD = 0.5; // >=50% kata unik sama -> intinya dianggap sama
 function cxValuesMatch(field, a, b) {
     if (!a || !b) return false;
     // [GAP-FIX] Sebelumnya 'nama' & 'durasi' jatuh ke fallback default di bawah
@@ -11434,7 +11457,15 @@ function cxValuesMatch(field, a, b) {
         // jadi dicek containment juga (poster kadang menyingkat kalimatnya).
         const na = String(a).toLowerCase().trim().replace(/\s+/g, ' ');
         const nb = String(b).toLowerCase().trim().replace(/\s+/g, ' ');
-        return na === nb || na.includes(nb) || nb.includes(na);
+        if (na === nb || na.includes(nb) || nb.includes(na)) return true;
+        // [GAP-FIX] Disclaimer sering ditulis ulang beda kalimat/urutan tapi
+        // intinya sama (mis. teks "...serta kenaikan kurs dolar dan riyal"
+        // vs poster "...Hotel dan kurs dolar-riyal yang berlaku" -- sama-sama
+        // soal kurs berubah, cuma dirangkai beda) -- exact/containment saja
+        // kena tandai "Beda" padahal maksudnya sama. Toleransi tambahan:
+        // kalau kata-kata inti di kedua sisi cukup banyak yang sama (skor
+        // kemiripan Jaccard), dianggap cocok juga.
+        return cxTextSimilarity(a, b) >= CX_CATATAN_SIMILARITY_THRESHOLD;
     }
     return a.toLowerCase().trim() === b.toLowerCase().trim();
 }
