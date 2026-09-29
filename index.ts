@@ -68,6 +68,8 @@ CONTOH POLA YANG HARUS DIIKUTI PERSIS (termasuk baris kosongnya):
 ❌ Tidak Termasuk:
 - [list sesuai input, satu poin per baris]
 
+*biaya dan jadwal sewaktu-waktu dapat berubah mengikuti ketentuan Saudi, Maskapai serta kenaikan kurs dolar dan riyal
+
 📞 Info & Itinerary:
 [nomor WA yang diberikan, masing-masing di baris sendiri]
 
@@ -78,7 +80,8 @@ ATURAN FORMAT WAJIB (paling sering dilanggar, cek dua kali sebelum menjawab):
    - setelah baris terakhir Fasilitas (sebelum "💰 Biaya Program:")
    - setelah baris harga terakhir (sebelum "✅ Termasuk:")
    - setelah poin terakhir Termasuk (sebelum "❌ Tidak Termasuk:")
-   - setelah poin terakhir Tidak Termasuk (sebelum "📞 Info & Itinerary:")
+   - setelah poin terakhir Tidak Termasuk (sebelum baris catatan "*biaya dan jadwal ...")
+   - setelah baris catatan "*biaya dan jadwal ..." (sebelum "📞 Info & Itinerary:")
 3. Baris "💰 Biaya Program:" SELALU pakai bullet tanda bintang ("* Kategori: Rp ..."), bukan tanda lain.
 
 ATURAN ISI:
@@ -86,7 +89,7 @@ ATURAN ISI:
 5. JANGAN menambahkan section atau fasilitas yang tidak disebutkan di konsep (misal jangan mengada-adakan upgrade hotel atau estimasi jarak/waktu jalan kaki kalau tidak ada di input).
 6. Kalimat pembuka harus terasa ditulis khusus untuk program ini, bukan template kosong seperti "kesempatan langka beribadah di tanah suci" jika tidak relevan dengan isi konsep.
 7. Jika konsep tidak menyebutkan info tertentu (misal tidak ada kereta cepat, atau jarak hotel tidak disebutkan), jangan ditulis sama sekali — jangan mengarang.
-8. Kalimat disclaimer umum seperti "biaya dan jadwal sewaktu-waktu dapat berubah mengikuti ketentuan Saudi/Maskapai/kurs Dolar-Riyal" BUKAN poin "Tidak Termasuk" — itu catatan kebijakan, bukan item yang dikecualikan dari harga. Jika kalimat semacam ini ada di konsep, JANGAN dimasukkan ke list Tidak Termasuk maupun ke bagian mana pun di caption; abaikan saja dari output caption (catatan itu urusan internal admin, bukan konsumsi publik).
+8. Baris catatan "*biaya dan jadwal sewaktu-waktu dapat berubah mengikuti ketentuan Saudi, Maskapai serta kenaikan kurs dolar dan riyal" WAJIB selalu ada persis seperti itu (diawali satu tanda bintang literal, tanpa penutup bintang), diletakkan setelah list Tidak Termasuk dan sebelum "📞 Info & Itinerary:". Baris ini BUKAN poin Tidak Termasuk — jangan dimasukkan ke dalam list, dan jangan diubah redaksinya.
 9. Output HANYA berupa teks caption final. JANGAN ada kalimat pembuka/penutup dari kamu, JANGAN ada markdown code fence, JANGAN ada penjelasan tambahan.
 10. Selalu gunakan ejaan "Umroh" (bukan "Umrah") di seluruh teks caption, walau konsep/input dari user memakai ejaan "Umrah".
 

@@ -610,6 +610,8 @@ function pickWaOpeningSentence(data) {
 // ============================================================
 // 4. GENERATE AUTO WA TEXT
 // ============================================================
+const WA_CATATAN_PERUBAHAN = '*biaya dan jadwal sewaktu-waktu dapat berubah mengikuti ketentuan Saudi, Maskapai serta kenaikan kurs dolar dan riyal';
+
 function generateAutoWAText(data) {
     const s = v => normalizePpAbbreviation(normalizeUmrohSpelling((v || '').toString().replace(/javascript:/gi, 'blocked:')));
     const namaUpper = s(data.nama || 'PROGRAM UMROH').toUpperCase();
@@ -639,6 +641,9 @@ function generateAutoWAText(data) {
 
     const tidakList = data.tidak_termasuk ? data.tidak_termasuk.split('\n').map(i => i.trim()).filter(Boolean) : ['Paspor', 'Vaksin', 'Pengeluaran pribadi'];
     teks += `❌ Tidak Termasuk:\n${tidakList.map(i => `- ${s(i)}`).join('\n')}\n\n`;
+
+    // Catatan perubahan biaya/jadwal -- selalu tampil di antara Tidak Termasuk & Info
+    teks += `${WA_CATATAN_PERUBAHAN}\n\n`;
 
     teks += `📞 Info & Itinerary:\n${(NOTA_PERUSAHAAN.kontak_wa || []).map(n => 'wa.me/' + n).join('\n')}`;
     return teks;
