@@ -13035,6 +13035,9 @@ function renderIgPostTable() {
     const tbody = document.getElementById('igPostTableBody');
     if (!tbody) return;
 
+    const listBox = tbody.closest('.ig-post-list-container');
+    if (listBox) listBox.style.display = (!igPosts.length && !IG_AUTOPUBLISH_ENABLED) ? 'none' : '';
+
     if (!igPosts.length) {
         tbody.innerHTML = `<tr><td colspan="6"><div class="ig-empty"><i class="bi bi-instagram"></i>Belum ada post IG. Klik "Post Baru" untuk mulai.</div></td></tr>`;
         return;
@@ -13382,14 +13385,14 @@ function renderIgCalSummary(monthPosts, monthPlans, emptyFutureDays) {
     const el = document.getElementById('igCalSummary');
     if (!el) return;
     const st = t => monthPlans.filter(p => (p.tahap || 'ide') === t).length;
-    const card = (n, label, cls, icon) =>
-        `<div class="ig-stat ${cls}"><i class="bi ${icon}"></i><div><b>${n}</b><span>${label}</span></div></div>`;
+    const card = (n, label, cls) =>
+        `<div class="ig-stat ${cls}"><b>${n}</b><span>${label}</span></div>`;
     let html = '<div class="ig-stat-row">' +
-        card(st('ide'), 'Ide', 'ig-stat-ide', 'bi-lightbulb') +
-        card(st('dikerjakan'), 'Dikerjakan', 'ig-stat-wip', 'bi-pencil-square') +
-        card(st('siap'), 'Siap posting', 'ig-stat-ready', 'bi-check2-circle') +
-        card(monthPosts.length, 'Draft & post', 'ig-stat-post', 'bi-instagram') +
-        card(emptyFutureDays, 'Hari kosong', 'ig-stat-gap', 'bi-calendar-plus') + '</div>';
+        card(st('ide'), 'Ide', 'ig-stat-ide') +
+        card(st('dikerjakan'), 'Dikerjakan', 'ig-stat-wip') +
+        card(st('siap'), 'Siap posting', 'ig-stat-ready') +
+        card(monthPosts.length, 'Draft & post', 'ig-stat-post') +
+        card(emptyFutureDays, 'Hari kosong', 'ig-stat-gap') + '</div>';
 
     if (igPlannerColsReady && monthPlans.length) {
         const counts = {};
@@ -13435,7 +13438,7 @@ function renderIgPlanSide(monthPlans) {
                 <span class="ig-side-date"><b>${d}</b><small>${mon[m - 1]}</small></span>
                 <span class="ig-side-main">
                     <span class="ig-side-tema">${escapeHtml(pl.tema)}</span>
-                    <span class="ig-side-meta"><span><i class="bi ${IG_TYPE_ICONS[pl.tipe_konten] || 'bi-image'}"></i> ${IG_TYPE_LABELS[pl.tipe_konten] || 'Image'}</span>${pil ? `<span class="ig-side-pil"><i class="ig-side-dot"></i>${escapeHtml(pil.label)}</span>` : ''}</span>
+                    <span class="ig-side-meta"><span>${IG_TYPE_LABELS[pl.tipe_konten] || 'Image'}</span>${pil ? `<span class="ig-side-pil"><i class="ig-side-dot"></i>${escapeHtml(pil.label)}</span>` : ''}</span>
                 </span>
             </div>`;
         }).join('')

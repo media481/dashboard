@@ -4054,3 +4054,83 @@
     .ig-cal-chip.ig-cal-chip-dikerjakan, .ig-cal-chip.ig-cal-chip-siap { background: var(--pillar); box-shadow: none; }
     .ig-cal-chip-more { padding-left: 0; font-size: 9px; }
 }
+
+
+/* ============================================================
+   Content Planner -- tampilan bersih menyeluruh
+   Prinsip: satu kartu per area (kalender, ide), statistik jadi baris teks,
+   tanpa ikon dekoratif, label sentence case, grid tanpa shading ganda.
+   ============================================================ */
+
+/* -- Perbaikan: sel kosong awal bulan tidak berborder -- */
+.ig-cal-day.ig-cal-empty { background: transparent; border-color: transparent; pointer-events: none; }
+
+/* -- Statistik: baris teks, bukan lima kartu berborder -- */
+.ig-planner-mode .ig-cal-summary-wrap { margin: 0 0 14px; padding: 0 2px; }
+.ig-planner-mode .ig-stat-row { display: flex; flex-wrap: wrap; gap: 6px 28px; }
+.ig-planner-mode .ig-stat {
+    display: flex; align-items: baseline; gap: 6px; padding: 0;
+    background: transparent; border: 0; border-radius: 0;
+}
+.ig-planner-mode .ig-stat b { font-size: 17px; font-weight: 600; color: var(--ink); letter-spacing: -.01em; }
+.ig-planner-mode .ig-stat span { font-size: 12px; font-weight: 400; color: var(--ink-soft); }
+.ig-planner-mode .ig-stat-gap b { color: var(--warn); }
+.ig-planner-mode .ig-pillar-bar { height: 4px; margin-top: 10px; gap: 2px; }
+.ig-planner-mode .ig-pillar-legend { gap: 2px 16px; margin: 7px 0 0; }
+.ig-planner-mode .ig-pillar-legend span { font-weight: 400; }
+.ig-planner-mode .ig-pillar-legend i { width: 7px; height: 7px; margin-right: 6px; }
+
+/* -- Toolbar: hitungan "N post" tidak relevan di mode planner -- */
+.ig-planner-mode #igSchedulerCount { display: none; }
+
+/* -- Kartu kalender & panel ide: lebih ringan -- */
+.ig-planner-mode .ig-calendar-container,
+.ig-planner-mode .ig-plan-side { border: 1px solid var(--line); border-radius: 14px; }
+.ig-planner-mode .ig-calendar-container { padding: 16px 16px 14px; }
+
+/* -- Header kalender -- */
+.ig-planner-mode .ig-calendar-header { margin-bottom: 12px; }
+.ig-planner-mode .ig-cal-month { font-size: 17px; font-weight: 600; min-width: 140px; }
+.ig-planner-mode .ig-cal-nav { border-color: transparent; background: transparent; color: var(--ink-soft); width: 30px; height: 30px; }
+.ig-planner-mode .ig-cal-nav:hover { background: var(--brand-tint); color: var(--brand); border-color: transparent; }
+.ig-planner-mode .ig-cal-filter { border: 0; background: var(--bg); border-radius: 9px; padding: 2px; gap: 2px; }
+.ig-planner-mode .ig-cal-filter button { border: 0; border-radius: 7px; padding: 5px 12px; font-weight: 500; background: transparent; }
+.ig-planner-mode .ig-cal-filter button + button { border-left: 0; }
+.ig-planner-mode .ig-cal-filter button.active { background: var(--surface); color: var(--brand); font-weight: 600; box-shadow: 0 1px 2px rgba(15,33,56,.10); }
+.ig-planner-mode .ig-cal-today-btn { border-color: transparent; background: transparent; font-weight: 500; }
+.ig-planner-mode .ig-cal-today-btn:hover { background: var(--brand-tint); border-color: transparent; }
+
+/* -- Nama hari: sentence case, netral -- */
+.ig-planner-mode .ig-cal-day-header,
+.ig-planner-mode .ig-cal-day-header:first-child,
+.ig-planner-mode .ig-cal-day-header:last-child {
+    text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 500;
+    color: var(--ink-soft); padding: 2px 2px 8px;
+}
+
+/* -- Sel: tanpa shading akhir pekan, tinggi pas satu layar -- */
+.ig-planner-mode .ig-cal-weekend:not(.ig-cal-today) { background: var(--surface); }
+.ig-planner-mode .ig-cal-day { min-height: 96px; }
+.ig-planner-mode .ig-calendar-grid { gap: 4px; }
+.ig-planner-mode .ig-cal-past:not(.ig-cal-today) { opacity: .6; }
+
+/* -- Legenda status post tidak dipakai di mode planner -- */
+.ig-planner-mode .ig-cal-legend { display: none; }
+
+/* -- Panel "Ide bulan ini" -- */
+.ig-planner-mode .ig-plan-side-header { padding: 14px 16px 12px; border-bottom: 0; }
+.ig-planner-mode .ig-plan-side-header h3 { font-size: 14px; font-weight: 600; }
+.ig-planner-mode .ig-plan-side .ig-cal-today-btn { color: var(--brand); font-weight: 600; }
+.ig-planner-mode .ig-plan-side .ig-comments-panel-count { color: var(--ink-soft); font-weight: 400; background: transparent; padding: 0; }
+.ig-planner-mode #igPlanSideBody { padding: 0 10px 12px; }
+.ig-planner-mode .ig-side-group { text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 500; }
+.ig-planner-mode .ig-side-group em { background: transparent; padding: 0; }
+.ig-planner-mode .ig-side-item { padding: 8px 8px; margin-bottom: 2px; gap: 12px; align-items: flex-start; }
+.ig-planner-mode .ig-side-item:hover { border-color: transparent; }
+.ig-planner-mode .ig-side-date { background: transparent; width: 32px; padding: 2px 0 0; }
+.ig-planner-mode .ig-side-item:hover .ig-side-date { background: transparent; }
+.ig-planner-mode .ig-side-date b { font-size: 17px; font-weight: 600; }
+.ig-planner-mode .ig-side-date small { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 10.5px; }
+.ig-planner-mode .ig-side-tema { font-weight: 500; }
+.ig-planner-mode .ig-side-meta { font-size: 11.5px; gap: 0 12px; }
+.ig-planner-mode .ig-side-empty { padding: 24px 10px 28px; }
