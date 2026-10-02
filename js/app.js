@@ -13605,17 +13605,19 @@ function igDmPostCard(post) {
     const label = IG_STATUS_LABELS[post.status] || post.status;
     const editable = ['draft', 'scheduled', 'failed'].includes(post.status);
     return `<div class="ig-dm-card ig-dm-post" style="--pillar:${color};">
-        <div class="ig-dm-card-main">
-            ${igDmMedia(post)}
-            <div class="ig-dm-card-info">
-                <div class="ig-dm-card-title">${escapeHtml(igChipText(post.caption, '(tanpa caption)'))}</div>
-                <div class="ig-dm-badges">
-                    <span class="ig-status-pill" style="background:${color}1a;color:${color};">${escapeHtml(label)}</span>
-                    <span class="ig-dm-typelabel"><i class="bi bi-clock"></i> ${jam}</span>
-                    <span class="ig-dm-typelabel"><i class="bi ${IG_TYPE_ICONS[post.media_type] || 'bi-image'}"></i> ${IG_TYPE_LABELS[post.media_type] || 'Image'}</span>
+        <div class="ig-dm-card-top">
+            <div class="ig-dm-card-main">
+                ${igDmMedia(post)}
+                <div class="ig-dm-card-info">
+                    <div class="ig-dm-card-title">${escapeHtml(igChipText(post.caption, '(tanpa caption)'))}</div>
+                    <div class="ig-dm-badges">
+                        <span class="ig-status-pill" style="background:${color}1a;color:${color};">${escapeHtml(label)}</span>
+                        <span class="ig-dm-typelabel"><i class="bi bi-clock"></i> ${jam}</span>
+                        <span class="ig-dm-typelabel"><i class="bi ${IG_TYPE_ICONS[post.media_type] || 'bi-image'}"></i> ${IG_TYPE_LABELS[post.media_type] || 'Image'}</span>
+                    </div>
                 </div>
             </div>
-            ${editable ? `<button type="button" class="ig-dm-iconbtn" title="Edit post" onclick="closeIgDayModal(); openIgUploadModal('${post.id}')"><i class="bi bi-pencil-fill"></i></button>` : ''}
+            ${editable ? `<div class="ig-dm-card-actions"><button type="button" class="ig-dm-iconbtn" title="Edit post" onclick="closeIgDayModal(); openIgUploadModal('${post.id}')"><i class="bi bi-pencil-fill"></i></button></div>` : ''}
         </div>
     </div>`;
 }
@@ -13630,14 +13632,14 @@ function igDmPlanCard(pl, canEdit) {
         ? `<select class="ig-dm-input" onchange="igPlanUpdateField('${pl.id}','pilar',this.value)"><option value="">Pilar...</option>${Object.entries(IG_PILLARS).map(([k, v]) =>
             `<option value="${k}"${pl.pilar === k ? ' selected' : ''}>${escapeHtml(v.label)}</option>`).join('')}</select>` : '';
     const stepper = igPlannerColsReady && canEdit
-        ? `<div class="ig-dm-stepper" title="Tahap pengerjaan">${Object.entries(IG_STAGES).map(([k, v]) =>
+        ? `<div class="ig-dm-stepper" title="Tahap pengerjaan" onclick="event.stopPropagation()">${Object.entries(IG_STAGES).map(([k, v]) =>
             `<button type="button" class="${k === stage ? 'active' : ''}" onclick="igPlanSetStage('${pl.id}','${k}')">${v}</button>`).join('')}</div>` : '';
     const actions = canEdit ? `<div class="ig-dm-card-actions">
-            ${stepper}
-            <span class="ig-dm-spacer"></span>
-            <button type="button" class="ig-dm-iconbtn" title="Salin caption" onclick="igCopyPlanCaption('${pl.id}')"><i class="bi bi-clipboard"></i></button>
-            <button type="button" class="ig-dm-iconbtn" title="Lewati (sembunyikan dari kalender)" onclick="igSkipPlanItem('${pl.id}')"><i class="bi bi-eye-slash"></i></button>
-            <button type="button" class="ig-dm-iconbtn ig-dm-danger" title="Hapus" onclick="igArmDelete(this,'${pl.id}')"><i class="bi bi-trash"></i></button>
+            <div class="ig-dm-icons">
+                <button type="button" class="ig-dm-iconbtn" title="Salin caption" onclick="igCopyPlanCaption('${pl.id}')"><i class="bi bi-clipboard"></i></button>
+                <button type="button" class="ig-dm-iconbtn" title="Lewati (sembunyikan dari kalender)" onclick="igSkipPlanItem('${pl.id}')"><i class="bi bi-eye-slash"></i></button>
+                <button type="button" class="ig-dm-iconbtn ig-dm-danger" title="Hapus" onclick="igArmDelete(this,'${pl.id}')"><i class="bi bi-trash"></i></button>
+            </div>
             <button type="button" class="${stage === 'siap' ? 'btn-primary' : 'btn-secondary'} ig-dm-convert" onclick="igConvertPlanToPost('${pl.id}')"><i class="bi bi-arrow-up-right-circle"></i> Jadikan Post</button>
         </div>` : '';
     const edit = canEdit ? `<div class="ig-dm-edit" style="display:none;">
@@ -13651,7 +13653,7 @@ function igDmPlanCard(pl, canEdit) {
                 ${pilOpts}
                 <input type="date" class="ig-dm-input" value="${escapeHtmlAttr(pl.tanggal)}" title="Pindah ke tanggal lain" onchange="igMovePlanToDate('${pl.id}',this.value,true)">
             </div>
-            <textarea class="ig-dm-input ig-dm-textarea" rows="8" maxlength="2200" placeholder="Draft caption..."
+            <textarea class="ig-dm-input ig-dm-textarea" rows="6" maxlength="2200" placeholder="Draft caption..."
                 oninput="igUpdatePlanCharCount('${pl.id}',this.value.length)"
                 onblur="igPlanUpdateField('${pl.id}','draft_caption',this.value)">${escapeHtml(cap)}</textarea>
             <div class="ig-dm-edit-foot">
@@ -13659,16 +13661,22 @@ function igDmPlanCard(pl, canEdit) {
                 <button type="button" class="btn-primary" onclick="igTogglePlanEdit('${pl.id}')" style="font-size:12px;padding:6px 14px;"><i class="bi bi-check2"></i> Selesai</button>
             </div>
         </div>` : '';
+    // Kalau stepper tahap tampil, badge tahap teks dihilangkan (info yang sama) supaya baris meta tidak dobel.
+    const pilBadge = pil ? `<span class="ig-status-pill" style="background:${pil.color}1a;color:${pil.color};">${escapeHtml(pil.label)}</span>` : '';
+    const badges = stepper ? pilBadge : igPlanBadgeHtml(pl);
     return `<div class="ig-dm-card ig-dm-plan stage-${stage}" id="igDayPlanItem-${pl.id}" style="--pillar:${pil ? pil.color : 'var(--brand)'};">
-        <div class="ig-dm-card-main"${canEdit ? ` onclick="igTogglePlanEdit('${pl.id}')"` : ''}>
-            <div class="ig-dm-type"><i class="bi ${IG_TYPE_ICONS[pl.tipe_konten] || 'bi-image'}"></i></div>
-            <div class="ig-dm-card-info">
-                <div class="ig-dm-card-title">${escapeHtml(pl.tema)}</div>
-                <div class="ig-dm-badges">${igPlanBadgeHtml(pl)}<span class="ig-dm-typelabel">${IG_TYPE_LABELS[pl.tipe_konten] || 'Image'}</span></div>
-                ${cap ? `<p class="ig-dm-cap">${escapeHtml(cap)}</p>` : `<p class="ig-dm-cap ig-dm-cap-empty">Belum ada caption${canEdit ? ' — klik untuk menulis' : ''}</p>`}
+        <div class="ig-dm-card-top">
+            <div class="ig-dm-card-main"${canEdit ? ` onclick="igTogglePlanEdit('${pl.id}')" title="Klik untuk edit"` : ''}>
+                <div class="ig-dm-type"><i class="bi ${IG_TYPE_ICONS[pl.tipe_konten] || 'bi-image'}"></i></div>
+                <div class="ig-dm-card-info">
+                    <div class="ig-dm-card-title">${escapeHtml(pl.tema)}</div>
+                    <div class="ig-dm-badges">${badges}<span class="ig-dm-typelabel">${IG_TYPE_LABELS[pl.tipe_konten] || 'Image'}</span>${stepper}</div>
+                    ${cap ? `<p class="ig-dm-cap">${escapeHtml(cap)}</p>` : `<p class="ig-dm-cap ig-dm-cap-empty">Belum ada caption${canEdit ? ' — klik untuk menulis' : ''}</p>`}
+                </div>
             </div>
+            ${actions}
         </div>
-        ${actions}${edit}
+        ${edit}
     </div>`;
 }
 
@@ -13696,9 +13704,7 @@ function igOpenDayModal(dateKey) {
 
     const [y, m, d] = dateKey.split('-').map(Number);
     const dateObj = new Date(y, m - 1, d);
-    const wk = document.getElementById('igDmWeekday');
-    if (wk) wk.textContent = dateObj.toLocaleDateString('id-ID', { weekday: 'long' });
-    if (titleEl) titleEl.textContent = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    if (titleEl) titleEl.textContent = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
     const dayPosts = igPosts.filter(p => {
         const dd = igPostRefDate(p);
@@ -13707,16 +13713,19 @@ function igOpenDayModal(dateKey) {
     const dayPlans = igContentPlan.filter(pl => pl.status === 'idea' && pl.tanggal === dateKey);
 
     const meta = document.getElementById('igDmMeta');
+    const rel = igDmRelLabel(y, m, d);
+    const isToday = rel === 'Hari ini';
     if (meta) {
-        const rel = igDmRelLabel(y, m, d);
         const cnt = [dayPlans.length ? `${dayPlans.length} ide` : '', dayPosts.length ? `${dayPosts.length} post` : ''].filter(Boolean).join(' · ');
-        meta.innerHTML = `<span class="ig-dm-rel${rel === 'Hari ini' ? ' is-today' : ''}">${rel}</span>${cnt ? `<span class="ig-dm-count">${cnt}</span>` : ''}`;
+        meta.innerHTML = `<span class="ig-dm-rel${isToday ? ' is-today' : ''}">${rel}</span>${cnt ? ` · ${cnt}` : ''}`;
     }
+    const todayBtn = document.getElementById('igDmTodayBtn');
+    if (todayBtn) todayBtn.style.display = isToday ? 'none' : '';
 
     if (!dayPosts.length && !dayPlans.length) {
         bodyEl.innerHTML = `<div class="ig-dm-empty"><i class="bi bi-calendar2-plus"></i>
             <b>Belum ada konten di tanggal ini</b>
-            ${canEdit ? `<span>Tulis ide di atas, atau mulai dari template cepat:</span>
+            ${canEdit ? `<span>Tulis ide di atas, atau pilih cepat:</span>
             <div class="ig-dm-suggest">${IG_QUICK_IDEAS.map((t, i) => `<button type="button" onclick="igFillQuickIdea(${i})">${escapeHtml(t)}</button>`).join('')}</div>` : ''}
         </div>`;
     } else {
