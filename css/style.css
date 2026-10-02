@@ -3840,9 +3840,9 @@
 
 /* Header */
 .ig-dm-header { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
-.ig-dm-title { min-width: 0; padding: 0 4px; }
+.ig-dm-title { min-width: 0; padding: 0 4px; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; row-gap: 0; }
 .ig-dm-title h2 { font-size: 16px; margin: 0; line-height: 1.25; white-space: nowrap; }
-.ig-dm-sub { font-size: 11.5px; color: var(--ink-soft); margin-top: 1px; }
+.ig-dm-sub { font-size: 11.5px; color: var(--ink-soft); margin-top: 0; white-space: nowrap; }
 .ig-dm-rel { font-weight: 700; }
 .ig-dm-rel.is-today { color: var(--brand); }
 .ig-dm-nav {
@@ -4220,7 +4220,7 @@
 .ig-dm .ig-dm-header { padding: 18px 20px 14px; border-bottom: 0; gap: 4px; }
 .ig-dm .ig-dm-title { padding: 0 6px; }
 .ig-dm .ig-dm-title h2 { font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
-.ig-dm .ig-dm-sub { font-size: 12px; margin-top: 2px; }
+.ig-dm .ig-dm-sub { font-size: 12px; margin-top: 0; }
 .ig-dm .ig-dm-rel { font-weight: 500; }
 .ig-dm .ig-dm-nav {
     width: 30px; height: 30px; padding: 0 0 2px; font-size: 20px; line-height: 1;
