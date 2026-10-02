@@ -4142,28 +4142,24 @@
    kalender (ide < dikerjakan < siap), jadi ringkasan ini sekaligus legenda.
    ============================================================ */
 .ig-planner-mode .ig-scheduler-toolbar { gap: 8px; margin-bottom: 16px; }
+/* Tombol aksi toolbar disamakan dengan tombol "Tambah Cepat" di dashboard utama:
+   isi warna brand, teks putih, 13px/600, radius 10px, hover naik 1px + shadow. */
 .ig-planner-mode .ig-scheduler-toolbar .btn-primary,
 .ig-planner-mode .ig-scheduler-toolbar .btn-secondary {
-    min-height: 36px; padding: 0 18px !important; font-size: 13px !important; border-radius: 10px;
-    display: inline-flex; align-items: center;
+    min-height: 34px; padding: 7px 16px !important; font-size: 13px !important; font-weight: 600; border-radius: 10px;
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--brand); color: #fff; border: none; box-shadow: none; letter-spacing: normal;
+    transition: all .15s;
 }
-.ig-planner-mode .ig-scheduler-toolbar .btn-primary {
-    margin-right: 0; font-weight: 600; letter-spacing: .005em;
-    box-shadow: 0 2px 8px rgba(26, 53, 91, .28);
-}
-.ig-planner-mode .ig-scheduler-toolbar .btn-primary:hover {
-    background: var(--brand-deep); box-shadow: 0 4px 12px rgba(26, 53, 91, .34);
-}
-.ig-planner-mode .ig-scheduler-toolbar .btn-secondary {
-    background: var(--surface); border: 1px solid var(--line); color: var(--ink); font-weight: 500;
-}
+.ig-planner-mode .ig-scheduler-toolbar .btn-primary:hover,
 .ig-planner-mode .ig-scheduler-toolbar .btn-secondary:hover {
-    background: var(--surface); border-color: var(--brand); color: var(--brand);
+    background: var(--brand-deep); color: #fff; border: none;
+    transform: translateY(-1px); box-shadow: var(--shadow);
 }
 .ig-planner-mode .ig-scheduler-toolbar #btnIgRefresh {
     background: transparent; border-color: transparent; color: var(--ink-soft); padding: 0 8px !important;
 }
-.ig-planner-mode .ig-scheduler-toolbar #btnIgRefresh:hover { background: transparent; color: var(--brand); border-color: transparent; }
+.ig-planner-mode .ig-scheduler-toolbar #btnIgRefresh:hover { background: transparent; color: var(--brand); border-color: transparent; transform: none; box-shadow: none; }
 
 .ig-planner-mode .ig-cal-summary-wrap { margin: 0 0 16px; padding: 0; }
 .ig-planner-mode .ig-stat-row {
