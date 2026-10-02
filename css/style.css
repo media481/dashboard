@@ -4134,3 +4134,76 @@
 .ig-planner-mode .ig-side-tema { font-weight: 500; }
 .ig-planner-mode .ig-side-meta { font-size: 11.5px; gap: 0 12px; }
 .ig-planner-mode .ig-side-empty { padding: 24px 10px 28px; }
+
+
+/* ============================================================
+   Toolbar & ringkasan bulan -- versi berkarakter
+   Tile statistik memakai intensitas tint yang SAMA dengan chip tahap di
+   kalender (ide < dikerjakan < siap), jadi ringkasan ini sekaligus legenda.
+   ============================================================ */
+.ig-planner-mode .ig-scheduler-toolbar { gap: 8px; margin-bottom: 16px; }
+.ig-planner-mode .ig-scheduler-toolbar .btn-primary,
+.ig-planner-mode .ig-scheduler-toolbar .btn-secondary {
+    min-height: 36px; padding: 0 18px !important; font-size: 13px !important; border-radius: 10px;
+    display: inline-flex; align-items: center;
+}
+.ig-planner-mode .ig-scheduler-toolbar .btn-primary {
+    margin-right: 0; font-weight: 600; letter-spacing: .005em;
+    box-shadow: 0 2px 8px rgba(26, 53, 91, .28);
+}
+.ig-planner-mode .ig-scheduler-toolbar .btn-primary:hover {
+    background: var(--brand-deep); box-shadow: 0 4px 12px rgba(26, 53, 91, .34);
+}
+.ig-planner-mode .ig-scheduler-toolbar .btn-secondary {
+    background: var(--surface); border: 1px solid var(--line); color: var(--ink); font-weight: 500;
+}
+.ig-planner-mode .ig-scheduler-toolbar .btn-secondary:hover {
+    background: var(--surface); border-color: var(--brand); color: var(--brand);
+}
+.ig-planner-mode .ig-scheduler-toolbar #btnIgRefresh {
+    background: transparent; border-color: transparent; color: var(--ink-soft); padding: 0 8px !important;
+}
+.ig-planner-mode .ig-scheduler-toolbar #btnIgRefresh:hover { background: transparent; color: var(--brand); border-color: transparent; }
+
+.ig-planner-mode .ig-cal-summary-wrap { margin: 0 0 16px; padding: 0; }
+.ig-planner-mode .ig-stat-row {
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px;
+}
+.ig-planner-mode .ig-stat {
+    --tone: var(--brand); --fill: 0%;
+    display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 4px;
+    padding: 12px 16px 13px 18px; border-radius: 12px; position: relative; overflow: hidden;
+    background: var(--bg); border: 0;
+}
+.ig-planner-mode .ig-stat::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--tone);
+}
+.ig-planner-mode .ig-stat b {
+    font-size: 28px; line-height: 1; font-weight: 600; letter-spacing: -.02em; color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+.ig-planner-mode .ig-stat span { font-size: 12px; font-weight: 500; color: var(--ink-soft); }
+@supports (background: color-mix(in srgb, red 10%, transparent)) {
+    .ig-planner-mode .ig-stat-ide   { background: color-mix(in srgb, var(--brand) 6%,  var(--surface)); }
+    .ig-planner-mode .ig-stat-wip   { background: color-mix(in srgb, var(--brand) 12%, var(--surface)); }
+    .ig-planner-mode .ig-stat-ready { background: color-mix(in srgb, var(--brand) 20%, var(--surface)); }
+    .ig-planner-mode .ig-stat-gap   { background: color-mix(in srgb, var(--warn) 11%, var(--surface)); }
+}
+.ig-planner-mode .ig-stat-post { --tone: var(--ink-soft); }
+.ig-planner-mode .ig-stat-gap { --tone: var(--warn); }
+.ig-planner-mode .ig-stat-gap b { color: var(--warn); }
+
+.ig-planner-mode .ig-pillar-bar { height: 6px; margin-top: 14px; border-radius: 6px; gap: 3px; }
+.ig-planner-mode .ig-pillar-legend { margin: 8px 0 0; gap: 3px 18px; }
+.ig-planner-mode .ig-pillar-legend span { font-size: 11.5px; font-weight: 500; }
+
+@media (max-width: 900px) {
+    .ig-planner-mode .ig-stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+    .ig-planner-mode .ig-stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .ig-planner-mode .ig-stat b { font-size: 24px; }
+    .ig-planner-mode .ig-stat-gap { grid-column: 1 / -1; }
+    .ig-planner-mode .ig-scheduler-toolbar .btn-primary,
+    .ig-planner-mode .ig-scheduler-toolbar .btn-secondary { padding: 0 14px !important; }
+}
