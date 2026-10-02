@@ -3880,7 +3880,6 @@
     border: 1px solid var(--line); border-left: 3px solid var(--pillar); border-radius: 10px;
     background: var(--surface); margin-bottom: 8px; overflow: hidden;
 }
-.ig-dm-plan.stage-ide { border-left-style: dashed; }
 .ig-dm-card-top { display: flex; align-items: flex-start; gap: 8px; padding: 10px 10px 10px 12px; }
 .ig-dm-card-main { display: flex; gap: 10px; flex: 1; min-width: 0; align-items: flex-start; border-radius: 8px; }
 .ig-dm-plan .ig-dm-card-main { cursor: pointer; }
@@ -3928,7 +3927,7 @@
 .ig-dm-suggest { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 4px; }
 .ig-dm-suggest button {
     font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 14px; cursor: pointer;
-    border: 1px dashed var(--brand); background: transparent; color: var(--brand);
+    border: 1px solid var(--brand); background: transparent; color: var(--brand);
 }
 .ig-dm-suggest button:hover { background: var(--brand-tint); }
 
