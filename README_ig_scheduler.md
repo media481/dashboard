@@ -243,3 +243,16 @@ draft ─(set jadwal)──> scheduled ─(cron pickup)──> publishing ──
 - **Rate limit**: ig-publish memproses maks 20 post per run untuk menghindari rate limit Graph API.
 - **Video/Reels**: butuh polling `status_code` hingga `FINISHED` sebelum publish (bisa hingga 60 detik). Jika belum selesai, post tetap di status `publishing` dan cron run berikutnya akan lanjutkan cek.
 - **RLS**: semua tabel IG Scheduler mensyaratkan `auth.role() = 'authenticated'` — anon/publik tidak bisa akses sama sekali.
+
+---
+
+## Kalender sebagai Content Planner
+
+Kalender IG Scheduler sekarang berfungsi sekaligus sebagai papan perencanaan konten (tanpa migrasi SQL baru — tetap memakai tabel `ig_content_plan`):
+
+- **Chip per item** di setiap sel tanggal (maks. 3, sisanya "+N lagi"): post tampil dengan warna status & thumbnail, ide/rencana tampil putus-putus dengan ikon tipe konten (image / reels / carousel). Di layar kecil chip diringkas jadi titik.
+- **Filter** Semua / Rencana / Post di atas kalender.
+- **Ringkasan bulan**: jumlah ide, draft, terjadwal, terbit, gagal, komposisi tipe konten, dan jumlah hari yang masih kosong (dari hari ini ke depan).
+- **Drag & drop**: seret chip ide ke tanggal lain untuk memindahkan (update `tanggal` + `bulan`). Di modal harian tersedia input tanggal sebagai alternatif untuk mobile.
+- **Tambah ide cepat** dari modal harian (tema + tipe konten), tanpa harus generate AI.
+- Hanya item *ide* yang bisa dipindah lewat drag & drop; jadwal post yang sudah dibuat tetap diubah lewat modal Edit supaya tidak mengganggu antrean publish.

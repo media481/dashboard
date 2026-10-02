@@ -472,6 +472,14 @@
                             </div>
                             <button class="ig-cal-today-btn" onclick="igGotoToday()"><i class="bi bi-calendar-check"></i> Hari Ini</button>
                         </div>
+                        <div class="ig-cal-planbar">
+                            <div class="ig-cal-filter" id="igCalFilter">
+                                <button type="button" data-filter="all" class="active" onclick="igSetCalFilter('all')">Semua</button>
+                                <button type="button" data-filter="plan" onclick="igSetCalFilter('plan')"><i class="bi bi-lightbulb"></i> Rencana</button>
+                                <button type="button" data-filter="post" onclick="igSetCalFilter('post')"><i class="bi bi-instagram"></i> Post</button>
+                            </div>
+                            <div class="ig-cal-summary" id="igCalSummary"></div>
+                        </div>
                         <div class="ig-calendar-grid">
                             <div class="ig-cal-day-header">Min</div>
                             <div class="ig-cal-day-header">Sen</div>
@@ -1329,6 +1337,19 @@
         <div class="modal-body">
             <div class="ig-day-post-list" id="igDayModalBody">
                 <!-- Diisi oleh JS -->
+            </div>
+            <div class="ig-plan-quickadd" id="igPlanQuickAdd" style="display:none;">
+                <div class="ig-plan-quickadd-label"><i class="bi bi-lightbulb"></i> Tambah ide konten di tanggal ini</div>
+                <div class="ig-plan-quickadd-row">
+                    <input type="text" id="igQuickPlanTema" maxlength="120" placeholder="Tema / ide, mis. Testimoni jamaah quad"
+                        onkeydown="if(event.key==='Enter'){event.preventDefault();igQuickAddPlan();}">
+                    <select id="igQuickPlanTipe">
+                        <option value="image">Image</option>
+                        <option value="video">Video/Reels</option>
+                        <option value="carousel">Carousel</option>
+                    </select>
+                    <button type="button" class="btn-secondary" onclick="igQuickAddPlan()" style="font-size:12px;padding:6px 12px;"><i class="bi bi-plus-lg"></i> Tambah</button>
+                </div>
             </div>
             <div class="form-actions" style="border-top:none;padding-top:4px;">
                 <button class="btn-primary" id="igDayModalAddBtn" onclick="igAddPostFromDayModal()" style="font-size:12px;padding:6px 14px;">

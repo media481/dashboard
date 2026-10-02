@@ -13144,6 +13144,23 @@ function igPostRefDate(post) {
     return raw ? new Date(raw) : null;
 }
 
+// Filter tampilan kalender: 'all' | 'plan' (hanya ide/rencana) | 'post' (hanya post IG)
+let igCalFilter = 'all';
+const IG_TYPE_ICONS = { image: 'bi-image', video: 'bi-camera-reels', carousel: 'bi-images' };
+const IG_TYPE_LABELS = { image: 'Image', video: 'Reels', carousel: 'Carousel' };
+const IG_CAL_MAX_CHIPS = 3; // jumlah chip per sel sebelum diringkas "+N lagi"
+
+function igSetCalFilter(filter) {
+    igCalFilter = ['all', 'plan', 'post'].includes(filter) ? filter : 'all';
+    renderIgCalendar();
+}
+
+// Teks singkat untuk chip: baris pertama caption / tema, dipotong lewat CSS (ellipsis)
+function igChipText(text, fallback) {
+    const first = String(text || '').split('\n').find(l => l.trim()) || '';
+    return first.trim() || fallback;
+}
+
 function renderIgCalendar() {
     const monthEl = document.getElementById('igCalMonth');
     const daysEl = document.getElementById('igCalDays');
@@ -13164,23 +13181,30 @@ function renderIgCalendar() {
 
     // Kelompokkan semua post bulan ini berdasarkan tanggal
     const postsByDay = {};
+    const monthPosts = [];
     igPosts.forEach(p => {
         const d = igPostRefDate(p);
         if (!d || d.getFullYear() !== year || d.getMonth() !== month) return;
-        const day = d.getDate();
-        (postsByDay[day] = postsByDay[day] || []).push(p);
+        monthPosts.push(p);
+        (postsByDay[d.getDate()] = postsByDay[d.getDate()] || []).push(p);
     });
 
     // Kelompokkan rencana konten (status 'idea' saja -- yang sudah 'dijadikan_post'
-    // tidak perlu dot terpisah karena post aslinya sudah tampil dari igPosts,
+    // tidak perlu chip terpisah karena post aslinya sudah tampil dari igPosts,
     // dan yang 'dilewati' memang sengaja disembunyikan dari kalender).
     const planByDay = {};
+    const monthPlans = [];
     igContentPlan.forEach(pl => {
         if (pl.status !== 'idea' || !pl.tanggal) return;
         const [py, pm, pd] = pl.tanggal.split('-').map(Number);
         if (py !== year || (pm - 1) !== month) return;
+        monthPlans.push(pl);
         (planByDay[pd] = planByDay[pd] || []).push(pl);
     });
+
+    const showPosts = igCalFilter !== 'plan';
+    const showPlans = igCalFilter !== 'post';
+    const canDrag = typeof canManageProgramData === 'function' && canManageProgramData();
 
     let html = '';
 
@@ -13189,53 +13213,210 @@ function renderIgCalendar() {
         html += `<div class="ig-cal-day ig-cal-empty"></div>`;
     }
 
+    let emptyFutureDays = 0;
     for (let day = 1; day <= totalDays; day++) {
         const cellDate = new Date(year, month, day);
         const isToday = cellDate.getTime() === today.getTime();
+        const isPast = cellDate.getTime() < today.getTime();
         const isWeekend = cellDate.getDay() === 0 || cellDate.getDay() === 6;
-        const dayPosts = (postsByDay[day] || []).slice().sort((a, b) => igPostRefDate(a) - igPostRefDate(b));
-        const dayPlans = planByDay[day] || [];
+        const allDayPosts = (postsByDay[day] || []).slice().sort((a, b) => igPostRefDate(a) - igPostRefDate(b));
+        const allDayPlans = planByDay[day] || [];
+        const dayPosts = showPosts ? allDayPosts : [];
+        const dayPlans = showPlans ? allDayPlans : [];
         const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-        let dotsHtml = '';
-        if (dayPosts.length) {
-            const visible = dayPosts.slice(0, 4);
-            dotsHtml = `<div class="ig-cal-dots">` + visible.map(p => {
-                const color = IG_STATUS_COLORS[p.status] || IG_STATUS_COLORS.draft;
-                const label = escapeHtml(IG_STATUS_LABELS[p.status] || p.status);
-                return `<span class="ig-cal-dot-mark" style="background:${color};" title="${label}"></span>`;
-            }).join('') + (dayPosts.length > 4 ? `<span class="ig-cal-dot-more">+${dayPosts.length - 4}</span>` : '') + `</div>`;
-        }
-        if (dayPlans.length) {
-            dotsHtml += `<div class="ig-cal-dots ig-cal-dots-plan">` + dayPlans.slice(0, 3).map(pl =>
-                `<span class="ig-cal-dot-mark ig-cal-dot-plan" title="Rencana: ${escapeHtml(pl.tema)}"></span>`
-            ).join('') + (dayPlans.length > 3 ? `<span class="ig-cal-dot-more">+${dayPlans.length - 3}</span>` : '') + `</div>`;
-        }
+        // Hitung hari kosong (belum ada post maupun ide) dari hari ini ke depan
+        if (!isPast && !allDayPosts.length && !allDayPlans.length) emptyFutureDays++;
 
-        let thumbHtml = '';
-        const firstMedia = dayPosts.find(p => p.media_type === 'image' && p.media_url);
-        if (firstMedia) {
-            thumbHtml = `<img src="${firstMedia.media_url}" class="ig-cal-thumb" loading="lazy" alt="">`;
+        // Chip per item: post dulu (urut jam), lalu ide
+        const chips = [];
+        dayPosts.forEach(p => {
+            const color = IG_STATUS_COLORS[p.status] || IG_STATUS_COLORS.draft;
+            const statusLabel = IG_STATUS_LABELS[p.status] || p.status;
+            const ref = igPostRefDate(p);
+            const jam = ref ? ref.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '';
+            const text = igChipText(p.caption, '(tanpa caption)');
+            const lead = (p.media_type === 'image' && p.media_url)
+                ? `<img class="ig-cal-chip-thumb" src="${escapeHtmlAttr(p.media_url)}" loading="lazy" alt="">`
+                : `<i class="bi ${IG_TYPE_ICONS[p.media_type] || 'bi-image'}"></i>`;
+            chips.push(`<div class="ig-cal-chip ig-cal-chip-post" style="--chip:${color};" title="${escapeHtmlAttr(`${statusLabel}${jam ? ' · ' + jam : ''} — ${text}`)}">${lead}<span>${escapeHtml(text)}</span></div>`);
+        });
+        dayPlans.forEach(pl => {
+            const text = igChipText(pl.tema, '(tanpa tema)');
+            chips.push(`<div class="ig-cal-chip ig-cal-chip-plan" data-plan-id="${pl.id}" ${canDrag ? 'draggable="true"' : ''} title="${escapeHtmlAttr(`Rencana (${IG_TYPE_LABELS[pl.tipe_konten] || 'Image'}) — ${text}${canDrag ? ' · seret ke tanggal lain untuk memindah' : ''}`)}"><i class="bi ${IG_TYPE_ICONS[pl.tipe_konten] || 'bi-image'}"></i><span>${escapeHtml(text)}</span></div>`);
+        });
+
+        let chipsHtml = '';
+        if (chips.length) {
+            const visible = chips.slice(0, IG_CAL_MAX_CHIPS).join('');
+            const more = chips.length > IG_CAL_MAX_CHIPS ? `<div class="ig-cal-chip-more">+${chips.length - IG_CAL_MAX_CHIPS} lagi</div>` : '';
+            chipsHtml = `<div class="ig-cal-chips">${visible}${more}</div>`;
         }
 
         const cellClasses = ['ig-cal-day'];
         if (isToday) cellClasses.push('ig-cal-today');
+        if (isPast) cellClasses.push('ig-cal-past');
         if (isWeekend) cellClasses.push('ig-cal-weekend');
         if (dayPosts.length) cellClasses.push('has-posts');
         if (dayPlans.length && !dayPosts.length) cellClasses.push('has-plan-only');
+        if (!allDayPosts.length && !allDayPlans.length && !isPast) cellClasses.push('ig-cal-gap');
 
         const totalCount = dayPosts.length + dayPlans.length;
         html += `<div class="${cellClasses.join(' ')}" data-date="${dateKey}" onclick="igOnDayClick('${dateKey}')">
             <div class="ig-cal-day-top">
                 <span class="ig-cal-day-num">${day}</span>
                 ${totalCount ? `<span class="ig-cal-day-count">${totalCount}</span>` : ''}
+                <span class="ig-cal-add-hint" title="Tambah ide / post"><i class="bi bi-plus-lg"></i></span>
             </div>
-            ${thumbHtml}
-            ${dotsHtml}
+            ${chipsHtml}
         </div>`;
     }
 
     daysEl.innerHTML = html;
+    igBindCalendarDnD(daysEl);
+    renderIgCalSummary(monthPosts, monthPlans, emptyFutureDays);
+
+    // Sinkronkan status aktif tombol filter
+    document.querySelectorAll('#igCalFilter button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === igCalFilter);
+    });
+}
+
+// ---- Ringkasan bulan (bar di atas kalender): status, mix tipe konten, hari kosong ----
+function renderIgCalSummary(monthPosts, monthPlans, emptyFutureDays) {
+    const el = document.getElementById('igCalSummary');
+    if (!el) return;
+
+    const count = st => monthPosts.filter(p => p.status === st).length;
+    const pills = [];
+    if (monthPlans.length) pills.push(`<span class="ig-cal-sum-pill ig-cal-sum-plan"><i class="bi bi-lightbulb"></i> ${monthPlans.length} ide</span>`);
+    const draft = count('draft'), sched = count('scheduled'), pub = count('published'), fail = count('failed');
+    if (draft) pills.push(`<span class="ig-cal-sum-pill" style="--chip:${IG_STATUS_COLORS.draft};">${draft} draft</span>`);
+    if (sched) pills.push(`<span class="ig-cal-sum-pill" style="--chip:${IG_STATUS_COLORS.scheduled};">${sched} terjadwal</span>`);
+    if (pub) pills.push(`<span class="ig-cal-sum-pill" style="--chip:${IG_STATUS_COLORS.published};">${pub} terbit</span>`);
+    if (fail) pills.push(`<span class="ig-cal-sum-pill" style="--chip:${IG_STATUS_COLORS.failed};">${fail} gagal</span>`);
+
+    // Mix tipe konten (post + ide) -- membantu menjaga variasi image/reels/carousel
+    const mix = { image: 0, video: 0, carousel: 0 };
+    monthPosts.forEach(p => { if (mix[p.media_type] !== undefined) mix[p.media_type]++; });
+    monthPlans.forEach(pl => { const t = pl.tipe_konten || 'image'; if (mix[t] !== undefined) mix[t]++; });
+    const mixTotal = mix.image + mix.video + mix.carousel;
+    const mixHtml = mixTotal
+        ? `<span class="ig-cal-sum-mix" title="Komposisi tipe konten bulan ini (post + ide)"><i class="bi bi-pie-chart"></i> ${mix.image} image · ${mix.video} reels · ${mix.carousel} carousel</span>`
+        : '';
+    const gapHtml = emptyFutureDays
+        ? `<span class="ig-cal-sum-gap" title="Hari yang belum punya post maupun ide"><i class="bi bi-calendar-plus"></i> ${emptyFutureDays} hari masih kosong</span>`
+        : '';
+
+    el.innerHTML = (pills.join('') || '<span class="ig-cal-sum-empty">Belum ada konten bulan ini</span>') + mixHtml + gapHtml;
+}
+
+// ---- Drag & drop: pindahkan ide (chip putus-putus) ke tanggal lain ----
+let igDragPlanId = null;
+
+function igBindCalendarDnD(daysEl) {
+    if (daysEl._dndBound) return; // listener cukup dipasang sekali (konten di-render ulang, container tetap)
+    daysEl._dndBound = true;
+
+    daysEl.addEventListener('dragstart', e => {
+        const chip = e.target.closest && e.target.closest('.ig-cal-chip-plan[data-plan-id]');
+        if (!chip) return;
+        igDragPlanId = chip.dataset.planId;
+        e.dataTransfer.effectAllowed = 'move';
+        try { e.dataTransfer.setData('text/plain', igDragPlanId); } catch (err) {}
+        chip.classList.add('ig-cal-chip-dragging');
+    });
+    daysEl.addEventListener('dragend', () => {
+        igDragPlanId = null;
+        daysEl.querySelectorAll('.ig-cal-chip-dragging, .ig-cal-drop').forEach(n => n.classList.remove('ig-cal-chip-dragging', 'ig-cal-drop'));
+    });
+    daysEl.addEventListener('dragover', e => {
+        if (!igDragPlanId) return;
+        const cell = e.target.closest && e.target.closest('.ig-cal-day[data-date]');
+        if (!cell) return;
+        e.preventDefault(); // wajib supaya sel menerima drop
+        e.dataTransfer.dropEffect = 'move';
+        daysEl.querySelectorAll('.ig-cal-drop').forEach(n => { if (n !== cell) n.classList.remove('ig-cal-drop'); });
+        cell.classList.add('ig-cal-drop');
+    });
+    daysEl.addEventListener('drop', e => {
+        if (!igDragPlanId) return;
+        const cell = e.target.closest && e.target.closest('.ig-cal-day[data-date]');
+        if (!cell) return;
+        e.preventDefault();
+        const planId = igDragPlanId;
+        igDragPlanId = null;
+        igMovePlanToDate(planId, cell.dataset.date);
+    });
+}
+
+// ---- Pindahkan 1 ide ke tanggal lain (dipakai drag & drop + input tanggal di modal harian) ----
+async function igMovePlanToDate(planId, dateKey, fromModal = false) {
+    if (!canManageProgramData()) {
+        showToast('Akun Anda tidak punya izin untuk memindah rencana konten', 'error');
+        return;
+    }
+    const plan = igContentPlan.find(pl => pl.id === planId);
+    if (!plan || !dateKey || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return;
+    if (plan.tanggal === dateKey) return;
+
+    const [y, m, d] = dateKey.split('-');
+    const prev = { tanggal: plan.tanggal, bulan: plan.bulan };
+    // Optimistik: kalender langsung berubah, dibalikkan kalau simpan gagal
+    plan.tanggal = dateKey;
+    plan.bulan = `${y}-${m}-01`;
+    renderIgCalendar();
+    if (fromModal && igDayModalDateKey) igOpenDayModal(igDayModalDateKey);
+
+    try {
+        const { error } = await supabaseClient.from('ig_content_plan')
+            .update({ tanggal: plan.tanggal, bulan: plan.bulan }).eq('id', planId);
+        if (error) throw error;
+        const bln = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][parseInt(m, 10) - 1];
+        showToast(`Ide dipindah ke ${parseInt(d, 10)} ${bln}`, 'success');
+    } catch (err) {
+        console.error('igMovePlanToDate error:', err);
+        plan.tanggal = prev.tanggal;
+        plan.bulan = prev.bulan;
+        renderIgCalendar();
+        if (fromModal && igDayModalDateKey) igOpenDayModal(igDayModalDateKey);
+        showToast('Gagal memindah rencana: ' + err.message, 'error');
+    }
+}
+
+// ---- Tambah ide manual langsung dari modal harian ----
+async function igQuickAddPlan() {
+    if (!canManageProgramData()) {
+        showToast('Akun Anda tidak punya izin untuk membuat rencana konten', 'error');
+        return;
+    }
+    const dateKey = igDayModalDateKey;
+    if (!dateKey) return;
+    const temaEl = document.getElementById('igQuickPlanTema');
+    const tipeEl = document.getElementById('igQuickPlanTipe');
+    const tema = (temaEl?.value || '').trim();
+    if (!tema) { showToast('Isi tema/ide dulu', 'error'); temaEl?.focus(); return; }
+
+    const [y, m] = dateKey.split('-');
+    try {
+        const { data, error } = await supabaseClient.from('ig_content_plan').insert({
+            bulan: `${y}-${m}-01`,
+            tanggal: dateKey,
+            tema,
+            tipe_konten: tipeEl?.value || 'image',
+            draft_caption: '',
+            status: 'idea'
+        }).select().single();
+        if (error) throw error;
+        igContentPlan.push(data);
+        renderIgCalendar();
+        igOpenDayModal(dateKey);
+        document.getElementById('igQuickPlanTema')?.focus(); // siap ketik ide berikutnya
+        showToast('Ide ditambahkan ke kalender', 'success');
+    } catch (err) {
+        console.error('igQuickAddPlan error:', err);
+        showToast('Gagal menambah ide: ' + err.message, 'error');
+    }
 }
 
 function igPrevMonth() {
@@ -13265,6 +13446,12 @@ function igOpenDayModal(dateKey) {
     if (!modal || !bodyEl) return;
 
     igDayModalDateKey = dateKey;
+    const quickAdd = document.getElementById('igPlanQuickAdd');
+    if (quickAdd) {
+        quickAdd.style.display = canManageProgramData() ? 'block' : 'none';
+        const qt = document.getElementById('igQuickPlanTema');
+        if (qt) qt.value = '';
+    }
     const [y, m, d] = dateKey.split('-').map(Number);
     const dateObj = new Date(y, m - 1, d);
     if (titleEl) {
@@ -13279,7 +13466,7 @@ function igOpenDayModal(dateKey) {
     const dayPlans = igContentPlan.filter(pl => pl.status === 'idea' && pl.tanggal === dateKey);
 
     if (!dayPosts.length && !dayPlans.length) {
-        bodyEl.innerHTML = `<div class="ig-empty"><i class="bi bi-calendar-x"></i> Belum ada post pada tanggal ini.</div>`;
+        bodyEl.innerHTML = `<div class="ig-empty"><i class="bi bi-calendar-x"></i> Belum ada post atau ide pada tanggal ini.</div>`;
     } else {
         const planHtml = dayPlans.map(pl => {
             const typeIcon = pl.tipe_konten === 'video' ? 'bi-camera-reels' : (pl.tipe_konten === 'carousel' ? 'bi-images' : 'bi-image');
@@ -13304,6 +13491,8 @@ function igOpenDayModal(dateKey) {
                                 <option value="video"${pl.tipe_konten === 'video' ? ' selected' : ''}>Video/Reels</option>
                                 <option value="carousel"${pl.tipe_konten === 'carousel' ? ' selected' : ''}>Carousel</option>
                             </select>
+                            <input type="date" class="ig-plan-edit-tanggal" value="${escapeHtmlAttr(pl.tanggal)}" title="Pindah ke tanggal lain"
+                                onchange="igMovePlanToDate('${pl.id}',this.value,true)">
                             <span class="ig-plan-save-indicator" id="igPlanSaved-${pl.id}"></span>
                         </div>
                         <textarea class="ig-plan-edit-caption ig-plan-edit-caption--lg" rows="10" maxlength="2200"
@@ -14471,7 +14660,7 @@ async function igPlanUpdateField(planId, field, value) {
             clearTimeout(indicator._hideTimer);
             indicator._hideTimer = setTimeout(() => indicator.classList.remove('show'), 1800);
         }
-        if (field === 'tema') renderIgCalendar(); // tema dipakai di tooltip dot kalender
+        if (field === 'tema' || field === 'tipe_konten') renderIgCalendar(); // tema & tipe dipakai di chip kalender
     } catch (err) {
         console.error('igPlanUpdateField error:', err);
         showToast('Gagal menyimpan perubahan: ' + err.message, 'error');
@@ -14560,6 +14749,9 @@ window.loadIgPosts = loadIgPosts;
 window.igPrevMonth = igPrevMonth;
 window.igNextMonth = igNextMonth;
 window.igGotoToday = igGotoToday;
+window.igSetCalFilter = igSetCalFilter;
+window.igQuickAddPlan = igQuickAddPlan;
+window.igMovePlanToDate = igMovePlanToDate;
 window.igOnDayClick = igOnDayClick;
 window.closeIgDayModal = closeIgDayModal;
 window.igTogglePlanEdit = igTogglePlanEdit;
