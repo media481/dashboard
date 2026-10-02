@@ -20,9 +20,13 @@
 //     tanggalMulai: string,      // "2026-09-01"
 //     tanggalAkhir: string,      // "2026-09-30"
 //     konteksProgram: string,    // ringkasan program aktif/berangkat bulan ini
-//     arahan?: string            // arahan tambahan opsional dari admin (tema campaign, dst)
+//     arahan?: string,           // arahan tambahan opsional dari admin (tema campaign, dst)
+//     ideSudahAda?: string       // daftar ide yang sudah ada di bulan itu ("YYYY-MM-DD — tema" per baris)
+//                                // supaya AI tidak mengulang topik/tanggal yang sama
 //   }
-//   Response: { items: [{ tanggal, tema, tipe_konten, draft_caption }, ...] }
+//   Response: { items: [{ tanggal, tema, tipe_konten, pilar, draft_caption }, ...] }
+//   (tanggal dijamin valid & di dalam tanggalMulai..tanggalAkhir, jumlah item <= jumlahPost,
+//    pilar salah satu dari edukasi|promo|testimoni|manasik|engagement|behind)
 //
 // Deploy:
 //   supabase functions deploy generate-ig-content-plan --no-verify-jwt
@@ -41,8 +45,11 @@ const CONTENT_PLAN_SYSTEM_PROMPT = `Kamu adalah social media strategist untuk bi
 
 ATURAN PENTING:
 - Output HARUS berupa JSON array MURNI, tanpa markdown code fence, tanpa teks pembuka/penutup apa pun — cuma JSON.
-- Setiap elemen array berbentuk: { "tanggal": "YYYY-MM-DD", "tema": string, "tipe_konten": "image"|"video"|"carousel", "draft_caption": string }.
+- Setiap elemen array berbentuk: { "tanggal": "YYYY-MM-DD", "tema": string, "tipe_konten": "image"|"video"|"carousel", "pilar": "promo"|"edukasi"|"manasik"|"testimoni"|"engagement"|"behind", "draft_caption": string }.
+- Isi "pilar" sesuai jenis kontennya: promosi program → "promo"; edukatif umum (FAQ, doa, adab) → "edukasi"; persiapan/tata cara manasik & perlengkapan → "manasik"; testimoni/social proof → "testimoni"; kuis/pertanyaan ke followers → "engagement"; momen di balik layar tim/kantor → "behind".
 - Jumlah elemen HARUS sesuai jumlahPost yang diminta di prompt user.
+- Semua "tanggal" HARUS berada di dalam rentang tanggalMulai..tanggalAkhir (inklusif) dan merupakan tanggal kalender yang valid.
+- Kalau ada daftar IDE YANG SUDAH ADA, JANGAN mengulang topiknya dan hindari menaruh ide baru di tanggal yang sama dengan ide yang sudah ada.
 - Sebar tanggal MERATA sepanjang rentang tanggalMulai..tanggalAkhir (jangan menumpuk di 1-2 hari), idealnya beda hari untuk tiap ide, prioritaskan hari kerja tapi boleh juga weekend sesekali.
 - VARIASIKAN jenis konten — JANGAN semua jualan paket langsung. Campur proporsi kira-kira:
   - ~40% promosi program aktif (pakai data dari KONTEKS PROGRAM yang diberikan, sebut tanggal/harga PERSIS seperti di konteks — jangan mengarang angka)
@@ -58,7 +65,19 @@ interface PlanItem {
   tanggal: string;
   tema: string;
   tipe_konten: string;
+  pilar?: string;
   draft_caption: string;
+}
+
+const VALID_PILARS = new Set(["edukasi", "promo", "testimoni", "manasik", "engagement", "behind"]);
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// true kalau str adalah tanggal kalender nyata (bukan mis. 2026-02-31)
+function isRealDate(str: string): boolean {
+  if (!DATE_RE.test(str)) return false;
+  const [y, m, d] = str.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
 }
 
 function stripJsonFence(text: string): string {
@@ -79,7 +98,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir, konteksProgram, arahan } = body || {};
+    const { bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir, konteksProgram, arahan, ideSudahAda } = body || {};
 
     if (!bulanLabel || !jumlahPost || !tanggalMulai || !tanggalAkhir) {
       return new Response(JSON.stringify({ error: "bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir wajib diisi" }), {
@@ -95,6 +114,7 @@ Deno.serve(async (req: Request) => {
 KONTEKS PROGRAM AKTIF/BERANGKAT BULAN INI:
 ${konteksProgram && String(konteksProgram).trim() ? konteksProgram : '(tidak ada data program spesifik untuk bulan ini)'}
 ${arahan && String(arahan).trim() ? `\nARAHAN TAMBAHAN DARI ADMIN:\n${arahan}` : ''}
+${ideSudahAda && String(ideSudahAda).trim() ? `\nIDE YANG SUDAH ADA BULAN INI (jangan diulang):\n${String(ideSudahAda).slice(0, 4000)}` : ''}
 
 Ingat: balas HANYA dengan JSON array sesuai format yang sudah dijelaskan, tidak ada teks lain.`;
 
@@ -128,17 +148,22 @@ Ingat: balas HANYA dengan JSON array sesuai format yang sudah dijelaskan, tidak 
     // Validasi & bersihkan tiap item — buang yang cacat, jangan sampai 1 item
     // rusak menggagalkan seluruh batch.
     const validTypes = new Set(["image", "video", "carousel"]);
+    const rangeOk = (t: string) => isRealDate(t) && t >= String(tanggalMulai) && t <= String(tanggalAkhir);
     const cleaned = items
       .filter((it) => it && typeof it === "object" && it.tanggal && it.tema && it.draft_caption)
       .map((it) => ({
         tanggal: String(it.tanggal).slice(0, 10),
         tema: String(it.tema).trim().slice(0, 200),
         tipe_konten: validTypes.has(String(it.tipe_konten)) ? String(it.tipe_konten) : "image",
+        pilar: VALID_PILARS.has(String(it.pilar)) ? String(it.pilar) : null,
         draft_caption: String(it.draft_caption).trim(),
-      }));
+      }))
+      // Buang tanggal cacat / di luar rentang bulan, lalu batasi sesuai jumlah yang diminta
+      .filter((it) => rangeOk(it.tanggal))
+      .slice(0, jumlah);
 
     if (!cleaned.length) {
-      throw new Error("Semua item hasil AI tidak valid/lengkap.");
+      throw new Error("Semua item hasil AI tidak valid (tanggal di luar rentang bulan atau data kurang lengkap). Coba generate ulang.");
     }
 
     return new Response(JSON.stringify({ items: cleaned }), {

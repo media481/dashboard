@@ -12970,6 +12970,14 @@ async function loadIgPosts(forceRefresh = false) {
     }
 }
 
+// Tombol Refresh: muat ulang post DAN rencana konten (sebelumnya hanya post, jadi
+// ide yang ditambah/diubah orang lain di sesi lain tidak ikut muncul).
+async function igRefreshAll() {
+    await Promise.all([loadIgPosts(true), loadIgContentPlan()]);
+    showToast('Data diperbarui', 'success');
+}
+window.igRefreshAll = igRefreshAll;
+
 // ---- Load IG accounts (tanpa expose access_token) ----
 async function loadIgAccounts() {
     try {
@@ -13289,10 +13297,15 @@ function renderIgCalendar() {
     // dan yang 'dilewati' memang sengaja disembunyikan dari kalender).
     const planByDay = {};
     const monthPlans = [];
+    // Untuk bar keseimbangan pilar: ide aktif + ide yang sudah dijadikan post
+    // (post IG tidak punya kolom pilar, jadi pilarnya diambil dari rencana asalnya).
+    const pillarPlans = [];
     igContentPlan.forEach(pl => {
-        if (pl.status !== 'idea' || !pl.tanggal) return;
+        if (!pl.tanggal) return;
         const [py, pm, pd] = pl.tanggal.split('-').map(Number);
         if (py !== year || (pm - 1) !== month) return;
+        if (pl.status === 'idea' || pl.status === 'dijadikan_post') pillarPlans.push(pl);
+        if (pl.status !== 'idea') return;
         monthPlans.push(pl);
         (planByDay[pd] = planByDay[pd] || []).push(pl);
     });
@@ -13371,7 +13384,7 @@ function renderIgCalendar() {
 
     daysEl.innerHTML = html;
     igBindCalendarDnD(daysEl);
-    renderIgCalSummary(monthPosts, monthPlans, emptyFutureDays);
+    renderIgCalSummary(monthPosts, monthPlans, emptyFutureDays, pillarPlans);
     renderIgPlanSide(monthPlans);
 
     // Sinkronkan status aktif tombol filter
@@ -13381,7 +13394,7 @@ function renderIgCalendar() {
 }
 
 // ---- Ringkasan bulan: kartu statistik + keseimbangan pilar konten ----
-function renderIgCalSummary(monthPosts, monthPlans, emptyFutureDays) {
+function renderIgCalSummary(monthPosts, monthPlans, emptyFutureDays, pillarPlans = monthPlans) {
     const el = document.getElementById('igCalSummary');
     if (!el) return;
     const st = t => monthPlans.filter(p => (p.tahap || 'ide') === t).length;
@@ -13394,13 +13407,13 @@ function renderIgCalSummary(monthPosts, monthPlans, emptyFutureDays) {
         card(monthPosts.length, 'Draft & post', 'ig-stat-post') +
         card(emptyFutureDays, 'Hari kosong', 'ig-stat-gap') + '</div>';
 
-    if (igPlannerColsReady && monthPlans.length) {
+    if (igPlannerColsReady && pillarPlans.length) {
         const counts = {};
-        monthPlans.forEach(p => { const k = IG_PILLARS[p.pilar] ? p.pilar : '_none'; counts[k] = (counts[k] || 0) + 1; });
+        pillarPlans.forEach(p => { const k = IG_PILLARS[p.pilar] ? p.pilar : '_none'; counts[k] = (counts[k] || 0) + 1; });
         const keys = Object.keys(counts);
         const color = k => k === '_none' ? 'var(--line)' : IG_PILLARS[k].color;
         const label = k => k === '_none' ? 'Belum ada pilar' : IG_PILLARS[k].label;
-        html += `<div class="ig-pillar-bar" title="Keseimbangan pilar konten (ide bulan ini)">` +
+        html += `<div class="ig-pillar-bar" title="Keseimbangan pilar konten (ide aktif + yang sudah jadi post)">` +
             keys.map(k => `<span style="flex:${counts[k]};background:${color(k)};"></span>`).join('') + '</div>' +
             `<div class="ig-pillar-legend">` + keys.map(k =>
                 `<span><i style="background:${color(k)};"></i>${escapeHtml(label(k))} ${counts[k]}</span>`).join('') + '</div>';
@@ -13686,6 +13699,24 @@ function igDmPlanCard(pl, canEdit) {
     </div>`;
 }
 
+// Kartu ide yang dilewati: redup, hanya bisa dipulihkan (kembali jadi ide) atau dihapus
+function igDmSkippedCard(pl, canEdit) {
+    return `<div class="ig-dm-card ig-dm-plan" style="opacity:.7;">
+        <div class="ig-dm-card-top">
+            <div class="ig-dm-card-main">
+                <div class="ig-dm-card-info">
+                    <div class="ig-dm-card-title">${escapeHtml(pl.tema)}</div>
+                    <div class="ig-dm-badges"><span class="ig-dm-typelabel">${IG_TYPE_LABELS[pl.tipe_konten] || 'Image'}</span></div>
+                </div>
+            </div>
+            ${canEdit ? `<div class="ig-dm-card-actions">
+                <button type="button" class="ig-dm-iconbtn" title="Kembalikan jadi ide aktif" onclick="igRestorePlanItem('${pl.id}')">Pulihkan</button>
+                <button type="button" class="ig-dm-iconbtn ig-dm-danger" title="Hapus" onclick="igArmDelete(this,'${pl.id}')">Hapus</button>
+            </div>` : ''}
+        </div>
+    </div>`;
+}
+
 function igOpenDayModal(dateKey) {
     const modal = document.getElementById('igDayModal');
     const titleEl = document.getElementById('igDayModalTitle');
@@ -13717,6 +13748,7 @@ function igOpenDayModal(dateKey) {
         return dd && dd.getFullYear() === y && dd.getMonth() === m - 1 && dd.getDate() === d;
     }).sort((a, b) => igPostRefDate(a) - igPostRefDate(b));
     const dayPlans = igContentPlan.filter(pl => pl.status === 'idea' && pl.tanggal === dateKey);
+    const daySkipped = igContentPlan.filter(pl => pl.status === 'dilewati' && pl.tanggal === dateKey);
 
     const meta = document.getElementById('igDmMeta');
     const rel = igDmRelLabel(y, m, d);
@@ -13728,12 +13760,13 @@ function igOpenDayModal(dateKey) {
     const todayBtn = document.getElementById('igDmTodayBtn');
     if (todayBtn) todayBtn.style.display = isToday ? 'none' : '';
 
-    if (!dayPosts.length && !dayPlans.length) {
+    if (!dayPosts.length && !dayPlans.length && !daySkipped.length) {
         bodyEl.innerHTML = `<div class="ig-dm-empty">Belum ada konten di tanggal ini${canEdit ? '.<br>Tulis ide di kolom atas, lalu tekan Enter.' : ''}</div>`;
     } else {
         bodyEl.innerHTML =
             (dayPlans.length ? `<div class="ig-dm-section">Rencana <em>${dayPlans.length}</em></div>` + dayPlans.map(pl => igDmPlanCard(pl, canEdit)).join('') : '') +
-            (dayPosts.length ? `<div class="ig-dm-section">Draft & post <em>${dayPosts.length}</em></div>` + dayPosts.map(igDmPostCard).join('') : '');
+            (dayPosts.length ? `<div class="ig-dm-section">Draft & post <em>${dayPosts.length}</em></div>` + dayPosts.map(igDmPostCard).join('') : '') +
+            (daySkipped.length ? `<div class="ig-dm-section">Dilewati <em>${daySkipped.length}</em></div>` + daySkipped.map(pl => igDmSkippedCard(pl, canEdit)).join('') : '');
     }
     bodyEl.scrollTop = prevScroll;
     modal.classList.add('open');
@@ -14264,7 +14297,10 @@ async function saveIgPost(e) {
             const { error: planErr } = await supabaseClient.from('ig_content_plan')
                 .update({ status: 'dijadikan_post', ig_post_id: savedPostId })
                 .eq('id', igActivePlanId);
-            if (planErr) console.error('Gagal update status rencana:', planErr);
+            if (planErr) {
+                console.error('Gagal update status rencana:', planErr);
+                showToast('Post tersimpan, tapi status rencana gagal diperbarui — ide asal mungkin masih tampil di kalender', 'error');
+            }
             igActivePlanId = null;
             await loadIgContentPlan();
         }
@@ -14283,8 +14319,14 @@ async function saveIgPost(e) {
 async function deleteIgPost(postId) {
     if (!canManageProgramData()) return;
     try {
+        // Ide asal post ini (kalau ada) dikembalikan jadi 'idea' supaya tidak hilang dari kalender.
+        // Dilakukan SEBELUM hapus karena FK ig_post_id otomatis di-null-kan saat post terhapus.
+        const { error: revErr } = await supabaseClient.from('ig_content_plan')
+            .update({ status: 'idea', ig_post_id: null }).eq('ig_post_id', postId).eq('status', 'dijadikan_post');
+        if (revErr) console.error('Gagal mengembalikan status rencana:', revErr);
         const { error } = await supabaseClient.from('ig_posts').delete().eq('id', postId);
         if (error) throw error;
+        await loadIgContentPlan();
         showToast('Post dihapus', 'success');
         closeIgActionModal();
         igPostsCurrentPage = 1;
@@ -14645,6 +14687,14 @@ async function loadIgContentPlan() {
         );
         if (error) throw error;
         igContentPlan = data || [];
+        // Pulihkan ide "yatim": status dijadikan_post tapi post-nya sudah terhapus (ig_post_id null
+        // karena FK on delete set null). Ide seperti ini hilang dari kalender tanpa jejak.
+        const orphans = igContentPlan.filter(pl => pl.status === 'dijadikan_post' && !pl.ig_post_id);
+        if (orphans.length && canManageProgramData()) {
+            const { error: healErr } = await supabaseClient.from('ig_content_plan')
+                .update({ status: 'idea' }).in('id', orphans.map(o => o.id));
+            if (!healErr) orphans.forEach(o => { o.status = 'idea'; });
+        }
         if (!igPlannerColsReady) {
             const probe = await supabaseClient.from('ig_content_plan').select('pilar,tahap').limit(1);
             igPlannerColsReady = !probe.error;
@@ -14749,6 +14799,13 @@ async function generateIgContentPlanAI() {
     const jumlahPost = Math.max(1, Math.min(60, parseInt(countInput?.value, 10) || 12));
     const arahan = (arahanEl?.value || '').trim();
 
+    // Ide yang sudah ada di bulan target (selain yang dilewati): dikirim ke AI supaya tidak
+    // diulang, dan user diberi peringatan dulu karena hasil generate ditambahkan, bukan menimpa.
+    const bulanPrefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
+    const existingPlans = igContentPlan.filter(pl => pl.tanggal && pl.tanggal.startsWith(bulanPrefix) && pl.status !== 'dilewati');
+    if (existingPlans.length && !confirm(`Bulan ini sudah ada ${existingPlans.length} ide. Hasil AI akan DITAMBAHKAN di samping ide yang ada (tidak menimpa). Lanjutkan?`)) return;
+    const ideSudahAda = existingPlans.map(pl => `${pl.tanggal} — ${pl.tema}`).join('\n');
+
     const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     const bulanLabel = `${monthNames[month]} ${year}`;
     const tanggalMulai = `${year}-${String(month + 1).padStart(2, '0')}-01`;
@@ -14768,7 +14825,7 @@ async function generateIgContentPlanAI() {
                 'apikey': SUPABASE_ANON_KEY,
                 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
             },
-            body: JSON.stringify({ bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir, konteksProgram, arahan })
+            body: JSON.stringify({ bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir, konteksProgram, arahan, ideSudahAda })
         });
         if (!response.ok) {
             let detail = '';
@@ -14780,14 +14837,24 @@ async function generateIgContentPlanAI() {
         if (!items.length) throw new Error('AI tidak menghasilkan rencana apa pun.');
 
         const bulanCol = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-        const rows = items.map(it => ({
+        // Validasi sisi klien (jaring kedua setelah edge function): tanggal harus valid & jatuh
+        // di bulan target, kalau tidak 1 item cacat bisa menggagalkan seluruh insert / nyasar bulan.
+        const dateOk = t => {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(t || '') || !t.startsWith(bulanPrefix)) return false;
+            const [yy, mm, dd] = t.split('-').map(Number);
+            const chk = new Date(yy, mm - 1, dd);
+            return chk.getFullYear() === yy && chk.getMonth() === mm - 1 && chk.getDate() === dd;
+        };
+        const rows = items.filter(it => dateOk(it.tanggal)).slice(0, jumlahPost).map(it => ({
             bulan: bulanCol,
             tanggal: it.tanggal,
             tema: it.tema,
             tipe_konten: it.tipe_konten || 'image',
             draft_caption: it.draft_caption,
-            status: 'idea'
+            status: 'idea',
+            ...(igPlannerColsReady ? { pilar: IG_PILLARS[it.pilar] ? it.pilar : null, tahap: 'ide' } : {})
         }));
+        if (!rows.length) throw new Error('Semua tanggal hasil AI di luar bulan yang dipilih. Coba generate ulang.');
 
         const { error: insErr } = await supabaseClient.from('ig_content_plan').insert(rows);
         if (insErr) throw insErr;
@@ -14845,7 +14912,9 @@ function renderIgPlanResultList(year, month) {
             ? `<button type="button" class="btn-secondary" onclick="igConvertPlanToPost('${pl.id}')" style="font-size:11px;padding:4px 10px;"><i class="bi bi-arrow-up-right-circle"></i> Jadikan Post</button>
                <button type="button" class="btn-secondary" onclick="igSkipPlanItem('${pl.id}')" style="font-size:11px;padding:4px 10px;" title="Lewati (sembunyikan dari kalender)"><i class="bi bi-eye-slash"></i></button>
                <button type="button" class="btn-secondary ig-btn-danger" onclick="igDeletePlanItem('${pl.id}')" style="font-size:11px;padding:4px 10px;" title="Hapus"><i class="bi bi-trash"></i></button>`
-            : '';
+            : (pl.status === 'dilewati'
+                ? `<button type="button" class="btn-secondary" onclick="igRestorePlanItem('${pl.id}')" style="font-size:11px;padding:4px 10px;" title="Kembalikan jadi ide aktif"><i class="bi bi-arrow-counterclockwise"></i> Pulihkan</button>`
+                : '');
 
         // Item 'idea' bisa diedit langsung di sini (tema, tipe konten, draft caption) --
         // auto-save saat blur/change (tanpa perlu tombol Simpan terpisah), supaya admin
@@ -14958,6 +15027,37 @@ async function igSkipPlanItem(planId) {
         showToast('Gagal melewati rencana: ' + err.message, 'error');
     }
 }
+
+// ---- Refresh daftar hasil di modal "Rencana AI" kalau sedang terbuka ----
+function igRefreshPlanResultListIfOpen() {
+    const resultWrap = document.getElementById('igPlanResultWrap');
+    if (resultWrap && resultWrap.style.display !== 'none') {
+        const monthVal = document.getElementById('igPlanMonth')?.value;
+        if (monthVal) {
+            const [y, m] = monthVal.split('-').map(Number);
+            renderIgPlanResultList(y, m - 1);
+        }
+    }
+}
+
+// ---- Pulihkan ide yang sebelumnya dilewati (status 'dilewati' -> 'idea') ----
+async function igRestorePlanItem(planId) {
+    if (!canManageProgramData()) {
+        showToast('Akun Anda tidak punya izin untuk mengubah rencana konten', 'error');
+        return;
+    }
+    try {
+        const { error } = await supabaseClient.from('ig_content_plan').update({ status: 'idea' }).eq('id', planId);
+        if (error) throw error;
+        await loadIgContentPlan();
+        showToast('Ide dipulihkan', 'success');
+        if (igDayModalDateKey) igOpenDayModal(igDayModalDateKey);
+        igRefreshPlanResultListIfOpen();
+    } catch (err) {
+        showToast('Gagal memulihkan ide: ' + err.message, 'error');
+    }
+}
+window.igRestorePlanItem = igRestorePlanItem;
 
 // ---- Hapus 1 item rencana permanen ----
 async function igDeletePlanItem(planId) {
