@@ -3657,10 +3657,6 @@
    IG Scheduler -- kalender sebagai Content Planner
    (chip per item, filter, ringkasan bulan, drag & drop ide)
    ============================================================ */
-.ig-cal-planbar {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
-    margin: 0 0 12px;
-}
 .ig-cal-filter {
     display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
 }
@@ -3671,6 +3667,10 @@
 }
 .ig-cal-filter button + button { border-left: 1px solid var(--line); }
 .ig-cal-filter button.active { background: var(--brand); color: #fff; }
+.ig-calendar-header > .ig-cal-filter { margin-left: auto; margin-right: auto; }
+@media (max-width: 600px) {
+    .ig-calendar-header > .ig-cal-filter { order: 3; flex-basis: 100%; margin: 0; justify-content: center; }
+}
 .ig-cal-summary {
     display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;
     font-size: 11px; color: var(--ink-soft); font-weight: 600;
