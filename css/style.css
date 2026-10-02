@@ -4207,3 +4207,128 @@
     .ig-planner-mode .ig-scheduler-toolbar .btn-primary,
     .ig-planner-mode .ig-scheduler-toolbar .btn-secondary { padding: 0 14px !important; }
 }
+
+
+/* ============================================================
+   Modal harian -- versi bersih (selaras dengan halaman Content Planner)
+   Tanpa ikon & garis berlapis: aksen pilar di sisi kiri kartu, aksi berupa
+   teks di baris bawah, kontrol tipe/tahap berupa segmented control datar.
+   ============================================================ */
+.modal-content.ig-dm { border-radius: 16px; }
+
+/* Header */
+.ig-dm .ig-dm-header { padding: 18px 20px 14px; border-bottom: 0; gap: 4px; }
+.ig-dm .ig-dm-title { padding: 0 6px; }
+.ig-dm .ig-dm-title h2 { font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+.ig-dm .ig-dm-sub { font-size: 12px; margin-top: 2px; }
+.ig-dm .ig-dm-rel { font-weight: 500; }
+.ig-dm .ig-dm-nav {
+    width: 30px; height: 30px; padding: 0 0 2px; font-size: 20px; line-height: 1;
+    border-color: transparent; background: transparent;
+}
+.ig-dm .ig-dm-nav:hover { background: var(--brand-tint); border-color: transparent; color: var(--brand); }
+.ig-dm .ig-dm-today { border-color: transparent; background: var(--bg); font-weight: 500; padding: 6px 12px; }
+.ig-dm .ig-dm-today:hover { background: var(--brand-tint); border-color: transparent; }
+
+/* Composer: input + Tambah di satu baris, opsi tipe & pilar di bawahnya */
+.ig-dm .ig-dm-composer { padding: 0 20px 16px; background: transparent; border-bottom: 1px solid var(--line); }
+.ig-dm .ig-dm-composer-row { gap: 8px; flex-wrap: nowrap; }
+.ig-dm .ig-dm-composer-input {
+    flex: 1 1 auto; flex-basis: auto; font-size: 14px; padding: 11px 14px; border-radius: 11px;
+    border: 1px solid var(--line); background: var(--bg);
+}
+.ig-dm .ig-dm-composer-input:focus { background: var(--surface); border-color: var(--brand); }
+.ig-dm .ig-dm-add {
+    min-height: 42px; padding: 0 20px; margin-left: 0; border-radius: 11px; font-size: 13px;
+    box-shadow: 0 2px 8px rgba(26, 53, 91, .25); transform: none;
+}
+.ig-dm .ig-dm-add:hover { transform: none; box-shadow: 0 4px 12px rgba(26, 53, 91, .32); }
+.ig-dm-composer-opts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 12px; }
+
+.ig-dm .ig-dm-seg { border: 0; border-radius: 9px; background: var(--bg); padding: 2px; gap: 2px; overflow: visible; }
+.ig-dm .ig-dm-seg button {
+    min-width: 0; padding: 5px 12px; border-radius: 7px; font-size: 12px; font-weight: 500; color: var(--ink-soft);
+}
+.ig-dm .ig-dm-seg button + button { border-left: 0; }
+.ig-dm .ig-dm-seg button span { display: inline; }
+.ig-dm .ig-dm-seg button.active { background: var(--surface); color: var(--brand); font-weight: 600; box-shadow: 0 1px 2px rgba(15, 33, 56, .10); }
+
+.ig-dm .ig-dm-pills { margin-top: 0; gap: 6px; }
+.ig-dm .ig-dm-pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft);
+    font-size: 11.5px; font-weight: 500;
+}
+.ig-dm .ig-dm-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--pillar); flex-shrink: 0; }
+.ig-dm .ig-dm-pill:hover { border-color: var(--pillar); color: var(--ink); }
+.ig-dm .ig-dm-pill.active { border-color: var(--pillar); background: var(--surface); color: var(--ink); font-weight: 600; }
+@supports (background: color-mix(in srgb, red 10%, transparent)) {
+    .ig-dm .ig-dm-pill.active { background: color-mix(in srgb, var(--pillar) 12%, var(--surface)); }
+}
+
+/* Body & judul seksi */
+.ig-dm .ig-dm-body { padding: 4px 20px 14px; }
+.ig-dm .ig-dm-section {
+    text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 600; color: var(--ink); margin: 16px 0 8px;
+}
+.ig-dm .ig-dm-section em { background: transparent; padding: 0; margin-left: 6px; font-weight: 400; color: var(--ink-soft); }
+
+/* Kartu: latar lembut + aksen pilar di kiri */
+.ig-dm .ig-dm-card { position: relative; border: 0; border-radius: 12px; background: var(--bg); margin-bottom: 8px; }
+.ig-dm .ig-dm-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--pillar); }
+.ig-dm .ig-dm-card-top { padding: 14px 14px 14px 20px; }
+.ig-dm .ig-dm-plan .ig-dm-card-top { padding-bottom: 6px; }
+.ig-dm .ig-dm-card-title { font-size: 14px; font-weight: 600; }
+.ig-dm .ig-dm-badges { gap: 6px 10px; margin-top: 7px; }
+.ig-dm .ig-dm-typelabel { font-size: 11.5px; }
+.ig-dm .ig-dm-cap { margin-top: 8px; font-size: 12.5px; }
+.ig-dm .ig-dm-cap-empty { font-style: normal; opacity: .7; }
+.ig-dm .ig-dm-thumb { width: 44px; height: 44px; border-radius: 9px; }
+
+/* Aksi kartu rencana: teks di baris bawah */
+.ig-dm .ig-dm-plan-actions {
+    flex-direction: row; justify-content: space-between; align-items: center;
+    width: auto; gap: 8px; padding: 0 12px 12px 14px;
+}
+.ig-dm .ig-dm-icons { gap: 0; }
+.ig-dm .ig-dm-iconbtn { min-width: 0; height: 30px; padding: 0 10px; border-radius: 8px; font-size: 12.5px; font-weight: 500; }
+.ig-dm .ig-dm-iconbtn:hover { background: var(--surface); }
+.ig-dm .ig-dm-convert {
+    display: inline-flex; align-items: center; min-height: 32px; padding: 0 16px; border-radius: 9px;
+    font-size: 12.5px; font-weight: 600; transform: none;
+}
+.ig-dm .ig-dm-convert.btn-secondary { background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
+.ig-dm .ig-dm-convert.btn-secondary:hover { border-color: var(--brand); color: var(--brand); background: var(--surface); }
+.ig-dm .ig-dm-convert.btn-primary:hover { transform: none; }
+
+/* Tahap pengerjaan */
+.ig-dm .ig-dm-stepper { border: 0; background: var(--surface); border-radius: 8px; padding: 2px; gap: 2px; overflow: visible; }
+.ig-dm .ig-dm-stepper button { border: 0; border-radius: 6px; padding: 3px 10px; font-size: 11px; font-weight: 500; }
+.ig-dm .ig-dm-stepper button + button { border-left: 0; }
+.ig-dm .ig-dm-stepper button.active { background: var(--pillar); color: #fff; font-weight: 600; }
+
+/* Editor inline */
+.ig-dm .ig-dm-edit { background: transparent; border-top: 0; padding: 4px 16px 16px 20px; }
+.ig-dm .ig-dm-input { border-width: 1px; }
+.ig-dm .ig-dm-done { min-height: 32px; padding: 0 16px; border-radius: 9px; font-size: 12.5px; }
+
+.ig-dm .ig-dm-empty { padding: 40px 10px 32px; line-height: 1.6; }
+
+/* Footer */
+.ig-dm .ig-dm-footer { padding: 10px 20px 14px; }
+.ig-dm .ig-dm-linkbtn { margin-left: -10px; padding: 6px 10px; font-weight: 600; }
+.ig-dm .ig-dm-keys kbd { border: 0; background: var(--bg); padding: 1px 6px; }
+
+@media (max-width: 600px) {
+    .ig-dm .ig-dm-header { padding: 14px 14px 10px; }
+    .ig-dm .ig-dm-composer { padding: 0 14px 14px; }
+    .ig-dm .ig-dm-composer-input { flex-basis: auto; }
+    .ig-dm .ig-dm-add { padding: 0 16px; }
+    .ig-dm .ig-dm-body { padding: 2px 14px 12px; }
+    .ig-dm .ig-dm-plan-actions { flex-direction: row; width: auto; justify-content: space-between; }
+    .ig-dm .ig-dm-footer { padding: 8px 14px 12px; }
+}
+@media (max-width: 600px) {
+    .ig-dm .ig-dm-post .ig-dm-card-top { flex-wrap: nowrap; }
+    .ig-dm .ig-dm-post .ig-dm-card-actions { width: auto; flex-direction: row; }
+}

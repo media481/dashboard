@@ -1341,12 +1341,12 @@
 <div class="modal-overlay" id="igDayModal">
     <div class="modal-content ig-dm" style="max-width:680px;">
         <div class="ig-dm-header">
-            <button type="button" class="ig-dm-nav" onclick="igDayNav(-1)" title="Hari sebelumnya (←)"><i class="bi bi-chevron-left"></i></button>
+            <button type="button" class="ig-dm-nav" onclick="igDayNav(-1)" title="Hari sebelumnya (←)">‹</button>
             <div class="ig-dm-title">
                 <h2 id="igDayModalTitle">Tanggal</h2>
                 <div class="ig-dm-sub" id="igDmMeta"></div>
             </div>
-            <button type="button" class="ig-dm-nav" onclick="igDayNav(1)" title="Hari berikutnya (→)"><i class="bi bi-chevron-right"></i></button>
+            <button type="button" class="ig-dm-nav" onclick="igDayNav(1)" title="Hari berikutnya (→)">›</button>
             <span class="ig-dm-spacer"></span>
             <button type="button" class="ig-dm-today" id="igDmTodayBtn" onclick="igDayNavToday()">Hari ini</button>
             <button class="modal-close" onclick="closeIgDayModal()" title="Tutup (Esc)">&times;</button>
@@ -1357,14 +1357,16 @@
                 <input type="text" id="igQuickPlanTema" class="ig-dm-input ig-dm-composer-input" maxlength="120" autocomplete="off"
                     placeholder="Tulis ide konten, lalu tekan Enter..."
                     onkeydown="if(event.key==='Enter'){event.preventDefault();igQuickAddPlan();}">
-                <div class="ig-dm-seg" id="igQuickTipeSeg">
-                    <button type="button" data-t="image" class="active" title="Image" onclick="igPickQuickTipe('image')"><i class="bi bi-image"></i><span>Image</span></button>
-                    <button type="button" data-t="video" title="Reels" onclick="igPickQuickTipe('video')"><i class="bi bi-camera-reels"></i><span>Reels</span></button>
-                    <button type="button" data-t="carousel" title="Carousel" onclick="igPickQuickTipe('carousel')"><i class="bi bi-images"></i><span>Carousel</span></button>
-                </div>
-                <button type="button" class="btn-primary ig-dm-add" onclick="igQuickAddPlan()"><i class="bi bi-plus-lg"></i> Tambah</button>
+                <button type="button" class="btn-primary ig-dm-add" onclick="igQuickAddPlan()">Tambah</button>
             </div>
-            <div class="ig-dm-pills ig-quick-meta" id="igQuickPilarChips"></div>
+            <div class="ig-dm-composer-opts">
+                <div class="ig-dm-seg" id="igQuickTipeSeg">
+                    <button type="button" data-t="image" class="active" title="Image" onclick="igPickQuickTipe('image')"><span>Image</span></button>
+                    <button type="button" data-t="video" title="Reels" onclick="igPickQuickTipe('video')"><span>Reels</span></button>
+                    <button type="button" data-t="carousel" title="Carousel" onclick="igPickQuickTipe('carousel')"><span>Carousel</span></button>
+                </div>
+                <div class="ig-dm-pills ig-quick-meta" id="igQuickPilarChips"></div>
+            </div>
             <input type="hidden" id="igQuickPlanTipe" value="image">
             <input type="hidden" id="igQuickPlanPilar" value="">
             <input type="hidden" id="igQuickPlanTahap" value="ide">
@@ -1373,9 +1375,7 @@
         <div class="ig-dm-body" id="igDayModalBody"><!-- Diisi oleh JS --></div>
 
         <div class="ig-dm-footer">
-            <button type="button" class="ig-dm-linkbtn" id="igDayModalAddBtn" onclick="igAddPostFromDayModal()">
-                <i class="bi bi-image"></i> Draft post dengan media
-            </button>
+            <button type="button" class="ig-dm-linkbtn" id="igDayModalAddBtn" onclick="igAddPostFromDayModal()">Draft post dengan media</button>
             <span class="ig-dm-keys"><kbd>←</kbd> <kbd>→</kbd> ganti hari · <kbd>Esc</kbd> tutup</span>
         </div>
     </div>
