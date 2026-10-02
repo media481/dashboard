@@ -3933,3 +3933,23 @@
     .ig-dm-add { padding: 9px 16px; }
     .ig-dm-today { margin-left: 0; }
 }
+
+
+/* ============================================================
+   Toolbar & kartu statistik -- versi ringkas (mode Content Planner)
+   ============================================================ */
+.ig-planner-mode .ig-scheduler-tab { padding: 6px 0 12px; }
+.ig-planner-mode .ig-scheduler-toolbar { justify-content: flex-start; gap: 6px; margin-bottom: 8px; }
+.ig-planner-mode .ig-scheduler-toolbar .btn-primary,
+.ig-planner-mode .ig-scheduler-toolbar .btn-secondary { padding: 5px 11px !important; font-size: 12px !important; gap: 5px; }
+.ig-planner-mode #btnIgRefresh { order: 5; margin-left: auto; padding: 5px 9px !important; }
+.ig-planner-mode #igSchedulerCount { order: 6; font-size: 11.5px; }
+
+.ig-planner-mode .ig-cal-summary-wrap { margin-bottom: 10px; }
+.ig-planner-mode .ig-stat-row { gap: 8px; }
+.ig-planner-mode .ig-stat { padding: 6px 11px; gap: 8px; border-radius: 9px; }
+.ig-planner-mode .ig-stat > i { font-size: 15px; }
+.ig-planner-mode .ig-stat > div { display: flex; align-items: baseline; gap: 6px; }
+.ig-planner-mode .ig-stat b { display: inline; font-size: 16px; }
+.ig-planner-mode .ig-pillar-bar { margin-top: 8px; height: 6px; }
+.ig-planner-mode .ig-pillar-legend { margin: 5px 0 0; }
