@@ -4430,3 +4430,70 @@
     #igSchedulerPageView.ig-planner-mode .ig-plan-side-header { flex: 0 0 auto; }
     #igSchedulerPageView.ig-planner-mode #igPlanSideBody { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 }
+
+
+/* ============================================================
+   IG Scheduler -- penyeragaman skala font dengan menu lain
+   Skala acuan dashboard: judul halaman 19px, tombol/tab 13px, teks isi
+   12.5px, teks sekunder 11.5-12px, batas bawah 11px. Angka statistik
+   sebelumnya 22-28px (jauh di atas menu lain) dan banyak teks 9-10.5px
+   (di bawah batas baca), jadi diratakan di sini. Blok ini sengaja di
+   paling akhir supaya menang atas aturan IG di atasnya.
+   ============================================================ */
+
+/* -- Ringkasan statistik: angka tidak lagi mendominasi halaman -- */
+#igSchedulerPageView.ig-planner-mode .ig-stat b { font-size: 20px; }
+#igSchedulerPageView.ig-planner-mode .ig-stat span { font-size: 12px; }
+#igSchedulerPageView.ig-planner-mode .ig-pillar-legend span { font-size: 11.5px; }
+.ig-account-badge { font-size: 11px; }
+
+/* -- Kalender -- */
+.ig-planner-mode .ig-cal-month { font-size: 16px; }
+.ig-planner-mode .ig-cal-day-header,
+.ig-planner-mode .ig-cal-day-header:first-child,
+.ig-planner-mode .ig-cal-day-header:last-child { font-size: 12px; }
+.ig-planner-mode .ig-cal-day-num { font-size: 12.5px; }
+.ig-planner-mode .ig-cal-today .ig-cal-day-num { font-size: 12px; }
+.ig-cal-chip { font-size: 11.5px; }
+.ig-cal-chip-more,
+.ig-planner-mode .ig-cal-chip-more { font-size: 11px; }
+.ig-cal-day-count { font-size: 11px; }
+.ig-cal-filter button,
+.ig-planner-mode .ig-cal-filter button { font-size: 12px; }
+.ig-cal-today-btn { font-size: 12px; }
+
+/* -- Panel "Ide Bulan Ini" -- */
+.ig-planner-mode .ig-plan-side-header h3 { font-size: 14px; }
+.ig-planner-mode .ig-side-group { font-size: 12px; }
+.ig-planner-mode .ig-side-date b { font-size: 16px; }
+.ig-planner-mode .ig-side-date small { font-size: 11px; }
+.ig-side-tema { font-size: 13px; }
+.ig-planner-mode .ig-side-meta { font-size: 11.5px; }
+
+/* -- Modal harian -- */
+.ig-dm .ig-dm-title h2 { font-size: 16px; }
+.ig-dm .ig-dm-sub { font-size: 12px; }
+.ig-dm .ig-dm-composer-input { font-size: 13px; }
+.ig-dm .ig-dm-seg button { font-size: 12px; }
+.ig-dm .ig-dm-pill { font-size: 11.5px; }
+.ig-dm .ig-dm-section { font-size: 12px; }
+.ig-dm .ig-dm-card-title { font-size: 13.5px; }
+.ig-dm .ig-dm-typelabel { font-size: 11.5px; }
+.ig-dm .ig-dm-cap { font-size: 12.5px; }
+.ig-dm .ig-dm-stepper button { font-size: 11.5px; }
+.ig-dm .ig-dm-iconbtn,
+.ig-dm .ig-dm-convert,
+.ig-dm .ig-dm-done { font-size: 12.5px; }
+.ig-dm-keys kbd,
+.ig-dm .ig-dm-keys kbd { font-size: 11px; }
+
+/* -- Layar sempit: tetap terbaca (titik penanda kalender tidak terpengaruh) -- */
+@media (max-width: 560px) {
+    #igSchedulerPageView.ig-planner-mode .ig-stat b { font-size: 20px; }
+    .ig-planner-mode .ig-cal-month { font-size: 15px; }
+    .ig-cal-chip-more,
+    .ig-planner-mode .ig-cal-chip-more { font-size: 10px; }
+}
+@media (max-width: 600px) {
+    .ig-dm .ig-dm-title h2 { font-size: 15px; }
+}
