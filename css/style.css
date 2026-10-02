@@ -4497,3 +4497,16 @@
 @media (max-width: 600px) {
     .ig-dm .ig-dm-title h2 { font-size: 15px; }
 }
+
+
+/* ============================================================
+   Modal Draft/Post IG (#igUploadModal) -- disamakan dengan modal lain
+   Style inline lama (textarea border 1.5px/radius 10px, tombol 12px,
+   Tanggal/Jam flex) dipindah ke class standar .form-group / .form-row /
+   .form-actions .btn-submit. Sisa kebutuhan khusus ada di sini.
+   ============================================================ */
+#igUploadModal .ig-file-input-wrap .btn-secondary { padding: 7px 14px; font-weight: 600; font-family: 'Inter', sans-serif; }
+#igUploadModal .btn-ai-caption { padding: 7px 14px; font-size: 12px; }
+#igUploadModal .form-group label.ig-sub-label { font-size: 12px; font-weight: 500; color: var(--ink-soft); margin-bottom: 4px; }
+#igUploadModal .form-row { align-items: start; }
+#igUploadModal .form-row input { box-sizing: border-box; min-height: 40px; }

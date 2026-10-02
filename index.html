@@ -1257,7 +1257,7 @@
                     <label>Media <span style="color:var(--danger);">*</span></label>
                     <div class="ig-file-input-wrap">
                         <input type="file" id="ig_media_file" accept="image/*,.mp4,.mov" style="display:none;" onchange="onIgMediaChange()">
-                        <button type="button" class="btn-secondary" id="igMediaBtn" onclick="document.getElementById('ig_media_file').click()" style="font-size:12px;padding:6px 14px;">
+                        <button type="button" class="btn-secondary" id="igMediaBtn" onclick="document.getElementById('ig_media_file').click()">
                             <i class="bi bi-upload"></i> Pilih File
                         </button>
                         <span class="ig-file-name" id="igMediaFileName">-</span>
@@ -1272,7 +1272,7 @@
                     <label>Media Carousel <span style="color:var(--danger);">*</span> <span style="font-weight:400;color:var(--ink-soft);">(min 2, maks 10, urutan sesuai tampilan)</span></label>
                     <div class="ig-file-input-wrap">
                         <input type="file" id="ig_carousel_files" accept="image/*,.mp4,.mov" multiple style="display:none;" onchange="onIgCarouselFilesChange()">
-                        <button type="button" class="btn-secondary" id="igCarouselAddBtn" onclick="document.getElementById('ig_carousel_files').click()" style="font-size:12px;padding:6px 14px;">
+                        <button type="button" class="btn-secondary" id="igCarouselAddBtn" onclick="document.getElementById('ig_carousel_files').click()">
                             <i class="bi bi-upload"></i> Tambah Media
                         </button>
                         <span class="ig-file-name" id="igCarouselCount">0 item</span>
@@ -1284,9 +1284,9 @@
                 <!-- Caption -->
                 <div class="form-group">
                     <label>Ide/Konsep Singkat <span style="font-weight:400;color:var(--ink-soft);">(opsional, buat bahan AI)</span></label>
-                    <textarea id="ig_caption_idea" placeholder="Contoh: Umroh 9 hari berangkat 12 Januari, harga mulai 28 juta, hotel dekat Masjidil Haram, kuota terbatas..." rows="2" style="width:100%;font-family:'Inter',sans-serif;padding:10px;border:1.5px solid var(--line);border-radius:10px;resize:vertical;"></textarea>
+                    <textarea id="ig_caption_idea" placeholder="Contoh: Umroh 9 hari berangkat 12 Januari, harga mulai 28 juta, hotel dekat Masjidil Haram, kuota terbatas..." rows="2"></textarea>
                     <div style="margin-top:6px;">
-                        <button type="button" class="btn-ai-caption" id="btnGenIgCaptionAI" onclick="generateIgCaptionAI()" style="font-size:12px;padding:6px 14px;border:1px solid var(--brand);background:var(--brand-tint);color:var(--brand);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                        <button type="button" class="btn-ai-caption" id="btnGenIgCaptionAI" onclick="generateIgCaptionAI()">
                             <i class="bi bi-stars"></i> <span id="btnGenIgCaptionAIText">Generate dengan AI</span>
                         </button>
                     </div>
@@ -1294,7 +1294,7 @@
 
                 <div class="form-group">
                     <label>Caption</label>
-                    <textarea id="ig_caption" placeholder="Tulis caption Instagram..." rows="4" maxlength="2200" style="width:100%;font-family:'Inter',sans-serif;padding:10px;border:1.5px solid var(--line);border-radius:10px;resize:vertical;"></textarea>
+                    <textarea id="ig_caption" placeholder="Tulis caption Instagram..." rows="4" maxlength="2200"></textarea>
                     <div class="form-note">
                         <span>Karakter tersisa: <span id="igCaptionCount">2200</span></span>
                     </div>
@@ -1303,20 +1303,20 @@
                 <!-- Schedule -->
                 <div class="form-group">
                     <label>Jadwal <span style="color:var(--danger);">*</span></label>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
-                        <div style="flex:1;min-width:140px;">
-                            <label style="font-size:11px;color:var(--ink-soft);">Tanggal</label>
+                    <div class="form-row">
+                        <div>
+                            <label class="ig-sub-label" for="ig_schedule_date">Tanggal</label>
                             <input type="date" id="ig_schedule_date" required>
                         </div>
-                        <div style="flex:1;min-width:120px;">
-                            <label style="font-size:11px;color:var(--ink-soft);">Jam</label>
+                        <div>
+                            <label class="ig-sub-label" for="ig_schedule_time">Jam</label>
                             <input type="time" id="ig_schedule_time" required>
                         </div>
                     </div>
                 </div>
 
-                <div class="form-actions" style="margin-top:20px;">
-                    <button type="submit" class="btn-primary" id="igSubmitBtn"><i class="bi bi-save"></i> Simpan</button>
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit" id="igSubmitBtn"><i class="bi bi-save"></i> Simpan</button>
                     <button type="button" class="btn-cancel" onclick="closeIgUploadModal()">Batal</button>
                 </div>
             </form>
