@@ -13189,14 +13189,30 @@ function igNewIdea() {
     setTimeout(() => document.getElementById('igQuickPlanTema')?.focus(), 60);
 }
 
+const IG_QUICK_IDEAS = ['Testimoni jamaah', 'Tips persiapan manasik', 'Info keberangkatan terdekat', 'Tanya jawab / polling', 'Behind the scenes tim', 'Promo seat terbatas'];
+
 function igFillPlannerSelects() {
-    const opts = (map, withEmpty) => (withEmpty ? '<option value="">Pilar...</option>' : '') +
-        Object.entries(map).map(([k, v]) => `<option value="${k}">${escapeHtml(typeof v === 'string' ? v : v.label)}</option>`).join('');
-    const pil = document.getElementById('igQuickPlanPilar');
-    const tah = document.getElementById('igQuickPlanTahap');
-    if (pil && !pil.options.length) pil.innerHTML = opts(IG_PILLARS, true);
-    if (tah && !tah.options.length) tah.innerHTML = opts(IG_STAGES, false);
+    const wrap = document.getElementById('igQuickPilarChips');
+    if (wrap && !wrap.children.length) {
+        wrap.innerHTML = Object.entries(IG_PILLARS).map(([k, v]) =>
+            `<button type="button" class="ig-dm-pill" data-k="${k}" style="--pillar:${v.color};" onclick="igPickQuickPilar('${k}')">${escapeHtml(v.label)}</button>`).join('');
+    }
     document.querySelectorAll('.ig-quick-meta').forEach(n => { n.style.display = igPlannerColsReady ? '' : 'none'; });
+}
+function igPickQuickTipe(t) {
+    const inp = document.getElementById('igQuickPlanTipe');
+    if (inp) inp.value = t;
+    document.querySelectorAll('#igQuickTipeSeg button').forEach(b => b.classList.toggle('active', b.dataset.t === t));
+}
+function igPickQuickPilar(k) {
+    const inp = document.getElementById('igQuickPlanPilar');
+    if (!inp) return;
+    inp.value = inp.value === k ? '' : k; // klik lagi = lepas pilihan
+    document.querySelectorAll('#igQuickPilarChips .ig-dm-pill').forEach(b => b.classList.toggle('active', b.dataset.k === inp.value));
+}
+function igFillQuickIdea(i) {
+    const el = document.getElementById('igQuickPlanTema');
+    if (el) { el.value = IG_QUICK_IDEAS[i] || ''; el.focus(); }
 }
 
 function igPlanMetaSelects(pl) {
@@ -13562,117 +13578,207 @@ function igOnDayClick(dateKey) {
     igOpenDayModal(dateKey);
 }
 
+function igDmRelLabel(y, m, d) {
+    const t = new Date(); t.setHours(0, 0, 0, 0);
+    const diff = Math.round((new Date(y, m - 1, d) - t) / 86400000);
+    if (diff === 0) return 'Hari ini';
+    if (diff === 1) return 'Besok';
+    if (diff === -1) return 'Kemarin';
+    return diff > 0 ? `${diff} hari lagi` : `${-diff} hari lalu`;
+}
+
+function igDmMedia(post) {
+    if (post.media_type === 'video') return `<video src="${escapeHtmlAttr(post.media_url)}" class="ig-dm-thumb" preload="none"></video>`;
+    if (post.media_url) return `<img src="${escapeHtmlAttr(post.media_url)}" alt="" class="ig-dm-thumb" loading="lazy">`;
+    return `<div class="ig-dm-type"><i class="bi bi-images"></i></div>`;
+}
+
+function igDmPostCard(post) {
+    const ref = igPostRefDate(post);
+    const jam = ref ? ref.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-';
+    const color = IG_STATUS_COLORS[post.status] || IG_STATUS_COLORS.draft;
+    const label = IG_STATUS_LABELS[post.status] || post.status;
+    const editable = ['draft', 'scheduled', 'failed'].includes(post.status);
+    return `<div class="ig-dm-card ig-dm-post" style="--pillar:${color};">
+        <div class="ig-dm-card-main">
+            ${igDmMedia(post)}
+            <div class="ig-dm-card-info">
+                <div class="ig-dm-card-title">${escapeHtml(igChipText(post.caption, '(tanpa caption)'))}</div>
+                <div class="ig-dm-badges">
+                    <span class="ig-status-pill" style="background:${color}1a;color:${color};">${escapeHtml(label)}</span>
+                    <span class="ig-dm-typelabel"><i class="bi bi-clock"></i> ${jam}</span>
+                    <span class="ig-dm-typelabel"><i class="bi ${IG_TYPE_ICONS[post.media_type] || 'bi-image'}"></i> ${IG_TYPE_LABELS[post.media_type] || 'Image'}</span>
+                </div>
+            </div>
+            ${editable ? `<button type="button" class="ig-dm-iconbtn" title="Edit post" onclick="closeIgDayModal(); openIgUploadModal('${post.id}')"><i class="bi bi-pencil-fill"></i></button>` : ''}
+        </div>
+    </div>`;
+}
+
+function igDmPlanCard(pl, canEdit) {
+    const pil = IG_PILLARS[pl.pilar];
+    const stage = pl.tahap || 'ide';
+    const cap = pl.draft_caption || '';
+    const typeOpts = ['image', 'video', 'carousel'].map(t =>
+        `<option value="${t}"${pl.tipe_konten === t ? ' selected' : ''}>${t === 'video' ? 'Video/Reels' : IG_TYPE_LABELS[t]}</option>`).join('');
+    const pilOpts = igPlannerColsReady
+        ? `<select class="ig-dm-input" onchange="igPlanUpdateField('${pl.id}','pilar',this.value)"><option value="">Pilar...</option>${Object.entries(IG_PILLARS).map(([k, v]) =>
+            `<option value="${k}"${pl.pilar === k ? ' selected' : ''}>${escapeHtml(v.label)}</option>`).join('')}</select>` : '';
+    const stepper = igPlannerColsReady && canEdit
+        ? `<div class="ig-dm-stepper" title="Tahap pengerjaan">${Object.entries(IG_STAGES).map(([k, v]) =>
+            `<button type="button" class="${k === stage ? 'active' : ''}" onclick="igPlanSetStage('${pl.id}','${k}')">${v}</button>`).join('')}</div>` : '';
+    const actions = canEdit ? `<div class="ig-dm-card-actions">
+            ${stepper}
+            <span class="ig-dm-spacer"></span>
+            <button type="button" class="ig-dm-iconbtn" title="Salin caption" onclick="igCopyPlanCaption('${pl.id}')"><i class="bi bi-clipboard"></i></button>
+            <button type="button" class="ig-dm-iconbtn" title="Lewati (sembunyikan dari kalender)" onclick="igSkipPlanItem('${pl.id}')"><i class="bi bi-eye-slash"></i></button>
+            <button type="button" class="ig-dm-iconbtn ig-dm-danger" title="Hapus" onclick="igArmDelete(this,'${pl.id}')"><i class="bi bi-trash"></i></button>
+            <button type="button" class="${stage === 'siap' ? 'btn-primary' : 'btn-secondary'} ig-dm-convert" onclick="igConvertPlanToPost('${pl.id}')"><i class="bi bi-arrow-up-right-circle"></i> Jadikan Post</button>
+        </div>` : '';
+    const edit = canEdit ? `<div class="ig-dm-edit" style="display:none;">
+            <div class="ig-dm-edit-row">
+                <input type="text" class="ig-dm-input ig-dm-tema" value="${escapeHtmlAttr(pl.tema)}" maxlength="120" placeholder="Tema / ide"
+                    onblur="igPlanUpdateField('${pl.id}','tema',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">
+                <span class="ig-plan-save-indicator" id="igPlanSaved-${pl.id}"></span>
+            </div>
+            <div class="ig-dm-edit-row">
+                <select class="ig-dm-input" onchange="igPlanUpdateField('${pl.id}','tipe_konten',this.value)">${typeOpts}</select>
+                ${pilOpts}
+                <input type="date" class="ig-dm-input" value="${escapeHtmlAttr(pl.tanggal)}" title="Pindah ke tanggal lain" onchange="igMovePlanToDate('${pl.id}',this.value,true)">
+            </div>
+            <textarea class="ig-dm-input ig-dm-textarea" rows="8" maxlength="2200" placeholder="Draft caption..."
+                oninput="igUpdatePlanCharCount('${pl.id}',this.value.length)"
+                onblur="igPlanUpdateField('${pl.id}','draft_caption',this.value)">${escapeHtml(cap)}</textarea>
+            <div class="ig-dm-edit-foot">
+                <span class="ig-plan-char-count" id="igPlanCharCount-${pl.id}">${cap.length} / 2200 karakter</span>
+                <button type="button" class="btn-primary" onclick="igTogglePlanEdit('${pl.id}')" style="font-size:12px;padding:6px 14px;"><i class="bi bi-check2"></i> Selesai</button>
+            </div>
+        </div>` : '';
+    return `<div class="ig-dm-card ig-dm-plan stage-${stage}" id="igDayPlanItem-${pl.id}" style="--pillar:${pil ? pil.color : 'var(--brand)'};">
+        <div class="ig-dm-card-main"${canEdit ? ` onclick="igTogglePlanEdit('${pl.id}')"` : ''}>
+            <div class="ig-dm-type"><i class="bi ${IG_TYPE_ICONS[pl.tipe_konten] || 'bi-image'}"></i></div>
+            <div class="ig-dm-card-info">
+                <div class="ig-dm-card-title">${escapeHtml(pl.tema)}</div>
+                <div class="ig-dm-badges">${igPlanBadgeHtml(pl)}<span class="ig-dm-typelabel">${IG_TYPE_LABELS[pl.tipe_konten] || 'Image'}</span></div>
+                ${cap ? `<p class="ig-dm-cap">${escapeHtml(cap)}</p>` : `<p class="ig-dm-cap ig-dm-cap-empty">Belum ada caption${canEdit ? ' — klik untuk menulis' : ''}</p>`}
+            </div>
+        </div>
+        ${actions}${edit}
+    </div>`;
+}
+
 function igOpenDayModal(dateKey) {
     const modal = document.getElementById('igDayModal');
     const titleEl = document.getElementById('igDayModalTitle');
     const bodyEl = document.getElementById('igDayModalBody');
     if (!modal || !bodyEl) return;
 
+    const sameDay = modal.classList.contains('open') && igDayModalDateKey === dateKey;
+    const prevScroll = sameDay ? bodyEl.scrollTop : 0;
     igDayModalDateKey = dateKey;
     igFillPlannerSelects();
-    const quickAdd = document.getElementById('igPlanQuickAdd');
-    if (quickAdd) {
-        quickAdd.style.display = canManageProgramData() ? 'block' : 'none';
+    igBindDayModalKeys();
+
+    const canEdit = canManageProgramData();
+    const composer = document.getElementById('igPlanQuickAdd');
+    if (composer) {
+        composer.style.display = canEdit ? 'block' : 'none';
         const qt = document.getElementById('igQuickPlanTema');
         if (qt) qt.value = '';
     }
+    const addBtn = document.getElementById('igDayModalAddBtn');
+    if (addBtn) addBtn.style.display = canEdit ? '' : 'none';
+
     const [y, m, d] = dateKey.split('-').map(Number);
     const dateObj = new Date(y, m - 1, d);
-    if (titleEl) {
-        titleEl.textContent = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    }
+    const wk = document.getElementById('igDmWeekday');
+    if (wk) wk.textContent = dateObj.toLocaleDateString('id-ID', { weekday: 'long' });
+    if (titleEl) titleEl.textContent = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 
     const dayPosts = igPosts.filter(p => {
         const dd = igPostRefDate(p);
         return dd && dd.getFullYear() === y && dd.getMonth() === m - 1 && dd.getDate() === d;
     }).sort((a, b) => igPostRefDate(a) - igPostRefDate(b));
-
     const dayPlans = igContentPlan.filter(pl => pl.status === 'idea' && pl.tanggal === dateKey);
 
-    if (!dayPosts.length && !dayPlans.length) {
-        bodyEl.innerHTML = `<div class="ig-empty"><i class="bi bi-calendar-x"></i> Belum ada post atau ide pada tanggal ini.</div>`;
-    } else {
-        const planHtml = dayPlans.map(pl => {
-            const typeIcon = pl.tipe_konten === 'video' ? 'bi-camera-reels' : (pl.tipe_konten === 'carousel' ? 'bi-images' : 'bi-image');
-            return `<div class="ig-day-post-item ig-day-plan-item" id="igDayPlanItem-${pl.id}">
-                <div class="ig-media-thumb ig-plan-thumb"><i class="bi ${typeIcon}"></i></div>
-                <div class="ig-day-post-info">
-                    <div class="ig-plan-view" onclick="igTogglePlanEdit('${pl.id}')">
-                        <p class="ig-day-post-caption"><strong>${escapeHtml(pl.tema)}</strong></p>
-                        <p class="ig-day-post-caption ig-plan-caption-preview">${escapeHtml(pl.draft_caption || '')}</p>
-                        <div class="ig-day-post-meta">
-                            ${igPlanBadgeHtml(pl)}
-                            <span class="ig-plan-expand-hint"><i class="bi bi-pencil-fill"></i> Edit</span>
-                        </div>
-                    </div>
-                    <div class="ig-plan-edit-wrap" style="display:none;">
-                        <div class="ig-plan-result-top">
-                            <input type="text" class="ig-plan-edit-tema" value="${escapeHtml(pl.tema)}"
-                                onblur="igPlanUpdateField('${pl.id}','tema',this.value)"
-                                onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">
-                            <select class="ig-plan-edit-tipe" onchange="igPlanUpdateField('${pl.id}','tipe_konten',this.value)">
-                                <option value="image"${pl.tipe_konten === 'image' ? ' selected' : ''}>Image</option>
-                                <option value="video"${pl.tipe_konten === 'video' ? ' selected' : ''}>Video/Reels</option>
-                                <option value="carousel"${pl.tipe_konten === 'carousel' ? ' selected' : ''}>Carousel</option>
-                            </select>
-                            ${igPlannerColsReady ? igPlanMetaSelects(pl) : ''}
-                            <input type="date" class="ig-plan-edit-tanggal" value="${escapeHtmlAttr(pl.tanggal)}" title="Pindah ke tanggal lain"
-                                onchange="igMovePlanToDate('${pl.id}',this.value,true)">
-                            <span class="ig-plan-save-indicator" id="igPlanSaved-${pl.id}"></span>
-                        </div>
-                        <textarea class="ig-plan-edit-caption ig-plan-edit-caption--lg" rows="10" maxlength="2200"
-                            oninput="igUpdatePlanCharCount('${pl.id}',this.value.length)"
-                            onblur="igPlanUpdateField('${pl.id}','draft_caption',this.value)">${escapeHtml(pl.draft_caption || '')}</textarea>
-                        <div class="ig-plan-edit-footer">
-                            <span class="ig-plan-char-count" id="igPlanCharCount-${pl.id}">${(pl.draft_caption || '').length} / 2200 karakter</span>
-                            <div class="ig-plan-edit-footer-actions">
-                                <button type="button" class="btn-primary" onclick="igTogglePlanEdit('${pl.id}')"><i class="bi bi-check2"></i> Selesai</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="ig-plan-item-actions">
-                    <button type="button" class="ig-btn-edit" onclick="event.stopPropagation();igConvertPlanToPost('${pl.id}')" title="Jadikan Post"><i class="bi bi-arrow-up-right-circle-fill"></i></button>
-                    <button type="button" class="ig-btn-edit ig-btn-danger" onclick="event.stopPropagation();igDeletePlanItem('${pl.id}')" title="Hapus rencana ini"><i class="bi bi-trash-fill"></i></button>
-                </div>
-            </div>`;
-        }).join('');
-
-        bodyEl.innerHTML = planHtml + dayPosts.map(post => {
-            const refDate = igPostRefDate(post);
-            const timeLabel = refDate ? refDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-';
-            const statusColor = IG_STATUS_COLORS[post.status] || IG_STATUS_COLORS.draft;
-            const statusLabel = IG_STATUS_LABELS[post.status] || post.status;
-
-            let mediaPreview = '';
-            if (post.media_type === 'image') {
-                mediaPreview = `<img src="${post.media_url}" alt="media" class="ig-media-thumb" loading="lazy">`;
-            } else if (post.media_type === 'video') {
-                mediaPreview = `<video src="${post.media_url}" class="ig-media-thumb" preload="none"></video>`;
-            } else if (post.media_type === 'carousel' && post.media_url) {
-                mediaPreview = `<div class="ig-post-carousel-thumb-wrap">
-                    <img src="${post.media_url}" alt="carousel" class="ig-media-thumb" loading="lazy">
-                    <span class="ig-post-carousel-count" title="Carousel"><i class="bi bi-images"></i></span>
-                </div>`;
-            } else {
-                mediaPreview = `<div class="ig-media-thumb ig-carousel-thumb"><i class="bi bi-images"></i></div>`;
-            }
-
-            return `<div class="ig-day-post-item">
-                ${mediaPreview}
-                <div class="ig-day-post-info">
-                    <p class="ig-day-post-caption">${escapeHtml(post.caption || '(tanpa caption)')}</p>
-                    <div class="ig-day-post-meta">
-                        <span class="ig-status-pill" style="background:${statusColor}1a;color:${statusColor};">${escapeHtml(statusLabel)}</span>
-                        <span class="ig-day-post-time"><i class="bi bi-clock"></i> ${timeLabel}</span>
-                    </div>
-                </div>
-                <button type="button" class="ig-btn-edit" onclick="closeIgDayModal(); openIgUploadModal('${post.id}')" title="Edit"><i class="bi bi-pencil-fill"></i></button>
-            </div>`;
-        }).join('');
+    const meta = document.getElementById('igDmMeta');
+    if (meta) {
+        const rel = igDmRelLabel(y, m, d);
+        const cnt = [dayPlans.length ? `${dayPlans.length} ide` : '', dayPosts.length ? `${dayPosts.length} post` : ''].filter(Boolean).join(' · ');
+        meta.innerHTML = `<span class="ig-dm-rel${rel === 'Hari ini' ? ' is-today' : ''}">${rel}</span>${cnt ? `<span class="ig-dm-count">${cnt}</span>` : ''}`;
     }
 
+    if (!dayPosts.length && !dayPlans.length) {
+        bodyEl.innerHTML = `<div class="ig-dm-empty"><i class="bi bi-calendar2-plus"></i>
+            <b>Belum ada konten di tanggal ini</b>
+            ${canEdit ? `<span>Tulis ide di atas, atau mulai dari template cepat:</span>
+            <div class="ig-dm-suggest">${IG_QUICK_IDEAS.map((t, i) => `<button type="button" onclick="igFillQuickIdea(${i})">${escapeHtml(t)}</button>`).join('')}</div>` : ''}
+        </div>`;
+    } else {
+        bodyEl.innerHTML =
+            (dayPlans.length ? `<div class="ig-dm-section">Rencana <em>${dayPlans.length}</em></div>` + dayPlans.map(pl => igDmPlanCard(pl, canEdit)).join('') : '') +
+            (dayPosts.length ? `<div class="ig-dm-section">Draft & post <em>${dayPosts.length}</em></div>` + dayPosts.map(igDmPostCard).join('') : '');
+    }
+    bodyEl.scrollTop = prevScroll;
     modal.classList.add('open');
+}
+
+// ---- Navigasi hari di dalam modal (tombol ‹ › dan keyboard ← →) ----
+function igDayNav(delta) {
+    if (!igDayModalDateKey) return;
+    const [y, m, d] = igDayModalDateKey.split('-').map(Number);
+    const nd = new Date(y, m - 1, d + delta);
+    if (nd.getFullYear() !== igCalendarCurrent.getFullYear() || nd.getMonth() !== igCalendarCurrent.getMonth()) {
+        igCalendarCurrent = new Date(nd.getFullYear(), nd.getMonth(), 1);
+        renderIgCalendar();
+    }
+    igOpenDayModal(`${nd.getFullYear()}-${String(nd.getMonth() + 1).padStart(2, '0')}-${String(nd.getDate()).padStart(2, '0')}`);
+}
+function igDayNavToday() {
+    const t = new Date();
+    if (t.getFullYear() !== igCalendarCurrent.getFullYear() || t.getMonth() !== igCalendarCurrent.getMonth()) {
+        igCalendarCurrent = new Date(t.getFullYear(), t.getMonth(), 1);
+        renderIgCalendar();
+    }
+    igOpenDayModal(`${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`);
+}
+let igDmKeysBound = false;
+function igBindDayModalKeys() {
+    if (igDmKeysBound) return;
+    igDmKeysBound = true;
+    document.addEventListener('keydown', e => {
+        const modal = document.getElementById('igDayModal');
+        if (!modal || !modal.classList.contains('open')) return;
+        const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || ''));
+        if (e.key === 'Escape') { closeIgDayModal(); }
+        else if (!typing && e.key === 'ArrowLeft') { e.preventDefault(); igDayNav(-1); }
+        else if (!typing && e.key === 'ArrowRight') { e.preventDefault(); igDayNav(1); }
+    });
+}
+
+// ---- Aksi kartu rencana ----
+async function igPlanSetStage(planId, stage) {
+    await igPlanUpdateField(planId, 'tahap', stage);
+    if (igDayModalDateKey) igOpenDayModal(igDayModalDateKey);
+}
+async function igCopyPlanCaption(planId) {
+    const pl = igContentPlan.find(p => p.id === planId);
+    if (!pl || !pl.draft_caption) { showToast('Caption masih kosong', 'info'); return; }
+    try { await navigator.clipboard.writeText(pl.draft_caption); showToast('Caption disalin', 'success'); }
+    catch (err) { showToast('Gagal menyalin caption', 'error'); }
+}
+// Hapus 2 langkah: klik pertama meminta konfirmasi (3 detik), klik kedua menghapus
+function igArmDelete(btn, planId) {
+    if (btn.dataset.armed === '1') { igDeletePlanItem(planId); return; }
+    btn.dataset.armed = '1';
+    btn.classList.add('is-armed');
+    btn.innerHTML = '<i class="bi bi-trash-fill"></i> Yakin?';
+    setTimeout(() => {
+        if (!btn.isConnected) return;
+        btn.dataset.armed = '';
+        btn.classList.remove('is-armed');
+        btn.innerHTML = '<i class="bi bi-trash"></i>';
+    }, 3000);
 }
 
 function closeIgDayModal() {
@@ -13681,35 +13787,22 @@ function closeIgDayModal() {
     igDayModalDateKey = null;
 }
 
-// ---- Buka/tutup mode edit langsung di item rencana (day modal) ----
-// Klik area info (tema/caption/badge) -> sembunyikan tampilan ringkas,
-// tampilkan field editable (tema/tipe_konten/draft_caption) -- field yang
-// sama & auto-save yang sama (igPlanUpdateField) dengan list di Content
-// Planner, cuma sekarang bisa diakses langsung dari kalender tanpa buka
-// modal lain. Klik "Selesai" -> render ulang day modal supaya tampilan
-// ringkas ikut ter-update dengan data terbaru yang baru disimpan.
+// ---- Buka/tutup editor inline di kartu rencana (modal harian) ----
+// Field auto-save lewat igPlanUpdateField (blur/change). Saat ditutup, modal
+// dirender ulang (jeda singkat supaya simpan dari blur selesai dulu).
 function igTogglePlanEdit(planId) {
-    const itemEl = document.getElementById(`igDayPlanItem-${planId}`);
-    if (!itemEl) return;
-    const viewEl = itemEl.querySelector('.ig-plan-view');
-    const editEl = itemEl.querySelector('.ig-plan-edit-wrap');
-    if (!viewEl || !editEl) return;
-
-    const isEditing = editEl.style.display !== 'none';
-    if (isEditing) {
-        // "Selesai" -- render ulang day modal supaya tampilan ringkas sinkron
-        // dengan perubahan yang baru disimpan (blur sudah trigger save duluan).
-        if (igDayModalDateKey) igOpenDayModal(igDayModalDateKey);
-    } else {
-        viewEl.style.display = 'none';
-        editEl.style.display = 'block';
-        // Item pindah dari layout baris sempit (thumb+info+aksi sejajar) ke
-        // layout kolom penuh-lebar -- supaya textarea caption tidak terjepit
-        // di antara thumbnail & tombol aksi, lebih lega buat edit panjang.
-        itemEl.classList.add('ig-day-plan-item--editing');
-        const temaInput = editEl.querySelector('.ig-plan-edit-tema');
-        if (temaInput) { temaInput.focus(); temaInput.select(); }
+    const card = document.getElementById(`igDayPlanItem-${planId}`);
+    const edit = card && card.querySelector('.ig-dm-edit');
+    if (!edit) return;
+    if (edit.style.display !== 'none') {
+        const key = igDayModalDateKey;
+        setTimeout(() => { if (key && igDayModalDateKey === key) igOpenDayModal(key); }, 250);
+        return;
     }
+    edit.style.display = 'block';
+    card.classList.add('is-editing');
+    const tema = edit.querySelector('.ig-dm-tema');
+    if (tema) { tema.focus(); tema.select(); }
 }
 
 // ---- Update counter karakter live saat mengetik di textarea edit rencana ----
@@ -14829,6 +14922,7 @@ async function igSkipPlanItem(planId) {
         if (error) throw error;
         await loadIgContentPlan();
         showToast('Rencana dilewati', 'success');
+        if (igDayModalDateKey) igOpenDayModal(igDayModalDateKey);
         // Refresh tampilan hasil di modal (kalau sedang terbuka)
         const resultWrap = document.getElementById('igPlanResultWrap');
         if (resultWrap && resultWrap.style.display !== 'none') {
@@ -14850,7 +14944,7 @@ async function igDeletePlanItem(planId) {
         if (error) throw error;
         await loadIgContentPlan();
         showToast('Rencana dihapus', 'success');
-        closeIgDayModal();
+        if (igDayModalDateKey) igOpenDayModal(igDayModalDateKey);
         const resultWrap = document.getElementById('igPlanResultWrap');
         if (resultWrap && resultWrap.style.display !== 'none') {
             const monthVal = document.getElementById('igPlanMonth')?.value;
@@ -14878,6 +14972,14 @@ window.loadIgPosts = loadIgPosts;
 window.igPrevMonth = igPrevMonth;
 window.igNextMonth = igNextMonth;
 window.igGotoToday = igGotoToday;
+window.igDayNav = igDayNav;
+window.igDayNavToday = igDayNavToday;
+window.igPickQuickTipe = igPickQuickTipe;
+window.igPickQuickPilar = igPickQuickPilar;
+window.igFillQuickIdea = igFillQuickIdea;
+window.igPlanSetStage = igPlanSetStage;
+window.igCopyPlanCaption = igCopyPlanCaption;
+window.igArmDelete = igArmDelete;
 window.igNewIdea = igNewIdea;
 window.igSetCalFilter = igSetCalFilter;
 window.igQuickAddPlan = igQuickAddPlan;

@@ -1342,35 +1342,46 @@
 </div>
 
 <div class="modal-overlay" id="igDayModal">
-    <div class="modal-content" style="max-width:600px;">
-        <div class="modal-header">
-            <h2><i class="bi bi-calendar3"></i> <span id="igDayModalTitle">Post pada tanggal ini</span></h2>
+    <div class="modal-content ig-dm" style="max-width:720px;">
+        <div class="ig-dm-header">
+            <button type="button" class="ig-dm-nav" onclick="igDayNav(-1)" title="Hari sebelumnya (←)"><i class="bi bi-chevron-left"></i></button>
+            <div class="ig-dm-title">
+                <div class="ig-dm-weekday" id="igDmWeekday"></div>
+                <h2 id="igDayModalTitle">Tanggal</h2>
+            </div>
+            <button type="button" class="ig-dm-nav" onclick="igDayNav(1)" title="Hari berikutnya (→)"><i class="bi bi-chevron-right"></i></button>
+            <div class="ig-dm-meta" id="igDmMeta"></div>
+            <button type="button" class="ig-dm-today" onclick="igDayNavToday()">Hari ini</button>
             <button class="modal-close" onclick="closeIgDayModal()">&times;</button>
         </div>
-        <div class="modal-body">
-            <div class="ig-day-post-list" id="igDayModalBody">
-                <!-- Diisi oleh JS -->
+
+        <div class="ig-dm-composer" id="igPlanQuickAdd" style="display:none;">
+            <div class="ig-dm-composer-row">
+                <input type="text" id="igQuickPlanTema" class="ig-dm-input ig-dm-composer-input" maxlength="120" autocomplete="off"
+                    placeholder="Tulis ide konten, lalu tekan Enter..."
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();igQuickAddPlan();}">
+                <button type="button" class="btn-primary ig-dm-add" onclick="igQuickAddPlan()"><i class="bi bi-plus-lg"></i> Tambah</button>
             </div>
-            <div class="ig-plan-quickadd" id="igPlanQuickAdd" style="display:none;">
-                <div class="ig-plan-quickadd-label"><i class="bi bi-lightbulb"></i> Tambah ide konten di tanggal ini</div>
-                <div class="ig-plan-quickadd-row">
-                    <input type="text" id="igQuickPlanTema" maxlength="120" placeholder="Tema / ide, mis. Testimoni jamaah quad"
-                        onkeydown="if(event.key==='Enter'){event.preventDefault();igQuickAddPlan();}">
-                    <select id="igQuickPlanTipe">
-                        <option value="image">Image</option>
-                        <option value="video">Video/Reels</option>
-                        <option value="carousel">Carousel</option>
-                    </select>
-                    <select id="igQuickPlanPilar" class="ig-quick-meta"></select>
-                    <select id="igQuickPlanTahap" class="ig-quick-meta"></select>
-                    <button type="button" class="btn-secondary" onclick="igQuickAddPlan()" style="font-size:12px;padding:6px 12px;"><i class="bi bi-plus-lg"></i> Tambah</button>
+            <div class="ig-dm-composer-opts">
+                <div class="ig-dm-seg" id="igQuickTipeSeg">
+                    <button type="button" data-t="image" class="active" onclick="igPickQuickTipe('image')"><i class="bi bi-image"></i> Image</button>
+                    <button type="button" data-t="video" onclick="igPickQuickTipe('video')"><i class="bi bi-camera-reels"></i> Reels</button>
+                    <button type="button" data-t="carousel" onclick="igPickQuickTipe('carousel')"><i class="bi bi-images"></i> Carousel</button>
                 </div>
+                <div class="ig-dm-pills ig-quick-meta" id="igQuickPilarChips"></div>
             </div>
-            <div class="form-actions" style="border-top:none;padding-top:4px;">
-                <button class="btn-primary" id="igDayModalAddBtn" onclick="igAddPostFromDayModal()" style="font-size:12px;padding:6px 14px;">
-                    <i class="bi bi-plus-lg"></i> Tambah Post di Tanggal Ini
-                </button>
-            </div>
+            <input type="hidden" id="igQuickPlanTipe" value="image">
+            <input type="hidden" id="igQuickPlanPilar" value="">
+            <input type="hidden" id="igQuickPlanTahap" value="ide">
+        </div>
+
+        <div class="ig-dm-body" id="igDayModalBody"><!-- Diisi oleh JS --></div>
+
+        <div class="ig-dm-footer">
+            <button class="btn-secondary" id="igDayModalAddBtn" onclick="igAddPostFromDayModal()" style="font-size:12px;padding:6px 14px;">
+                <i class="bi bi-image"></i> Buat Draft Post (dengan media)
+            </button>
+            <span class="ig-dm-keys"><kbd>←</kbd> <kbd>→</kbd> ganti hari · <kbd>Esc</kbd> tutup</span>
         </div>
     </div>
 </div>
