@@ -13877,8 +13877,11 @@ function openIgUploadModal(postId = null, presetDateKey = null) {
             document.getElementById('ig_caption').value = post.caption || '';
             if (post.schedule_time) {
                 const d = new Date(post.schedule_time);
-                document.getElementById('ig_schedule_date').value = d.toISOString().split('T')[0];
-                document.getElementById('ig_schedule_time').value = d.toTimeString().slice(0, 5);
+                // Pakai komponen LOKAL untuk tanggal & jam (toISOString memberi tanggal UTC,
+                // bikin tanggal mundur sehari untuk jam 00:00–06:59 WIB).
+                const pad = n => String(n).padStart(2, '0');
+                document.getElementById('ig_schedule_date').value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+                document.getElementById('ig_schedule_time').value = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
             }
             document.getElementById('ig_media_type').value = post.media_type || 'image';
             document.getElementById('ig_media_url').value = post.media_url || '';
@@ -14200,7 +14203,10 @@ async function saveIgPost(e) {
         if (!mediaUrl) { showToast('Media belum diupload', 'error'); return; }
     }
 
-    const scheduleISO = `${scheduleDate}T${scheduleTime}:00`;
+    // Interpretasikan input sebagai waktu LOKAL browser (WIB), lalu kirim sebagai ISO UTC.
+    // Sebelumnya string tanpa offset dibaca Postgres sebagai UTC → jadwal 09:00 WIB
+    // tersimpan 09:00 UTC (= 16:00 WIB), telat 7 jam.
+    const scheduleISO = new Date(`${scheduleDate}T${scheduleTime}:00`).toISOString();
 
     const postData = {
         caption: caption || null,

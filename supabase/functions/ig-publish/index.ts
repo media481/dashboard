@@ -215,7 +215,7 @@ async function processPost(post: Record<string, unknown>, account: Record<string
       await logStep(post.id, "create_container", true, null, { container_id: containerId });
     }
 
-    await updatePost(post.id, { ig_container_id: containerId, status: "publishing", updated_at: new Date().toISOString() });
+    await updatePost(post.id, { ig_container_id: containerId, updated_at: new Date().toISOString() });
 
     if (post.media_type === "video") {
       await logStep(post.id, "check_status", true, null, { waited: true });
@@ -283,7 +283,11 @@ async function isAuthorized(req: Request, body: Record<string, unknown>): Promis
   if (authHeader && authHeader.startsWith("Bearer ")) {
     const token = authHeader.replace("Bearer ", "");
     const { data, error } = await supabase.auth.getUser(token);
-    if (!error && data?.user) return true;
+    if (!error && data?.user) {
+      // Guest (read-only) tidak boleh memicu publish — cek role via RPC yang sama dengan RLS.
+      const { data: prof } = await supabase.from("dashboard_profiles").select("dashboard_role").eq("id", data.user.id).maybeSingle();
+      return prof?.dashboard_role === "admin" || prof?.dashboard_role === "user";
+    }
   }
   return false;
 }
@@ -310,6 +314,17 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Pulihkan post yang nyangkut di 'publishing' (function sebelumnya timeout/crash
+    // sebelum sempat menandai published/failed). Tanpa ini post tsb tidak akan
+    // pernah diproses lagi karena query di bawah hanya mengambil 'scheduled'.
+    const staleCutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { error: staleErr } = await supabase
+      .from("ig_posts")
+      .update({ status: "scheduled", last_error: "Proses sebelumnya terhenti (timeout) — dicoba ulang otomatis", updated_at: new Date().toISOString() })
+      .eq("status", "publishing")
+      .lt("updated_at", staleCutoff);
+    if (staleErr) console.warn("Gagal memulihkan post publishing yang nyangkut:", staleErr);
+
     // Query post yang jatuh tempo
     const { data: posts, error: postsError } = await supabase
       .from("ig_posts")
@@ -343,6 +358,21 @@ Deno.serve(async (req: Request) => {
 
     for (const post of posts) {
       try {
+        // Klaim atomik: hanya satu proses yang boleh memegang post ini. Kalau cron,
+        // tombol Retry, atau tick ganda berjalan bersamaan, yang kalah klaim di-skip
+        // (mencegah post terbit dobel di Instagram).
+        const { data: claimed, error: claimErr } = await supabase
+          .from("ig_posts")
+          .update({ status: "publishing", updated_at: new Date().toISOString() })
+          .eq("id", post.id)
+          .eq("status", "scheduled")
+          .select("id");
+        if (claimErr) throw claimErr;
+        if (!claimed || claimed.length === 0) {
+          results.push({ post_id: post.id, status: "skipped", error: "sudah diklaim proses lain" });
+          continue;
+        }
+
         await processPost(post, account);
         const { data: updated } = await supabase.from("ig_posts").select("status").eq("id", post.id).single();
         processed++;

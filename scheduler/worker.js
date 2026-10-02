@@ -20,49 +20,40 @@
 
 export default {
   async scheduled(event, env, ctx) {
-    const now = new Date();
+    // Dua cron di wrangler.toml: "*/15 * * * *" dan "0 9 * * 1". Setiap cron memicu
+    // handler ini sendiri-sendiri, jadi bedakan lewat event.cron. Sebelumnya Senin 09:00
+    // UTC memicu publish + sync DUA kali (kedua cron cocok), dan refresh token ikut
+    // terpanggil di keempat tick 09:00/09:15/09:30/09:45.
+    const call = async (name) => {
+      try {
+        const res = await fetch(`${env.SUPABASE_FUNCTIONS_URL}/${name}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+          },
+          body: JSON.stringify({ service_role_key: env.SUPABASE_SERVICE_ROLE_KEY }),
+        });
+        if (!res.ok) {
+          console.error(`[IG Scheduler] ${name} GAGAL: ${res.status} ${(await res.text()).slice(0, 300)}`);
+        } else {
+          console.log(`[IG Scheduler] ${name} OK: ${res.status}`);
+        }
+      } catch (err) {
+        console.error(`[IG Scheduler] ${name} error jaringan:`, err);
+      }
+    };
 
-    // --- Token refresh: tiap Senin pukul 09:00 UTC ---
-    // (hari ini adalah Senin & jam 9) → trigger refresh mingguan
-    const isMonday9am = now.getUTCDay() === 1 && now.getUTCHours() === 9;
-
-    // --- ig-publish: tiap 15 menit ---
-    // Selalu jalankan publish cycle setiap tick 15 menit
-    const publishRes = await fetch(`${env.SUPABASE_FUNCTIONS_URL}/ig-publish`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-      },
-      body: JSON.stringify({ service_role_key: env.SUPABASE_SERVICE_ROLE_KEY }),
-    });
-
-    console.log(`[IG Scheduler] ig-publish triggered: ${publishRes.status}`);
-
-    // --- ig-sync-comments: tiap 15 menit (bareng publish) ---
-    // Fitur gratis Graph API (instagram_manage_comments) — cek komentar baru
-    // di post yang sudah published & kirim notif Telegram kalau ada.
-    const syncRes = await fetch(`${env.SUPABASE_FUNCTIONS_URL}/ig-sync-comments`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-      },
-      body: JSON.stringify({ service_role_key: env.SUPABASE_SERVICE_ROLE_KEY }),
-    });
-    console.log(`[IG Scheduler] ig-sync-comments triggered: ${syncRes.status}`);
-
-    if (isMonday9am && env.SUPABASE_SERVICE_ROLE_KEY) {
-      const refreshRes = await fetch(`${env.SUPABASE_FUNCTIONS_URL}/ig-refresh-token`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-        },
-        body: JSON.stringify({ service_role_key: env.SUPABASE_SERVICE_ROLE_KEY }),
-      });
-      console.log(`[IG Scheduler] ig-refresh-token triggered: ${refreshRes.status}`);
+    if (event.cron === "0 9 * * 1") {
+      // Token refresh mingguan — cron terpisah, tidak ikut publish/sync
+      await call("ig-refresh-token");
+      return;
     }
+
+    // Tiap 15 menit: publish dulu, baru sync komentar. Berurutan (bukan paralel) supaya
+    // satu function tidak berebut waktu/rate limit Graph API dengan yang lain.
+    await call("ig-publish");
+    await call("ig-sync-comments");
   },
 
   // Handler untuk testing manual lewat HTTP (opsional)
