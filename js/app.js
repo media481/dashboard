@@ -13174,12 +13174,12 @@ function igApplyPlannerMode() {
     if (h) h.textContent = 'Content Planner';
     if (sub) sub.textContent = 'Rencanakan ide, caption, dan jadwal konten Instagram';
     const up = document.getElementById('btnIgUpload');
-    if (up) { up.className = 'btn-secondary'; up.innerHTML = '<i class="bi bi-image"></i> Draft Post'; up.title = 'Buat draft post dengan media'; }
-    // Toolbar ringkas: Refresh jadi ikon saja, label "Rencana Bulanan AI" dipendekkan
+    if (up) { up.className = 'btn-secondary'; up.textContent = 'Draft Post'; up.title = 'Buat draft post dengan media'; }
+    // Toolbar bersih tanpa ikon: label teks saja, "Rencana Bulanan AI" dipendekkan
     const rf = document.getElementById('btnIgRefresh');
-    if (rf) { rf.innerHTML = '<i class="bi bi-arrow-clockwise"></i>'; rf.title = 'Refresh data'; }
+    if (rf) { rf.textContent = 'Refresh'; rf.title = 'Refresh data'; }
     const ai = document.getElementById('btnIgContentPlan');
-    if (ai) ai.innerHTML = '<i class="bi bi-magic"></i> Rencana AI';
+    if (ai) ai.textContent = 'Rencana AI';
     const submit = document.getElementById('igSubmitBtn');
     if (submit) submit.innerHTML = '<i class="bi bi-save"></i> Simpan Draft';
 }
