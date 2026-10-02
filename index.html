@@ -432,28 +432,27 @@
                 <h1><span>IG Scheduler</span></h1>
                 <p>Jadwalkan &amp; kelola publikasi otomatis ke Instagram</p>
             </div>
+            <div class="ig-scheduler-toolbar admin-page-header-actions">
+                <button class="btn-primary" id="btnIgNewIdea" onclick="igNewIdea()" style="font-size:12px;padding:6px 14px;">
+                    Ide Baru
+                </button>
+                <button class="btn-primary" id="btnIgUpload" onclick="openIgUploadModal()" style="font-size:12px;padding:6px 14px;">
+                    Post Baru
+                </button>
+                <button class="btn-secondary" id="btnIgRefresh" onclick="loadIgPosts(true)" style="font-size:12px;padding:6px 14px;">
+                    Refresh
+                </button>
+                <button class="btn-secondary" id="btnIgSyncComments" onclick="syncIgCommentsNow()" style="font-size:12px;padding:6px 14px;" title="Tarik komentar terbaru dari Instagram">
+                    Sync Komentar
+                </button>
+                <button class="btn-secondary" id="btnIgContentPlan" onclick="openIgContentPlanModal()" style="font-size:12px;padding:6px 14px;" title="Buat rencana konten 1 bulan otomatis pakai AI">
+                    Rencana Bulanan AI
+                </button>
+                <span class="ig-scheduler-count" id="igSchedulerCount">0 post</span>
+            </div>
         </div>
         <div class="admin-page-body">
             <div class="ig-scheduler-tab">
-                <div class="ig-scheduler-toolbar">
-                    <button class="btn-primary" id="btnIgNewIdea" onclick="igNewIdea()" style="font-size:12px;padding:6px 14px;">
-                        Ide Baru
-                    </button>
-                    <button class="btn-primary" id="btnIgUpload" onclick="openIgUploadModal()" style="font-size:12px;padding:6px 14px;">
-                        Post Baru
-                    </button>
-                    <button class="btn-secondary" id="btnIgRefresh" onclick="loadIgPosts(true)" style="font-size:12px;padding:6px 14px;">
-                        Refresh
-                    </button>
-                    <button class="btn-secondary" id="btnIgSyncComments" onclick="syncIgCommentsNow()" style="font-size:12px;padding:6px 14px;" title="Tarik komentar terbaru dari Instagram">
-                        Sync Komentar
-                    </button>
-                    <button class="btn-secondary" id="btnIgContentPlan" onclick="openIgContentPlanModal()" style="font-size:12px;padding:6px 14px;" title="Buat rencana konten 1 bulan otomatis pakai AI">
-                        Rencana Bulanan AI
-                    </button>
-                    <span class="ig-scheduler-count" id="igSchedulerCount">0 post</span>
-                </div>
-
                 <!-- IG Account Status -->
                 <div class="ig-account-status" id="igAccountStatus" style="display:none;">
                     <div class="ig-account-info">

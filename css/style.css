@@ -4366,3 +4366,20 @@
 /* Bar pilar ikut dilembutkan supaya tidak lebih menonjol dari tile di atasnya */
 .ig-planner-mode .ig-pillar-bar { height: 5px; }
 .ig-planner-mode .ig-pillar-bar span { opacity: .75; }
+
+
+/* ============================================================
+   Toolbar dipindah ke header halaman (sejajar judul, rata kanan)
+   ============================================================ */
+#igSchedulerPageView .admin-page-header .ig-scheduler-toolbar {
+    margin: 0 0 0 auto; justify-content: flex-end; flex-wrap: wrap; align-items: center;
+}
+.ig-planner-mode .admin-page-header .ig-scheduler-toolbar { margin: 0 0 0 auto; justify-content: flex-end; }
+/* Header lebih rapat karena toolbar tidak lagi memakai baris sendiri */
+.ig-planner-mode .admin-page-header { margin-bottom: 14px; }
+.ig-planner-mode .admin-page-header .ig-scheduler-toolbar .btn-primary,
+.ig-planner-mode .admin-page-header .ig-scheduler-toolbar .btn-secondary { min-height: 34px; }
+.ig-planner-mode .ig-scheduler-tab { padding-top: 0; }
+@media (max-width: 760px) {
+    #igSchedulerPageView.ig-planner-mode .admin-page-header .ig-scheduler-toolbar { margin-left: 0; flex-basis: 100%; justify-content: flex-start; }
+}
