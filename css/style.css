@@ -3667,7 +3667,7 @@
 }
 .ig-cal-filter button + button { border-left: 1px solid var(--line); }
 .ig-cal-filter button.active { background: var(--brand); color: #fff; }
-.ig-calendar-header > .ig-cal-filter { margin-left: auto; margin-right: auto; }
+.ig-calendar-header > .ig-cal-filter { margin-left: auto; margin-right: 6px; } /* rapat ke kanan, dekat tombol Hari Ini tapi tetap ada jarak */
 @media (max-width: 600px) {
     .ig-calendar-header > .ig-cal-filter { order: 3; flex-basis: 100%; margin: 0; justify-content: center; }
 }
