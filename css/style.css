@@ -3777,29 +3777,46 @@
 
 .ig-plan-side {
     background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px;
-    padding: 14px; max-height: 760px; overflow-y: auto;
+    padding: 0; max-height: 760px; overflow-y: auto;
 }
-.ig-plan-side-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* Header menempel di atas saat daftar di-scroll, supaya tombol "+ Ide" selalu terjangkau */
+.ig-plan-side-header {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    position: sticky; top: 0; z-index: 1; background: var(--surface);
+    padding: 14px 16px 10px; border-bottom: 1px solid var(--line);
+}
 .ig-plan-side-header h3 { font-size: 14px; margin: 0; display: flex; align-items: center; gap: 6px; }
-.ig-plan-side-hint { font-size: 11px; color: var(--ink-soft); margin: 6px 0 4px; }
+#igPlanSideBody { padding: 4px 12px 14px; }
 .ig-side-group {
     font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
-    color: var(--ink-soft); margin: 12px 0 6px;
+    color: var(--ink-soft); margin: 14px 4px 6px;
 }
+.ig-side-group:first-child { margin-top: 10px; }
 .ig-side-group em { font-style: normal; background: var(--bg); border-radius: 8px; padding: 0 6px; margin-left: 4px; }
 .ig-side-item {
     --pillar: var(--brand);
-    display: flex; gap: 10px; align-items: center; padding: 7px 9px; margin-bottom: 6px;
-    border: 1px solid var(--line); border-left: 3px solid var(--pillar); border-radius: 8px;
-    background: var(--surface); cursor: pointer;
+    display: flex; gap: 12px; align-items: center; padding: 10px 10px; margin: 0 0 4px;
+    border: 1px solid transparent; border-radius: 10px;
+    background: transparent; cursor: pointer; transition: background .12s, border-color .12s;
 }
 .ig-side-item[draggable="true"] { cursor: grab; }
-.ig-side-item:hover { border-color: var(--pillar); box-shadow: 0 2px 8px rgba(0,0,0,.07); }
-.ig-side-date { min-width: 30px; text-align: center; font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1; }
-.ig-side-date small { display: block; font-size: 9.5px; font-weight: 600; color: var(--ink-soft); margin-top: 2px; }
-.ig-side-main { display: flex; flex-direction: column; min-width: 0; }
-.ig-side-tema { font-size: 12.5px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ig-side-meta { font-size: 10.5px; color: var(--ink-soft); }
+.ig-side-item:hover { background: var(--bg); border-color: var(--line); }
+.ig-side-date {
+    flex-shrink: 0; width: 40px; padding: 6px 0; border-radius: 9px; background: var(--bg);
+    text-align: center; line-height: 1;
+}
+.ig-side-item:hover .ig-side-date { background: var(--surface); }
+.ig-side-date b { display: block; font-size: 16px; font-weight: 700; color: var(--ink); }
+.ig-side-date small { display: block; font-size: 9.5px; font-weight: 600; color: var(--ink-soft); margin-top: 3px; text-transform: uppercase; letter-spacing: .03em; }
+.ig-side-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.ig-side-tema {
+    font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.35;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+}
+.ig-side-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; font-size: 11px; color: var(--ink-soft); }
+.ig-side-meta > span { display: inline-flex; align-items: center; gap: 4px; }
+.ig-side-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pillar); display: inline-block; }
+.ig-side-empty { text-align: center; padding: 28px 10px 20px; font-size: 13px; color: var(--ink-soft); }
 
 /* chip rencana: warna pilar, gaya tahap (ide = putus-putus, dikerjakan = terisi tipis, siap = solid) */
 .ig-cal-chip-plan { --pillar: var(--brand); border-color: var(--pillar); border-left-color: var(--pillar); }

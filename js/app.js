@@ -13415,27 +13415,32 @@ function renderIgPlanSide(monthPlans) {
     igBindSideDnD(body);
 
     if (!monthPlans.length) {
-        body.innerHTML = '<div class="ig-empty"><i class="bi bi-lightbulb"></i> Belum ada ide bulan ini. Klik "+ Ide" atau generate dengan AI.</div>';
+        body.innerHTML = '<div class="ig-side-empty">Belum ada ide bulan ini</div>';
         return;
     }
     const canDrag = canManageProgramData();
     const mon = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
     const sorted = monthPlans.slice().sort((a, b) => a.tanggal.localeCompare(b.tanggal));
-    body.innerHTML = ['siap', 'dikerjakan', 'ide'].map(stage => {
-        const items = sorted.filter(p => (p.tahap || 'ide') === stage);
-        if (!items.length) return '';
-        return `<div class="ig-side-group">${IG_STAGES[stage]} <em>${items.length}</em></div>` + items.map(pl => {
+    const groups = ['siap', 'dikerjakan', 'ide']
+        .map(stage => ({ stage, items: sorted.filter(p => (p.tahap || 'ide') === stage) }))
+        .filter(g => g.items.length);
+    // Judul grup tahap hanya ditampilkan kalau memang membedakan sesuatu:
+    // lebih dari 1 grup, atau satu-satunya grup bukan "Ide" (default).
+    const showGroupTitle = groups.length > 1 || (groups[0] && groups[0].stage !== 'ide');
+    body.innerHTML = groups.map(g =>
+        (showGroupTitle ? `<div class="ig-side-group">${IG_STAGES[g.stage]} <em>${g.items.length}</em></div>` : '') +
+        g.items.map(pl => {
             const [, m, d] = pl.tanggal.split('-').map(Number);
             const pil = IG_PILLARS[pl.pilar];
             return `<div class="ig-side-item" data-plan-id="${pl.id}" ${canDrag ? 'draggable="true"' : ''} style="--pillar:${pil ? pil.color : 'var(--brand)'};" onclick="igOnDayClick('${pl.tanggal}')">
-                <span class="ig-side-date">${d}<small>${mon[m - 1]}</small></span>
+                <span class="ig-side-date"><b>${d}</b><small>${mon[m - 1]}</small></span>
                 <span class="ig-side-main">
                     <span class="ig-side-tema">${escapeHtml(pl.tema)}</span>
-                    <span class="ig-side-meta"><i class="bi ${IG_TYPE_ICONS[pl.tipe_konten] || 'bi-image'}"></i> ${IG_TYPE_LABELS[pl.tipe_konten] || 'Image'}${pil ? ' · ' + escapeHtml(pil.label) : ''}</span>
+                    <span class="ig-side-meta"><span><i class="bi ${IG_TYPE_ICONS[pl.tipe_konten] || 'bi-image'}"></i> ${IG_TYPE_LABELS[pl.tipe_konten] || 'Image'}</span>${pil ? `<span class="ig-side-pil"><i class="ig-side-dot"></i>${escapeHtml(pil.label)}</span>` : ''}</span>
                 </span>
             </div>`;
-        }).join('');
-    }).join('');
+        }).join('')
+    ).join('');
 }
 
 function igBindSideDnD(el) {
