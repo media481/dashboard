@@ -3877,7 +3877,7 @@
 /* Kartu: [ikon | info] di kiri, aksi di kanan */
 .ig-dm-card {
     --pillar: var(--brand);
-    border: 1px solid var(--line); border-left: 3px solid var(--pillar); border-radius: 10px;
+    border: 1px solid var(--line); border-radius: 10px;
     background: var(--surface); margin-bottom: 8px; overflow: hidden;
 }
 .ig-dm-card-top { display: flex; align-items: flex-start; gap: 8px; padding: 10px 10px 10px 12px; }
