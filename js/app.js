@@ -13723,11 +13723,7 @@ function igOpenDayModal(dateKey) {
     if (todayBtn) todayBtn.style.display = isToday ? 'none' : '';
 
     if (!dayPosts.length && !dayPlans.length) {
-        bodyEl.innerHTML = `<div class="ig-dm-empty"><i class="bi bi-calendar2-plus"></i>
-            <b>Belum ada konten di tanggal ini</b>
-            ${canEdit ? `<span>Tulis ide di atas, atau pilih cepat:</span>
-            <div class="ig-dm-suggest">${IG_QUICK_IDEAS.map((t, i) => `<button type="button" onclick="igFillQuickIdea(${i})">${escapeHtml(t)}</button>`).join('')}</div>` : ''}
-        </div>`;
+        bodyEl.innerHTML = `<div class="ig-dm-empty">Belum ada konten di tanggal ini</div>`;
     } else {
         bodyEl.innerHTML =
             (dayPlans.length ? `<div class="ig-dm-section">Rencana <em>${dayPlans.length}</em></div>` + dayPlans.map(pl => igDmPlanCard(pl, canEdit)).join('') : '') +
