@@ -256,3 +256,15 @@ Kalender IG Scheduler sekarang berfungsi sekaligus sebagai papan perencanaan kon
 - **Drag & drop**: seret chip ide ke tanggal lain untuk memindahkan (update `tanggal` + `bulan`). Di modal harian tersedia input tanggal sebagai alternatif untuk mobile.
 - **Tambah ide cepat** dari modal harian (tema + tipe konten), tanpa harus generate AI.
 - Hanya item *ide* yang bisa dipindah lewat drag & drop; jadwal post yang sudah dibuat tetap diubah lewat modal Edit supaya tidak mengganggu antrean publish.
+
+
+---
+
+## Mode Content Planner (auto-upload & komentar disisihkan)
+
+Flag `IG_AUTOPUBLISH_ENABLED` di `js/app.js` (default `false`):
+
+- Disembunyikan: tombol Sync Komentar, panel komentar, status akun/token IG, tombol Retry & badge komentar. Kodenya, edge function, dan cron tidak dihapus — ubah flag jadi `true` untuk mengaktifkan lagi.
+- Post disimpan sebagai **draft** (bukan `scheduled`), sehingga `ig-publish` tidak menerbitkan apa pun. Post lama yang sudah berstatus `scheduled` tetap akan diterbitkan cron kecuali dijadikan draft atau cron dimatikan.
+- Layout: kartu statistik bulan ini, kalender lebar, dan sidebar **Ide Bulan Ini** (dikelompokkan per tahap, bisa diseret ke kalender).
+- Opsional: jalankan `sql/tambah_ig_content_plan_planner.sql` untuk kolom `pilar` & `tahap` (warna pilar di chip, keseimbangan pilar, alur Ide → Dikerjakan → Siap). Tanpa migrasi ini fitur tersebut otomatis tersembunyi.

@@ -436,6 +436,9 @@
         <div class="admin-page-body">
             <div class="ig-scheduler-tab">
                 <div class="ig-scheduler-toolbar">
+                    <button class="btn-primary" id="btnIgNewIdea" onclick="igNewIdea()" style="font-size:12px;padding:6px 14px;">
+                        <i class="bi bi-lightbulb"></i> Ide Baru
+                    </button>
                     <button class="btn-primary" id="btnIgUpload" onclick="openIgUploadModal()" style="font-size:12px;padding:6px 14px;">
                         <i class="bi bi-plus-lg"></i> Post Baru
                     </button>
@@ -462,6 +465,8 @@
                 </div>
 
                 <!-- Calendar + Komentar (split layar utama) -->
+                <div class="ig-cal-summary-wrap" id="igCalSummary"></div>
+
                 <div class="ig-scheduler-split">
                     <div class="ig-calendar-container">
                         <div class="ig-calendar-header">
@@ -478,7 +483,6 @@
                                 <button type="button" data-filter="plan" onclick="igSetCalFilter('plan')"><i class="bi bi-lightbulb"></i> Rencana</button>
                                 <button type="button" data-filter="post" onclick="igSetCalFilter('post')"><i class="bi bi-instagram"></i> Post</button>
                             </div>
-                            <div class="ig-cal-summary" id="igCalSummary"></div>
                         </div>
                         <div class="ig-calendar-grid">
                             <div class="ig-cal-day-header">Min</div>
@@ -499,6 +503,15 @@
                             <span class="ig-cal-legend-item"><span class="ig-cal-legend-dot ig-cal-legend-dot-plan"></span>Rencana (ide)</span>
                         </div>
                     </div>
+
+                    <aside class="ig-plan-side" id="igPlanSide">
+                        <div class="ig-plan-side-header">
+                            <h3><i class="bi bi-lightbulb"></i> Ide Bulan Ini <span class="ig-comments-panel-count" id="igPlanSideCount"></span></h3>
+                            <button class="ig-cal-today-btn" onclick="igNewIdea()"><i class="bi bi-plus-lg"></i> Ide</button>
+                        </div>
+                        <div class="ig-plan-side-hint"><i class="bi bi-arrows-move"></i> Seret ide ke kalender untuk memindah tanggal</div>
+                        <div id="igPlanSideBody"></div>
+                    </aside>
 
                     <div class="ig-comments-panel" id="igCommentsPanel">
                         <div class="ig-comments-panel-header">
@@ -1348,6 +1361,8 @@
                         <option value="video">Video/Reels</option>
                         <option value="carousel">Carousel</option>
                     </select>
+                    <select id="igQuickPlanPilar" class="ig-quick-meta"></select>
+                    <select id="igQuickPlanTahap" class="ig-quick-meta"></select>
                     <button type="button" class="btn-secondary" onclick="igQuickAddPlan()" style="font-size:12px;padding:6px 12px;"><i class="bi bi-plus-lg"></i> Tambah</button>
                 </div>
             </div>

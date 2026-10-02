@@ -3745,3 +3745,69 @@
     .ig-cal-chip-more { font-size: 9px; }
     .ig-cal-add-hint { display: none !important; }
 }
+
+
+/* ============================================================
+   Mode Content Planner (auto-upload & komentar disembunyikan)
+   ============================================================ */
+.ig-planner-mode #btnIgSyncComments,
+.ig-planner-mode #igAccountStatus,
+.ig-planner-mode .ig-comments-panel { display: none !important; }
+#igSchedulerPageView:not(.ig-planner-mode) .ig-plan-side,
+#igSchedulerPageView:not(.ig-planner-mode) .ig-cal-summary-wrap { display: none; }
+.ig-planner-mode .ig-scheduler-split { grid-template-columns: minmax(0, 1fr) 320px; }
+@media (max-width: 1000px) { .ig-planner-mode .ig-scheduler-split { grid-template-columns: 1fr; } }
+.ig-planner-mode .ig-cal-day { min-height: 120px; }
+
+.ig-stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.ig-stat {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+}
+.ig-stat > i { font-size: 17px; color: var(--brand); }
+.ig-stat b { display: block; font-size: 19px; line-height: 1.1; color: var(--ink); }
+.ig-stat span { font-size: 11px; font-weight: 600; color: var(--ink-soft); }
+.ig-stat-ready > i { color: var(--success); }
+.ig-stat-gap > i { color: var(--warn); }
+.ig-stat-post > i { color: var(--ink-soft); }
+.ig-pillar-bar { display: flex; height: 7px; border-radius: 6px; overflow: hidden; margin-top: 10px; gap: 2px; }
+.ig-pillar-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0 2px; font-size: 11px; color: var(--ink-soft); font-weight: 600; }
+.ig-pillar-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+.ig-cal-summary-wrap { margin: 0 0 14px; }
+
+.ig-plan-side {
+    background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px;
+    padding: 14px; max-height: 760px; overflow-y: auto;
+}
+.ig-plan-side-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ig-plan-side-header h3 { font-size: 14px; margin: 0; display: flex; align-items: center; gap: 6px; }
+.ig-plan-side-hint { font-size: 11px; color: var(--ink-soft); margin: 6px 0 4px; }
+.ig-side-group {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--ink-soft); margin: 12px 0 6px;
+}
+.ig-side-group em { font-style: normal; background: var(--bg); border-radius: 8px; padding: 0 6px; margin-left: 4px; }
+.ig-side-item {
+    --pillar: var(--brand);
+    display: flex; gap: 10px; align-items: center; padding: 7px 9px; margin-bottom: 6px;
+    border: 1px solid var(--line); border-left: 3px solid var(--pillar); border-radius: 8px;
+    background: var(--surface); cursor: pointer;
+}
+.ig-side-item[draggable="true"] { cursor: grab; }
+.ig-side-item:hover { border-color: var(--pillar); box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+.ig-side-date { min-width: 30px; text-align: center; font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1; }
+.ig-side-date small { display: block; font-size: 9.5px; font-weight: 600; color: var(--ink-soft); margin-top: 2px; }
+.ig-side-main { display: flex; flex-direction: column; min-width: 0; }
+.ig-side-tema { font-size: 12.5px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ig-side-meta { font-size: 10.5px; color: var(--ink-soft); }
+
+/* chip rencana: warna pilar, gaya tahap (ide = putus-putus, dikerjakan = terisi tipis, siap = solid) */
+.ig-cal-chip-plan { --pillar: var(--brand); border-color: var(--pillar); border-left-color: var(--pillar); }
+.ig-cal-chip-plan > i { color: var(--pillar); }
+.ig-cal-chip-dikerjakan { border-style: solid; }
+@supports (background: color-mix(in srgb, red 10%, transparent)) {
+    .ig-cal-chip-dikerjakan { background: color-mix(in srgb, var(--pillar) 8%, transparent); }
+    .ig-cal-chip-siap { background: color-mix(in srgb, var(--pillar) 18%, transparent); }
+}
+.ig-cal-chip-siap { border-style: solid; color: var(--ink); }
+.ig-quick-meta { max-width: 150px; }
