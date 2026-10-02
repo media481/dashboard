@@ -4379,3 +4379,54 @@
 @media (max-width: 760px) {
     #igSchedulerPageView.ig-planner-mode .admin-page-header .ig-scheduler-toolbar { margin-left: 0; flex-basis: 100%; justify-content: flex-start; }
 }
+
+
+/* ============================================================
+   Content Planner: kanvas pas satu layar (desktop)
+   Halaman dibuat setinggi layar (dikurangi padding <main>), lalu tinggi
+   baris kalender dibagi rata mengikuti sisa ruang -- jadi bulan 5 maupun
+   6 minggu sama-sama muat tanpa scroll halaman. Hanya panel "Ide Bulan
+   Ini" yang scroll sendiri kalau isinya panjang. Layar pendek / lebar
+   sempit tetap memakai tata letak lama (scroll normal).
+   ============================================================ */
+@media (min-width: 1001px) and (min-height: 600px) {
+    main:has(#igSchedulerPageView.ig-planner-mode[style*="block"]) { padding-bottom: 18px; }
+
+    #igSchedulerPageView.ig-planner-mode[style*="block"] {
+        display: flex !important; flex-direction: column;
+        height: calc(100vh - 36px); height: calc(100dvh - 36px);
+    }
+    #igSchedulerPageView.ig-planner-mode .admin-page-header { flex: 0 0 auto; margin-bottom: 12px; }
+    #igSchedulerPageView.ig-planner-mode .admin-page-body {
+        flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 14px 16px;
+    }
+    #igSchedulerPageView.ig-planner-mode .ig-scheduler-tab {
+        flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 0;
+    }
+
+    /* Ringkasan statistik: lebih ringkas */
+    #igSchedulerPageView.ig-planner-mode .ig-cal-summary-wrap { flex: 0 0 auto; margin: 0 0 10px; }
+    #igSchedulerPageView.ig-planner-mode .ig-stat { padding: 8px 14px 9px 16px; gap: 2px; }
+    #igSchedulerPageView.ig-planner-mode .ig-stat b { font-size: 22px; }
+
+    /* Kalender (kiri) + Ide Bulan Ini (kanan) mengisi sisa tinggi */
+    #igSchedulerPageView.ig-planner-mode .ig-scheduler-split {
+        flex: 1 1 auto; min-height: 0; margin: 0;
+        grid-template-rows: minmax(0, 1fr); align-items: stretch; gap: 14px;
+    }
+    #igSchedulerPageView.ig-planner-mode .ig-calendar-container {
+        display: flex; flex-direction: column; min-height: 0; padding: 12px 14px;
+    }
+    #igSchedulerPageView.ig-planner-mode .ig-calendar-header { flex: 0 0 auto; margin-bottom: 6px; }
+    #igSchedulerPageView.ig-planner-mode .ig-calendar-grid {
+        flex: 1 1 auto; min-height: 0;
+        grid-template-rows: auto; grid-auto-rows: minmax(0, 1fr);
+    }
+    #igSchedulerPageView.ig-planner-mode .ig-cal-day { min-height: 0; }
+
+    #igSchedulerPageView.ig-planner-mode .ig-plan-side {
+        display: flex; flex-direction: column; min-height: 0; align-self: stretch;
+    }
+    #igSchedulerPageView.ig-planner-mode .ig-plan-side-header { flex: 0 0 auto; }
+    #igSchedulerPageView.ig-planner-mode #igPlanSideBody { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+}
