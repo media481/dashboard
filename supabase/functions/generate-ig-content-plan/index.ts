@@ -11,7 +11,7 @@
 // Pakai Gemini API dengan response_mime_type=application/json supaya
 // hasilnya langsung JSON terstruktur (bukan teks bebas yang perlu di-parse
 // manual). Secret GEMINI_API_KEY sama dengan fungsi AI lain (fallback
-// multi-key lewat _shared/gemini.ts).
+// multi-key, logikanya digabung inline di file ini).
 //
 // Kontrak (dipakai oleh js/app.js -> generateIgContentPlanAI):
 //   POST body: {
@@ -31,7 +31,58 @@
 // Deploy:
 //   supabase functions deploy generate-ig-content-plan --no-verify-jwt
 
-import { callGeminiWithFallback } from "../_shared/gemini.ts";
+// Helper Gemini (fallback multi-key) digabung langsung di sini, bukan import dari
+// "../_shared/gemini.ts", supaya file ini berdiri sendiri dan bisa dideploy lewat
+// Supabase Dashboard (paste/upload satu file) maupun CLI. Logikanya identik dengan
+// _shared/gemini.ts (key: GEMINI_API_KEY, lalu GEMINI_API_KEY_2 s/d _5).
+const MAX_FALLBACK_KEYS = 5;
+
+function getGeminiApiKeys(): string[] {
+  const keys: string[] = [];
+  const primary = Deno.env.get("GEMINI_API_KEY");
+  if (primary) keys.push(primary);
+  for (let i = 2; i <= MAX_FALLBACK_KEYS; i++) {
+    const k = Deno.env.get(`GEMINI_API_KEY_${i}`);
+    if (k) keys.push(k);
+  }
+  return keys;
+}
+
+// deno-lint-ignore no-explicit-any
+async function callGeminiWithFallback(model: string, body: Record<string, unknown>): Promise<any> {
+  const keys = getGeminiApiKeys();
+  if (!keys.length) {
+    throw new Error("GEMINI_API_KEY belum di-set di Supabase secrets");
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  let lastError = "";
+
+  for (let i = 0; i < keys.length; i++) {
+    try {
+      const res = await fetch(`${url}?key=${keys[i]}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        return await res.json();
+      }
+
+      const errText = await res.text();
+      lastError = `Gemini API error (${res.status}) [key #${i + 1}/${keys.length}]: ${errText.slice(0, 300)}`;
+      console.warn(lastError);
+    } catch (networkErr) {
+      lastError = `Network error saat panggil Gemini [key #${i + 1}/${keys.length}]: ${
+        String((networkErr as Error)?.message || networkErr)
+      }`;
+      console.warn(lastError);
+    }
+  }
+
+  throw new Error(`Semua ${keys.length} GEMINI_API_KEY gagal dipakai. Error terakhir: ${lastError}`);
+}
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
