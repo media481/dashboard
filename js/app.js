@@ -13328,17 +13328,18 @@ function renderIgCalendar() {
             const ref = igPostRefDate(p);
             const jam = ref ? ref.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '';
             const text = igChipText(p.caption, '(tanpa caption)');
-            const lead = (p.media_type === 'image' && p.media_url)
+            const hasThumb = p.media_type === 'image' && p.media_url;
+            const lead = hasThumb
                 ? `<img class="ig-cal-chip-thumb" src="${escapeHtmlAttr(p.media_url)}" loading="lazy" alt="">`
-                : `<i class="bi ${IG_TYPE_ICONS[p.media_type] || 'bi-image'}"></i>`;
-            chips.push(`<div class="ig-cal-chip ig-cal-chip-post" style="--chip:${color};" title="${escapeHtmlAttr(`${statusLabel}${jam ? ' · ' + jam : ''} — ${text}`)}">${lead}<span>${escapeHtml(text)}</span></div>`);
+                : '';
+            chips.push(`<div class="ig-cal-chip ig-cal-chip-post${hasThumb ? ' ig-cal-chip-media' : ''}" style="--chip:${color};" title="${escapeHtmlAttr(`${statusLabel}${jam ? ' · ' + jam : ''} — ${text}`)}">${lead}<span>${escapeHtml(text)}</span></div>`);
         });
         dayPlans.forEach(pl => {
             const text = igChipText(pl.tema, '(tanpa tema)');
             const pil = IG_PILLARS[pl.pilar];
             const tahap = pl.tahap && pl.tahap !== 'ide' ? ` ig-cal-chip-${pl.tahap}` : '';
             const tip = `Rencana (${IG_TYPE_LABELS[pl.tipe_konten] || 'Image'}${pil ? ' · ' + pil.label : ''} · ${IG_STAGES[pl.tahap || 'ide'] || 'Ide'}) — ${text}${canDrag ? ' · seret ke tanggal lain untuk memindah' : ''}`;
-            chips.push(`<div class="ig-cal-chip ig-cal-chip-plan${tahap}" data-plan-id="${pl.id}" ${canDrag ? 'draggable="true"' : ''} style="${pil ? `--pillar:${pil.color};` : ''}" title="${escapeHtmlAttr(tip)}"><i class="bi ${IG_TYPE_ICONS[pl.tipe_konten] || 'bi-image'}"></i><span>${escapeHtml(text)}</span></div>`);
+            chips.push(`<div class="ig-cal-chip ig-cal-chip-plan${tahap}" data-plan-id="${pl.id}" ${canDrag ? 'draggable="true"' : ''} style="${pil ? `--pillar:${pil.color};` : ''}" title="${escapeHtmlAttr(tip)}"><span>${escapeHtml(text)}</span></div>`);
         });
 
         let chipsHtml = '';
@@ -13356,12 +13357,10 @@ function renderIgCalendar() {
         if (dayPlans.length && !dayPosts.length) cellClasses.push('has-plan-only');
         if (!allDayPosts.length && !allDayPlans.length && !isPast) cellClasses.push('ig-cal-gap');
 
-        const totalCount = dayPosts.length + dayPlans.length;
         html += `<div class="${cellClasses.join(' ')}" data-date="${dateKey}" onclick="igOnDayClick('${dateKey}')">
             <div class="ig-cal-day-top">
                 <span class="ig-cal-day-num">${day}</span>
-                ${totalCount ? `<span class="ig-cal-day-count">${totalCount}</span>` : ''}
-                <span class="ig-cal-add-hint" title="Tambah ide / post"><i class="bi bi-plus-lg"></i></span>
+                <span class="ig-cal-add-hint" title="Tambah ide / post">+</span>
             </div>
             ${chipsHtml}
         </div>`;
