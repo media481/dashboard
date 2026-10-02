@@ -4332,3 +4332,37 @@
     .ig-dm .ig-dm-post .ig-dm-card-top { flex-wrap: nowrap; }
     .ig-dm .ig-dm-post .ig-dm-card-actions { width: auto; flex-direction: row; }
 }
+
+
+/* ============================================================
+   Tile statistik -- warna tegas tapi lembut
+   Tiap tile punya satu warna sendiri (biru -> ungu -> hijau sesuai alur
+   tahap, abu untuk draft & post, oranye untuk hari kosong). Latar pastel,
+   angka memakai versi lebih gelap dari warna yang sama, aksen kiri + garis
+   tepi tipis supaya batasnya jelas tanpa terasa mencolok.
+   ============================================================ */
+.ig-planner-mode .ig-stat {
+    background: var(--tile-bg, var(--bg));
+    box-shadow: inset 0 0 0 1px var(--edge, transparent);
+}
+.ig-planner-mode .ig-stat b { color: var(--num, var(--ink)); }
+.ig-planner-mode .ig-stat span { color: var(--lbl, var(--ink-soft)); font-weight: 500; }
+
+.ig-planner-mode .ig-stat.ig-stat-ide {
+    --tile-bg: #EAF1FB; --tone: #4A86DB; --num: #1E4E8C; --lbl: #4A6C9B; --edge: rgba(74, 134, 219, .18);
+}
+.ig-planner-mode .ig-stat.ig-stat-wip {
+    --tile-bg: #EFEDFA; --tone: #7B6FD0; --num: #4B3FA0; --lbl: #675DA3; --edge: rgba(123, 111, 208, .18);
+}
+.ig-planner-mode .ig-stat.ig-stat-ready {
+    --tile-bg: #E4F4EB; --tone: #2E9E6E; --num: #1A6B49; --lbl: #35705A; --edge: rgba(46, 158, 110, .20);
+}
+.ig-planner-mode .ig-stat.ig-stat-post {
+    --tile-bg: #EEF1F5; --tone: #64758A; --num: #1C2B3A; --lbl: #5A6B80; --edge: rgba(100, 117, 138, .18);
+}
+.ig-planner-mode .ig-stat.ig-stat-gap {
+    --tile-bg: #FDEEE1; --tone: #E07B2E; --num: #B85A14; --lbl: #98582A; --edge: rgba(224, 123, 46, .22);
+}
+/* Bar pilar ikut dilembutkan supaya tidak lebih menonjol dari tile di atasnya */
+.ig-planner-mode .ig-pillar-bar { height: 5px; }
+.ig-planner-mode .ig-pillar-bar span { opacity: .75; }
