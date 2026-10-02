@@ -268,3 +268,16 @@ Flag `IG_AUTOPUBLISH_ENABLED` di `js/app.js` (default `false`):
 - Post disimpan sebagai **draft** (bukan `scheduled`), sehingga `ig-publish` tidak menerbitkan apa pun. Post lama yang sudah berstatus `scheduled` tetap akan diterbitkan cron kecuali dijadikan draft atau cron dimatikan.
 - Layout: kartu statistik bulan ini, kalender lebar, dan sidebar **Ide Bulan Ini** (dikelompokkan per tahap, bisa diseret ke kalender).
 - Opsional: jalankan `sql/tambah_ig_content_plan_planner.sql` untuk kolom `pilar` & `tahap` (warna pilar di chip, keseimbangan pilar, alur Ide → Dikerjakan → Siap). Tanpa migrasi ini fitur tersebut otomatis tersembunyi.
+
+---
+
+## Catatan perbaikan (audit IG Scheduler)
+
+- **Judul ide berkutip** (`Tips "umroh" hemat`) di modal "Rencana AI" kini utuh: input memakai `escapeHtmlAttr` (sebelumnya terpotong & membuka injeksi atribut).
+- **Edit ide/caption**: cache lokal diperbarui lebih dulu (optimistik) dan dibalikkan + toast error kalau simpan gagal. Kartu di modal harian ikut berubah, dan render ulang saat klik "Selesai" menunggu semua simpan yang masih berjalan (bukan lagi tebakan 250 ms).
+- **Anti-dobel**: tombol Simpan Draft dinonaktifkan selama menyimpan dan diblok selama upload berjalan; form ide cepat memakai guard. Kalau simpan gagal di tengah (post sudah terbuat, item carousel gagal), `ig_post_id` langsung terisi sehingga percobaan berikutnya meng-update, bukan membuat post kedua.
+- **Nama file upload** dibersihkan (`igSafeFileName`): hanya huruf/angka/`_`/`-`, aksen dibuang, ekstensi dari MIME bila tidak ada.
+- **Kalender**: semua chip dirender, lalu `igFitCalendarChips()` menghitung jumlah yang muat dari layout asli (setelah render & tiap ukuran grid berubah lewat `ResizeObserver`), sehingga "+N lagi" tidak terpotong. Di luar mode pas-layar tetap maks. `IG_CAL_MAX_CHIPS` (3).
+- **Rencana dimuat saat halaman dibuka** (`openIgSchedulerPage` memanggil `loadIgContentPlan()`).
+- **Pembersihan bucket `ig-media`**: upload yang dibatalkan/diganti, item carousel yang dibuang, dan media post yang dihapus ikut dihapus dari bucket (best effort). Butuh policy DELETE: jalankan `sql/tambah_ig_media_storage_policy.sql`.
+- Minor: toast sukses carousel hanya muncul bila ada file yang berhasil; judul modal di mode planner "Draft Post Baru"/"Edit Draft Post"; URL media di pratinjau di-escape; pilar form ide cepat di-reset; klik di luar modal Upload kini membersihkan state; tanggal default memakai tanggal lokal.

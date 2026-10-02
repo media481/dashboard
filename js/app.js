@@ -1313,8 +1313,10 @@ function openIgSchedulerPage() {
     if (navBtn) navBtn.classList.add('active');
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    igApplyPlannerMode();   // dulu: sesudah loadIgPosts -> kelas layout planner telat terpasang
     loadIgPosts();          // renderIgCalendar() sudah dipanggil di dalam loadIgPosts()
-    igApplyPlannerMode();
+    loadIgContentPlan();    // dulu tidak ikut dimuat -> ide kosong/basi sampai tombol Refresh ditekan
+    requestAnimationFrame(igFitCalendarChips); // halaman baru tampil: ukur ulang chip kalender
     if (IG_AUTOPUBLISH_ENABLED) {
         loadIgAccounts();
         loadIgCommentsUnreadCount();
@@ -12831,7 +12833,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ============================================================
 document.querySelectorAll('.modal-overlay').forEach(el => {
     el.addEventListener('click', function(e) {
-        if (e.target === this) this.classList.remove('open');
+        if (e.target !== this) return;
+        // Modal IG punya state tambahan (upload sementara, tanggal harian) yang harus ikut dibersihkan
+        if (this.id === 'igUploadModal' && typeof closeIgUploadModal === 'function') closeIgUploadModal();
+        else if (this.id === 'igDayModal' && typeof closeIgDayModal === 'function') closeIgDayModal();
+        else this.classList.remove('open');
     });
 });
 
@@ -12923,6 +12929,11 @@ const IG_CAPTION_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/generate-ig-captio
 let igPosts = [];              // cache post list
 let igPostsCurrentPage = 1;
 let igPostsTotal = 0;
+let igSaving = false;           // guard klik ganda tombol Simpan Draft
+let igQuickAdding = false;      // guard klik ganda / Enter+Tambah di form ide cepat
+let igUploadsInFlight = 0;      // jumlah upload media yang sedang berjalan (Simpan diblok selama >0)
+const igSessionUploads = new Set(); // URL media yang diupload di sesi modal ini (dibersihkan dari bucket kalau tidak jadi dipakai)
+let igOriginalMediaUrls = [];   // URL media post yang sedang diedit sebelum diubah (dibersihkan kalau diganti)
 let igAccounts = [];           // akun IG aktif (tanpa access_token)
 let igCalendarCurrent = new Date(); // bulan yang sedang ditampilkan di kalender
 let igCommentsUnrepliedCountByPost = {}; // { post_id: jumlah komentar belum dibalas }
@@ -13071,12 +13082,12 @@ function renderIgPostTable() {
         // ditandai badge kecil biar kelihatan itu carousel bukan single image)
         let mediaPreview = '';
         if (post.media_type === 'image') {
-            mediaPreview = `<img src="${post.media_url}" alt="media" class="ig-media-thumb" loading="lazy">`;
+            mediaPreview = `<img src="${escapeHtmlAttr(post.media_url)}" alt="media" class="ig-media-thumb" loading="lazy">`;
         } else if (post.media_type === 'video') {
-            mediaPreview = `<video src="${post.media_url}" class="ig-media-thumb" preload="none"></video>`;
+            mediaPreview = `<video src="${escapeHtmlAttr(post.media_url)}" class="ig-media-thumb" preload="none"></video>`;
         } else if (post.media_type === 'carousel' && post.media_url) {
             mediaPreview = `<div class="ig-post-carousel-thumb-wrap">
-                <img src="${post.media_url}" alt="carousel" class="ig-media-thumb" loading="lazy">
+                <img src="${escapeHtmlAttr(post.media_url)}" alt="carousel" class="ig-media-thumb" loading="lazy">
                 <span class="ig-post-carousel-count" title="Carousel"><i class="bi bi-images"></i></span>
             </div>`;
         } else {
@@ -13358,12 +13369,9 @@ function renderIgCalendar() {
             chips.push(`<div class="ig-cal-chip ig-cal-chip-plan${tahap}" data-plan-id="${pl.id}" ${canDrag ? 'draggable="true"' : ''} style="${pil ? `--pillar:${pil.color};` : ''}" title="${escapeHtmlAttr(tip)}"><span>${escapeHtml(text)}</span></div>`);
         });
 
-        let chipsHtml = '';
-        if (chips.length) {
-            const visible = chips.slice(0, IG_CAL_MAX_CHIPS).join('');
-            const more = chips.length > IG_CAL_MAX_CHIPS ? `<div class="ig-cal-chip-more">+${chips.length - IG_CAL_MAX_CHIPS} lagi</div>` : '';
-            chipsHtml = `<div class="ig-cal-chips">${visible}${more}</div>`;
-        }
+        // Semua chip dirender; berapa yang tampil + teks "+N lagi" dihitung di igFitCalendarChips()
+        // setelah layout terbentuk (dulu selalu 3 chip -> "+N lagi" bisa terpotong di sel yang pendek).
+        const chipsHtml = chips.length ? `<div class="ig-cal-chips">${chips.join('')}</div>` : '';
 
         const cellClasses = ['ig-cal-day'];
         if (isToday) cellClasses.push('ig-cal-today');
@@ -13386,11 +13394,76 @@ function renderIgCalendar() {
     igBindCalendarDnD(daysEl);
     renderIgCalSummary(monthPosts, monthPlans, emptyFutureDays, pillarPlans);
     renderIgPlanSide(monthPlans);
+    igBindCalendarFit();
+    igFitCalendarChips();
 
     // Sinkronkan status aktif tombol filter
     document.querySelectorAll('#igCalFilter button').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.filter === igCalFilter);
     });
+}
+
+// ---- Muatkan chip ke dalam sel kalender ----
+// Mode pas-layar (planner, desktop): tinggi sel mengikuti sisa ruang, jadi jumlah chip yang muat
+// diukur dari layout asli: sembunyikan chip dari belakang sampai chip terakhir (atau "+N lagi")
+// tidak melewati dasar sel. Mode lain (sel auto-tinggi / HP): batas tetap IG_CAL_MAX_CHIPS.
+const IG_FIT_MQ = '(min-width: 1001px) and (min-height: 600px)';
+function igFitCalendarChips() {
+    const daysEl = document.getElementById('igCalDays');
+    if (!daysEl) return;
+    const grid = daysEl.parentElement;
+    const root = document.getElementById('igSchedulerPageView');
+    const visible = !!grid && grid.offsetHeight > 0; // halaman IG sedang disembunyikan -> tidak bisa diukur
+    const fitMode = visible && !!root && root.classList.contains('ig-planner-mode') && window.matchMedia(IG_FIT_MQ).matches;
+
+    daysEl.querySelectorAll('.ig-cal-chips').forEach(box => {
+        const cell = box.closest('.ig-cal-day');
+        const chips = Array.from(box.querySelectorAll('.ig-cal-chip'));
+        if (!cell || !chips.length) return;
+
+        let more = box.querySelector('.ig-cal-chip-more');
+        if (!more) { more = document.createElement('div'); more.className = 'ig-cal-chip-more'; }
+        const apply = n => {
+            chips.forEach((c, i) => { c.style.display = i < n ? '' : 'none'; });
+            const hidden = chips.length - n;
+            if (hidden > 0) {
+                more.textContent = `+${hidden} lagi`;
+                if (!more.parentNode) box.appendChild(more);
+            } else if (more.parentNode) {
+                more.remove();
+            }
+        };
+
+        const cap = fitMode ? chips.length : Math.min(chips.length, IG_CAL_MAX_CHIPS);
+        apply(cap);
+        if (!fitMode) return;
+
+        const cs = getComputedStyle(cell);
+        const limit = cell.getBoundingClientRect().bottom - (parseFloat(cs.paddingBottom) || 0) - (parseFloat(cs.borderBottomWidth) || 0);
+        const fits = () => { const last = box.lastElementChild; return !last || last.getBoundingClientRect().bottom <= limit + 0.5; };
+        for (let n = cap; n > 0 && !fits(); n--) apply(n - 1);
+    });
+}
+
+// Ukur ulang saat ukuran grid berubah (resize jendela, ringkasan bulan berubah tinggi, dsb.)
+let igCalFitBound = false;
+function igBindCalendarFit() {
+    if (igCalFitBound) return;
+    const grid = document.querySelector('#igSchedulerPageView .ig-calendar-grid');
+    if (!grid) return;
+    igCalFitBound = true;
+    let raf = 0, lastSig = '';
+    const run = () => {
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(() => {
+            const sig = grid.clientWidth + 'x' + grid.clientHeight;
+            if (sig === lastSig) return;
+            lastSig = sig;
+            igFitCalendarChips();
+        });
+    };
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(run).observe(grid);
+    else window.addEventListener('resize', run);
 }
 
 // ---- Ringkasan bulan: kartu statistik + keseimbangan pilar konten ----
@@ -13553,6 +13626,7 @@ async function igQuickAddPlan() {
         showToast('Akun Anda tidak punya izin untuk membuat rencana konten', 'error');
         return;
     }
+    if (igQuickAdding) return; // Enter + klik Tambah beruntun / klik ganda -> jangan bikin ide dobel
     const dateKey = igDayModalDateKey;
     if (!dateKey) return;
     const temaEl = document.getElementById('igQuickPlanTema');
@@ -13561,6 +13635,9 @@ async function igQuickAddPlan() {
     if (!tema) { showToast('Isi tema/ide dulu', 'error'); temaEl?.focus(); return; }
 
     const [y, m] = dateKey.split('-');
+    igQuickAdding = true;
+    const addBtn = document.querySelector('#igPlanQuickAdd .ig-dm-add');
+    if (addBtn) addBtn.disabled = true;
     try {
         const { data, error } = await supabaseClient.from('ig_content_plan').insert({
             bulan: `${y}-${m}-01`,
@@ -13573,6 +13650,7 @@ async function igQuickAddPlan() {
         }).select().single();
         if (error) throw error;
         igContentPlan.push(data);
+        igResetQuickPilar(); // pilar tidak boleh "menempel" ke ide berikutnya
         renderIgCalendar();
         igOpenDayModal(dateKey);
         document.getElementById('igQuickPlanTema')?.focus(); // siap ketik ide berikutnya
@@ -13580,7 +13658,16 @@ async function igQuickAddPlan() {
     } catch (err) {
         console.error('igQuickAddPlan error:', err);
         showToast('Gagal menambah ide: ' + err.message, 'error');
+    } finally {
+        igQuickAdding = false;
+        if (addBtn) addBtn.disabled = false;
     }
+}
+
+function igResetQuickPilar() {
+    const inp = document.getElementById('igQuickPlanPilar');
+    if (inp) inp.value = '';
+    document.querySelectorAll('#igQuickPilarChips .ig-dm-pill').forEach(b => b.classList.remove('active'));
 }
 
 function igPrevMonth() {
@@ -13727,6 +13814,7 @@ function igOpenDayModal(dateKey) {
     const prevScroll = sameDay ? bodyEl.scrollTop : 0;
     igDayModalDateKey = dateKey;
     igFillPlannerSelects();
+    if (!sameDay) igResetQuickPilar(); // buka hari lain / modal baru -> pilihan pilar mulai bersih
     igBindDayModalKeys();
 
     const canEdit = canManageProgramData();
@@ -13845,7 +13933,11 @@ function igTogglePlanEdit(planId) {
     if (!edit) return;
     if (edit.style.display !== 'none') {
         const key = igDayModalDateKey;
-        setTimeout(() => { if (key && igDayModalDateKey === key) igOpenDayModal(key); }, 250);
+        // Tunggu semua simpan yang masih berjalan (blur tema/caption) baru render ulang, bukan
+        // menebak 250 ms -- di jaringan lambat kartu sempat menampilkan teks lama.
+        Promise.allSettled([...igPlanPendingSaves]).then(() => {
+            if (key && igDayModalDateKey === key) igOpenDayModal(key);
+        });
         return;
     }
     edit.style.display = 'block';
@@ -13883,6 +13975,8 @@ function openIgUploadModal(postId = null, presetDateKey = null) {
     const form = document.getElementById('igUploadForm');
     if (!modal || !form) return;
 
+    igDiscardSessionUploads(); // sisa upload dari sesi modal sebelumnya yang tidak jadi disimpan
+    igOriginalMediaUrls = [];
     form.reset();
     document.getElementById('ig_post_id').value = '';
     document.getElementById('ig_media_url').value = '';
@@ -13899,11 +13993,12 @@ function openIgUploadModal(postId = null, presetDateKey = null) {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(9, 0, 0, 0);
-    document.getElementById('ig_schedule_date').value = presetDateKey || tomorrow.toISOString().split('T')[0];
+    document.getElementById('ig_schedule_date').value = presetDateKey || igLocalDateKey(tomorrow);
     document.getElementById('ig_schedule_time').value = '09:00';
 
     const modalTitle = document.getElementById('igModalTitle');
-    if (modalTitle) modalTitle.textContent = 'Post Baru ke Instagram';
+    // Mode planner hanya menyimpan DRAFT (tidak ada auto-publish), jadi judulnya jangan menjanjikan "ke Instagram"
+    if (modalTitle) modalTitle.textContent = IG_AUTOPUBLISH_ENABLED ? 'Post Baru ke Instagram' : 'Draft Post Baru';
 
     // Clear preview
     const preview = document.getElementById('igMediaPreview');
@@ -13916,7 +14011,7 @@ function openIgUploadModal(postId = null, presetDateKey = null) {
         // Mode edit
         const post = igPosts.find(p => p.id === postId);
         if (post) {
-            modalTitle.textContent = 'Edit Post IG';
+            modalTitle.textContent = IG_AUTOPUBLISH_ENABLED ? 'Edit Post IG' : 'Edit Draft Post';
             document.getElementById('ig_post_id').value = post.id;
             document.getElementById('ig_caption').value = post.caption || '';
             if (post.schedule_time) {
@@ -13929,6 +14024,7 @@ function openIgUploadModal(postId = null, presetDateKey = null) {
             }
             document.getElementById('ig_media_type').value = post.media_type || 'image';
             document.getElementById('ig_media_url').value = post.media_url || '';
+            igOriginalMediaUrls = post.media_url ? [post.media_url] : [];
 
             if (post.media_type === 'carousel') {
                 // Ambil item carousel dari tabel ig_post_media
@@ -13937,9 +14033,9 @@ function openIgUploadModal(postId = null, presetDateKey = null) {
                 const pre = document.getElementById('igMediaPreview');
                 if (pre) {
                     if (post.media_type === 'image') {
-                        pre.innerHTML = `<img src="${post.media_url}" class="ig-media-preview-img">`;
+                        pre.innerHTML = `<img src="${escapeHtmlAttr(post.media_url)}" class="ig-media-preview-img">`;
                     } else {
-                        pre.innerHTML = `<video src="${post.media_url}" class="ig-media-preview-img" controls></video>`;
+                        pre.innerHTML = `<video src="${escapeHtmlAttr(post.media_url)}" class="ig-media-preview-img" controls></video>`;
                     }
                 }
             }
@@ -13987,6 +14083,8 @@ async function loadIgCarouselItemsForEdit(postId) {
             .order('position', { ascending: true });
         if (error) throw error;
         igCarouselItems = (data || []).map(item => ({ media_url: item.media_url, media_type: item.media_type }));
+        // Catat URL asli supaya item yang nanti dibuang/diganti bisa dibersihkan dari bucket saat disimpan
+        igOriginalMediaUrls = Array.from(new Set([...igOriginalMediaUrls, ...igCarouselItems.map(i => i.media_url)]));
         renderIgCarouselGrid();
     } catch (err) {
         console.error('loadIgCarouselItemsForEdit error:', err);
@@ -13997,6 +14095,9 @@ async function loadIgCarouselItemsForEdit(postId) {
 function closeIgUploadModal() {
     const modal = document.getElementById('igUploadModal');
     if (modal) modal.classList.remove('open');
+    // Batal/tutup tanpa menyimpan: file yang sudah terlanjur diupload di sesi ini dibuang dari bucket
+    igDiscardSessionUploads();
+    igOriginalMediaUrls = [];
     igCarouselItems = [];
 }
 
@@ -14049,6 +14150,8 @@ async function onIgMediaChange() {
         return;
     }
 
+    const prevLabel = fileNameEl ? fileNameEl.textContent : '-';
+    const prevUrl = urlEl ? urlEl.value : '';
     if (fileNameEl) fileNameEl.textContent = file.name;
     showToast('Mengupload media...', 'info');
 
@@ -14059,31 +14162,96 @@ async function onIgMediaChange() {
         // Preview
         if (preview) {
             if (mediaType === 'image') {
-                preview.innerHTML = `<img src="${publicUrl}" class="ig-media-preview-img">`;
+                preview.innerHTML = `<img src="${escapeHtmlAttr(publicUrl)}" class="ig-media-preview-img">`;
             } else {
-                preview.innerHTML = `<video src="${publicUrl}" class="ig-media-preview-img" controls></video>`;
+                preview.innerHTML = `<video src="${escapeHtmlAttr(publicUrl)}" class="ig-media-preview-img" controls></video>`;
             }
+        }
+
+        // File pengganti dari sesi ini yang sudah tidak dipakai -> buang dari bucket
+        // (file yang sudah tersimpan di post lama dibersihkan saat Simpan, lewat igOriginalMediaUrls)
+        if (prevUrl && prevUrl !== publicUrl && igSessionUploads.has(prevUrl)) {
+            igSessionUploads.delete(prevUrl);
+            igRemoveStorageUrls([prevUrl]);
         }
 
         showToast('Media berhasil diupload', 'success');
     } catch (err) {
         console.error('IG upload error:', err);
+        // Upload gagal: label nama file jangan menampilkan file baru padahal URL yang tersimpan masih yang lama
+        if (fileNameEl) fileNameEl.textContent = prevLabel;
+        input.value = '';
         showToast('Gagal upload media: ' + err.message, 'error');
     }
 }
 
+// ---- Helper: bersihkan nama file untuk nama objek di bucket ----
+// Nama asli (kurung siku, emoji, spasi, spasi ganda, huruf beraksen, dll.) bisa ditolak Storage
+// atau menghasilkan URL yang bermasalah di Graph API. Sisakan huruf/angka/_/- saja.
+const IG_MIME_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'video/mp4': 'mp4', 'video/quicktime': 'mov' };
+function igSafeFileName(name, mime) {
+    const raw = String(name || '');
+    const dot = raw.lastIndexOf('.');
+    let base = dot > 0 ? raw.slice(0, dot) : raw;
+    let ext = dot > 0 ? raw.slice(dot + 1) : '';
+    base = base.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/-{2,}/g, '-').replace(/^[-_]+|[-_]+$/g, '')
+        .slice(0, 50) || 'media';
+    ext = ext.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || IG_MIME_EXT[mime] || '';
+    return ext ? `${base}.${ext}` : base;
+}
+
+// ---- Helper: tanggal lokal YYYY-MM-DD (toISOString memberi tanggal UTC) ----
+function igLocalDateKey(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// ---- Helper: hapus file dari bucket ig-media berdasarkan public URL (best effort) ----
+// Butuh policy DELETE di storage.objects (lihat sql/tambah_ig_media_storage_policy.sql). Kalau
+// policy belum ada, penghapusan gagal diam-diam (hanya console.warn) dan data tidak terganggu.
+function igStoragePathFromUrl(url) {
+    if (!url || typeof url !== 'string') return null;
+    const marker = `/${IG_STORAGE_BUCKET}/`;
+    const i = url.indexOf(marker);
+    if (i === -1 || !url.startsWith(SUPABASE_URL)) return null; // bukan file bucket kita -> jangan disentuh
+    let path = url.slice(i + marker.length).split('?')[0];
+    try { path = decodeURIComponent(path); } catch (e) {}
+    return path || null;
+}
+async function igRemoveStorageUrls(urls) {
+    const paths = Array.from(new Set((urls || []).map(igStoragePathFromUrl).filter(Boolean)));
+    if (!paths.length) return;
+    try {
+        const { error } = await supabaseClient.storage.from(IG_STORAGE_BUCKET).remove(paths);
+        if (error) console.warn('Gagal membersihkan media IG dari bucket:', error.message);
+    } catch (err) {
+        console.warn('Gagal membersihkan media IG dari bucket:', err);
+    }
+}
+function igDiscardSessionUploads() {
+    const urls = Array.from(igSessionUploads);
+    igSessionUploads.clear();
+    if (urls.length) igRemoveStorageUrls(urls);
+}
+
 // ---- Helper: upload 1 file ke bucket ig-media, return public URL ----
 async function uploadIgMediaFile(file) {
-    const fileName = `ig_${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${file.name}`;
-    const { data, error } = await supabaseClient.storage
-        .from(IG_STORAGE_BUCKET)
-        .upload(fileName, file, { cacheControl: '3600', upsert: false });
-    if (error) throw error;
+    const fileName = `ig_${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${igSafeFileName(file.name, file.type)}`;
+    igUploadsInFlight++;
+    try {
+        const { data, error } = await supabaseClient.storage
+            .from(IG_STORAGE_BUCKET)
+            .upload(fileName, file, { cacheControl: '3600', upsert: false, contentType: file.type || undefined });
+        if (error) throw error;
 
-    const { data: { publicUrl } } = supabaseClient.storage
-        .from(IG_STORAGE_BUCKET)
-        .getPublicUrl(data.path);
-    return publicUrl;
+        const { data: { publicUrl } } = supabaseClient.storage
+            .from(IG_STORAGE_BUCKET)
+            .getPublicUrl(data.path);
+        igSessionUploads.add(publicUrl);
+        return publicUrl;
+    } finally {
+        igUploadsInFlight--;
+    }
 }
 
 // ---- Handle multi-file change (carousel) ----
@@ -14101,6 +14269,7 @@ async function onIgCarouselFilesChange() {
         return;
     }
 
+    let uploadedCount = 0;
     for (const file of files) {
         if (file.size > IG_MAX_FILE_SIZE) {
             showToast(`File "${file.name}" terlalu besar (maks 10MB)`, 'error');
@@ -14118,6 +14287,7 @@ async function onIgCarouselFilesChange() {
             showToast(`Mengupload ${file.name}...`, 'info');
             const publicUrl = await uploadIgMediaFile(file);
             igCarouselItems.push({ media_url: publicUrl, media_type: itemType });
+            uploadedCount++;
             renderIgCarouselGrid();
         } catch (err) {
             console.error('IG carousel upload error:', err);
@@ -14126,7 +14296,12 @@ async function onIgCarouselFilesChange() {
     }
 
     input.value = '';
-    showToast('Media carousel berhasil diupload', 'success');
+    // Toast sukses hanya kalau memang ada file yang berhasil (error per file sudah ditampilkan di atas)
+    if (uploadedCount > 0) {
+        showToast(uploadedCount === files.length
+            ? `${uploadedCount} media carousel berhasil diupload`
+            : `${uploadedCount} dari ${files.length} media berhasil diupload`, 'success');
+    }
 }
 
 function igCarouselMoveItem(index, direction) {
@@ -14139,7 +14314,13 @@ function igCarouselMoveItem(index, direction) {
 }
 
 function igCarouselRemoveItem(index) {
-    igCarouselItems.splice(index, 1);
+    const [removed] = igCarouselItems.splice(index, 1);
+    // Item yang baru diupload di sesi ini lalu dibuang -> hapus dari bucket sekarang juga.
+    // (Item yang sudah tersimpan di post dibersihkan saat Simpan, supaya Batal tidak merusak post lama.)
+    if (removed && igSessionUploads.has(removed.media_url)) {
+        igSessionUploads.delete(removed.media_url);
+        igRemoveStorageUrls([removed.media_url]);
+    }
     renderIgCarouselGrid();
 }
 
@@ -14156,8 +14337,8 @@ function renderIgCarouselGrid() {
 
     grid.innerHTML = igCarouselItems.map((item, i) => {
         const media = item.media_type === 'video'
-            ? `<video src="${item.media_url}" muted></video>`
-            : `<img src="${item.media_url}" alt="item ${i + 1}">`;
+            ? `<video src="${escapeHtmlAttr(item.media_url)}" muted></video>`
+            : `<img src="${escapeHtmlAttr(item.media_url)}" alt="item ${i + 1}">`;
         return `<div class="ig-carousel-item">
             ${media}
             <span class="ig-carousel-item-badge">${i + 1}</span>
@@ -14223,9 +14404,24 @@ async function generateIgCaptionAI() {
 }
 
 // ---- Save post (create / update) ----
+function igSetSubmitBusy(busy) {
+    const btn = document.getElementById('igSubmitBtn');
+    if (!btn) return;
+    if (busy) {
+        btn._origHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = 'Menyimpan...';
+    } else {
+        btn.disabled = false;
+        if (btn._origHtml !== undefined) btn.innerHTML = btn._origHtml;
+    }
+}
+
 async function saveIgPost(e) {
     e.preventDefault();
     if (!canManageProgramData()) return;
+    if (igSaving) return; // klik ganda / Enter berulang -> jangan simpan dobel
+    if (igUploadsInFlight > 0) { showToast('Tunggu upload media selesai dulu', 'info'); return; }
 
     const postId = document.getElementById('ig_post_id').value;
     const caption = document.getElementById('ig_caption').value.trim();
@@ -14260,6 +14456,8 @@ async function saveIgPost(e) {
         status: IG_AUTOPUBLISH_ENABLED ? 'scheduled' : 'draft'
     };
 
+    igSaving = true;
+    igSetSubmitBusy(true);
     try {
         let result;
         let savedPostId = postId;
@@ -14270,7 +14468,12 @@ async function saveIgPost(e) {
         }
 
         if (result.error) throw result.error;
-        if (!savedPostId && result.data && result.data[0]) savedPostId = result.data[0].id;
+        if (!savedPostId && result.data && result.data[0]) {
+            savedPostId = result.data[0].id;
+            // Post sudah ada di DB: kalau langkah berikutnya gagal lalu user menekan Simpan lagi,
+            // harus meng-update post ini, bukan membuat post kedua.
+            document.getElementById('ig_post_id').value = savedPostId;
+        }
 
         // Sinkronkan item carousel: hapus dulu item lama punya post ini, lalu insert ulang
         // sesuai urutan sekarang. Simpel & aman untuk jumlah item yang kecil (maks 10).
@@ -14305,13 +14508,24 @@ async function saveIgPost(e) {
             await loadIgContentPlan();
         }
 
-        showToast(`Post ${postId ? 'diperbarui' : 'ditambahkan'}`, 'success');
+        // Bersihkan dari bucket media yang tidak lagi dipakai: file pengganti, item carousel yang
+        // dibuang, atau upload yang tidak jadi dipakai. Best effort & tidak ditunggu.
+        const keepUrls = new Set(mediaType === 'carousel' ? igCarouselItems.map(i => i.media_url) : [mediaUrl]);
+        const unused = [...igSessionUploads, ...igOriginalMediaUrls].filter(u => !keepUrls.has(u));
+        igSessionUploads.clear();   // yang dipakai sudah resmi tersimpan; sisanya masuk daftar `unused`
+        igOriginalMediaUrls = [];
+        if (unused.length) igRemoveStorageUrls(unused);
+
+        showToast(`${IG_AUTOPUBLISH_ENABLED ? 'Post' : 'Draft'} ${postId ? 'diperbarui' : 'ditambahkan'}`, 'success');
         closeIgUploadModal();
         igPostsCurrentPage = 1;
         await loadIgPosts(true);
     } catch (err) {
         console.error('saveIgPost error:', err);
         showToast('Gagal menyimpan post: ' + err.message, 'error');
+    } finally {
+        igSaving = false;
+        igSetSubmitBusy(false);
     }
 }
 
@@ -14319,6 +14533,15 @@ async function saveIgPost(e) {
 async function deleteIgPost(postId) {
     if (!canManageProgramData()) return;
     try {
+        // Kumpulkan URL media SEBELUM hapus (item carousel ikut terhapus oleh cascade) untuk dibersihkan dari bucket
+        const mediaUrls = [];
+        const postRow = igPosts.find(p => p.id === postId);
+        if (postRow && postRow.media_url) mediaUrls.push(postRow.media_url);
+        try {
+            const { data: itemRows } = await supabaseClient.from('ig_post_media').select('media_url').eq('post_id', postId);
+            (itemRows || []).forEach(r => { if (r.media_url) mediaUrls.push(r.media_url); });
+        } catch (e) { /* abaikan: pembersihan bucket hanya best effort */ }
+
         // Ide asal post ini (kalau ada) dikembalikan jadi 'idea' supaya tidak hilang dari kalender.
         // Dilakukan SEBELUM hapus karena FK ig_post_id otomatis di-null-kan saat post terhapus.
         const { error: revErr } = await supabaseClient.from('ig_content_plan')
@@ -14326,6 +14549,7 @@ async function deleteIgPost(postId) {
         if (revErr) console.error('Gagal mengembalikan status rencana:', revErr);
         const { error } = await supabaseClient.from('ig_posts').delete().eq('id', postId);
         if (error) throw error;
+        igRemoveStorageUrls(mediaUrls); // post sudah terhapus -> media yatim ikut dibuang (tidak ditunggu)
         await loadIgContentPlan();
         showToast('Post dihapus', 'success');
         closeIgActionModal();
@@ -14702,6 +14926,7 @@ async function loadIgContentPlan() {
         renderIgCalendar();
     } catch (err) {
         console.error('loadIgContentPlan error:', err);
+        showToast('Gagal memuat rencana konten: ' + (err.message || err), 'error');
     }
 }
 
@@ -14921,7 +15146,7 @@ function renderIgPlanResultList(year, month) {
         // bisa poles hasil AI sebelum "Jadikan Post" tanpa keluar-masuk modal.
         const topAndCaption = isIdea
             ? `<div class="ig-plan-result-top">
-                    <input type="text" class="ig-plan-edit-tema" value="${escapeHtml(pl.tema)}"
+                    <input type="text" class="ig-plan-edit-tema" value="${escapeHtmlAttr(pl.tema)}" maxlength="120"
                         onblur="igPlanUpdateField('${pl.id}','tema',this.value)"
                         onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">
                     <select class="ig-plan-edit-tipe" onchange="igPlanUpdateField('${pl.id}','tipe_konten',this.value)">
@@ -14949,7 +15174,28 @@ function renderIgPlanResultList(year, month) {
     }).join('');
 }
 
-// ---- Auto-save 1 field hasil edit inline di list rencana (tema/tipe_konten/draft_caption) ----
+// ---- Auto-save 1 field hasil edit inline di list rencana (tema/tipe_konten/draft_caption/pilar/tahap) ----
+// Cache lokal diperbarui LEBIH DULU (optimistik) lalu dibalikkan kalau simpan gagal, supaya render
+// ulang modal/kalender yang terjadi sebelum request selesai tidak menampilkan teks lama.
+const igPlanPendingSaves = new Set();
+
+// Sinkronkan teks kartu di modal harian tanpa render ulang (render ulang akan menutup editor yang sedang terbuka)
+function igSyncPlanCardDom(plan, field) {
+    const card = document.getElementById(`igDayPlanItem-${plan.id}`);
+    if (!card) return;
+    if (field === 'tema') {
+        const t = card.querySelector('.ig-dm-card-title');
+        if (t) t.textContent = plan.tema || '';
+    } else if (field === 'draft_caption') {
+        const p = card.querySelector('.ig-dm-cap');
+        if (p) {
+            const cap = plan.draft_caption || '';
+            p.textContent = cap || 'Belum ada caption \u2014 klik untuk menulis';
+            p.classList.toggle('ig-dm-cap-empty', !cap);
+        }
+    }
+}
+
 async function igPlanUpdateField(planId, field, value) {
     const allowedFields = ['tema', 'tipe_konten', 'draft_caption', 'pilar', 'tahap'];
     if (!allowedFields.includes(field)) return;
@@ -14961,23 +15207,34 @@ async function igPlanUpdateField(planId, field, value) {
     if (newValue === oldValue) return; // tidak berubah, skip request
     if (field === 'tema' && !newValue) { showToast('Tema tidak boleh kosong', 'error'); return; }
 
-    try {
-        const { error } = await supabaseClient.from('ig_content_plan').update({ [field]: (field === 'pilar' && !newValue) ? null : newValue }).eq('id', planId);
-        if (error) throw error;
-        plan[field] = newValue; // update cache lokal langsung, tanpa reload penuh
+    const affectsCalendar = ['tema', 'tipe_konten', 'pilar', 'tahap'].includes(field); // dipakai di chip kalender
+    plan[field] = newValue; // optimistik
+    igSyncPlanCardDom(plan, field);
+    if (affectsCalendar) renderIgCalendar();
 
-        const indicator = document.getElementById(`igPlanSaved-${planId}`);
-        if (indicator) {
-            indicator.innerHTML = '<i class="bi bi-check-circle-fill"></i> Tersimpan';
-            indicator.classList.add('show');
-            clearTimeout(indicator._hideTimer);
-            indicator._hideTimer = setTimeout(() => indicator.classList.remove('show'), 1800);
+    const job = (async () => {
+        try {
+            const { error } = await supabaseClient.from('ig_content_plan')
+                .update({ [field]: (field === 'pilar' && !newValue) ? null : newValue }).eq('id', planId);
+            if (error) throw error;
+
+            const indicator = document.getElementById(`igPlanSaved-${planId}`);
+            if (indicator) {
+                indicator.innerHTML = '<i class="bi bi-check-circle-fill"></i> Tersimpan';
+                indicator.classList.add('show');
+                clearTimeout(indicator._hideTimer);
+                indicator._hideTimer = setTimeout(() => indicator.classList.remove('show'), 1800);
+            }
+        } catch (err) {
+            console.error('igPlanUpdateField error:', err);
+            plan[field] = oldValue; // balikkan cache
+            igSyncPlanCardDom(plan, field);
+            if (affectsCalendar) renderIgCalendar();
+            showToast('Gagal menyimpan perubahan: ' + err.message, 'error');
         }
-        if (['tema', 'tipe_konten', 'pilar', 'tahap'].includes(field)) renderIgCalendar(); // tema & tipe dipakai di chip kalender
-    } catch (err) {
-        console.error('igPlanUpdateField error:', err);
-        showToast('Gagal menyimpan perubahan: ' + err.message, 'error');
-    }
+    })();
+    igPlanPendingSaves.add(job);
+    try { await job; } finally { igPlanPendingSaves.delete(job); }
 }
 
 // ---- Konversi 1 item rencana jadi post asli (buka modal upload, caption pre-fill) ----
