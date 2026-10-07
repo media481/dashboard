@@ -4636,3 +4636,183 @@
 #igUploadModal .form-group label.ig-sub-label { font-size: 12px; font-weight: 500; color: var(--ink-soft); margin-bottom: 4px; }
 #igUploadModal .form-row { align-items: start; }
 #igUploadModal .form-row input { box-sizing: border-box; min-height: 40px; }
+
+
+/* ============================================================
+   OPTIMASI TABLET & iPAD (konvensional: iPad 9/10, Air, mini, Pro 11")
+   ------------------------------------------------------------
+   Ukuran CSS px yang disasar:
+     portrait  : 744 (mini) · 810 · 820 · 834
+     landscape : 1024 · 1080 · 1133 · 1180 · 1194
+   Strategi:
+   1) Portrait (601-900px)  -> sidebar jadi drawer (hamburger), konten
+      full-width, topbar tetap satu baris, label tab tetap tampil.
+   2) Landscape (>=901px)   -> sidebar tetap di kiri seperti desktop.
+   3) Perangkat sentuh (pointer: coarse) -> target tap >= 40-44px, font
+      form 16px (cegah auto-zoom Safari), hover "nyangkut" dimatikan.
+   Blok ini sengaja ditaruh PALING BAWAH supaya menang atas aturan lama
+   tanpa mengubah tampilan desktop (mouse) maupun ponsel (<=600px).
+   ============================================================ */
+
+/* Cegah Safari memperbesar teks sendiri saat rotasi portrait <-> landscape */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+/* ---- Jarak aman kiri/kanan (iPad landscape di mode PWA/fullscreen) ---- */
+@media (min-width: 601px) {
+    main {
+        padding-left: max(20px, calc(var(--safe-left) + 12px));
+        padding-right: max(20px, calc(var(--safe-right) + 12px));
+    }
+}
+
+/* ============ 1) PORTRAIT TABLET: 601px - 900px ============ */
+@media (min-width: 601px) and (max-width: 900px) {
+    /* Sidebar tetap -> drawer. Aturan 769-900 belum ada di CSS lama
+       (breakpoint lama berhenti di 768), jadi diulang di sini. */
+    .app,
+    .app.sidebar-collapsed { grid-template-columns: 1fr; }
+    .app .sidebar { display: none; }
+    main { grid-column: 1; }
+    .hamburger-toggle { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; font-size: 26px; }
+
+    /* Topbar: judul | pencarian | aksi dalam satu baris (lebar cukup) */
+    .topbar { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 12px 16px; margin-bottom: 16px; }
+    .topbar-left { flex-direction: row; align-items: baseline; flex: 1 1 200px; gap: 10px; }
+    .topbar-center { width: auto; flex: 2 1 280px; }
+    .topbar-actions { width: auto; flex: 0 0 auto; flex-wrap: nowrap; }
+    .search-box { max-width: none; }
+
+    /* Label tab dikembalikan (di ponsel disembunyikan, di tablet muat) */
+    .tabs-bar { padding: 10px 16px 0; gap: 4px; }
+    .tab-btn { padding: 10px 14px; font-size: 13px; }
+    .tab-btn span { display: inline; }
+    .tab-panels { padding: 16px; }
+
+    /* Metrik: 2 kolom di 601-819, 4 kolom mulai 820 (iPad 10/Air/Pro) */
+    .metrics { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+    /* Drawer navigasi lebih lebar & lega untuk jari */
+    .mobile-sidebar-overlay .mobile-sidebar { width: 320px; padding-left: calc(20px + var(--safe-left)); padding-right: 20px; }
+    .mobile-sidebar .close-btn { min-width: 44px; min-height: 44px; font-size: 22px; }
+    .mobile-sidebar nav .nav-item { min-height: 46px; padding: 10px 12px; font-size: 14.5px; gap: 12px; }
+    .mobile-sidebar nav .nav-item i { width: 20px; font-size: 15px; }
+    .mobile-sidebar .nav-label { font-size: 10.5px; margin: 16px 12px 4px; }
+
+    /* Modal: sisakan margin tipis, jangan menempel ke tepi */
+    .modal-overlay { padding: calc(16px + var(--safe-top)) calc(16px + var(--safe-right)) calc(16px + var(--safe-bottom)) calc(16px + var(--safe-left)); }
+    .modal-content { margin: 0; }
+}
+@media (min-width: 820px) and (max-width: 900px) {
+    .metrics { grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .metric-card { padding: 12px; gap: 10px; }
+}
+
+/* Drawer yang tertinggal terbuka saat tablet diputar ke landscape -> tutup */
+@media (min-width: 901px) {
+    .mobile-sidebar-overlay { display: none !important; }
+}
+
+/* ============ 2) LANDSCAPE TABLET: 901px - 1194px ============ */
+@media (min-width: 901px) and (max-width: 1194px) {
+    /* Metrik 4 kolom (CSS lama jatuh ke 2 kolom di <=1024) */
+    .metrics { grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .metric-card { padding: 12px; gap: 10px; }
+    .metric-card .m-value { font-size: 17px; }
+
+    .tab-panels { padding: 16px; }
+    .cx-layout { grid-template-columns: 270px minmax(0, 1fr); gap: 14px; }
+}
+
+/* ============ 3) TABEL: tablet portrait & landscape ============
+   Lebar minimum 1040px + kolom nama 360px membuat tabel selalu harus
+   digeser di tablet. Dirapatkan supaya hampir muat tanpa geser. */
+@media (min-width: 601px) and (max-width: 1194px) {
+    .table-container { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+    .table-container table { min-width: 860px; }
+    .table-container th,
+    .table-container td { padding: 12px 12px; }
+    .table-container th:first-child,
+    .table-container td:first-child { width: 230px; max-width: 230px; }
+    .table-container th:last-child,
+    .table-container td:last-child { padding-right: 16px; min-width: 104px; }
+}
+
+/* ============ 4) MODAL: tinggi pakai dvh (iPad Safari) ============ */
+@media (min-width: 601px) and (max-width: 1194px) {
+    .modal-content { max-height: 90vh; }
+    @supports (height: 100dvh) {
+        .modal-content { max-height: 92dvh; }
+    }
+    .modal-body { padding: 20px; }
+    /* Form 4 kolom terlalu sempit di modal 700px dengan font 16px -> 2 kolom */
+    .modal-content:not(.cicilan-modal-1col) .form-row-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ============ 5) PERANGKAT SENTUH (iPad & tablet Android) ============ */
+@media (pointer: coarse) and (min-width: 601px) {
+
+    /* -- Sidebar landscape: baris menu cukup tinggi untuk jari -- */
+    .sidebar { padding: 14px 12px; }
+    .nav-item { min-height: 40px; padding: 8px 12px; font-size: 13.5px; gap: 10px; }
+    .nav-item i { width: 18px; font-size: 14px; }
+    .nav-label { font-size: 10px; margin: 12px 12px 3px; }
+    .sidebar-collapse-btn { width: 36px; height: 36px; font-size: 13px; }
+    .sidebar.collapsed .nav-item { padding: 10px 0; }
+    .avatar { width: 30px; height: 30px; font-size: 11px; }
+    .sidebar-foot .who { font-size: 13px; }
+
+    /* -- Tab -- */
+    .tab-btn { min-height: 44px; }
+
+    /* -- Tombol utama -- */
+    .btn-primary, .btn-success, .btn-danger, .btn-secondary, .btn-submit,
+    .btn-logout, .login-btn, .logout-btn { min-height: 44px; }
+
+    /* -- Tombol sekunder/kecil: target tap minimal 40px -- */
+    .btn-export-subtle, .btn-arsip-semua, .btn-sm, .btn-submit-sm, .btn-footer-action,
+    .btn-isi-sisa, .btn-nota-expand, .btn-nota-riwayat, .btn-wa-reminder, .btn-ai-caption,
+    .btn-batch-caption, .tg-add-btn, .cx-parse-btn, .pd-copy-btn, .featured-toggle-btn,
+    .admin-back-btn, .admin-subtab-btn, .assets-inner-tab-btn, .ig-cal-today-btn,
+    .ig-btn-comments, .ig-btn-delete, .ig-btn-edit, .ig-btn-log, .ig-btn-retry, .ig-btn-danger,
+    .pf-btn-convert, .pf-btn-delete, .pf-btn-edit, .pf-btn-wa, .toast-action-btn,
+    .cicilan-nota-btn, .cicilan-delete-btn, .ig-dm-linkbtn, .ig-cal-filter button,
+    .admin-form-anchor-nav button, .action-btns button {
+        min-height: 40px;
+        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    }
+
+    /* -- Tombol ikon: kotak minimal 40x40 -- */
+    .modal-close, .admin-form-close, .row-icon-btn, .btn-icon-ghost, .tg-remove-btn,
+    .snap-card-restore, .ig-cal-nav, .ig-dm-iconbtn, .nota-lightbox-close {
+        min-width: 40px; min-height: 40px;
+        display: inline-flex; align-items: center; justify-content: center;
+    }
+    .ig-cal-nav, .admin-form-close, .tg-remove-btn, .snap-card-restore { width: 40px; height: 40px; }
+    .modal-close { font-size: 26px; }
+
+    /* -- Form: font 16px (cegah auto-zoom Safari iPad) & tinggi nyaman -- */
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+    select, textarea {
+        font-size: 16px !important;
+    }
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+    select { min-height: 44px; }
+    .search-box { min-height: 46px; }
+    .search-box input { min-height: 0; }
+    .form-group label { font-size: 13.5px; margin-bottom: 6px; }
+    input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; }
+
+    /* -- Tabel: baris lebih tinggi, ikon aksi mudah ditap -- */
+    .table-container td { padding-top: 14px; padding-bottom: 14px; }
+
+    /* -- Hover tidak "nyangkut" di layar sentuh: matikan efek angkat -- */
+    .btn-primary:hover, .btn-success:hover, .btn-danger:hover {
+        transform: none; box-shadow: none;
+    }
+    .metric-card:hover { box-shadow: none; }
+
+    /* -- Umpan balik saat ditekan (pengganti hover) -- */
+    .nav-item:active { background: rgba(255,255,255,0.10); color: #fff; }
+    .tab-btn:active { background: var(--brand-tint); }
+    .btn-primary:active, .btn-success:active, .btn-danger:active { filter: brightness(.92); }
+}
