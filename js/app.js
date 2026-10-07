@@ -1810,16 +1810,16 @@ function openDetailModal(programId) {
     if (!program) { showToast('Program tidak ditemukan', 'error'); return; }
     const waText = program.teks_wa || generateAutoWAText(program);
     const hargaChips = [];
-    if (program.harga_quad || program.harga_quint) hargaChips.push(`Quad ${formatRupiah(program.harga_quad || program.harga_quint)}`);
-    if (program.harga_triple) hargaChips.push(`Triple ${formatRupiah(program.harga_triple)}`);
-    if (program.harga_double) hargaChips.push(`Double ${formatRupiah(program.harga_double)}`);
-    if (!hargaChips.length) hargaChips.push(formatRupiah(program.harga_quint));
+    if (program.harga_quad || program.harga_quint) hargaChips.push({ label: 'Quad', nilai: formatRupiah(program.harga_quad || program.harga_quint) });
+    if (program.harga_triple) hargaChips.push({ label: 'Triple', nilai: formatRupiah(program.harga_triple) });
+    if (program.harga_double) hargaChips.push({ label: 'Double', nilai: formatRupiah(program.harga_double) });
+    if (!hargaChips.length) hargaChips.push({ label: 'Harga', nilai: formatRupiah(program.harga_quint) });
 
     document.getElementById('pdModalTitle').textContent = program.nama || 'Detail Program';
     document.getElementById('pd_tgl').textContent = program.tgl || '-';
     document.getElementById('pd_durasi').textContent = program.durasi || '-';
     document.getElementById('pd_maskapai').textContent = program.maskapai || '-';
-    document.getElementById('pd_harga_row').innerHTML = hargaChips.map(h => `<span class="pd-chip pd-harga-chip"><i class="bi bi-cash-coin"></i> ${escapeHtml(h)}</span>`).join('');
+    document.getElementById('pd_harga_row').innerHTML = hargaChips.map(h => `<div class="pd-price"><span class="pd-price-label">${escapeHtml(h.label)}</span><span class="pd-price-value">${escapeHtml(h.nilai)}</span></div>`).join('');
 
     // Preview poster di kolom kiri (pakai resolveImageUrl supaya link Google Drive
     // /file/d/ID/view ikut tampil sebagai gambar, sama seperti popup hover di tabel).
@@ -1828,11 +1828,9 @@ function openDetailModal(programId) {
     const ta = document.getElementById('pd_teks_wa');
     ta.value = waText || '';
     document.getElementById('programDetailModal').classList.add('open');
-    // Reset & auto-grow textarea supaya seluruh teks WA langsung terlihat tanpa perlu scroll
+    // Teks WA di-scroll di dalam panelnya sendiri (tinggi mengikuti modal), jadi cukup reset posisi scroll
     requestAnimationFrame(() => {
         ta.scrollTop = 0;
-        ta.style.height = 'auto';
-        ta.style.height = ta.scrollHeight + 'px';
         document.querySelector('#programDetailModal .modal-content').scrollTop = 0;
     });
 }

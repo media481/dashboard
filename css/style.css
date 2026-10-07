@@ -1590,36 +1590,55 @@
         .modal-close:hover { background: var(--bg); }
         .modal-body { padding: 24px; }
 
-        /* ===== MODAL: Detail Program / Teks WA ===== */
-        .pd-modal { max-width: 960px; }
-        /* Layout 2 kolom: poster (kiri, rasio 4:5 sesuai poster 1080x1350) + info & teks WA (kanan) */
-        .pd-layout { display: grid; grid-template-columns: minmax(240px, 340px) minmax(0, 1fr); gap: 24px; align-items: start; }
-        .pd-poster-col { position: sticky; top: 0; display: flex; flex-direction: column; gap: 8px; }
-        .pd-poster-frame {
-            position: relative; display: block; width: 100%; aspect-ratio: 1080 / 1350;
-            background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
-            overflow: hidden; cursor: zoom-in;
+        /* ===== MODAL: Detail Program / Teks WA =====
+           Desain ulang: modal setinggi layar (maks 880px). Poster di kiri memenuhi
+           SELURUH tinggi modal dengan lebar pas rasio 4:5 (poster 1080x1350 tampil
+           edge-to-edge tanpa sisa ruang kosong). Kolom kanan: info ringkas di atas,
+           teks WA mengisi sisa tinggi & di-scroll DI DALAM panelnya sendiri, jadi
+           modal tidak ikut membesar/ter-scroll. Di layar kecil menyusun ke bawah. */
+        .modal-content.pd-modal {
+            --pd-h: min(92vh, 880px);
+            --pd-head: 60px;
+            max-width: min(1200px, 100%);
+            height: var(--pd-h); max-height: var(--pd-h);
+            display: flex; flex-direction: column; overflow: hidden;
         }
+        @supports (height: 100dvh) { .modal-content.pd-modal { --pd-h: min(92dvh, 880px); } }
+        .pd-modal .modal-header { flex: 0 0 var(--pd-head); height: var(--pd-head); padding: 0 12px 0 24px; }
+        .pd-modal .modal-header h2 { min-width: 0; font-size: 17px; }
+        .pd-modal .modal-header h2 span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pd-body { flex: 1 1 auto; min-height: 0; padding: 0; }
+        .pd-layout {
+            display: grid; height: 100%;
+            grid-template-columns: min(calc((var(--pd-h) - var(--pd-head)) * 0.8), 55%) minmax(0, 1fr);
+        }
+
+        /* Kolom poster: latar navy gelap supaya poster "menyala" & sisa ruang (kalau ada) terlihat disengaja */
+        .pd-poster-col { position: relative; min-height: 0; background: var(--brand-deep); }
+        .pd-poster-frame { position: absolute; inset: 0; display: block; cursor: zoom-in; overflow: hidden; }
         .pd-poster-frame.pd-poster-disabled { cursor: default; }
         .pd-poster-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity .2s; }
         .pd-poster-img.loaded { opacity: 1; }
         .pd-poster-state {
             position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            gap: 8px; color: var(--ink-soft); font-size: 12.5px; text-align: center; padding: 16px;
+            gap: 8px; color: rgba(255,255,255,.7); font-size: 12.5px; text-align: center; padding: 16px;
         }
-        .pd-poster-state i { font-size: 28px; opacity: .7; }
-        .pd-poster-error { color: var(--danger); }
-        .pd-poster-open { align-self: center; font-size: 12px; font-weight: 600; color: var(--brand); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
-        .pd-poster-open:hover { text-decoration: underline; }
-        .pd-info-col { min-width: 0; }
-        .pd-info-col .pd-wa-head:first-of-type { margin-top: 6px; }
-        @media (max-width: 760px) {
-            .pd-layout { grid-template-columns: 1fr; gap: 16px; }
-            .pd-poster-col { position: static; }
-            .pd-poster-frame { max-width: 300px; margin: 0 auto; }
+        .pd-poster-state i { font-size: 30px; opacity: .8; }
+        .pd-poster-error { color: #ffb4ab; }
+        /* "Buka poster" jadi tombol melayang di atas poster, tidak lagi memakan tinggi kolom */
+        .pd-poster-open {
+            position: absolute; right: 12px; bottom: 12px;
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 7px 12px; border-radius: 999px;
+            background: rgba(15,33,56,.82); color: #fff; backdrop-filter: blur(6px);
+            font-size: 12px; font-weight: 600; text-decoration: none;
+            border: 1px solid rgba(255,255,255,.22);
         }
-        .pd-body { padding: 20px 24px 24px; }
-        .pd-chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+        .pd-poster-open:hover { background: var(--brand-deep); border-color: rgba(255,255,255,.5); }
+
+        /* Kolom info */
+        .pd-info-col { min-width: 0; min-height: 0; display: flex; flex-direction: column; padding: 20px 24px 24px; gap: 14px; }
+        .pd-chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
         .pd-chip {
             display: inline-flex; align-items: center; gap: 6px;
             background: var(--bg); border: 1px solid var(--line);
@@ -1627,20 +1646,60 @@
             padding: 6px 12px; border-radius: 20px; white-space: nowrap;
         }
         .pd-chip i { color: var(--brand); font-size: 12px; }
-        .pd-chip.pd-harga-chip { background: var(--success-tint); border-color: transparent; color: var(--success); }
-        .pd-wa-head {
-            display: flex; align-items: center; justify-content: space-between;
-            margin: 16px 0 6px; font-weight: 600; font-size: 13px; color: var(--ink);
+        /* Harga: kartu sejajar, label kecil + nominal besar (lebih mudah dipindai daripada chip) */
+        .pd-price-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
+        .pd-price {
+            display: flex; flex-direction: column; gap: 2px; min-width: 0;
+            background: var(--success-tint); border-radius: 10px; padding: 9px 12px;
         }
-        .pd-wa-head button { padding: 4px 10px; font-size: 12px; }
+        .pd-price-label { font-size: 11.5px; font-weight: 600; color: var(--ink-soft); }
+        .pd-price-value { font-family: 'Space Grotesk', inherit; font-size: 15.5px; font-weight: 700; color: var(--success); white-space: nowrap; }
+
+        /* Panel teks WA: header + area teks mengisi sisa tinggi, scroll internal */
+        .pd-wa {
+            flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+            border: 1px solid var(--line); border-radius: 12px; background: var(--bg); overflow: hidden;
+        }
+        .pd-wa-head {
+            flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 8px 8px 14px; background: var(--surface); border-bottom: 1px solid var(--line);
+            font-weight: 600; font-size: 13px; color: var(--ink);
+        }
+        .pd-wa-head > span i { color: #25A55A; margin-right: 4px; }
+        .pd-copy-btn {
+            display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+            background: var(--brand); color: #fff; border: none; border-radius: 8px;
+            padding: 7px 14px; font-family: inherit; font-size: 12.5px; font-weight: 600;
+            transition: background .15s;
+        }
+        .pd-copy-btn:hover { background: var(--brand-deep); }
+        .pd-copy-btn:focus-visible, .pd-poster-open:focus-visible { outline: 2px solid #5b8dd6; outline-offset: 2px; }
+        .pd-wa-body { position: relative; flex: 1 1 auto; min-height: 0; }
+        /* Gradasi tipis di dasar panel = petunjuk bahwa teks masih bisa di-scroll (scrollbar sengaja disembunyikan) */
+        .pd-wa-body::after {
+            content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 28px; pointer-events: none;
+            background: linear-gradient(to bottom, rgba(244,247,251,0), var(--bg));
+        }
         .pd-wa-textarea {
-            width: 100%; box-sizing: border-box;
-            min-height: 120px; max-height: 65vh;
-            resize: vertical; overflow-y: auto;
-            white-space: pre-wrap; line-height: 1.5;
-            font-family: inherit; font-size: 13px;
-            background: var(--bg); border: 1px solid var(--line);
-            border-radius: 10px; padding: 12px 14px;
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            resize: none; overflow-y: auto; border: none; background: transparent; outline: none;
+            white-space: pre-wrap; line-height: 1.6;
+            font-family: inherit; font-size: 13.5px; color: var(--ink);
+            padding: 14px 16px 30px;
+        }
+
+        @media (max-width: 860px) {
+            .modal-content.pd-modal { height: auto; max-height: 95vh; overflow-y: auto; display: block; }
+            .pd-modal .modal-header { position: sticky; top: 0; z-index: 3; background: var(--surface); }
+            .pd-body { overflow: visible; }
+            .pd-layout { display: block; height: auto; }
+            .pd-poster-col { width: min(100%, calc(62vh * 0.8)); margin: 0 auto; aspect-ratio: 1080 / 1350; }
+            .pd-info-col { padding: 16px; }
+            .pd-price-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+            .pd-price { padding: 8px 9px; }
+            .pd-price-value { font-size: 12.5px; }
+            .pd-wa { flex: none; }
+            .pd-wa-body { height: 340px; }
         }
 
         .form-group { margin-bottom: 16px; }
