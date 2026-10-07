@@ -303,3 +303,20 @@ Menerapkan pola konten Amiru ke Content Planner (tombol **Rencana AI** → **Pol
 Migrasi (opsional tapi disarankan): `sql/tambah_ig_content_plan_pola_amiru.sql` menambah kolom `ig_content_plan.teks_gambar`. Tanpa migrasi ini, kolom teks gambar otomatis tersembunyi dan teksnya tidak tersimpan.
 
 Deploy: `supabase functions deploy generate-ig-content-plan --no-verify-jwt`
+
+## Generate Rencana 1 Bulan: isi penuh & anti-duplikat
+
+Tombol **Rencana AI → Generate dengan AI** sekarang langsung mengisi kalender untuk 1 bulan penuh:
+
+- **Slot tanggal otomatis**: semua tanggal pola Amiru (Senin/Rabu/Jumat/Minggu) yang masih kosong di bulan terpilih
+  (tanggal yang sudah lewat, sudah punya ide aktif, atau sudah punya post tidak diisi). Kolom "Jumlah Ide" opsional —
+  kosong = isi semua; kalau diisi lebih kecil dari jumlah slot, slot dipilih tersebar merata.
+- **Anti-duplikat**: sebelum generate, dashboard mengumpulkan SEMUA konten yang pernah dibuat (semua bulan & semua
+  status termasuk "dilewati" dari `ig_content_plan`, plus baris pertama caption di `ig_posts`) dan mengirimnya ke AI
+  sebagai `riwayatTema`. Hasil AI yang topiknya masih mirip konten lama dibuang di sisi dashboard (`igIsDuplicateIdea`),
+  lalu slot itu dicoba ulang (maks. 3 putaran). Slot yang tetap gagal dibiarkan kosong — klik Generate lagi untuk melengkapi.
+- Generate berjalan per batch 6 slot dan disimpan per batch, jadi kalau terputus di tengah, hasil yang sudah jadi tidak hilang.
+- **Pola Mingguan Amiru** (tanpa AI) juga tidak lagi memakai ulang draf contoh yang topiknya sudah pernah dibuat
+  (slotnya jadi kerangka kosong).
+- **Wajib deploy ulang** edge function: `supabase functions deploy generate-ig-content-plan --no-verify-jwt`.
+  Kalau belum, dashboard menampilkan pesan "belum di-deploy ulang ke versi terbaru".

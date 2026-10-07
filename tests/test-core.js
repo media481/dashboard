@@ -74,7 +74,7 @@ const code = fs.readFileSync(APP_PATH, 'utf8');
 const context = vm.createContext(sandbox);
 // Tambahkan penangkap: deklarasikan fungsi sebagai property di sandbox
 // dengan meng-append kode yang menaruh fungsi ke globalThis
-const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah };';
+const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah, igIsSimilarText, igIsDuplicateIdea, igRiwayatAdd, igBuildSlotBulan, igPickEvenly, igBuildPolaMingguan };';
 vm.runInContext(wrapped, context, { filename: 'app.js' });
 const T = sandbox.__T;
 
@@ -154,6 +154,53 @@ test('harga_custom diisi tapi program null -> tetap pakai harga_custom', () => {
 });
 test('harga_custom kosong string -> tidak override, tetap pakai tipe_kamar', () => {
   assert.strictEqual(T.getHargaKamarJamaah(progFull, { tipe_kamar: 'triple', harga_custom: '' }), 37500000);
+});
+
+
+console.log('\n=== TEST: Content Planner — anti-duplikat & slot bulan ===');
+const mkRiwayat = (...temas) => { const r = []; temas.forEach(t => T.igRiwayatAdd(r, t, '', '')); return r; };
+test('tema sama persis -> duplikat', () => assert.ok(T.igIsSimilarText('Pertama kali lihat Ka\'bah', 'Pertama kali lihat Ka\'bah')));
+test('tema beda kata tapi topik sama -> duplikat', () => assert.ok(T.igIsSimilarText('Bawaan yang sering ketinggalan', 'Bawaan wanita yang sering ketinggalan')));
+test('topik beda -> bukan duplikat', () => assert.ok(!T.igIsSimilarText('Doa di Raudhah', 'Doa di Multazam')));
+test('1 kata inti hanya duplikat kalau persis sama', () => {
+  assert.ok(!T.igIsSimilarText('Niat umroh', 'Niat umroh bersama orang tua'));
+  assert.ok(T.igIsSimilarText('Niat umroh', 'Niat Umrah'));
+});
+test('kata umum bisnis (umroh/jamaah) diabaikan', () => assert.ok(!T.igIsSimilarText('Tips umroh jamaah lansia', 'Tips umroh jamaah pertama kali')));
+test('igIsDuplicateIdea: cocok dengan riwayat lintas bulan', () => {
+  const r = mkRiwayat('Sa\'i: Safa dan Marwah', 'Kesalahan umum saat umroh');
+  assert.ok(T.igIsDuplicateIdea({ tema: 'Makna Sa\'i di Safa Marwah', teks_gambar: '' }, r));
+  assert.ok(!T.igIsDuplicateIdea({ tema: 'Tidur nyenyak di Madinah', teks_gambar: '' }, r));
+});
+test('igIsDuplicateIdea: teks gambar (hook) yang sama dianggap duplikat walau tema beda', () => {
+  const r = []; T.igRiwayatAdd(r, 'Tema A', 'Tujuh kali bolak-balik.\nBukan untuk sampai.', '');
+  assert.ok(T.igIsDuplicateIdea({ tema: 'Judul lain sama sekali', teks_gambar: 'Tujuh kali bolak-balik.\nLain lagi' }, r));
+});
+test('igBuildSlotBulan: Okt 2026 -> hanya Sen/Rab/Jum/Min, urut & valid', () => {
+  const slots = T.igBuildSlotBulan(2026, 9, new Set(), null);
+  assert.ok(slots.length >= 16 && slots.length <= 18);
+  assert.ok(slots.every(s => ['Senin', 'Rabu', 'Jumat', 'Minggu'].includes(s.hari)));
+  assert.strictEqual(slots[0].tanggal, '2026-10-02'); // Jumat
+  assert.deepStrictEqual(slots.map(s => s.tanggal), slots.map(s => s.tanggal).slice().sort());
+});
+test('igBuildSlotBulan: lewati tanggal terisi & tanggal lampau', () => {
+  const slots = T.igBuildSlotBulan(2026, 9, new Set(['2026-10-09']), '2026-10-08');
+  assert.ok(slots.every(s => s.tanggal >= '2026-10-08' && s.tanggal !== '2026-10-09'));
+});
+test('igPickEvenly: n elemen tersebar tanpa duplikat', () => {
+  const arr = Array.from({ length: 17 }, (_, i) => i);
+  const pick = T.igPickEvenly(arr, 5);
+  assert.strictEqual(pick.length, 5);
+  assert.strictEqual(new Set(pick).size, 5);
+  assert.strictEqual(T.igPickEvenly(arr, 99).length, 17);
+});
+test('igBuildPolaMingguan: draf contoh yang sudah pernah dipakai tidak diulang', () => {
+  const tanpa = T.igBuildPolaMingguan(2026, 9, new Set(), null);
+  const riwayat = mkRiwayat('Niat umroh', 'Pertama kali lihat Ka\'bah');
+  const dengan = T.igBuildPolaMingguan(2026, 9, new Set(), null, riwayat);
+  assert.ok(dengan.sudahPernah >= 2);
+  assert.ok(dengan.rows.filter(r => r._berisi).length < tanpa.rows.filter(r => r._berisi).length);
+  assert.ok(!dengan.rows.some(r => r.tema === 'Niat umroh'));
 });
 
 // ============================================================

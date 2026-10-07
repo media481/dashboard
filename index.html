@@ -1428,10 +1428,11 @@
         <div class="modal-body">
             <div id="igPlanGenerateWrap">
                 <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 14px;">
-                    AI akan menyusun daftar ide post untuk 1 bulan penuh (tersebar per tanggal), otomatis
-                    memakai konteks program Umroh yang berangkat/aktif di bulan tsb. Hasilnya berupa
-                    <strong>rencana</strong> (ide + draft caption) — belum jadi post asli, tinggal pilih
-                    "Jadikan Post" satu-satu nanti kalau medianya sudah siap.
+                    AI akan langsung mengisi kalender untuk 1 bulan penuh: semua tanggal pola (Senin/Rabu/Jumat/Minggu)
+                    yang masih kosong, otomatis memakai konteks program Umroh yang berangkat/aktif di bulan tsb.
+                    Ide yang dibuat <strong>tidak akan sama</strong> dengan konten yang pernah dibuat sebelumnya
+                    (semua bulan). Hasilnya berupa <strong>rencana</strong> (ide + draft caption) — belum jadi post asli,
+                    tinggal pilih "Jadikan Post" satu-satu nanti kalau medianya sudah siap.
                 </p>
                 <div class="form-row">
                     <div class="form-group">
@@ -1439,8 +1440,8 @@
                         <input type="month" id="igPlanMonth">
                     </div>
                     <div class="form-group">
-                        <label>Jumlah Ide Post</label>
-                        <input type="number" id="igPlanCount" min="1" max="60" value="12">
+                        <label>Jumlah Ide (opsional)</label>
+                        <input type="number" id="igPlanCount" min="1" max="60" placeholder="Kosong = isi semua tanggal">
                     </div>
                 </div>
                 <div class="form-group">

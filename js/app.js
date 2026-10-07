@@ -15280,7 +15280,7 @@ function openIgContentPlanModal() {
         monthInput.value = `${y}-${m}`;
     }
     const countInput = document.getElementById('igPlanCount');
-    if (countInput) countInput.value = 12;
+    if (countInput) countInput.value = ''; // kosong = isi semua tanggal kosong di bulan itu
     const arahanEl = document.getElementById('igPlanArahan');
     if (arahanEl) arahanEl.value = '';
 
@@ -15340,7 +15340,139 @@ async function buildIgPlanProgramContext(year, month) {
     }
 }
 
-// ---- Panggil AI untuk generate rencana, lalu simpan ke ig_content_plan ----
+// ---- Anti-duplikat: deteksi ide baru yang topiknya sama dengan konten yang pernah dibuat ----
+// Kata umum & kata khas bisnis (umroh, jamaah, dst) dibuang supaya yang dibandingkan adalah topik intinya.
+const IG_DEDUP_STOPWORDS = new Set([
+    'yang', 'dan', 'dari', 'untuk', 'dengan', 'saat', 'pada', 'atau', 'ini', 'itu', 'kamu', 'aku', 'kita', 'kami',
+    'ada', 'tidak', 'nggak', 'bisa', 'jadi', 'sebelum', 'setelah', 'sesudah', 'akan', 'sudah', 'udah', 'lagi',
+    'masih', 'banget', 'aja', 'juga', 'karena', 'kalau', 'biar', 'agar', 'supaya', 'dalam', 'para', 'oleh',
+    'tentang', 'umroh', 'umrah', 'jamaah', 'jemaah', 'amiru', 'tour', 'tanah', 'suci', 'konten', 'tema', 'isi',
+    'slide', 'ide'
+]);
+
+function igTokenSet(text) {
+    const tokens = String(text || '').toLowerCase()
+        .replace(/[’'`ʼ]/g, '')        // Ka'bah -> kabah, Sa'i -> sai
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/)
+        .filter(t => t.length > 2 && !IG_DEDUP_STOPWORDS.has(t));
+    return new Set(tokens);
+}
+
+// true kalau dua teks (tema / baris pertama teks gambar) membahas topik yang sama.
+// a & b boleh string atau Set hasil igTokenSet().
+function igIsSimilarText(a, b) {
+    const A = a instanceof Set ? a : igTokenSet(a);
+    const B = b instanceof Set ? b : igTokenSet(b);
+    if (!A.size || !B.size) return false;
+    let inter = 0;
+    A.forEach(t => { if (B.has(t)) inter++; });
+    if (A.size === 1 || B.size === 1) return A.size === B.size && inter === 1; // 1 kata: harus persis sama
+    return inter / Math.min(A.size, B.size) >= 0.75;
+}
+
+function igFirstLine(text) {
+    return String(text || '').split('\n')[0].trim();
+}
+
+// Tambah 1 entri ke riwayat (struktur: { tema, tgl, _t, _h } -- _t/_h = token siap bandingkan)
+function igRiwayatAdd(riwayat, tema, teksGambar, tgl) {
+    const t = String(tema || '').trim();
+    if (!t) return;
+    riwayat.push({ tema: t, tgl: tgl || '', _t: igTokenSet(t), _h: igTokenSet(igFirstLine(teksGambar)) });
+}
+
+// Kumpulkan SEMUA konten yang pernah dibuat (semua bulan, semua status termasuk "dilewati")
+// dari rencana (ig_content_plan) + post (ig_posts, baris pertama caption).
+function igBuildRiwayat() {
+    const riwayat = [];
+    igContentPlan.forEach(pl => {
+        if (/—\s*isi\b/i.test(pl.tema || '')) return; // kerangka kosong pola mingguan, bukan konten asli
+        igRiwayatAdd(riwayat, pl.tema, pl.teks_gambar, pl.tanggal);
+    });
+    (typeof igPosts !== 'undefined' && Array.isArray(igPosts) ? igPosts : []).forEach(p => {
+        const baris = igFirstLine(p.caption);
+        if (baris) igRiwayatAdd(riwayat, baris.slice(0, 100), '', '');
+    });
+    return riwayat;
+}
+
+// Cek 1 ide ({ tema, teks_gambar | teks }) terhadap riwayat
+function igIsDuplicateIdea(item, riwayat) {
+    const t = igTokenSet(item.tema);
+    const h = igTokenSet(igFirstLine(item.teks_gambar != null ? item.teks_gambar : item.teks));
+    return riwayat.some(r =>
+        igIsSimilarText(t, r._t) || (h.size >= 3 && r._h.size >= 3 && igIsSimilarText(h, r._h))
+    );
+}
+
+// Riwayat -> teks untuk dikirim ke AI (terbaru dulu, tanpa tema kembar, dibatasi supaya prompt tidak membengkak)
+function igRiwayatToText(riwayat) {
+    const urut = riwayat.slice().sort((a, b) => String(b.tgl).localeCompare(String(a.tgl)));
+    const seen = new Set();
+    const baris = [];
+    for (const r of urut) {
+        const key = r.tema.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        baris.push('- ' + r.tema.slice(0, 80));
+        if (baris.length >= 200) break;
+    }
+    return baris.join('\n');
+}
+
+// Slot tanggal yang harus diisi di 1 bulan, mengikuti Pola Amiru (Sen/Rab/Jum/Min).
+// tanggalTerisi: Set "YYYY-MM-DD" yang sudah punya ide/post (dilewati). mulaiDari: tanggal sebelum ini tidak diisi.
+function igBuildSlotBulan(year, month, tanggalTerisi, mulaiDari) {
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const slots = [];
+    for (let d = 1; d <= lastDay; d++) {
+        const pola = IG_POLA_AMIRU[new Date(year, month, d).getDay()];
+        if (!pola) continue;
+        const tanggal = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        if (mulaiDari && tanggal < mulaiDari) continue;
+        if (tanggalTerisi && tanggalTerisi.has(tanggal)) continue;
+        slots.push({ tanggal, hari: pola.hari, pilar: pola.pilar, tipe_konten: pola.tipe });
+    }
+    return slots;
+}
+
+// Ambil n elemen yang tersebar merata dari arr (dipakai kalau user membatasi jumlah ide)
+function igPickEvenly(arr, n) {
+    if (n >= arr.length) return arr.slice();
+    const out = [];
+    for (let i = 0; i < n; i++) out.push(arr[Math.floor((i + 0.5) * arr.length / n)]);
+    return out;
+}
+
+const IG_PLAN_BATCH = 6;    // jumlah slot per panggilan AI (batch kecil = tidak timeout, hasil tersimpan bertahap)
+const IG_PLAN_MAX_PASS = 3; // total putaran (1 putaran awal + 2 percobaan ulang untuk slot yang ditolak karena duplikat)
+
+async function igCallPlanFunction(payload) {
+    const response = await fetch(IG_CONTENT_PLAN_FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+        let detail = '';
+        try { detail = (await response.json()).error || ''; } catch (e) {}
+        throw new Error(detail || 'Gagal memanggil API (status ' + response.status + ')');
+    }
+    const data = await response.json();
+    if (!data || data.versi !== 2) {
+        throw new Error('Edge function generate-ig-content-plan belum di-deploy ulang ke versi terbaru.');
+    }
+    return data;
+}
+
+// ---- Panggil AI untuk mengisi SEMUA tanggal kosong di 1 bulan, lalu simpan ke ig_content_plan ----
+// Alur: tentukan slot tanggal (pola Sen/Rab/Jum/Min) yang masih kosong -> kirim ke AI per batch dengan
+// riwayat SEMUA konten lama -> buang hasil yang mirip konten lama -> slot yang ditolak dicoba ulang.
 async function generateIgContentPlanAI() {
     const btn = document.getElementById('btnIgGeneratePlan');
     const btnText = document.getElementById('btnIgGeneratePlanText');
@@ -15354,84 +15486,116 @@ async function generateIgContentPlanAI() {
     const year = parseInt(yearStr, 10);
     const month = parseInt(monthStr, 10) - 1; // 0-based
 
-    const jumlahPost = Math.max(1, Math.min(60, parseInt(countInput?.value, 10) || 12));
+    const batasJumlah = parseInt(countInput?.value, 10) || 0; // kosong = isi semua tanggal kosong
     const arahan = (arahanEl?.value || '').trim();
-
-    // Ide yang sudah ada di bulan target (selain yang dilewati): dikirim ke AI supaya tidak
-    // diulang, dan user diberi peringatan dulu karena hasil generate ditambahkan, bukan menimpa.
-    const bulanPrefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
-    const existingPlans = igContentPlan.filter(pl => pl.tanggal && pl.tanggal.startsWith(bulanPrefix) && pl.status !== 'dilewati');
-    if (existingPlans.length && !confirm(`Bulan ini sudah ada ${existingPlans.length} ide. Hasil AI akan DITAMBAHKAN di samping ide yang ada (tidak menimpa). Lanjutkan?`)) return;
-    const ideSudahAda = existingPlans.map(pl => `${pl.tanggal} — ${pl.tema}`).join('\n');
 
     const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     const bulanLabel = `${monthNames[month]} ${year}`;
-    const tanggalMulai = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    const tanggalAkhir = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    const bulanPrefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
+    const bulanCol = `${bulanPrefix}01`;
+    const tanggalMulai = bulanCol;
+    const tanggalAkhir = `${bulanPrefix}${String(new Date(year, month + 1, 0).getDate()).padStart(2, '0')}`;
+
+    // Tanggal yang sudah terisi (ide aktif atau post) tidak ditimpa; tanggal yang sudah lewat tidak diisi.
+    const tanggalTerisi = new Set(igContentPlan
+        .filter(pl => pl.tanggal && pl.tanggal.startsWith(bulanPrefix) && pl.status !== 'dilewati')
+        .map(pl => pl.tanggal));
+    (igPosts || []).forEach(p => {
+        const d = igPostRefDate(p);
+        if (d) { const key = igLocalDateKey(d); if (key.startsWith(bulanPrefix)) tanggalTerisi.add(key); }
+    });
+    const t = new Date();
+    const hariIni = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+
+    let slots = igBuildSlotBulan(year, month, tanggalTerisi, hariIni);
+    if (!slots.length) {
+        showToast('Tidak ada tanggal kosong yang tersisa di bulan ini (sudah lewat atau sudah terisi semua)', 'info');
+        return;
+    }
+    if (batasJumlah > 0 && batasJumlah < slots.length) slots = igPickEvenly(slots, batasJumlah);
 
     if (btn) btn.disabled = true;
-    if (btnText) btnText.textContent = 'Menyusun rencana...';
+    const setProgress = (n) => { if (btnText) btnText.textContent = `Menyusun ${n}/${slots.length}...`; };
+    setProgress(0);
+
+    let berhasil = 0;
+    let errMsg = '';
+    let sisa = slots.slice();
 
     try {
         const konteksProgram = await buildIgPlanProgramContext(year, month);
+        const riwayat = igBuildRiwayat();
 
-        const response = await fetch(IG_CONTENT_PLAN_FUNCTION_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
-            },
-            body: JSON.stringify({ bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir, konteksProgram, arahan, ideSudahAda })
-        });
-        if (!response.ok) {
-            let detail = '';
-            try { detail = (await response.json()).error || ''; } catch (e) {}
-            throw new Error(detail || 'Gagal memanggil API (status ' + response.status + ')');
+        for (let pass = 0; pass < IG_PLAN_MAX_PASS && sisa.length; pass++) {
+            const gagal = [];
+            for (let i = 0; i < sisa.length; i += IG_PLAN_BATCH) {
+                const batch = sisa.slice(i, i + IG_PLAN_BATCH);
+                const data = await igCallPlanFunction({
+                    bulanLabel, jumlahPost: batch.length, tanggalMulai, tanggalAkhir,
+                    konteksProgram, arahan, slots: batch, riwayatTema: igRiwayatToText(riwayat)
+                });
+
+                const slotByDate = new Map(batch.map(s => [s.tanggal, s]));
+                const rows = [];
+                (data.items || []).forEach(it => {
+                    const slot = slotByDate.get(it.tanggal);
+                    if (!slot || !it.tema || !it.draft_caption) return;
+                    if (rows.some(r => r.tanggal === it.tanggal)) return;
+                    // Mirip konten lama (atau ide lain di batch ini)? Dibuang; temanya dicatat supaya percobaan ulang menghindarinya.
+                    if (igIsDuplicateIdea(it, riwayat)) {
+                        igRiwayatAdd(riwayat, it.tema, it.teks_gambar, '');
+                        return;
+                    }
+                    igRiwayatAdd(riwayat, it.tema, it.teks_gambar, it.tanggal);
+                    rows.push({
+                        bulan: bulanCol,
+                        tanggal: it.tanggal,
+                        tema: String(it.tema).trim(),
+                        tipe_konten: slot.tipe_konten,
+                        draft_caption: it.draft_caption,
+                        status: 'idea',
+                        ...(igPlannerColsReady ? { pilar: slot.pilar, tahap: 'ide' } : {}),
+                        ...(igTeksGambarReady ? { teks_gambar: String(it.teks_gambar || '').trim() || null } : {})
+                    });
+                });
+
+                batch.forEach(s => { if (!rows.some(r => r.tanggal === s.tanggal)) gagal.push(s); });
+
+                if (rows.length) {
+                    // Simpan per batch: kalau proses terputus di tengah, hasil yang sudah jadi tidak hilang.
+                    const { error: insErr } = await supabaseClient.from('ig_content_plan').insert(rows);
+                    if (insErr) throw insErr;
+                    berhasil += rows.length;
+                    setProgress(berhasil);
+                }
+            }
+            sisa = gagal;
         }
-        const data = await response.json();
-        const items = data.items || [];
-        if (!items.length) throw new Error('AI tidak menghasilkan rencana apa pun.');
+    } catch (err) {
+        console.error('generateIgContentPlanAI error:', err);
+        errMsg = err.message || String(err);
+    } finally {
+        if (btn) btn.disabled = false;
+        if (btnText) btnText.textContent = 'Generate dengan AI';
+    }
 
-        const bulanCol = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-        // Validasi sisi klien (jaring kedua setelah edge function): tanggal harus valid & jatuh
-        // di bulan target, kalau tidak 1 item cacat bisa menggagalkan seluruh insert / nyasar bulan.
-        const dateOk = t => {
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(t || '') || !t.startsWith(bulanPrefix)) return false;
-            const [yy, mm, dd] = t.split('-').map(Number);
-            const chk = new Date(yy, mm - 1, dd);
-            return chk.getFullYear() === yy && chk.getMonth() === mm - 1 && chk.getDate() === dd;
-        };
-        const rows = items.filter(it => dateOk(it.tanggal)).slice(0, jumlahPost).map(it => ({
-            bulan: bulanCol,
-            tanggal: it.tanggal,
-            tema: it.tema,
-            tipe_konten: it.tipe_konten || 'image',
-            draft_caption: it.draft_caption,
-            status: 'idea',
-            ...(igPlannerColsReady ? { pilar: IG_PILLARS[it.pilar] ? it.pilar : null, tahap: 'ide' } : {}),
-            ...(igTeksGambarReady ? { teks_gambar: String(it.teks_gambar || '').trim() || null } : {})
-        }));
-        if (!rows.length) throw new Error('Semua tanggal hasil AI di luar bulan yang dipilih. Coba generate ulang.');
-
-        const { error: insErr } = await supabaseClient.from('ig_content_plan').insert(rows);
-        if (insErr) throw insErr;
-
-        showToast(`${rows.length} ide rencana konten berhasil dibuat`, 'success');
+    if (berhasil > 0) {
         await loadIgContentPlan();
         renderIgPlanResultList(year, month);
-
         const genWrap = document.getElementById('igPlanGenerateWrap');
         const resultWrap = document.getElementById('igPlanResultWrap');
         if (genWrap) genWrap.style.display = 'none';
         if (resultWrap) resultWrap.style.display = 'block';
-    } catch (err) {
-        console.error('generateIgContentPlanAI error:', err);
-        showToast('Gagal generate rencana: ' + err.message, 'error');
-    } finally {
-        if (btn) btn.disabled = false;
-        if (btnText) btnText.textContent = 'Generate dengan AI';
+    }
+
+    if (errMsg) {
+        showToast(berhasil > 0
+            ? `${berhasil} ide tersimpan, tapi proses berhenti: ${errMsg}. Klik Generate lagi untuk melengkapi sisanya.`
+            : 'Gagal generate rencana: ' + errMsg, berhasil > 0 ? 'info' : 'error');
+    } else if (sisa.length) {
+        showToast(`${berhasil} ide berhasil dibuat. ${sisa.length} tanggal belum terisi karena hasil AI terus mirip konten lama — klik Generate lagi untuk melengkapi.`, 'info');
+    } else {
+        showToast(`${berhasil} ide rencana konten berhasil dibuat (semua berbeda dari konten sebelumnya)`, 'success');
     }
 }
 
@@ -15826,9 +15990,16 @@ Tanya-tanya dulu lewat WA juga boleh. Ceritakan kondisi orang tuamu, nanti kita 
 // existingDates: Set tanggal "YYYY-MM-DD" yang sudah punya ide aktif (dilewati supaya tidak menumpuk).
 // mulaiDari: "YYYY-MM-DD" -- tanggal sebelum ini dilewati (tidak ada gunanya merencanakan hari yang sudah lewat,
 //   dan draf tidak habis terpakai di tanggal lampau).
-function igBuildPolaMingguan(year, month, existingDates, mulaiDari) {
+// riwayat (opsional): hasil igBuildRiwayat() -- draf contoh yang topiknya sudah pernah dipakai TIDAK diulang
+//   (slotnya jadi kerangka kosong), supaya bulan berikutnya tidak berisi konten yang sama persis.
+function igBuildPolaMingguan(year, month, existingDates, mulaiDari, riwayat) {
     const antrean = {};
-    Object.keys(IG_POLA_AMIRU).forEach(k => { antrean[k] = IG_POLA_AMIRU[k].isi.slice(); });
+    let sudahPernah = 0;
+    Object.keys(IG_POLA_AMIRU).forEach(k => {
+        const semua = IG_POLA_AMIRU[k].isi;
+        antrean[k] = riwayat ? semua.filter(d => !igIsDuplicateIdea(d, riwayat)) : semua.slice();
+        sudahPernah += semua.length - antrean[k].length;
+    });
     const lastDay = new Date(year, month + 1, 0).getDate();
     const bulanCol = `${year}-${String(month + 1).padStart(2, '0')}-01`;
     const rows = [];
@@ -15856,7 +16027,7 @@ function igBuildPolaMingguan(year, month, existingDates, mulaiDari) {
             _berisi: !!draf
         });
     }
-    return { rows, dilewati, lampau };
+    return { rows, dilewati, lampau, sudahPernah };
 }
 
 // ---- Terapkan pola mingguan ke bulan yang dipilih di modal Rencana AI ----
@@ -15878,7 +16049,7 @@ async function igApplyPolaMingguan() {
 
     const t = new Date();
     const hariIni = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
-    const { rows, dilewati, lampau } = igBuildPolaMingguan(year, month, existingDates, hariIni);
+    const { rows, dilewati, lampau, sudahPernah } = igBuildPolaMingguan(year, month, existingDates, hariIni, igBuildRiwayat());
     if (!rows.length) { showToast('Tidak ada tanggal pola (Sen/Rab/Jum/Min) yang tersisa di bulan ini (sudah lewat atau sudah punya ide)', 'info'); return; }
 
     const berisi = rows.filter(r => r._berisi).length;
@@ -15887,6 +16058,7 @@ async function igApplyPolaMingguan() {
         `(${berisi} berisi draf teks gambar + caption, ${rows.length - berisi} kerangka kosong).` +
         (dilewati ? ` ${dilewati} tanggal dilewati karena sudah ada ide.` : '') +
         (lampau ? ` ${lampau} tanggal yang sudah lewat tidak diisi.` : '') +
+        (sudahPernah ? ` ${sudahPernah} draf contoh tidak dipakai lagi karena topiknya sudah pernah dibuat (jadi kerangka kosong — isi manual atau pakai Generate dengan AI).` : '') +
         `\n\nBagian [isi ...] di draf harus diganti data asli (program, kutipan jamaah, dll). Lanjutkan?`;
     if (!confirm(ket)) return;
 

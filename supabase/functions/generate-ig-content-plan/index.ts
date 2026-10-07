@@ -21,10 +21,16 @@
 //     tanggalAkhir: string,      // "2026-09-30"
 //     konteksProgram: string,    // ringkasan program aktif/berangkat bulan ini
 //     arahan?: string,           // arahan tambahan opsional dari admin (tema campaign, dst)
-//     ideSudahAda?: string       // daftar ide yang sudah ada di bulan itu ("YYYY-MM-DD — tema" per baris)
-//                                // supaya AI tidak mengulang topik/tanggal yang sama
+//     ideSudahAda?: string,      // (lama) daftar ide yang sudah ada di bulan itu ("YYYY-MM-DD — tema" per baris)
+//     riwayatTema?: string,      // daftar tema yang SUDAH PERNAH dibuat (semua bulan, satu tema per baris)
+//                                // -> AI wajib membuat ide yang benar-benar beda dari daftar ini
+//     slots?: [{ tanggal, hari, pilar, tipe_konten }]
+//                                // slot tanggal yang HARUS diisi (1 ide per slot). Kalau ada, jumlah ide = jumlah slot,
+//                                // tanggal/pilar/tipe_konten dipaksa mengikuti slot (tanggal lain dibuang).
 //   }
-//   Response: { items: [{ tanggal, tema, tipe_konten, pilar, teks_gambar, draft_caption }, ...] }
+//   Response: { items: [{ tanggal, tema, tipe_konten, pilar, teks_gambar, draft_caption }, ...], versi: 2 }
+//   (versi: 2 = function ini sudah mengenali slots & riwayatTema; frontend memakainya untuk mendeteksi
+//    function lama yang belum di-deploy ulang)
 //   (tanggal dijamin valid & di dalam tanggalMulai..tanggalAkhir, jumlah item <= jumlahPost,
 //    pilar salah satu dari storytelling|edukasi|promo|testimoni|manasik|engagement|behind,
 //    teks_gambar = teks pemancing 2-4 baris untuk ditaruh di gambar; caption melanjutkannya)
@@ -98,10 +104,15 @@ const CONTENT_PLAN_SYSTEM_PROMPT = `Kamu adalah social media strategist & copywr
 ATURAN FORMAT:
 - Output HARUS berupa JSON array MURNI, tanpa markdown code fence, tanpa teks pembuka/penutup apa pun — cuma JSON.
 - Setiap elemen array berbentuk: { "tanggal": "YYYY-MM-DD", "tema": string, "tipe_konten": "image"|"video"|"carousel", "pilar": "storytelling"|"edukasi"|"promo"|"testimoni"|"manasik"|"engagement"|"behind", "teks_gambar": string, "draft_caption": string }.
-- Jumlah elemen HARUS sesuai jumlahPost yang diminta di prompt user.
+- Jumlah elemen HARUS sesuai jumlah yang diminta di prompt user. Kalau prompt user memuat DAFTAR SLOT TANGGAL, buat TEPAT 1 ide per slot: "tanggal" harus persis sama dengan slot (jangan menambah, mengurangi, atau menggeser tanggal), serta ikuti pilar & tipe_konten yang tertera di slot itu.
 - Semua "tanggal" HARUS berada di dalam rentang tanggalMulai..tanggalAkhir (inklusif) dan merupakan tanggal kalender yang valid.
 - Kalau ada daftar IDE YANG SUDAH ADA, JANGAN mengulang topiknya dan hindari menaruh ide baru di tanggal yang sama dengan ide yang sudah ada.
 - "tema" cukup 1 baris singkat (judul internal untuk admin, BUKAN caption).
+
+ANTI-DUPLIKASI (PENTING):
+- Prompt user bisa memuat RIWAYAT TEMA: daftar tema konten yang SUDAH PERNAH dibuat sebelumnya. Setiap ide baru HARUS benar-benar berbeda dari semua tema itu: beda topik inti, beda momen/sudut pandang, beda teks_gambar, dan beda kalimat pembuka caption. Mengganti beberapa kata saja TIDAK dianggap berbeda.
+- Ide-ide dalam satu jawaban juga tidak boleh saling mirip.
+- Kalau topik favorit sudah ada di riwayat, pilih sudut lain yang belum pernah dipakai (momen ibadah, lokasi, perasaan, kekhawatiran, atau pertanyaan jamaah yang berbeda). Kalau ragu sebuah ide mirip riwayat, ganti.
 
 POLA MINGGUAN (acuan hari & jenis konten — ikuti sebisa mungkin, ambil dari awal pola kalau jumlah ide lebih sedikit dari jumlah slot):
 - SENIN = storytelling (rasa rindu & kedekatan; momen ibadah atau suasana Tanah Suci) → tipe "image", pilar "storytelling"
@@ -140,6 +151,7 @@ interface PlanItem {
 }
 
 const VALID_PILARS = new Set(["storytelling", "edukasi", "promo", "testimoni", "manasik", "engagement", "behind"]);
+const VALID_TYPES = new Set(["image", "video", "carousel"]);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 // true kalau str adalah tanggal kalender nyata (bukan mis. 2026-02-31)
@@ -168,7 +180,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir, konteksProgram, arahan, ideSudahAda } = body || {};
+    const { bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir, konteksProgram, arahan, ideSudahAda, riwayatTema, slots } = body || {};
 
     if (!bulanLabel || !jumlahPost || !tanggalMulai || !tanggalAkhir) {
       return new Response(JSON.stringify({ error: "bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir wajib diisi" }), {
@@ -177,14 +189,28 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const jumlah = Math.max(1, Math.min(60, Number(jumlahPost) || 12));
+    // Slot tanggal (opsional): hanya slot yang valid (tanggal nyata di dalam rentang, pilar & tipe dikenal) yang dipakai.
+    const slotList: { tanggal: string; hari: string; pilar: string; tipe_konten: string }[] = Array.isArray(slots)
+      ? slots
+          .filter((s: { tanggal?: string; pilar?: string; tipe_konten?: string }) =>
+            s && isRealDate(String(s.tanggal)) && String(s.tanggal) >= String(tanggalMulai) && String(s.tanggal) <= String(tanggalAkhir) &&
+            VALID_PILARS.has(String(s.pilar)) && VALID_TYPES.has(String(s.tipe_konten)))
+          .slice(0, 60)
+          .map((s: { tanggal: string; hari?: string; pilar: string; tipe_konten: string }) => ({
+            tanggal: String(s.tanggal), hari: String(s.hari || ""), pilar: String(s.pilar), tipe_konten: String(s.tipe_konten),
+          }))
+      : [];
+
+    const jumlah = slotList.length ? slotList.length : Math.max(1, Math.min(60, Number(jumlahPost) || 12));
 
     const userMsg = `Susun rencana konten Instagram untuk bulan ${bulanLabel} (rentang tanggal ${tanggalMulai} s/d ${tanggalAkhir}), sebanyak TEPAT ${jumlah} ide post.
 
 KONTEKS PROGRAM AKTIF/BERANGKAT BULAN INI:
 ${konteksProgram && String(konteksProgram).trim() ? konteksProgram : '(tidak ada data program spesifik untuk bulan ini)'}
 ${arahan && String(arahan).trim() ? `\nARAHAN TAMBAHAN DARI ADMIN:\n${arahan}` : ''}
+${slotList.length ? `\nDAFTAR SLOT TANGGAL (isi TEPAT 1 ide per slot, tanggal persis sama, ikuti pilar & tipe_konten-nya):\n${slotList.map((s) => `- ${s.tanggal}${s.hari ? ` (${s.hari})` : ''} | pilar: ${s.pilar} | tipe_konten: ${s.tipe_konten}`).join('\n')}` : ''}
 ${ideSudahAda && String(ideSudahAda).trim() ? `\nIDE YANG SUDAH ADA BULAN INI (jangan diulang):\n${String(ideSudahAda).slice(0, 4000)}` : ''}
+${riwayatTema && String(riwayatTema).trim() ? `\nRIWAYAT TEMA — SUDAH PERNAH DIBUAT (jangan diulang & jangan dibuat mirip):\n${String(riwayatTema).slice(0, 20000)}` : ''}
 
 Ingat: balas HANYA dengan JSON array sesuai format yang sudah dijelaskan, tidak ada teks lain.`;
 
@@ -193,6 +219,7 @@ Ingat: balas HANYA dengan JSON array sesuai format yang sudah dijelaskan, tidak 
       contents: [{ role: "user", parts: [{ text: userMsg }] }],
       generationConfig: {
         response_mime_type: "application/json",
+        temperature: 1,
       },
     });
 
@@ -217,27 +244,42 @@ Ingat: balas HANYA dengan JSON array sesuai format yang sudah dijelaskan, tidak 
 
     // Validasi & bersihkan tiap item — buang yang cacat, jangan sampai 1 item
     // rusak menggagalkan seluruh batch.
-    const validTypes = new Set(["image", "video", "carousel"]);
     const rangeOk = (t: string) => isRealDate(t) && t >= String(tanggalMulai) && t <= String(tanggalAkhir);
-    const cleaned = items
+    let cleaned = items
       .filter((it) => it && typeof it === "object" && it.tanggal && it.tema && it.draft_caption)
       .map((it) => ({
         tanggal: String(it.tanggal).slice(0, 10),
         tema: String(it.tema).trim().slice(0, 200),
-        tipe_konten: validTypes.has(String(it.tipe_konten)) ? String(it.tipe_konten) : "image",
+        tipe_konten: VALID_TYPES.has(String(it.tipe_konten)) ? String(it.tipe_konten) : "image",
         pilar: VALID_PILARS.has(String(it.pilar)) ? String(it.pilar) : null,
         teks_gambar: it.teks_gambar ? String(it.teks_gambar).trim().slice(0, 300) : "",
         draft_caption: String(it.draft_caption).trim(),
       }))
       // Buang tanggal cacat / di luar rentang bulan, lalu batasi sesuai jumlah yang diminta
-      .filter((it) => rangeOk(it.tanggal))
-      .slice(0, jumlah);
+      .filter((it) => rangeOk(it.tanggal));
+
+    if (slotList.length) {
+      // Mode slot: hanya tanggal yang diminta, maksimal 1 ide per tanggal; pilar & tipe dipaksa mengikuti slot.
+      const slotByDate = new Map(slotList.map((s) => [s.tanggal, s]));
+      const sudah = new Set<string>();
+      cleaned = cleaned
+        .filter((it) => {
+          if (!slotByDate.has(it.tanggal) || sudah.has(it.tanggal)) return false;
+          sudah.add(it.tanggal);
+          return true;
+        })
+        .map((it) => {
+          const slot = slotByDate.get(it.tanggal)!;
+          return { ...it, pilar: slot.pilar, tipe_konten: slot.tipe_konten };
+        });
+    }
+    cleaned = cleaned.slice(0, jumlah);
 
     if (!cleaned.length) {
       throw new Error("Semua item hasil AI tidak valid (tanggal di luar rentang bulan atau data kurang lengkap). Coba generate ulang.");
     }
 
-    return new Response(JSON.stringify({ items: cleaned }), {
+    return new Response(JSON.stringify({ items: cleaned, versi: 2 }), {
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   } catch (err) {
