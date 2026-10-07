@@ -3480,12 +3480,18 @@ async function renderAdminPanel() {
                             <i class="bi bi-building"></i>
                             <div>
                                 <h4>Hotel Saudi Arabia</h4>
-                                <span>Referensi data hotel — Export CSV untuk diedit lalu diimport ulang</span>
+                                <span>Referensi data hotel — Export CSV untuk diedit, Import CSV untuk memperbarui (data lama diganti)</span>
                             </div>
                         </div>
-                        <button type="button" class="btn-export-subtle hotel-export-btn" id="hotelExportCsvBtn" onclick="exportHotelSaudiCsv()" title="Unduh seluruh data hotel sebagai CSV">
-                            <i class="bi bi-filetype-csv"></i> Export CSV
-                        </button>
+                        <div class="hotel-header-actions">
+                            <button type="button" class="btn-export-subtle hotel-export-btn" id="hotelExportCsvBtn" onclick="exportHotelSaudiCsv()" title="Unduh seluruh data hotel sebagai CSV">
+                                <i class="bi bi-filetype-csv"></i> Export CSV
+                            </button>
+                            <button type="button" class="btn-export-subtle hotel-import-btn" onclick="document.getElementById('hotelImportFile').click()" title="Ganti seluruh data hotel dengan file CSV" ${canManageAssets() ? '' : 'style="display:none;"'}>
+                                <i class="bi bi-upload"></i> Import CSV
+                            </button>
+                            <input type="file" id="hotelImportFile" accept=".csv,text/csv" style="display:none;" onchange="handleHotelImportFile(this)">
+                        </div>
                     </div>
                     <div class="hotel-search-bar">
                         <input type="text" id="hotelSaudiSearchInput" placeholder="Cari nama hotel, kota, atau deskripsi..." oninput="handleHotelSaudiSearchInput()">
@@ -12742,6 +12748,220 @@ async function exportHotelSaudiCsv() {
     }
 }
 window.exportHotelSaudiCsv = exportHotelSaudiCsv;
+
+// ============================================================
+// IMPORT CSV HOTEL SAUDI ARABIA
+// Alur: pilih file -> parse & validasi di browser -> pratinjau (jumlah baris,
+// baris yang dilewati) -> konfirmasi -> RPC replace_hotel_saudi_arabia yang
+// menghapus SEMUA data lama & mengisi data baru dalam satu transaksi.
+// Hanya Admin (dicek juga di database: sql/tambah_import_hotel_saudi_arabia.sql).
+// Kolom CSV: hotel_name, city (wajib) + country, score, review_count,
+// description (opsional). Kolom `id` diabaikan (id dibuat ulang oleh database).
+// ============================================================
+let hotelImportPending = null;
+const HOTEL_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
+const HOTEL_IMPORT_MAX_ROWS = 5000;
+const HOTEL_CSV_ALIASES = {
+    hotel_name: ['hotel_name', 'hotel', 'nama_hotel', 'nama', 'name'],
+    city: ['city', 'kota'],
+    country: ['country', 'negara'],
+    score: ['score', 'skor', 'rating'],
+    review_count: ['review_count', 'reviews', 'ulasan', 'jumlah_ulasan'],
+    description: ['description', 'deskripsi', 'keterangan']
+};
+
+// Parser CSV (RFC 4180): kutip ganda, "" sebagai escape, koma/titik-koma
+// di dalam kutip, baris baru di dalam kutip, BOM, CRLF/LF.
+function parseCsvText(text) {
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+    const firstLine = text.split(/\r?\n/, 1)[0] || '';
+    const delim = firstLine.split(';').length > firstLine.split(',').length ? ';' : ',';
+    const rows = [];
+    let row = [], field = '', inQuotes = false;
+    const pushRow = () => {
+        row.push(field); field = '';
+        if (row.some(c => c.trim() !== '')) rows.push(row);
+        row = [];
+    };
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (inQuotes) {
+            if (ch === '"') {
+                if (text[i + 1] === '"') { field += '"'; i++; } else inQuotes = false;
+            } else field += ch;
+        } else if (ch === '"') inQuotes = true;
+        else if (ch === delim) { row.push(field); field = ''; }
+        else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; pushRow(); }
+        else field += ch;
+    }
+    if (field !== '' || row.length) pushRow();
+    return rows;
+}
+
+function normalizeHotelCity(v) {
+    const s = String(v || '').trim().toLowerCase();
+    if (/makk?a|mekk?ah?|mecca|مكة/.test(s)) return 'makkah';
+    if (/madin|medin|المدينة/.test(s)) return 'madinah';
+    return '';
+}
+
+// Ubah teks CSV jadi { rows, errors, total, duplicates, fatal }.
+function buildHotelImportPreview(text) {
+    const result = { rows: [], errors: [], total: 0, duplicates: 0, fatal: '' };
+    const table = parseCsvText(text);
+    if (table.length < 2) { result.fatal = 'File kosong atau hanya berisi header.'; return result; }
+
+    const header = table[0].map(h => h.trim().toLowerCase().replace(/[\s-]+/g, '_'));
+    const col = {};
+    Object.entries(HOTEL_CSV_ALIASES).forEach(([key, aliases]) => {
+        const idx = header.findIndex(h => aliases.includes(h));
+        if (idx >= 0) col[key] = idx;
+    });
+    if (col.hotel_name === undefined || col.city === undefined) {
+        result.fatal = 'Header CSV harus punya kolom hotel_name dan city. Gunakan file hasil Export CSV sebagai acuan.';
+        return result;
+    }
+    if (table.length - 1 > HOTEL_IMPORT_MAX_ROWS) {
+        result.fatal = `Terlalu banyak baris (maks ${HOTEL_IMPORT_MAX_ROWS.toLocaleString('id-ID')}).`;
+        return result;
+    }
+
+    const seen = new Set();
+    const get = (r, key) => (col[key] === undefined ? '' : String(r[col[key]] ?? '').replace(/\s+/g, ' ').trim());
+    for (let i = 1; i < table.length; i++) {
+        const r = table[i];
+        const lineNo = i + 1;
+        result.total++;
+        const name = get(r, 'hotel_name');
+        const cityRaw = get(r, 'city');
+        if (!name) { result.errors.push(`Baris ${lineNo}: nama hotel kosong`); continue; }
+        if (name.length > 200) { result.errors.push(`Baris ${lineNo} (${name.slice(0, 30)}…): nama hotel lebih dari 200 karakter`); continue; }
+        const city = normalizeHotelCity(cityRaw);
+        if (!city) { result.errors.push(`Baris ${lineNo} (${name}): kota "${cityRaw || '-'}" tidak dikenali — isi makkah atau madinah`); continue; }
+
+        let score = null;
+        const scoreRaw = get(r, 'score');
+        if (scoreRaw !== '') {
+            score = Number(scoreRaw.replace(',', '.'));
+            if (!Number.isFinite(score) || score < 0 || score > 10) { result.errors.push(`Baris ${lineNo} (${name}): skor "${scoreRaw}" harus angka 0–10`); continue; }
+            score = Math.round(score * 10) / 10;
+        }
+        let reviews = null;
+        const revRaw = get(r, 'review_count').replace(/[.\s]/g, '');
+        if (revRaw !== '') {
+            reviews = Number(revRaw);
+            if (!Number.isInteger(reviews) || reviews < 0 || reviews > 2147483647) { result.errors.push(`Baris ${lineNo} (${name}): jumlah ulasan "${get(r, 'review_count')}" harus bilangan bulat`); continue; }
+        }
+        const key = city + '|' + name.toLowerCase();
+        if (seen.has(key)) { result.duplicates++; continue; }
+        seen.add(key);
+        result.rows.push({
+            hotel_name: name,
+            city,
+            country: get(r, 'country') || 'Saudi Arabia',
+            score,
+            review_count: reviews,
+            description: get(r, 'description') || null
+        });
+    }
+    return result;
+}
+
+async function handleHotelImportFile(input) {
+    const file = input.files && input.files[0];
+    input.value = ''; // supaya file yang sama bisa dipilih lagi
+    if (!file) return;
+    if (!canManageAssets()) { showToast('Hanya Admin yang boleh mengimpor data hotel', 'error'); return; }
+    if (file.size > HOTEL_IMPORT_MAX_BYTES) { showToast('File terlalu besar (maks 5 MB)', 'error'); return; }
+    try {
+        const text = await file.text();
+        hotelImportPending = { fileName: file.name, preview: buildHotelImportPreview(text) };
+    } catch (err) {
+        console.error('Baca CSV hotel error:', err);
+        showToast('Gagal membaca file CSV', 'error');
+        return;
+    }
+    // Pastikan jumlah data lama terbaru untuk peringatan di pratinjau
+    if (!hotelSaudiLoaded) await loadHotelSaudiArabia();
+    renderHotelImportPreview();
+    document.getElementById('hotelImportModal').classList.add('open');
+}
+
+function renderHotelImportPreview() {
+    const box = document.getElementById('hotelImportBody');
+    const btn = document.getElementById('hotelImportConfirmBtn');
+    if (!box || !hotelImportPending) return;
+    const { fileName, preview: p } = hotelImportPending;
+    const oldCount = hotelSaudiList.length;
+    const esc = escapeHtml;
+
+    if (p.fatal) {
+        box.innerHTML = `<div class="hotel-import-file"><i class="bi bi-file-earmark-x"></i> ${esc(fileName)}</div>
+            <div class="hotel-import-alert danger"><i class="bi bi-x-octagon-fill"></i> ${esc(p.fatal)}</div>`;
+        if (btn) btn.disabled = true;
+        return;
+    }
+    const mk = p.rows.filter(r => r.city === 'makkah').length;
+    const md = p.rows.filter(r => r.city === 'madinah').length;
+    const noScore = p.rows.filter(r => r.score == null).length;
+    const tooFew = oldCount > 0 && p.rows.length < oldCount * 0.5;
+    const errList = p.errors.slice(0, 8).map(e => `<li>${esc(e)}</li>`).join('');
+    const moreErr = p.errors.length > 8 ? `<li>…dan ${p.errors.length - 8} baris lain</li>` : '';
+
+    box.innerHTML = `
+        <div class="hotel-import-file"><i class="bi bi-file-earmark-spreadsheet"></i> ${esc(fileName)}</div>
+        <div class="hotel-import-stats">
+            <div><b>${p.rows.length}</b><span>hotel siap diimport</span></div>
+            <div><b>${mk}</b><span>Makkah</span></div>
+            <div><b>${md}</b><span>Madinah</span></div>
+            <div><b>${p.errors.length + p.duplicates}</b><span>baris dilewati</span></div>
+        </div>
+        <div class="hotel-import-alert danger">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <div><b>Semua ${oldCount} data hotel lama akan dihapus</b> dan diganti ${p.rows.length} hotel dari file ini. Tindakan ini tidak bisa dibatalkan — gunakan <b>Export CSV</b> dulu kalau butuh cadangan.</div>
+        </div>
+        ${tooFew ? `<div class="hotel-import-alert warn"><i class="bi bi-exclamation-circle-fill"></i><div>Jumlah hotel di file ini jauh lebih sedikit dari data lama (${oldCount}). Pastikan file-nya lengkap.</div></div>` : ''}
+        ${p.errors.length ? `<div class="hotel-import-alert warn"><i class="bi bi-info-circle-fill"></i><div><b>${p.errors.length} baris dilewati karena tidak valid:</b><ul>${errList}${moreErr}</ul></div></div>` : ''}
+        ${p.duplicates ? `<div class="hotel-import-note">${p.duplicates} baris duplikat (nama & kota sama) dilewati, baris pertama dipakai.</div>` : ''}
+        ${noScore ? `<div class="hotel-import-note">${noScore} hotel tanpa skor akan tampil "—".</div>` : ''}`;
+    if (btn) btn.disabled = p.rows.length === 0;
+}
+
+function closeHotelImportModal() {
+    document.getElementById('hotelImportModal')?.classList.remove('open');
+    hotelImportPending = null;
+}
+
+async function confirmHotelImport() {
+    if (!hotelImportPending || hotelImportPending.preview.fatal || !hotelImportPending.preview.rows.length) return;
+    if (!canManageAssets()) { showToast('Hanya Admin yang boleh mengimpor data hotel', 'error'); return; }
+    const btn = document.getElementById('hotelImportConfirmBtn');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-arrow-repeat bi-spin"></i> Mengimpor...'; }
+    try {
+        const { data, error } = await supabaseClient.rpc('replace_hotel_saudi_arabia', { p_rows: hotelImportPending.preview.rows });
+        if (error) throw error;
+        closeHotelImportModal();
+        hotelSaudiLoaded = false;
+        await loadHotelSaudiArabia();
+        populateHotelSaudiCityFilter();
+        renderHotelSaudiTable();
+        if (cxSelectedProgram) renderCxPanel(cxSelectedProgram);
+        showToast(`Import selesai: ${data ?? hotelSaudiList.length} hotel menggantikan data lama`);
+    } catch (err) {
+        console.error('Import hotel CSV error:', err);
+        const missing = err && (err.code === 'PGRST202' || /Could not find the function|does not exist/i.test(err.message || ''));
+        showToast(missing
+            ? 'Fungsi import belum ada di database — jalankan sql/tambah_import_hotel_saudi_arabia.sql dulu'
+            : `Import gagal, data lama tidak berubah: ${err.message || 'kesalahan tidak diketahui'}`, 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = origHtml; }
+        return;
+    }
+    if (btn) btn.innerHTML = origHtml;
+}
+window.handleHotelImportFile = handleHotelImportFile;
+window.closeHotelImportModal = closeHotelImportModal;
+window.confirmHotelImport = confirmHotelImport;
 
 function openAssetModal(id = null) {
     if (!canManageAssets()) { showToast('Hanya Admin yang boleh mengelola Assets', 'error'); return; }

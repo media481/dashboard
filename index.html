@@ -1158,6 +1158,22 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="hotelImportModal">
+    <div class="modal-content" style="max-width:560px;">
+        <div class="modal-header">
+            <h2><i class="bi bi-upload"></i> Import CSV Hotel Saudi Arabia</h2>
+            <button class="modal-close" onclick="closeHotelImportModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="hotelImportBody"></div>
+            <div class="form-actions">
+                <button type="button" class="btn-submit btn-hotel-import-confirm" id="hotelImportConfirmBtn" onclick="confirmHotelImport()"><i class="bi bi-trash3-fill"></i> Hapus Data Lama &amp; Import</button>
+                <button type="button" class="btn-cancel" onclick="closeHotelImportModal()">Batal</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal-overlay" id="cicilanModal">
     <div class="modal-content cicilan-modal-1col">
         <div class="modal-header">

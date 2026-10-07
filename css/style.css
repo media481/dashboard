@@ -4816,3 +4816,23 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     .tab-btn:active { background: var(--brand-tint); }
     .btn-primary:active, .btn-success:active, .btn-danger:active { filter: brightness(.92); }
 }
+
+
+/* ===== Import CSV Hotel Saudi Arabia ===== */
+.hotel-header-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.hotel-import-file { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 14px; word-break: break-all; }
+.hotel-import-file i { font-size: 18px; color: var(--brand); flex: 0 0 auto; }
+.hotel-import-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+.hotel-import-stats div { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 8px; text-align: center; }
+.hotel-import-stats b { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 18px; }
+.hotel-import-stats span { font-size: 11px; color: var(--ink-soft); }
+.hotel-import-alert { display: flex; gap: 10px; align-items: flex-start; border-radius: 10px; padding: 10px 12px; font-size: 12.5px; line-height: 1.5; margin-bottom: 10px; }
+.hotel-import-alert > i { margin-top: 2px; flex: 0 0 auto; }
+.hotel-import-alert ul { margin: 6px 0 0 16px; font-size: 12px; }
+.hotel-import-alert.danger { background: var(--danger-tint); color: var(--danger); }
+.hotel-import-alert.warn { background: var(--warn-tint); color: #8a5016; }
+.hotel-import-note { font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
+.form-actions .btn-hotel-import-confirm { background: var(--danger); }
+.form-actions .btn-hotel-import-confirm:hover { background: #a03226; }
+.form-actions .btn-hotel-import-confirm:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 480px) { .hotel-import-stats { grid-template-columns: repeat(2, 1fr); } }
