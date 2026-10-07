@@ -249,6 +249,19 @@ satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
   `CACHE_NAME` versinya
 - Akurasi data finansial adalah prioritas karena datanya dipakai untuk laporan resmi
 
+## Aturan Edge Function (supabase/functions/*)
+
+- Edge function **WAJIB berdiri sendiri dalam satu file `index.ts`**. JANGAN `import` dari
+  `../_shared/...` atau file lokal lain (mis. `./postprocess.ts`): deploy dilakukan lewat
+  **Supabase Dashboard** (paste satu file), dan Dashboard hanya membundel file fungsi itu
+  sendiri, jadi impor lokal gagal dengan "Module not found ... _shared/gemini.ts".
+- Kalau butuh helper bersama (mis. fallback Gemini multi-key), **salin helper-nya inline** ke
+  tiap `index.ts` yang memakainya (contoh: `generate-ig-content-plan`, `generate-ig-caption`).
+  Konsekuensinya: kalau helper diperbaiki, salinan di tiap fungsi perlu diperbarui manual.
+- Impor dari URL/paket luar (mis. `npm:`/`jsr:`) tetap boleh. Yang dilarang hanya impor file lokal.
+- Saat mengirim hasil kerja, sebut fungsi mana yang perlu di-deploy ulang. Untuk fungsi yang
+  diubah, kirim `index.ts`-nya utuh supaya bisa langsung di-paste ke Dashboard.
+
 ## Cara kirim hasil kerja (deploy ke GitHub)
 
 Kalau perubahan cuma menyentuh sebagian kecil file (bukan restrukturisasi besar),
