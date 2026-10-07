@@ -3480,9 +3480,12 @@ async function renderAdminPanel() {
                             <i class="bi bi-building"></i>
                             <div>
                                 <h4>Hotel Saudi Arabia</h4>
-                                <span>Referensi data hotel — read-only, hasil import sekali dari CSV</span>
+                                <span>Referensi data hotel — Export CSV untuk diedit lalu diimport ulang</span>
                             </div>
                         </div>
+                        <button type="button" class="btn-export-subtle hotel-export-btn" id="hotelExportCsvBtn" onclick="exportHotelSaudiCsv()" title="Unduh seluruh data hotel sebagai CSV">
+                            <i class="bi bi-filetype-csv"></i> Export CSV
+                        </button>
                     </div>
                     <div class="hotel-search-bar">
                         <input type="text" id="hotelSaudiSearchInput" placeholder="Cari nama hotel, kota, atau deskripsi..." oninput="handleHotelSaudiSearchInput()">
@@ -12696,6 +12699,49 @@ function renderHotelSaudiTable() {
         </div>
     `;
 }
+
+// Export seluruh data hotel (bukan cuma hasil filter) ke CSV supaya bisa
+// diedit di Excel/Sheets lalu diimport balik ke Supabase. Kolom `id` ikut
+// diexport sebagai kunci baris: baris dengan id yang sama = diperbarui,
+// id dikosongkan = hotel baru. UTF-8 + BOM supaya nama hotel berhuruf Arab
+// tidak rusak saat dibuka di Excel.
+function csvCell(v) {
+    if (v === null || v === undefined) return '';
+    const str = String(v).replace(/\r?\n/g, ' ');
+    return /[",;\n\r]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+}
+async function exportHotelSaudiCsv() {
+    const btn = document.getElementById('hotelExportCsvBtn');
+    if (btn) btn.disabled = true;
+    try {
+        if (!hotelSaudiLoaded) await loadHotelSaudiArabia();
+        if (!hotelSaudiLoaded || !hotelSaudiList.length) {
+            showToast('Belum ada data hotel untuk diexport', 'error');
+            return;
+        }
+        const cols = ['id', 'hotel_name', 'city', 'country', 'score', 'review_count', 'description'];
+        const rows = [...hotelSaudiList].sort((a, b) =>
+            String(a.city || '').localeCompare(String(b.city || '')) || (Number(a.id) || 0) - (Number(b.id) || 0));
+        const csv = [cols.join(',')]
+            .concat(rows.map(h => cols.map(c => csvCell(h[c])).join(',')))
+            .join('\r\n');
+        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `hotel_saudi_arabia_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        showToast(`${rows.length} hotel berhasil diexport ke CSV`);
+    } catch (err) {
+        console.error('Export hotel CSV error:', err);
+        showToast('Gagal export CSV hotel', 'error');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+window.exportHotelSaudiCsv = exportHotelSaudiCsv;
 
 function openAssetModal(id = null) {
     if (!canManageAssets()) { showToast('Hanya Admin yang boleh mengelola Assets', 'error'); return; }
