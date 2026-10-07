@@ -1314,8 +1314,11 @@ function openIgSchedulerPage() {
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
     igApplyPlannerMode();   // dulu: sesudah loadIgPosts -> kelas layout planner telat terpasang
-    loadIgPosts();          // renderIgCalendar() sudah dipanggil di dalam loadIgPosts()
-    loadIgContentPlan();    // dulu tidak ikut dimuat -> ide kosong/basi sampai tombol Refresh ditekan
+    const dataMuat = Promise.all([
+        loadIgPosts(),          // renderIgCalendar() sudah dipanggil di dalam loadIgPosts()
+        loadIgContentPlan()     // dulu tidak ikut dimuat -> ide kosong/basi sampai tombol Refresh ditekan
+    ]);
+    dataMuat.then(() => igAutoPlanCheck()); // isi otomatis ide 2 minggu ke depan kalau masih ada tanggal kosong
     requestAnimationFrame(igFitCalendarChips); // halaman baru tampil: ukur ulang chip kalender
     if (IG_AUTOPUBLISH_ENABLED) {
         loadIgAccounts();
@@ -15284,6 +15287,8 @@ function openIgContentPlanModal() {
     const arahanEl = document.getElementById('igPlanArahan');
     if (arahanEl) arahanEl.value = '';
 
+    const autoToggle = document.getElementById('igAutoPlanToggle');
+    if (autoToggle) autoToggle.checked = igAutoPlanEnabled();
     showIgPlanGenerateForm();
     modal.classList.add('open');
     loadIgContentPlan(); // refresh data terbaru tiap kali modal dibuka (bisa saja ada rencana lama dari sesi lain)
@@ -15470,57 +15475,22 @@ async function igCallPlanFunction(payload) {
     return data;
 }
 
-// ---- Panggil AI untuk mengisi SEMUA tanggal kosong di 1 bulan, lalu simpan ke ig_content_plan ----
-// Alur: tentukan slot tanggal (pola Sen/Rab/Jum/Min) yang masih kosong -> kirim ke AI per batch dengan
-// riwayat SEMUA konten lama -> buang hasil yang mirip konten lama -> slot yang ditolak dicoba ulang.
-async function generateIgContentPlanAI() {
-    const btn = document.getElementById('btnIgGeneratePlan');
-    const btnText = document.getElementById('btnIgGeneratePlanText');
-    const monthInput = document.getElementById('igPlanMonth');
-    const countInput = document.getElementById('igPlanCount');
-    const arahanEl = document.getElementById('igPlanArahan');
+let igPlanBusy = false; // true selama proses generate (manual atau otomatis) berjalan -> cegah dobel
 
-    const monthVal = monthInput?.value; // "YYYY-MM"
-    if (!monthVal) { showToast('Pilih bulan dulu', 'error'); return; }
-    const [yearStr, monthStr] = monthVal.split('-');
-    const year = parseInt(yearStr, 10);
-    const month = parseInt(monthStr, 10) - 1; // 0-based
-
-    const batasJumlah = parseInt(countInput?.value, 10) || 0; // kosong = isi semua tanggal kosong
-    const arahan = (arahanEl?.value || '').trim();
-
+// ---- Inti generate: isi daftar slot (semua dalam 1 bulan) lewat AI + anti-duplikat ----
+// Alur: kirim slot ke AI per batch bersama riwayat SEMUA konten lama -> buang hasil yang mirip
+// konten lama -> slot yang ditolak dicoba ulang. Return { berhasil, sisa, errMsg }.
+async function igGeneratePlanForSlots(year, month, slots, arahan, onProgress) {
     const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     const bulanLabel = `${monthNames[month]} ${year}`;
-    const bulanPrefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
-    const bulanCol = `${bulanPrefix}01`;
+    const bulanCol = `${year}-${String(month + 1).padStart(2, '0')}-01`;
     const tanggalMulai = bulanCol;
-    const tanggalAkhir = `${bulanPrefix}${String(new Date(year, month + 1, 0).getDate()).padStart(2, '0')}`;
-
-    // Tanggal yang sudah terisi (ide aktif atau post) tidak ditimpa; tanggal yang sudah lewat tidak diisi.
-    const tanggalTerisi = new Set(igContentPlan
-        .filter(pl => pl.tanggal && pl.tanggal.startsWith(bulanPrefix) && pl.status !== 'dilewati')
-        .map(pl => pl.tanggal));
-    (igPosts || []).forEach(p => {
-        const d = igPostRefDate(p);
-        if (d) { const key = igLocalDateKey(d); if (key.startsWith(bulanPrefix)) tanggalTerisi.add(key); }
-    });
-    const t = new Date();
-    const hariIni = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
-
-    let slots = igBuildSlotBulan(year, month, tanggalTerisi, hariIni);
-    if (!slots.length) {
-        showToast('Tidak ada tanggal kosong yang tersisa di bulan ini (sudah lewat atau sudah terisi semua)', 'info');
-        return;
-    }
-    if (batasJumlah > 0 && batasJumlah < slots.length) slots = igPickEvenly(slots, batasJumlah);
-
-    if (btn) btn.disabled = true;
-    const setProgress = (n) => { if (btnText) btnText.textContent = `Menyusun ${n}/${slots.length}...`; };
-    setProgress(0);
+    const tanggalAkhir = `${year}-${String(month + 1).padStart(2, '0')}-${String(new Date(year, month + 1, 0).getDate()).padStart(2, '0')}`;
 
     let berhasil = 0;
     let errMsg = '';
     let sisa = slots.slice();
+    if (onProgress) onProgress(0);
 
     try {
         const konteksProgram = await buildIgPlanProgramContext(year, month);
@@ -15532,7 +15502,7 @@ async function generateIgContentPlanAI() {
                 const batch = sisa.slice(i, i + IG_PLAN_BATCH);
                 const data = await igCallPlanFunction({
                     bulanLabel, jumlahPost: batch.length, tanggalMulai, tanggalAkhir,
-                    konteksProgram, arahan, slots: batch, riwayatTema: igRiwayatToText(riwayat)
+                    konteksProgram, arahan: arahan || '', slots: batch, riwayatTema: igRiwayatToText(riwayat)
                 });
 
                 const slotByDate = new Map(batch.map(s => [s.tanggal, s]));
@@ -15566,21 +15536,62 @@ async function generateIgContentPlanAI() {
                     const { error: insErr } = await supabaseClient.from('ig_content_plan').insert(rows);
                     if (insErr) throw insErr;
                     berhasil += rows.length;
-                    setProgress(berhasil);
+                    if (onProgress) onProgress(berhasil);
                 }
             }
             sisa = gagal;
         }
     } catch (err) {
-        console.error('generateIgContentPlanAI error:', err);
+        console.error('igGeneratePlanForSlots error:', err);
         errMsg = err.message || String(err);
-    } finally {
-        if (btn) btn.disabled = false;
-        if (btnText) btnText.textContent = 'Generate dengan AI';
     }
 
+    if (berhasil > 0) await loadIgContentPlan();
+    return { berhasil, sisa, errMsg };
+}
+
+// Tanggal (YYYY-MM-DD) yang sudah terisi: ide aktif di rencana + post (tanggal yang sama tidak ditimpa)
+function igTanggalTerisiSet() {
+    const set = new Set(igContentPlan.filter(pl => pl.tanggal && pl.status !== 'dilewati').map(pl => pl.tanggal));
+    (igPosts || []).forEach(p => {
+        const d = igPostRefDate(p);
+        if (d) set.add(igLocalDateKey(d));
+    });
+    return set;
+}
+
+// ---- Generate manual (tombol "Generate dengan AI"): isi SEMUA tanggal kosong di bulan terpilih ----
+async function generateIgContentPlanAI() {
+    if (igPlanBusy) { showToast('Masih ada proses generate yang berjalan, tunggu sebentar', 'info'); return; }
+    const btn = document.getElementById('btnIgGeneratePlan');
+    const btnText = document.getElementById('btnIgGeneratePlanText');
+    const monthVal = document.getElementById('igPlanMonth')?.value; // "YYYY-MM"
+    if (!monthVal) { showToast('Pilih bulan dulu', 'error'); return; }
+    const [yearStr, monthStr] = monthVal.split('-');
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10) - 1; // 0-based
+
+    const batasJumlah = parseInt(document.getElementById('igPlanCount')?.value, 10) || 0; // kosong = isi semua tanggal kosong
+    const arahan = (document.getElementById('igPlanArahan')?.value || '').trim();
+
+    const t = new Date();
+    const hariIni = igLocalDateKey(t);
+    let slots = igBuildSlotBulan(year, month, igTanggalTerisiSet(), hariIni);
+    if (!slots.length) {
+        showToast('Tidak ada tanggal kosong yang tersisa di bulan ini (sudah lewat atau sudah terisi semua)', 'info');
+        return;
+    }
+    if (batasJumlah > 0 && batasJumlah < slots.length) slots = igPickEvenly(slots, batasJumlah);
+
+    igPlanBusy = true;
+    if (btn) btn.disabled = true;
+    const { berhasil, sisa, errMsg } = await igGeneratePlanForSlots(year, month, slots, arahan,
+        n => { if (btnText) btnText.textContent = `Menyusun ${n}/${slots.length}...`; });
+    igPlanBusy = false;
+    if (btn) btn.disabled = false;
+    if (btnText) btnText.textContent = 'Generate dengan AI';
+
     if (berhasil > 0) {
-        await loadIgContentPlan();
         renderIgPlanResultList(year, month);
         const genWrap = document.getElementById('igPlanGenerateWrap');
         const resultWrap = document.getElementById('igPlanResultWrap');
@@ -15597,6 +15608,74 @@ async function generateIgContentPlanAI() {
     } else {
         showToast(`${berhasil} ide rencana konten berhasil dibuat (semua berbeda dari konten sebelumnya)`, 'success');
     }
+}
+
+// ============================================================
+// 24e. GENERATE OTOMATIS PER 2 MINGGU
+// Tiap IG Scheduler dibuka, dashboard memeriksa jendela 14 hari ke depan (mulai hari ini). Kalau ada tanggal
+// pola (Sen/Rab/Jum/Min) yang masih kosong, ide untuk tanggal itu dibuat otomatis. Jendela yang bergeser
+// maju otomatis melewati pergantian bulan, jadi bulan berikutnya terisi bertahap tiap 2 minggu --
+// bukan sebulan penuh sekaligus (hemat token; ide jauh ke depan juga sering basi karena program berubah).
+// Hanya admin/user yang boleh mengelola; bisa dimatikan lewat checkbox di modal Rencana AI.
+// ============================================================
+const IG_AUTO_PLAN_DAYS = 14;
+const IG_AUTO_PLAN_KEY = 'igAutoPlanEnabled';   // '0' = dimatikan (default aktif)
+const IG_AUTO_PLAN_FAIL_KEY = 'igAutoPlanFailAt'; // waktu gagal terakhir -> jeda 1 jam sebelum coba lagi
+const IG_AUTO_PLAN_LOCK_KEY = 'igAutoPlanLockAt'; // kunci antar-tab (kedaluwarsa 10 menit)
+
+function igAutoPlanEnabled() {
+    try { return localStorage.getItem(IG_AUTO_PLAN_KEY) !== '0'; } catch (e) { return true; }
+}
+
+function igSetAutoPlan(on) {
+    try { localStorage.setItem(IG_AUTO_PLAN_KEY, on ? '1' : '0'); } catch (e) {}
+    showToast(on ? 'Generate otomatis 2 minggu diaktifkan' : 'Generate otomatis dimatikan', 'info');
+    if (on) igAutoPlanCheck();
+}
+
+async function igAutoPlanCheck() {
+    if (!igAutoPlanEnabled() || igPlanBusy || !canManageProgramData()) return;
+    try {
+        if (Date.now() - Number(localStorage.getItem(IG_AUTO_PLAN_FAIL_KEY) || 0) < 3600 * 1000) return;
+        if (Date.now() - Number(localStorage.getItem(IG_AUTO_PLAN_LOCK_KEY) || 0) < 600 * 1000) return;
+    } catch (e) {}
+
+    const t = new Date();
+    const hariIni = igLocalDateKey(t);
+    const akhirJendela = igLocalDateKey(new Date(t.getFullYear(), t.getMonth(), t.getDate() + IG_AUTO_PLAN_DAYS - 1));
+    const terisi = igTanggalTerisiSet();
+
+    // Jendela bisa menyentuh 2 bulan (mis. 25 Okt - 7 Nov): kelompokkan slot per bulan.
+    const grup = [];
+    const tepi = new Date(t.getFullYear(), t.getMonth(), 1);
+    while (igLocalDateKey(tepi) <= akhirJendela) {
+        const y = tepi.getFullYear(), m = tepi.getMonth();
+        const slots = igBuildSlotBulan(y, m, terisi, hariIni).filter(s => s.tanggal <= akhirJendela);
+        if (slots.length) grup.push({ y, m, slots });
+        tepi.setMonth(tepi.getMonth() + 1);
+    }
+    if (!grup.length) return;
+
+    const total = grup.reduce((n, g) => n + g.slots.length, 0);
+    igPlanBusy = true;
+    try { localStorage.setItem(IG_AUTO_PLAN_LOCK_KEY, String(Date.now())); } catch (e) {}
+    showToast(`Menyusun ${total} ide konten untuk ${IG_AUTO_PLAN_DAYS} hari ke depan...`, 'info');
+
+    let berhasil = 0, errMsg = '', sisa = 0;
+    for (const g of grup) {
+        const r = await igGeneratePlanForSlots(g.y, g.m, g.slots, '', null);
+        berhasil += r.berhasil;
+        sisa += r.sisa.length;
+        if (r.errMsg) { errMsg = r.errMsg; break; }
+    }
+    igPlanBusy = false;
+    try {
+        localStorage.removeItem(IG_AUTO_PLAN_LOCK_KEY);
+        if (errMsg) localStorage.setItem(IG_AUTO_PLAN_FAIL_KEY, String(Date.now()));
+    } catch (e) {}
+
+    if (errMsg) showToast(`Generate otomatis berhenti (${berhasil} ide tersimpan): ${errMsg}`, 'error');
+    else if (berhasil > 0) showToast(`${berhasil} ide konten otomatis ditambahkan ke kalender${sisa ? ` (${sisa} tanggal belum terisi, akan dicoba lagi nanti)` : ''}`, 'success');
 }
 
 // ---- Render daftar hasil rencana (dalam modal, setelah generate) ----
