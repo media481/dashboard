@@ -55,6 +55,14 @@ function getGeminiApiKeys(): string[] {
   return keys;
 }
 
+// Model cadangan kalau model utama sedang overload (503 berlaku untuk SELURUH model, bukan per key,
+// jadi memutar key saja tidak menolong). Model yang sama juga dipakai function lain di project ini.
+const FALLBACK_MODELS = ["gemini-3.5-flash-lite"];
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
+const RETRY_DELAYS_MS = [3000]; // jeda sebelum putaran ulang model utama (total 2 putaran)
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 // deno-lint-ignore no-explicit-any
 async function callGeminiWithFallback(model: string, body: Record<string, unknown>): Promise<any> {
   const keys = getGeminiApiKeys();
@@ -62,33 +70,53 @@ async function callGeminiWithFallback(model: string, body: Record<string, unknow
     throw new Error("GEMINI_API_KEY belum di-set di Supabase secrets");
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
   let lastError = "";
 
-  for (let i = 0; i < keys.length; i++) {
-    try {
-      const res = await fetch(`${url}?key=${keys[i]}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+  // Satu putaran = coba semua key untuk 1 model. Return hasil kalau berhasil, null kalau gagal.
+  // retryable = true kalau kegagalannya sementara (overload / rate limit / jaringan) sehingga layak dicoba ulang.
+  async function tryModel(m: string): Promise<{ data: unknown | null; retryable: boolean }> {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
+    let retryable = false;
+    for (let i = 0; i < keys.length; i++) {
+      try {
+        const res = await fetch(`${url}?key=${keys[i]}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) return { data: await res.json(), retryable: false };
 
-      if (res.ok) {
-        return await res.json();
+        const errText = await res.text();
+        if (RETRYABLE_STATUS.has(res.status)) retryable = true;
+        lastError = `Gemini API error (${res.status}) [${m}, key #${i + 1}/${keys.length}]: ${errText.slice(0, 300)}`;
+        console.warn(lastError);
+      } catch (networkErr) {
+        retryable = true;
+        lastError = `Network error saat panggil Gemini [${m}, key #${i + 1}/${keys.length}]: ${
+          String((networkErr as Error)?.message || networkErr)
+        }`;
+        console.warn(lastError);
       }
-
-      const errText = await res.text();
-      lastError = `Gemini API error (${res.status}) [key #${i + 1}/${keys.length}]: ${errText.slice(0, 300)}`;
-      console.warn(lastError);
-    } catch (networkErr) {
-      lastError = `Network error saat panggil Gemini [key #${i + 1}/${keys.length}]: ${
-        String((networkErr as Error)?.message || networkErr)
-      }`;
-      console.warn(lastError);
     }
+    return { data: null, retryable };
   }
 
-  throw new Error(`Semua ${keys.length} GEMINI_API_KEY gagal dipakai. Error terakhir: ${lastError}`);
+  // 1) Model utama, dengan putaran ulang + jeda kalau gagalnya sementara (mis. 503 "high demand")
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    const r = await tryModel(model);
+    if (r.data) return r.data;
+    if (!r.retryable || attempt === RETRY_DELAYS_MS.length) break;
+    await sleep(RETRY_DELAYS_MS[attempt]);
+  }
+
+  // 2) Model cadangan
+  for (const fb of FALLBACK_MODELS) {
+    if (fb === model) continue;
+    const r = await tryModel(fb);
+    if (r.data) return r.data;
+  }
+
+  throw new Error(`Semua ${keys.length} GEMINI_API_KEY gagal dipakai (model utama & cadangan). Error terakhir: ${lastError}`);
 }
 
 const CORS_HEADERS = {

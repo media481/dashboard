@@ -15669,12 +15669,15 @@ async function igAutoPlanCheck() {
         if (r.errMsg) { errMsg = r.errMsg; break; }
     }
     igPlanBusy = false;
+    const sibuk = /503|UNAVAILABLE|high demand/i.test(errMsg);
     try {
         localStorage.removeItem(IG_AUTO_PLAN_LOCK_KEY);
-        if (errMsg) localStorage.setItem(IG_AUTO_PLAN_FAIL_KEY, String(Date.now()));
+        // Server AI sibuk (503) bersifat sementara: jeda coba lagi cukup 10 menit, bukan 1 jam.
+        if (errMsg) localStorage.setItem(IG_AUTO_PLAN_FAIL_KEY, String(Date.now() - (sibuk ? 50 * 60 * 1000 : 0)));
     } catch (e) {}
 
-    if (errMsg) showToast(`Generate otomatis berhenti (${berhasil} ide tersimpan): ${errMsg}`, 'error');
+    if (errMsg && sibuk) showToast(`Server AI sedang sibuk${berhasil ? ` (${berhasil} ide sudah tersimpan)` : ''}. Akan dicoba lagi otomatis nanti.`, 'info');
+    else if (errMsg) showToast(`Generate otomatis berhenti (${berhasil} ide tersimpan): ${errMsg}`, 'error');
     else if (berhasil > 0) showToast(`${berhasil} ide konten otomatis ditambahkan ke kalender${sisa ? ` (${sisa} tanggal belum terisi, akan dicoba lagi nanti)` : ''}`, 'success');
 }
 
