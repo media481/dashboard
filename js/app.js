@@ -1819,6 +1819,10 @@ function openDetailModal(programId) {
     document.getElementById('pd_tgl').textContent = program.tgl || '-';
     document.getElementById('pd_durasi').textContent = program.durasi || '-';
     document.getElementById('pd_maskapai').textContent = program.maskapai || '-';
+    // Tanda "Sesuai poster": tampil kalau program sudah di-crosscheck (OCR poster) dan semua datanya
+    // cocok dengan poster -- logika yang sama dengan badge Verified di tabel (cxIsProgramVerified).
+    const verifiedEl = document.getElementById('pd_verified');
+    if (verifiedEl) verifiedEl.style.display = cxIsProgramVerified(program) ? '' : 'none';
     document.getElementById('pd_harga_row').innerHTML = hargaChips.map(h => `<div class="pd-price"><span class="pd-price-label">${escapeHtml(h.label)}</span><span class="pd-price-value">${escapeHtml(h.nilai)}</span></div>`).join('');
 
     // Preview poster di kolom kiri (pakai resolveImageUrl supaya link Google Drive
