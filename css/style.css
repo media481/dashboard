@@ -880,7 +880,7 @@
 
         .admin-table-card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
         /* Card pemberitahuan terpisah di atas card tabel (mis. "program belum punya link poster") */
-        .admin-notice-card { display: flex; align-items: flex-start; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--warn); border-radius: 16px; padding: 14px 18px; margin-bottom: 16px; }
+        .admin-notice-card { display: flex; align-items: flex-start; gap: 14px; background: var(--surface); border: 2px solid var(--warn); border-radius: 16px; padding: 13px 17px; margin-bottom: 16px; }
         .admin-notice-icon { flex: 0 0 auto; width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--warn-tint); color: var(--warn); font-size: 17px; }
         .admin-notice-body { min-width: 0; }
         .admin-notice-title { font-family: 'Space Grotesk'; font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
