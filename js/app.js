@@ -2961,22 +2961,22 @@ async function renderAdminPanel() {
 
                     <div class="admin-fieldset" id="af-harga">
                         <div class="admin-fieldset-title"><i class="bi bi-tags-fill"></i> Harga per Kamar</div>
-                        <div class="form-row form-row-4">
+                        <div class="form-row form-row-4 form-row-harga">
                             <div class="form-group">
                                 <label>Harga Quad</label>
-                                <input type="text" inputmode="numeric" id="admin_harga_quad" placeholder="Rp 35.000.000" maxlength="50" oninput="formatRupiahInput(this)">
+                                <input type="text" inputmode="numeric" id="admin_harga_quad" class="input-rupiah" placeholder="Rp 35.000.000" maxlength="50" oninput="formatRupiahInput(this)">
                             </div>
                             <div class="form-group">
                                 <label>Harga Triple</label>
-                                <input type="text" inputmode="numeric" id="admin_harga_triple" placeholder="Rp 37.500.000" maxlength="50" oninput="formatRupiahInput(this)">
+                                <input type="text" inputmode="numeric" id="admin_harga_triple" class="input-rupiah" placeholder="Rp 37.500.000" maxlength="50" oninput="formatRupiahInput(this)">
                             </div>
                             <div class="form-group">
                                 <label>Harga Double</label>
-                                <input type="text" inputmode="numeric" id="admin_harga_double" placeholder="Rp 42.000.000" maxlength="50" oninput="formatRupiahInput(this)">
+                                <input type="text" inputmode="numeric" id="admin_harga_double" class="input-rupiah" placeholder="Rp 42.000.000" maxlength="50" oninput="formatRupiahInput(this)">
                             </div>
                             <div class="form-group">
                                 <label>Harga Quint</label>
-                                <input type="text" inputmode="numeric" id="admin_harga_quint" placeholder="Rp 32.500.000" maxlength="50" oninput="formatRupiahInput(this)">
+                                <input type="text" inputmode="numeric" id="admin_harga_quint" class="input-rupiah" placeholder="Rp 32.500.000" maxlength="50" oninput="formatRupiahInput(this)">
                             </div>
                         </div>
                     </div>
@@ -3061,15 +3061,15 @@ async function renderAdminPanel() {
                 <div id="adminNoCaptionBanner"></div>
                 <div id="adminDuplikatBanner"></div>
                 <div class="admin-table-wrap">
-                    <table>
+                    <table class="admin-program-table">
                         <thead>
                             <tr>
                                 <th>Nama Program</th>
                                 <th>Tanggal Berangkat</th>
                                 <th>Durasi</th>
-                                <th>Quad</th>
-                                <th>Triple</th>
-                                <th>Double</th>
+                                <th class="col-harga">Quad</th>
+                                <th class="col-harga">Triple</th>
+                                <th class="col-harga">Double</th>
                                 <th>Maskapai</th>
                                 <th>Hotel Makkah</th>
                                 <th>Hotel Madinah</th>
@@ -3620,9 +3620,9 @@ function renderAdminTable() {
             </td>
             <td>${escapeHtml(p.tgl||'-')}</td>
             <td>${escapeHtml(p.durasi||'-')}</td>
-            <td>${escapeHtml(p.harga_quad || p.harga_quint || '-')}</td>
-            <td>${escapeHtml(p.harga_triple||'-')}</td>
-            <td>${escapeHtml(p.harga_double||'-')}</td>
+            <td class="col-harga">${escapeHtml(p.harga_quad || p.harga_quint || '-')}</td>
+            <td class="col-harga">${escapeHtml(p.harga_triple||'-')}</td>
+            <td class="col-harga">${escapeHtml(p.harga_double||'-')}</td>
             <td>${escapeHtml(p.maskapai||'-')}</td>
             <td>${escapeHtml(hotelNamaSingkat(p.hotel_makkah)||'-')}</td>
             <td>${escapeHtml(hotelNamaSingkat(p.hotel_madinah)||'-')}</td>

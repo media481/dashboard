@@ -900,6 +900,17 @@
             contain-intrinsic-size: auto 45px;
         }
 
+        /* [HARGA SEBARIS] Tabel Daftar Program (Edit Program): nominal harga
+           ("Rp 33.500.000") tidak boleh pecah jadi 2 baris. Kolom harga dikunci
+           nowrap + angka lebar-tetap supaya rata & rapi; padding sel dirapatkan
+           agar total lebar tetap muat, sisanya bisa digeser (overflow-x: auto). */
+        .admin-program-table th, .admin-program-table td { padding-left: 12px; padding-right: 12px; }
+        .admin-program-table th.col-harga, .admin-program-table td.col-harga { white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .admin-program-table td.col-harga { font-weight: 500; }
+        .admin-program-table th:first-child, .admin-program-table td:first-child { padding-left: 18px; }
+        .admin-program-table th:last-child, .admin-program-table td:last-child { padding-right: 18px; }
+        .admin-program-table td:nth-child(2), .admin-program-table td:nth-child(3) { white-space: nowrap; }
+
         /* ===== SNAPSHOT / BACKUP =====
            Motif "roll film": reel kapasitas (10 slot fisik, bukan bar kontinu --
            merefleksikan perilaku FIFO yang sesungguhnya: tertua digantikan begitu
@@ -1724,6 +1735,13 @@
         .form-row-4 { grid-template-columns: repeat(4, 1fr); }
         @media (max-width: 700px) { .form-row-4 { grid-template-columns: 1fr 1fr; } }
         @media (max-width: 560px) { .form-row, .form-row-4 { grid-template-columns: 1fr; gap: 12px; } }
+
+        /* [HARGA SEBARIS] Form Tambah/Edit Program: kolom harga menyesuaikan lebar
+           (minimal muat "Rp 000.000.000" sebaris), dan isi input tidak pernah
+           membungkus -- angka lebar-tetap supaya digit rata antar kolom. */
+        .form-row-harga { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+        @media (max-width: 560px) { .form-row-harga { grid-template-columns: 1fr 1fr; } }
+        .form-group input.input-rupiah { white-space: nowrap; font-variant-numeric: tabular-nums; padding-left: 12px; padding-right: 10px; min-width: 0; }
         .form-actions {
             display: flex;
             gap: 12px;
