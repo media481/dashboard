@@ -1599,6 +1599,7 @@
         .modal-content.pd-modal {
             --pd-h: min(92vh, 880px);
             --pd-head: 60px;
+            --pd-pad: 18px; /* jarak poster ke tepi kolom */
             max-width: min(1200px, 100%);
             height: var(--pd-h); max-height: var(--pd-h);
             display: flex; flex-direction: column; overflow: hidden;
@@ -1610,12 +1611,16 @@
         .pd-body { flex: 1 1 auto; min-height: 0; padding: 0; }
         .pd-layout {
             display: grid; height: 100%;
-            grid-template-columns: min(calc((var(--pd-h) - var(--pd-head)) * 0.8), 55%) minmax(0, 1fr);
+            grid-template-columns: min(calc((var(--pd-h) - var(--pd-head) - 2 * var(--pd-pad)) * 0.8 + 2 * var(--pd-pad)), 55%) minmax(0, 1fr);
         }
 
-        /* Kolom poster: latar navy gelap supaya poster "menyala" & sisa ruang (kalau ada) terlihat disengaja */
-        .pd-poster-col { position: relative; min-height: 0; background: var(--brand-deep); }
-        .pd-poster-frame { position: absolute; inset: 0; display: block; cursor: zoom-in; overflow: hidden; }
+        /* Kolom poster: latar terang + poster sebagai "kartu" bersudut membulat dengan jarak ke tepi kolom */
+        .pd-poster-col { position: relative; min-height: 0; background: var(--bg); border-right: 1px solid var(--line); }
+        .pd-poster-frame {
+            position: absolute; inset: var(--pd-pad); display: block; cursor: zoom-in; overflow: hidden;
+            border-radius: 12px; background: var(--brand-deep);
+            box-shadow: 0 6px 20px rgba(15,33,56,.18), 0 0 0 1px rgba(15,33,56,.08);
+        }
         .pd-poster-frame.pd-poster-disabled { cursor: default; }
         .pd-poster-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity .2s; }
         .pd-poster-img.loaded { opacity: 1; }
@@ -1627,7 +1632,7 @@
         .pd-poster-error { color: #ffb4ab; }
         /* "Buka poster" jadi tombol melayang di atas poster, tidak lagi memakan tinggi kolom */
         .pd-poster-open {
-            position: absolute; right: 12px; bottom: 12px;
+            position: absolute; top: calc(var(--pd-pad) + 10px); right: calc(var(--pd-pad) + 10px);
             display: inline-flex; align-items: center; gap: 6px;
             padding: 7px 12px; border-radius: 999px;
             background: rgba(15,33,56,.82); color: #fff; backdrop-filter: blur(6px);
@@ -1693,7 +1698,9 @@
             .pd-modal .modal-header { position: sticky; top: 0; z-index: 3; background: var(--surface); }
             .pd-body { overflow: visible; }
             .pd-layout { display: block; height: auto; }
-            .pd-poster-col { width: min(100%, calc(62vh * 0.8)); margin: 0 auto; aspect-ratio: 1080 / 1350; }
+            .pd-poster-col { width: 100%; padding: 14px; border-right: none; border-bottom: 1px solid var(--line); }
+            .pd-poster-frame { position: relative; inset: auto; width: min(100%, calc(62vh * 0.8)); margin: 0 auto; aspect-ratio: 1080 / 1350; }
+            .pd-poster-open { top: 24px; right: 24px; }
             .pd-info-col { padding: 16px; }
             .pd-price-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
             .pd-price { padding: 8px 9px; }
