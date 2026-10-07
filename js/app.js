@@ -1821,6 +1821,10 @@ function openDetailModal(programId) {
     document.getElementById('pd_maskapai').textContent = program.maskapai || '-';
     document.getElementById('pd_harga_row').innerHTML = hargaChips.map(h => `<span class="pd-chip pd-harga-chip"><i class="bi bi-cash-coin"></i> ${escapeHtml(h)}</span>`).join('');
 
+    // Preview poster di kolom kiri (pakai resolveImageUrl supaya link Google Drive
+    // /file/d/ID/view ikut tampil sebagai gambar, sama seperti popup hover di tabel).
+    renderProgramDetailPoster(program);
+
     const ta = document.getElementById('pd_teks_wa');
     ta.value = waText || '';
     document.getElementById('programDetailModal').classList.add('open');
@@ -1832,8 +1836,46 @@ function openDetailModal(programId) {
         document.querySelector('#programDetailModal .modal-content').scrollTop = 0;
     });
 }
+// Isi kolom poster di modal Detail Program. Tiga kondisi: ada poster (tampil
+// gambar), belum ada link poster (placeholder), atau gambar gagal dimuat.
+function renderProgramDetailPoster(program) {
+    const img = document.getElementById('pd_poster_img');
+    const loading = document.getElementById('pd_poster_loading');
+    const empty = document.getElementById('pd_poster_empty');
+    const err = document.getElementById('pd_poster_error');
+    const link = document.getElementById('pd_poster_link');
+    const openBtn = document.getElementById('pd_poster_open');
+    if (!img || !loading || !empty || !err || !link || !openBtn) return;
+
+    img.classList.remove('loaded');
+    img.onload = img.onerror = null;
+    img.removeAttribute('src');
+    loading.style.display = 'none';
+    empty.style.display = 'none';
+    err.style.display = 'none';
+
+    const rawUrl = (program.link_poster || '').trim();
+    if (!rawUrl) {
+        empty.style.display = 'flex';
+        link.removeAttribute('href');
+        link.classList.add('pd-poster-disabled');
+        openBtn.style.display = 'none';
+        return;
+    }
+    link.href = rawUrl;
+    link.classList.remove('pd-poster-disabled');
+    openBtn.href = rawUrl;
+    openBtn.style.display = '';
+    loading.style.display = 'flex';
+    img.onload = () => { loading.style.display = 'none'; img.classList.add('loaded'); };
+    img.onerror = () => { loading.style.display = 'none'; err.style.display = 'flex'; };
+    img.src = resolveImageUrl(rawUrl);
+}
 function closeProgramDetailModal() {
     document.getElementById('programDetailModal').classList.remove('open');
+    // Kosongkan gambar supaya tidak ada poster program sebelumnya yang sempat berkedip
+    const img = document.getElementById('pd_poster_img');
+    if (img) { img.onload = img.onerror = null; img.removeAttribute('src'); img.classList.remove('loaded'); }
 }
 async function copyProgramDetailWaText() {
     const text = document.getElementById('pd_teks_wa').value;

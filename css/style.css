@@ -1591,7 +1591,33 @@
         .modal-body { padding: 24px; }
 
         /* ===== MODAL: Detail Program / Teks WA ===== */
-        .pd-modal { max-width: 640px; }
+        .pd-modal { max-width: 960px; }
+        /* Layout 2 kolom: poster (kiri, rasio 4:5 sesuai poster 1080x1350) + info & teks WA (kanan) */
+        .pd-layout { display: grid; grid-template-columns: minmax(240px, 340px) minmax(0, 1fr); gap: 24px; align-items: start; }
+        .pd-poster-col { position: sticky; top: 0; display: flex; flex-direction: column; gap: 8px; }
+        .pd-poster-frame {
+            position: relative; display: block; width: 100%; aspect-ratio: 1080 / 1350;
+            background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+            overflow: hidden; cursor: zoom-in;
+        }
+        .pd-poster-frame.pd-poster-disabled { cursor: default; }
+        .pd-poster-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity .2s; }
+        .pd-poster-img.loaded { opacity: 1; }
+        .pd-poster-state {
+            position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 8px; color: var(--ink-soft); font-size: 12.5px; text-align: center; padding: 16px;
+        }
+        .pd-poster-state i { font-size: 28px; opacity: .7; }
+        .pd-poster-error { color: var(--danger); }
+        .pd-poster-open { align-self: center; font-size: 12px; font-weight: 600; color: var(--brand); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+        .pd-poster-open:hover { text-decoration: underline; }
+        .pd-info-col { min-width: 0; }
+        .pd-info-col .pd-wa-head:first-of-type { margin-top: 6px; }
+        @media (max-width: 760px) {
+            .pd-layout { grid-template-columns: 1fr; gap: 16px; }
+            .pd-poster-col { position: static; }
+            .pd-poster-frame { max-width: 300px; margin: 0 auto; }
+        }
         .pd-body { padding: 20px 24px 24px; }
         .pd-chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
         .pd-chip {
