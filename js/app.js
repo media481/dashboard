@@ -3096,12 +3096,13 @@ async function renderAdminPanel() {
             </div>
             ` : ''}
 
+            <div id="adminNoPosterBanner"></div>
+
             <div class="admin-table-card">
                 <div class="admin-table-head">
                     <h4>Daftar Program</h4>
                     <span class="count">${adminPrograms.length} program</span>
                 </div>
-                <div id="adminNoPosterBanner"></div>
                 <div id="adminNoCaptionBanner"></div>
                 <div id="adminDuplikatBanner"></div>
                 <div class="admin-table-wrap">
@@ -3548,16 +3549,19 @@ function renderAdminTable() {
     // banner "Duplikat" di bawah maupun badge per-baris nanti di bawahnya.
     const duplikatInfo = computeDuplicateProgramGroups();
 
-    // [POSTER] Banner peringatan kuning (gaya sama dengan status bar Crosscheck)
-    // di atas tabel kalau ada program yang belum punya link poster sama sekali
+    // [POSTER] Card peringatan terpisah (di atas card tabel Daftar Program)
+    // kalau ada program yang belum punya link poster sama sekali
     // — tanpa poster, OCR & auto-isi field tidak bisa jalan untuk program itu.
     const noPosterBanner = document.getElementById('adminNoPosterBanner');
     if (noPosterBanner) {
         const noPosterCount = adminPrograms.filter(p => !p.link_poster).length;
         noPosterBanner.innerHTML = noPosterCount > 0
-            ? `<div class="cx-status-bar warn" style="margin:0 0 14px;">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                    <div>${noPosterCount} program belum punya link poster — OCR tidak bisa membaca/auto-isi data untuk program ini. Program ditandai <span style="color:var(--warn);font-weight:700;">"Belum ada poster"</span> di tabel di bawah — klik langsung badge-nya untuk menambahkan link poster.</div>
+            ? `<div class="admin-notice-card warn">
+                    <div class="admin-notice-icon"><i class="bi bi-image"></i></div>
+                    <div class="admin-notice-body">
+                        <div class="admin-notice-title">${noPosterCount} program belum punya link poster</div>
+                        <div class="admin-notice-text">OCR tidak bisa membaca atau mengisi otomatis data untuk program ini. Program ditandai <span class="admin-notice-hl">"Belum ada poster"</span> di tabel di bawah — klik langsung badge-nya untuk menambahkan link poster.</div>
+                    </div>
                 </div>`
             : '';
     }
