@@ -320,3 +320,16 @@ Tombol **Rencana AI → Generate dengan AI** sekarang langsung mengisi kalender 
   (slotnya jadi kerangka kosong).
 - **Wajib deploy ulang** edge function: `supabase functions deploy generate-ig-content-plan --no-verify-jwt`.
   Kalau belum, dashboard menampilkan pesan "belum di-deploy ulang ke versi terbaru".
+
+## Generator Caption/Iklan IG: versi dioptimalkan
+
+`generate-ig-caption` (tombol **Generate dengan AI** di modal Post Baru) sekarang:
+- **Pilihan tujuan** (Iklan/Promo, Storytelling, Edukasi, Testimoni, Engagement) dan **format media** (foto/Reels/carousel) ikut menentukan hook, isi, dan CTA.
+- **Dirapikan lewat kode**, bukan hanya prompt (`postprocess.ts`): ejaan "Umroh", tepat 5 hashtag (`#UmrohBersamaAmiru` & `#AmiruTour` selalu ada), maks 2200 karakter, label/code fence dibuang.
+- **Cek angka**: angka di caption yang tidak ada di konsep (harga/tanggal/kuota) memunculkan peringatan sebelum posting.
+- **Generate ulang beda sudut**: klik lagi pada hasil AI yang belum diedit -> AI diminta mengganti hook & pembuka.
+- **Lebih tahan gangguan**: retry 1x + model cadangan saat overload (503), timeout 45 detik di browser, tombol **Kembalikan** untuk caption sebelum ditimpa.
+- API key Gemini dikirim lewat header (tidak muncul di URL/log).
+
+Deploy ulang: `supabase functions deploy generate-ig-caption --no-verify-jwt`
+(Opsional untuk fungsi lain: `generate-wa-caption` tidak berubah perilakunya; retry/model cadangan di `_shared/gemini.ts` bersifat opt-in.)

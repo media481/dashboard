@@ -1323,9 +1323,19 @@
                 <div class="form-group">
                     <label>Ide/Konsep Singkat <span style="font-weight:400;color:var(--ink-soft);">(opsional, buat bahan AI)</span></label>
                     <textarea id="ig_caption_idea" placeholder="Contoh: Umroh 9 hari berangkat 12 Januari, harga mulai 28 juta, hotel dekat Masjidil Haram, kuota terbatas..." rows="2"></textarea>
-                    <div style="margin-top:6px;">
+                    <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                        <select id="ig_caption_goal" style="width:auto;" title="Tujuan caption">
+                            <option value="promo">Iklan / Promo</option>
+                            <option value="storytelling">Storytelling</option>
+                            <option value="edukasi">Edukasi</option>
+                            <option value="testimoni">Testimoni</option>
+                            <option value="engagement">Engagement (tanya jawab)</option>
+                        </select>
                         <button type="button" class="btn-ai-caption" id="btnGenIgCaptionAI" onclick="generateIgCaptionAI()">
                             <i class="bi bi-stars"></i> <span id="btnGenIgCaptionAIText">Generate dengan AI</span>
+                        </button>
+                        <button type="button" class="btn-secondary" id="btnIgCaptionUndo" style="display:none;" onclick="undoIgCaptionAI()" title="Kembalikan caption sebelum di-generate">
+                            <i class="bi bi-arrow-counterclockwise"></i> Kembalikan
                         </button>
                     </div>
                 </div>

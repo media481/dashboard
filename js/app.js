@@ -14317,6 +14317,7 @@ function openIgUploadModal(postId = null, presetDateKey = null) {
     document.getElementById('ig_media_type').value = 'image';
     const ideaEl = document.getElementById('ig_caption_idea');
     if (ideaEl) ideaEl.value = '';
+    igResetAICaptionState();
     igCarouselItems = [];
     renderIgCarouselGrid();
     igActivePlanId = null; // direset di sini, di-set lagi oleh igConvertPlanToPost() kalau modal dibuka dari rencana
@@ -14684,11 +14685,38 @@ function renderIgCarouselGrid() {
 }
 
 // ---- Generate caption IG dengan AI (gaya feed IG, beda dari caption WA) ----
+const IG_CAPTION_MAX = 2200;
+const IG_AI_TIMEOUT_MS = 45000;
+let igCaptionBeforeAI = null;   // isi caption sebelum ditimpa AI (untuk tombol "Kembalikan")
+let igLastAICaption = '';       // hasil AI terakhir -> dikirim sebagai "hindari" supaya generate ulang beda sudut
+
+function igUpdateCaptionCount() {
+    const el = document.getElementById('ig_caption');
+    const countEl = document.getElementById('igCaptionCount');
+    if (el && countEl) countEl.textContent = Math.max(0, IG_CAPTION_MAX - el.value.length);
+}
+
+function igResetAICaptionState() {
+    igCaptionBeforeAI = null;
+    igLastAICaption = '';
+    const undo = document.getElementById('btnIgCaptionUndo');
+    if (undo) undo.style.display = 'none';
+}
+
+function undoIgCaptionAI() {
+    const captionEl = document.getElementById('ig_caption');
+    if (!captionEl || igCaptionBeforeAI === null) return;
+    captionEl.value = igCaptionBeforeAI;
+    igUpdateCaptionCount();
+    igResetAICaptionState();
+    showToast('Caption dikembalikan', 'info');
+}
+
 async function generateIgCaptionAI() {
     const btn = document.getElementById('btnGenIgCaptionAI');
     const btnText = document.getElementById('btnGenIgCaptionAIText');
     const captionEl = document.getElementById('ig_caption');
-    if (!captionEl) return;
+    if (!captionEl || (btn && btn.disabled)) return; // cegah klik ganda
 
     // Sumber konsep: kotak "Ide/Konsep Singkat" kalau diisi, kalau kosong
     // pakai isi caption yang sudah ada (misal mau dipoles ulang jadi gaya IG).
@@ -14699,37 +14727,61 @@ async function generateIgCaptionAI() {
         return;
     }
 
+    const tujuan = document.getElementById('ig_caption_goal')?.value || 'promo';
+    const mediaType = document.getElementById('ig_media_type')?.value || 'image';
+    // Hanya kirim "hindari" kalau caption saat ini MASIH hasil AI sebelumnya (belum diedit manual);
+    // kalau admin sudah mengubahnya, jangan paksa AI menjauhi tulisan admin.
+    const hindari = (igLastAICaption && captionEl.value.trim() === igLastAICaption) ? igLastAICaption : '';
+
     if (btn) btn.disabled = true;
     if (btnText) btnText.textContent = 'Menyusun...';
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), IG_AI_TIMEOUT_MS);
 
     try {
         const response = await fetch(IG_CAPTION_FUNCTION_URL, {
             method: 'POST',
+            signal: ctrl.signal,
             headers: {
                 'Content-Type': 'application/json',
                 'apikey': SUPABASE_ANON_KEY,
                 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
             },
-            body: JSON.stringify({ userMsg: `KONSEP/IDE:\n${raw}` })
+            body: JSON.stringify({ userMsg: raw, tujuan, mediaType, hindari })
         });
         if (!response.ok) {
             let detail = '';
             try { detail = (await response.json()).error || ''; } catch (e) {}
+            if (!detail && response.status === 404) detail = 'Function generate-ig-caption belum di-deploy';
             throw new Error(detail || 'Gagal memanggil API (status ' + response.status + ')');
         }
         const data = await response.json();
         const result = (data.text || '').trim();
         if (!result) throw new Error('Tidak ada hasil teks dari model.');
 
+        // Simpan caption lama (kalau ada & beda) supaya bisa dikembalikan
+        const current = captionEl.value;
+        if (current.trim() && current !== igLastAICaption) igCaptionBeforeAI = current;
         captionEl.value = result;
-        const remaining = 2200 - result.length;
-        const countEl = document.getElementById('igCaptionCount');
-        if (countEl) countEl.textContent = Math.max(0, remaining);
+        igLastAICaption = result;
+        igUpdateCaptionCount();
+        const undo = document.getElementById('btnIgCaptionUndo');
+        if (undo) undo.style.display = igCaptionBeforeAI !== null ? '' : 'none';
+
         showToast('Caption IG berhasil dibuat dengan AI');
+        // Angka di caption yang tidak ada di konsep (harga/tanggal/kuota) -> minta admin cek
+        if (Array.isArray(data.warnings) && data.warnings.length) {
+            showToast(data.warnings.slice(0, 2).join(' • '), 'info');
+        }
     } catch (err) {
         console.error('generateIgCaptionAI error:', err);
-        showToast('Gagal generate caption: ' + err.message, 'error');
+        const msg = err && err.name === 'AbortError'
+            ? 'Waktu habis (' + (IG_AI_TIMEOUT_MS / 1000) + ' detik). Coba lagi sebentar lagi.'
+            : err.message;
+        showToast('Gagal generate caption: ' + msg, 'error');
     } finally {
+        clearTimeout(timer);
         if (btn) btn.disabled = false;
         if (btnText) btnText.textContent = 'Generate dengan AI';
     }
