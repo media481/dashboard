@@ -325,7 +325,7 @@ Tombol **Rencana AI → Generate dengan AI** sekarang langsung mengisi kalender 
 
 `generate-ig-caption` (tombol **Generate dengan AI** di modal Post Baru) sekarang:
 - **Pilihan tujuan** (Iklan/Promo, Storytelling, Edukasi, Testimoni, Engagement) dan **format media** (foto/Reels/carousel) ikut menentukan hook, isi, dan CTA.
-- **Dirapikan lewat kode**, bukan hanya prompt (`postprocess.ts`): ejaan "Umroh", tepat 5 hashtag (`#UmrohBersamaAmiru` & `#AmiruTour` selalu ada), maks 2200 karakter, label/code fence dibuang.
+- **Dirapikan lewat kode**, bukan hanya prompt: ejaan "Umroh", tepat 5 hashtag (`#UmrohBersamaAmiru` & `#AmiruTour` selalu ada), maks 2200 karakter, label/code fence dibuang.
 - **Cek angka**: angka di caption yang tidak ada di konsep (harga/tanggal/kuota) memunculkan peringatan sebelum posting.
 - **Generate ulang beda sudut**: klik lagi pada hasil AI yang belum diedit -> AI diminta mengganti hook & pembuka.
 - **Lebih tahan gangguan**: retry 1x + model cadangan saat overload (503), timeout 45 detik di browser, tombol **Kembalikan** untuk caption sebelum ditimpa.

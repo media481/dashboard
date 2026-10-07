@@ -20,11 +20,188 @@
 //     text     = caption final (sudah dirapikan: ejaan "Umroh", 5 hashtag, <= 2200 karakter)
 //     warnings = angka di caption yang tidak ada di konsep (cek manual sebelum posting)
 //
-// Deploy (postprocess.ts ikut ter-bundle otomatis oleh CLI):
+// File ini BERDIRI SENDIRI (helper Gemini & pasca-proses digabung di bawah), jadi bisa dideploy
+// lewat Supabase Dashboard (paste satu file) maupun CLI:
 //   supabase functions deploy generate-ig-caption --no-verify-jwt
 
-import { callGeminiWithFallback } from "../_shared/gemini.ts";
-import { findUnknownNumbers, normalizeCaption } from "./postprocess.ts";
+// ===== Helper Gemini (fallback multi-key + retry + model cadangan) =====
+// Logika sama dengan _shared/gemini.ts, digabung di sini supaya tidak bergantung
+// pada folder lain saat deploy lewat Dashboard.
+// MARKER_BEGIN_PURE
+const MAX_FALLBACK_KEYS = 5;
+
+function getGeminiApiKeys(): string[] {
+  const keys: string[] = [];
+  const primary = Deno.env.get("GEMINI_API_KEY");
+  if (primary) keys.push(primary);
+  for (let i = 2; i <= MAX_FALLBACK_KEYS; i++) {
+    const k = Deno.env.get(`GEMINI_API_KEY_${i}`);
+    if (k) keys.push(k);
+  }
+  return keys;
+}
+
+// Opsi tambahan (OPT-IN — tanpa opsi, perilaku sama persis seperti sebelumnya):
+//   fallbackModels : model cadangan yang dicoba kalau model utama gagal di SEMUA key
+//                    (503 "high demand" berlaku untuk seluruh model, jadi memutar key saja
+//                    tidak menolong).
+//   retryDelaysMs  : jeda sebelum putaran ulang model utama, khusus kalau kegagalannya
+//                    sementara (429/5xx/jaringan). Mis. [2500] = 1x ulang setelah 2,5 detik.
+interface GeminiOptions {
+  fallbackModels?: string[];
+  retryDelaysMs?: number[];
+}
+
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Panggil generateContent untuk 1 model, coba tiap key di getGeminiApiKeys()
+// berurutan sampai ada yang berhasil (HTTP 2xx). Return JSON response Gemini
+// mentah (pemanggil yang parsing candidates/parts sesuai kebutuhan masing-masing).
+async function callGeminiWithFallback(
+  model: string,
+  body: Record<string, unknown>,
+  options: GeminiOptions = {},
+  // deno-lint-ignore no-explicit-any
+): Promise<any> {
+  const keys = getGeminiApiKeys();
+  if (!keys.length) {
+    throw new Error("GEMINI_API_KEY belum di-set di Supabase secrets");
+  }
+
+  let lastError = "";
+
+  // Satu putaran = semua key untuk 1 model. data=null kalau gagal; retryable=true kalau
+  // gagalnya sementara sehingga layak dicoba ulang.
+  async function tryModel(m: string): Promise<{ data: unknown | null; retryable: boolean }> {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
+    let retryable = false;
+    for (let i = 0; i < keys.length; i++) {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          // Key lewat header (bukan ?key=) supaya tidak ikut tercetak di log/URL error.
+          headers: { "Content-Type": "application/json", "x-goog-api-key": keys[i] },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) return { data: await res.json(), retryable: false };
+
+        const errText = await res.text();
+        if (RETRYABLE_STATUS.has(res.status)) retryable = true;
+        lastError = `Gemini API error (${res.status}) [${m}, key #${i + 1}/${keys.length}]: ${errText.slice(0, 300)}`;
+        console.warn(lastError);
+        // Lanjut ke key berikutnya — murah untuk dicoba, dan 1 key bermasalah
+        // tidak boleh mematikan seluruh fitur AI.
+      } catch (networkErr) {
+        retryable = true;
+        lastError = `Network error saat panggil Gemini [${m}, key #${i + 1}/${keys.length}]: ${
+          String((networkErr as Error)?.message || networkErr)
+        }`;
+        console.warn(lastError);
+      }
+    }
+    return { data: null, retryable };
+  }
+
+  // 1) Model utama (+ putaran ulang berjeda kalau gagalnya sementara)
+  const delays = options.retryDelaysMs ?? [];
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    const r = await tryModel(model);
+    if (r.data) return r.data;
+    if (!r.retryable || attempt === delays.length) break;
+    await sleep(delays[attempt]);
+  }
+
+  // 2) Model cadangan
+  for (const fb of options.fallbackModels ?? []) {
+    if (fb === model) continue;
+    const r = await tryModel(fb);
+    if (r.data) return r.data;
+  }
+
+  throw new Error(`Semua ${keys.length} GEMINI_API_KEY gagal dipakai. Error terakhir: ${lastError}`);
+}
+
+// ===== Pasca-proses caption (fungsi murni) =====
+const IG_MAX_CHARS = 2200;
+const MAX_HASHTAGS = 5;
+// Selalu ada di setiap caption (sesuai Pola Amiru di generate-ig-content-plan).
+const REQUIRED_HASHTAGS = ["#UmrohBersamaAmiru", "#AmiruTour"];
+
+const TAG_RE = /#[\p{L}\p{N}_]+/gu;
+const TAG_ONLY_LINE_RE = /^\s*(#[\p{L}\p{N}_]+\s*)+$/u;
+
+// Ejaan resmi "Umroh" — termasuk di dalam hashtag (#UmrahMurah -> #UmrohMurah).
+function fixSpelling(t: string): string {
+  return t.replace(/umrah/gi, (m) => (m === m.toUpperCase() ? "UMROH" : m[0] === "U" ? "Umroh" : "umroh"));
+}
+
+// Buang code fence & label struktur ("Hook:", "CTA:", ...) yang bocor ke output.
+function stripWrappers(raw: string): string {
+  let t = (raw || "").trim();
+  t = t.replace(/^```[a-z]*\s*\n?/i, "").replace(/\n?```\s*$/, "").trim();
+  t = t.replace(/^\s*\**(caption|hook|body|isi|cta|hashtags?)\**\s*:\s*\**/gim, "");
+  return t.replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+// Pisahkan blok hashtag di akhir dari isi caption.
+function splitTrailingHashtags(t: string): { body: string; tags: string[] } {
+  const lines = t.split("\n");
+  const tags: string[] = [];
+  while (lines.length && (lines[lines.length - 1].trim() === "" || TAG_ONLY_LINE_RE.test(lines[lines.length - 1]))) {
+    const line = lines.pop() as string;
+    tags.unshift(...(line.match(TAG_RE) || []));
+  }
+  return { body: lines.join("\n").trim(), tags };
+}
+
+function buildTagLine(tags: string[]): string {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const tag of [...REQUIRED_HASHTAGS, ...tags]) {
+    const k = tag.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(tag);
+    if (out.length >= MAX_HASHTAGS) break;
+  }
+  return out.join(" ");
+}
+
+// Potong isi caption di batas paragraf/kalimat supaya total <= IG_MAX_CHARS.
+function fitBody(body: string, budget: number): string {
+  if (body.length <= budget) return body;
+  const cut = body.slice(0, budget);
+  const para = cut.lastIndexOf("\n\n");
+  if (para > budget * 0.5) return cut.slice(0, para).trim();
+  const sent = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "), cut.lastIndexOf("\n"));
+  if (sent > budget * 0.5) return cut.slice(0, sent + 1).trim();
+  return cut.trim();
+}
+
+function normalizeCaption(raw: string): string {
+  const cleaned = fixSpelling(stripWrappers(raw));
+  const { body, tags } = splitTrailingHashtags(cleaned);
+  const tagLine = buildTagLine(tags);
+  const fitted = fitBody(body, IG_MAX_CHARS - tagLine.length - 2);
+  return fitted ? `${fitted}\n\n${tagLine}` : tagLine;
+}
+
+// Angka (>= 2 digit) di output yang TIDAK ada di input = kandidat angka karangan
+// (harga/tanggal/kuota). Hanya peringatan, bukan pemblokiran: format bisa beda
+// ("28 juta" vs "28.000.000"), jadi keputusan akhir tetap di admin.
+function numbersIn(s: string): Set<string> {
+  const noTags = s.replace(TAG_RE, " ");
+  const found = noTags.match(/\d[\d.,]*/g) || [];
+  return new Set(found.map((x) => x.replace(/[.,]+$/, "").replace(/[.,]/g, "")).filter((x) => x.length >= 2));
+}
+
+function findUnknownNumbers(input: string, output: string): string[] {
+  const known = numbersIn(input);
+  return [...numbersIn(output)].filter((n) => !known.has(n));
+}
+// MARKER_END_PURE
+
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
