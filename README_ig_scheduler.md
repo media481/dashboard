@@ -281,3 +281,25 @@ Flag `IG_AUTOPUBLISH_ENABLED` di `js/app.js` (default `false`):
 - **Rencana dimuat saat halaman dibuka** (`openIgSchedulerPage` memanggil `loadIgContentPlan()`).
 - **Pembersihan bucket `ig-media`**: upload yang dibatalkan/diganti, item carousel yang dibuang, dan media post yang dihapus ikut dihapus dari bucket (best effort). Butuh policy DELETE: jalankan `sql/tambah_ig_media_storage_policy.sql`.
 - Minor: toast sukses carousel hanya muncul bila ada file yang berhasil; judul modal di mode planner "Draft Post Baru"/"Edit Draft Post"; URL media di pratinjau di-escape; pilar form ide cepat di-reset; klik di luar modal Upload kini membersihkan state; tanggal default memakai tanggal lokal.
+
+## Pola Mingguan Amiru (teks di gambar + caption)
+
+Menerapkan pola konten Amiru ke Content Planner (tombol **Rencana AI** → **Pola Mingguan Amiru**), tanpa AI:
+
+| Hari | Jenis | Pilar planner | Tipe |
+|---|---|---|---|
+| Senin | Storytelling (rindu & kedekatan) | `storytelling` | Image |
+| Rabu | Edukasi (bisa disimpan) | `edukasi` | Carousel |
+| Jumat | Bukti Sosial (testimoni/momen jamaah) | `testimoni` | Reels |
+| Minggu | Info Program (jadwal, seat, ajakan) | `promo` | Image |
+
+- Rasio sehat ≈ 3 konten non-jualan : 1 Info Program.
+- Tiap ide punya **Teks di gambar** (2–4 baris pemancing) dan **caption** yang melanjutkannya, ditutup 5 hashtag. Ejaan resmi "Umroh".
+- Draf yang sudah ditulis dipakai berurutan per hari (3 Senin, 2 Rabu, 1 Jumat, 3 Minggu); slot sisanya dibuat sebagai kerangka kosong (pilar & tipe sudah terisi). Draf lengkap ada di konstanta `IG_POLA_AMIRU` di `js/app.js`.
+- Tanggal yang sudah lewat atau sudah punya ide dilewati, jadi aman dijalankan di bulan berjalan.
+- Bagian `[isi ...]` di draf (program, hotel, nomor WA, **kutipan asli jamaah**) harus diganti data asli sebelum diposting. Testimoni wajib dari jamaah asli dan seizin mereka.
+- Tombol **Rencana AI → Generate dengan AI** sekarang juga mengikuti pola & gaya ini (edge function `generate-ig-content-plan` perlu di-deploy ulang).
+
+Migrasi (opsional tapi disarankan): `sql/tambah_ig_content_plan_pola_amiru.sql` menambah kolom `ig_content_plan.teks_gambar`. Tanpa migrasi ini, kolom teks gambar otomatis tersembunyi dan teksnya tidak tersimpan.
+
+Deploy: `supabase functions deploy generate-ig-content-plan --no-verify-jwt`

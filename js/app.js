@@ -13490,6 +13490,7 @@ function igPostRefDate(post) {
 // status 'scheduled') tidak menerbitkan apa pun.
 const IG_AUTOPUBLISH_ENABLED = false;
 const IG_PILLARS = {
+    storytelling: { label: 'Storytelling',     color: '#d35400' },
     edukasi:    { label: 'Edukasi',            color: '#2b7de9' },
     promo:      { label: 'Promo Program',      color: '#e0457b' },
     testimoni:  { label: 'Testimoni',          color: '#1f9d6b' },
@@ -13499,6 +13500,7 @@ const IG_PILLARS = {
 };
 const IG_STAGES = { ide: 'Ide', dikerjakan: 'Dikerjakan', siap: 'Siap posting' };
 let igPlannerColsReady = false; // true kalau sql/tambah_ig_content_plan_planner.sql sudah dijalankan (kolom pilar & tahap)
+let igTeksGambarReady = false;  // true kalau sql/tambah_ig_content_plan_pola_amiru.sql sudah dijalankan (kolom teks_gambar)
 
 function igApplyPlannerMode() {
     const root = document.getElementById('igSchedulerPageView');
@@ -14047,6 +14049,7 @@ function igDmPlanCard(pl, canEdit) {
     const pil = IG_PILLARS[pl.pilar];
     const stage = pl.tahap || 'ide';
     const cap = pl.draft_caption || '';
+    const imgTxt = pl.teks_gambar || '';
     const typeOpts = ['image', 'video', 'carousel'].map(t =>
         `<option value="${t}"${pl.tipe_konten === t ? ' selected' : ''}>${t === 'video' ? 'Video/Reels' : IG_TYPE_LABELS[t]}</option>`).join('');
     const pilOpts = igPlannerColsReady
@@ -14058,6 +14061,7 @@ function igDmPlanCard(pl, canEdit) {
     const actions = canEdit ? `<div class="ig-dm-card-actions ig-dm-plan-actions">
             <div class="ig-dm-icons">
                 <button type="button" class="ig-dm-iconbtn" title="Salin caption" onclick="igCopyPlanCaption('${pl.id}')">Salin</button>
+                ${igTeksGambarReady && imgTxt ? `<button type="button" class="ig-dm-iconbtn" title="Salin teks untuk gambar" onclick="igCopyPlanImageText('${pl.id}')">Teks gambar</button>` : ''}
                 <button type="button" class="ig-dm-iconbtn" title="Lewati (sembunyikan dari kalender)" onclick="igSkipPlanItem('${pl.id}')">Lewati</button>
                 <button type="button" class="ig-dm-iconbtn ig-dm-danger" title="Hapus" onclick="igArmDelete(this,'${pl.id}')">Hapus</button>
             </div>
@@ -14074,6 +14078,10 @@ function igDmPlanCard(pl, canEdit) {
                 ${pilOpts}
                 <input type="date" class="ig-dm-input" value="${escapeHtmlAttr(pl.tanggal)}" title="Pindah ke tanggal lain" onchange="igMovePlanToDate('${pl.id}',this.value,true)">
             </div>
+            ${igTeksGambarReady ? `<label class="ig-dm-edit-label">Teks di gambar <em>(2–4 baris pendek, jadi pemancing; caption melanjutkan)</em></label>
+            <textarea class="ig-dm-input ig-dm-textarea ig-dm-imgtext-input" rows="3" maxlength="300" placeholder="Contoh: Niat umroh itu muncul diam-diam."
+                onblur="igPlanUpdateField('${pl.id}','teks_gambar',this.value)">${escapeHtml(imgTxt)}</textarea>
+            <label class="ig-dm-edit-label">Caption</label>` : ''}
             <textarea class="ig-dm-input ig-dm-textarea" rows="6" maxlength="2200" placeholder="Draft caption..."
                 oninput="igUpdatePlanCharCount('${pl.id}',this.value.length)"
                 onblur="igPlanUpdateField('${pl.id}','draft_caption',this.value)">${escapeHtml(cap)}</textarea>
@@ -14091,6 +14099,7 @@ function igDmPlanCard(pl, canEdit) {
                 <div class="ig-dm-card-info">
                     <div class="ig-dm-card-title">${escapeHtml(pl.tema)}</div>
                     <div class="ig-dm-badges">${badges}<span class="ig-dm-typelabel">${IG_TYPE_LABELS[pl.tipe_konten] || 'Image'}</span>${stepper}</div>
+                    ${igTeksGambarReady && imgTxt ? `<div class="ig-dm-imgtext"><span>Teks di gambar</span><p>${escapeHtml(imgTxt)}</p></div>` : ''}
                     ${cap ? `<p class="ig-dm-cap">${escapeHtml(cap)}</p>` : `<p class="ig-dm-cap ig-dm-cap-empty">Belum ada caption${canEdit ? ' — klik untuk menulis' : ''}</p>`}
                 </div>
             </div>
@@ -14217,6 +14226,12 @@ async function igCopyPlanCaption(planId) {
     if (!pl || !pl.draft_caption) { showToast('Caption masih kosong', 'info'); return; }
     try { await navigator.clipboard.writeText(pl.draft_caption); showToast('Caption disalin', 'success'); }
     catch (err) { showToast('Gagal menyalin caption', 'error'); }
+}
+async function igCopyPlanImageText(planId) {
+    const pl = igContentPlan.find(p => p.id === planId);
+    if (!pl || !pl.teks_gambar) { showToast('Teks gambar masih kosong', 'info'); return; }
+    try { await navigator.clipboard.writeText(pl.teks_gambar); showToast('Teks gambar disalin', 'success'); }
+    catch (err) { showToast('Gagal menyalin teks gambar', 'error'); }
 }
 // Hapus 2 langkah: klik pertama meminta konfirmasi (3 detik), klik kedua menghapus
 function igArmDelete(btn, planId) {
@@ -15237,6 +15252,10 @@ async function loadIgContentPlan() {
             const probe = await supabaseClient.from('ig_content_plan').select('pilar,tahap').limit(1);
             igPlannerColsReady = !probe.error;
         }
+        if (!igTeksGambarReady) {
+            const probeImg = await supabaseClient.from('ig_content_plan').select('teks_gambar').limit(1);
+            igTeksGambarReady = !probeImg.error;
+        }
         renderIgCalendar();
     } catch (err) {
         console.error('loadIgContentPlan error:', err);
@@ -15391,7 +15410,8 @@ async function generateIgContentPlanAI() {
             tipe_konten: it.tipe_konten || 'image',
             draft_caption: it.draft_caption,
             status: 'idea',
-            ...(igPlannerColsReady ? { pilar: IG_PILLARS[it.pilar] ? it.pilar : null, tahap: 'ide' } : {})
+            ...(igPlannerColsReady ? { pilar: IG_PILLARS[it.pilar] ? it.pilar : null, tahap: 'ide' } : {}),
+            ...(igTeksGambarReady ? { teks_gambar: String(it.teks_gambar || '').trim() || null } : {})
         }));
         if (!rows.length) throw new Error('Semua tanggal hasil AI di luar bulan yang dipilih. Coba generate ulang.');
 
@@ -15470,6 +15490,8 @@ function renderIgPlanResultList(year, month) {
                     </select>
                     <span class="ig-plan-save-indicator" id="igPlanSaved-${pl.id}"></span>
                </div>
+               ${igTeksGambarReady ? `<textarea class="ig-plan-edit-caption ig-plan-edit-imgtext" rows="2" maxlength="300" placeholder="Teks di gambar (2–4 baris pendek)"
+                   onblur="igPlanUpdateField('${pl.id}','teks_gambar',this.value)">${escapeHtml(pl.teks_gambar || '')}</textarea>` : ''}
                <textarea class="ig-plan-edit-caption" rows="3"
                    onblur="igPlanUpdateField('${pl.id}','draft_caption',this.value)">${escapeHtml(pl.draft_caption || '')}</textarea>`
             : `<div class="ig-plan-result-top">
@@ -15511,7 +15533,8 @@ function igSyncPlanCardDom(plan, field) {
 }
 
 async function igPlanUpdateField(planId, field, value) {
-    const allowedFields = ['tema', 'tipe_konten', 'draft_caption', 'pilar', 'tahap'];
+    const allowedFields = ['tema', 'tipe_konten', 'draft_caption', 'pilar', 'tahap', 'teks_gambar'];
+    if (field === 'teks_gambar' && !igTeksGambarReady) return; // kolom belum ada (migrasi belum dijalankan)
     if (!allowedFields.includes(field)) return;
 
     const plan = igContentPlan.find(pl => pl.id === planId);
@@ -15529,7 +15552,7 @@ async function igPlanUpdateField(planId, field, value) {
     const job = (async () => {
         try {
             const { error } = await supabaseClient.from('ig_content_plan')
-                .update({ [field]: (field === 'pilar' && !newValue) ? null : newValue }).eq('id', planId);
+                .update({ [field]: ((field === 'pilar' || field === 'teks_gambar') && !newValue) ? null : newValue }).eq('id', planId);
             if (error) throw error;
 
             const indicator = document.getElementById(`igPlanSaved-${planId}`);
@@ -15651,6 +15674,254 @@ async function igDeletePlanItem(planId) {
     }
 }
 
+// ============================================================
+// 24d. POLA MINGGUAN AMIRU (Senin / Rabu / Jumat / Minggu)
+// Menerapkan pola konten Amiru ke 1 bulan di Content Planner TANPA AI:
+//   Senin  = Storytelling (rindu & kedekatan)       -> image
+//   Rabu   = Edukasi (manfaat, bisa disimpan)       -> carousel
+//   Jumat  = Bukti Sosial (testimoni / momen jamaah)-> Reels
+//   Minggu = Info Program (jadwal, seat, ajakan)    -> image
+// Rasio sehat: ~3 konten non-jualan : 1 Info Program.
+// Tiap ide terdiri dari: teks di gambar (pemancing pendek) + caption
+// (lanjutan dari gambar, bukan pengulangan) + 5 hashtag di akhir caption.
+// Slot yang belum punya draf dibuat sebagai KERANGKA kosong (pilar & tipe
+// sudah terisi) supaya tinggal diisi atau digenerate ulang pakai AI.
+// Pilar "Bukti Sosial" memakai pilar `testimoni`, "Info Program" memakai `promo`.
+// ============================================================
+const IG_POLA_AMIRU = {
+    1: { // Senin
+        hari: 'Senin', pilar: 'storytelling', tipe: 'image',
+        kosong: { tema: 'Storytelling — isi tema', teks: '[isi 2-4 baris pendek]' },
+        isi: [
+            {
+                tema: 'Niat umroh',
+                teks: "Niat umroh itu muncul diam-diam.\nPas dengar adzan.\nPas lihat foto Ka'bah.",
+                caption: `Pernah nggak, tiba-tiba kepikiran Tanah Suci padahal lagi biasa-biasa aja? Lagi nunggu lampu merah, lagi scroll HP, atau lagi sendirian di kamar. Dada rasanya hangat, terus muncul bisikan kecil: "Kapan ya aku ke sana?"
+
+Jangan buru-buru ditepis. Bisa jadi itu cara Allah memanggil pelan-pelan. Niat itu kayak benih: nggak perlu langsung besar, yang penting dijaga dan disiram sedikit demi sedikit.
+
+Kalau kamu lagi di fase itu, nggak apa-apa mulai dari tanya-tanya dulu. Cerita aja ke kami lewat WA, kami dengarkan dan bantu dari langkah paling awal.
+
+#NiatUmroh #UmrohBersamaAmiru #RinduTanahSuci #PanggilanIlahi #AmiruTour`
+            },
+            {
+                tema: "Pertama kali lihat Ka'bah",
+                teks: "Pertama kali lihat Ka'bah dari dekat.\nDada sesak. Mata basah.\nSemua yang dibawa dari rumah, mendadak hilang.",
+                caption: `Banyak jamaah yang bilang hal yang sama: sebelum berangkat, kepala penuh. Urusan kerja, cicilan, rencana ini itu. Tapi begitu Ka'bah terlihat di depan mata, semuanya seperti pelan-pelan luruh. Yang tersisa cuma kamu dan Allah.
+
+Ada yang diam lama. Ada yang langsung menangis tanpa sempat berpikir. Nggak ada yang salah, karena setiap orang punya caranya sendiri untuk bertemu dengan rumah-Nya.
+
+Kalau hatimu mulai kepikiran momen ini, jangan dipendam sendiri. Chat WA aja ya, kami temani dari persiapan sampai kamu sampai di sana.
+
+#Kabah #UmrohMomen #RinduMakkah #UmrohBersamaAmiru #AmiruTour`
+            },
+            {
+                tema: "Sa'i: Safa dan Marwah",
+                teks: "Tujuh kali bolak-balik.\nBukan untuk sampai.\nTapi untuk percaya.",
+                caption: `Ada jalan yang panjangnya cuma beberapa ratus meter, tapi rasanya seperti menyeberangi seluruh hidup. Di antara bukit Safa dan Marwah, langkah-langkah itu pelan, tenang, dan nggak ada yang buru-buru.
+
+Kalau kamu perhatikan lebih lama, jamaah yang sedang sa'i ini nggak sekadar berjalan. Ada yang bibirnya bergerak lirih menyebut doa. Ada yang berhenti sebentar, menarik napas, lalu melangkah lagi. Ada yang matanya basah tanpa sempat disembunyikan. Tujuh kali bolak-balik, dan di setiap putarannya ada beban kecil yang pelan-pelan diletakkan.
+
+Jalan ini mengingatkan kita pada Siti Hajar, seorang ibu yang berlari mencari air untuk anaknya, tanpa tahu apakah usahanya akan berbuah. Beliau tetap melangkah, karena percaya Allah melihat setiap usaha. Dan dari keyakinan itu, air zamzam memancar. Mungkin itu pesan paling lembut dari sa'i: ikhtiar kita tidak pernah sia-sia, meski jawabannya datang dari arah yang tidak kita duga.
+
+Pernah nggak kamu merasa lelah mengejar sesuatu, lalu diam-diam berharap ada tempat untuk mengistirahatkan hati? Kalau iya, tulis di kolom komentar doa apa yang ingin kamu titipkan di langkah-langkah ini. Kami ikut mengaminkan. 🤍
+
+Semoga Allah mudahkan setiap langkahmu, hingga suatu hari kamu berjalan di jalan ini dengan hati yang tenang dan penuh syukur. Aamiin.
+
+#Saii #SafaMarwah #UmrohBersamaAmiru #RinduTanahSuci #AmiruTour`
+            }
+        ]
+    },
+    3: { // Rabu
+        hari: 'Rabu', pilar: 'edukasi', tipe: 'carousel',
+        kosong: { tema: 'Edukasi (carousel) — isi tema', teks: 'Slide 1: [isi pertanyaan pemancing]\nSlide 2-6: [isi satu poin per slide]\nSlide 7: Simpan, biar nggak panik nanti.' },
+        isi: [
+            {
+                tema: 'Bawaan yang sering ketinggalan',
+                teks: "Slide 1: Sandal jepit ketinggalan pas udah di bandara? 😅\nSlide 2-7: satu barang per slide [isi barang 1-6]\nSlide 8: Simpan dulu, cek lagi H-3 berangkat.",
+                caption: `Ini cerita yang sering kami dengar dari jamaah: koper udah ditutup rapi, eh pas di hotel baru sadar ada yang kelupaan. Sepele sih kelihatannya, tapi di Tanah Suci hal kecil kayak gini bisa bikin repot dan ganggu fokus ibadah.
+
+Makanya kami rangkum 7 barang yang paling sering ketinggalan. Geser sampai slide terakhir, ya. Beberapa mungkin nggak kepikiran sama sekali.
+
+Simpan postingan ini, cek lagi tiga hari sebelum berangkat, dan kirim ke teman atau keluarga yang berangkat bareng kamu. Lebih tenang kalau semuanya saling ingat. 🤍
+
+#PersiapanUmroh #TipsUmroh #PerlengkapanUmroh #UmrohBersamaAmiru #AmiruTour`
+            },
+            {
+                tema: 'Kesalahan umum saat umroh',
+                teks: "Slide 1: Baru sadar urutan thawaf-nya keliru pas udah sampai sana?\nSlide 2-6: satu kesalahan per slide [isi kesalahan 1-5]\nSlide 7: Simpan, biar nggak panik nanti.",
+                caption: `Jujur aja, banyak jamaah yang baru ngeh ada yang keliru setelah sampai di lokasi. Bukan karena nggak niat belajar, tapi karena suasananya ramai, emosional, dan semuanya terasa baru. Wajar kalau ada yang terlewat.
+
+Biar kamu lebih siap, kami rangkum 5 kesalahan yang paling sering terjadi, lengkap dengan cara menghindarinya. Geser pelan-pelan, ya.
+
+Simpan postingan ini, lalu kirim ke teman seberangkatan. Lebih baik belajar bareng dari sekarang daripada panik di tengah ibadah. Kalau ada yang mau ditanyakan, tulis di kolom komentar atau chat WA aja.
+
+#PanduanUmroh #ManasikUmroh #Thawaf #UmrohBersamaAmiru #AmiruTour`
+            }
+        ]
+    },
+    5: { // Jumat
+        hari: 'Jumat', pilar: 'testimoni', tipe: 'video',
+        kosong: { tema: 'Testimoni jamaah — isi kutipan (wajib izin jamaah)', teks: '[isi kutipan asli jamaah]\n[nama jamaah, kota]' },
+        isi: [
+            {
+                // CONTOH FORMAT: kutipan & nama WAJIB diganti dengan testimoni asli yang sudah diizinkan jamaah
+                tema: 'Testimoni sujud pertama — GANTI dengan kutipan asli (izin jamaah)',
+                teks: '"[isi kutipan asli jamaah, mis. kesan sujud pertama di Masjidil Haram]"\n[nama jamaah, kota]',
+                caption: `Kalimat ini datang dari salah satu jamaah kami setelah pulang dari Tanah Suci. [ceritakan singkat latar belakang jamaah: awalnya ragu soal apa, lalu apa yang berubah].
+
+Cerita-cerita seperti ini yang bikin kami tetap semangat mengurus jamaah, dari urusan dokumen sampai pendampingan di lapangan. Bagi kami, ini bukan sekadar perjalanan, tapi amanah.
+
+Terima kasih sudah mempercayakan perjalanan sucimu kepada kami. 🤍
+
+#TestimoniJamaah #CeritaJamaah #UmrohBersamaAmiru #MasjidilHaram #AmiruTour`
+            }
+        ]
+    },
+    0: { // Minggu
+        hari: 'Minggu', pilar: 'promo', tipe: 'image',
+        kosong: { tema: 'Info program — isi data program', teks: 'Berangkat [bulan].\nHotel [nama].\nSeat tinggal [jumlah].' },
+        isi: [
+            {
+                tema: 'Info keberangkatan',
+                teks: 'Berangkat [bulan].\nHotel [nama].\nSeat tinggal [jumlah].',
+                caption: `Kalau kamu udah mulai ngitung-ngitung dan ngebayangin diri sendiri di sana, jangan dipendam sendiri. Keberangkatan [bulan] lagi buka, dan seat-nya terbatas.
+
+Yang kamu dapat:
+[fasilitas 1]
+[fasilitas 2]
+[pendampingan]
+
+Belum yakin atau masih banyak pertanyaan? Santai, nggak ada paksaan. Chat WA aja ya, kami jelaskan pelan-pelan sampai kamu nyaman: [nomor].
+
+#PaketUmroh #DaftarUmroh #JadwalUmroh #UmrohBersamaAmiru #AmiruTour`
+            },
+            {
+                tema: 'Mulai dari yang kecil',
+                teks: 'Nggak harus nunggu semuanya siap.\nMulai dulu dari niat.',
+                caption: `Sering kita nunda dengan alasan "nanti kalau uangnya udah cukup" atau "nanti kalau udah tenang". Padahal kesiapan itu jarang datang sekaligus. Biasanya dia tumbuh pelan-pelan, mulai dari niat yang dijaga.
+
+Sisihkan sedikit tiap bulan, rapikan niatnya, dan percaya bahwa sisanya Allah yang atur. Yang penting kamu sudah mulai melangkah.
+
+Penasaran gimana skema persiapannya? Tanya dulu aja lewat WA. Nggak ada kewajiban apa-apa, kami cuma ingin membantu kamu melihat jalannya lebih jelas.
+
+#TabunganUmroh #MenabungUmroh #NiatBaik #UmrohBersamaAmiru #AmiruTour`
+            },
+            {
+                tema: 'Umroh bersama orang tua',
+                teks: 'Bapak ibu pengin banget ke Tanah Suci.\nTapi kamu khawatir soal tenaganya?',
+                caption: `Mungkin bapak atau ibu pernah bilang, "Pengin sih, tapi nanti aja." Padahal di balik kalimat itu ada rindu yang udah lama disimpan. Dan kamu sebagai anak, di satu sisi pengin banget mewujudkan, di sisi lain khawatir: kuat nggak ya jalannya? Gimana kalau tiba-tiba sakit?
+
+Kekhawatiran itu wajar banget, dan kami paham. Makanya di setiap keberangkatan ada pembimbing yang mendampingi dari berangkat sampai pulang, supaya jamaah lansia bisa beribadah dengan lebih tenang dan nggak kewalahan.
+
+Tanya-tanya dulu lewat WA juga boleh. Ceritakan kondisi orang tuamu, nanti kita lihat bareng apa yang paling cocok.
+
+#UmrohOrangTua #UmrohLansia #HadiahTerbaikUntukOrangTua #UmrohBersamaAmiru #AmiruTour`
+            }
+        ]
+    }
+};
+
+// Susun baris rencana untuk 1 bulan dari pola (fungsi murni -- mudah dites).
+// existingDates: Set tanggal "YYYY-MM-DD" yang sudah punya ide aktif (dilewati supaya tidak menumpuk).
+// mulaiDari: "YYYY-MM-DD" -- tanggal sebelum ini dilewati (tidak ada gunanya merencanakan hari yang sudah lewat,
+//   dan draf tidak habis terpakai di tanggal lampau).
+function igBuildPolaMingguan(year, month, existingDates, mulaiDari) {
+    const antrean = {};
+    Object.keys(IG_POLA_AMIRU).forEach(k => { antrean[k] = IG_POLA_AMIRU[k].isi.slice(); });
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const bulanCol = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const rows = [];
+    let dilewati = 0;
+    let lampau = 0;
+    for (let d = 1; d <= lastDay; d++) {
+        const dow = new Date(year, month, d).getDay(); // 0 = Minggu
+        const slot = IG_POLA_AMIRU[dow];
+        if (!slot) continue;
+        const tanggal = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        if (mulaiDari && tanggal < mulaiDari) { lampau++; continue; }
+        if (existingDates && existingDates.has(tanggal)) { dilewati++; continue; }
+        const draf = antrean[dow].shift();
+        const src = draf || slot.kosong;
+        rows.push({
+            bulan: bulanCol,
+            tanggal,
+            tema: src.tema,
+            tipe_konten: slot.tipe,
+            draft_caption: draf ? draf.caption : '',
+            status: 'idea',
+            pilar: slot.pilar,
+            tahap: draf ? 'dikerjakan' : 'ide',
+            teks_gambar: src.teks,
+            _berisi: !!draf
+        });
+    }
+    return { rows, dilewati, lampau };
+}
+
+// ---- Terapkan pola mingguan ke bulan yang dipilih di modal Rencana AI ----
+async function igApplyPolaMingguan() {
+    if (!canManageProgramData()) {
+        showToast('Akun Anda tidak punya izin untuk membuat rencana konten', 'error');
+        return;
+    }
+    const monthVal = document.getElementById('igPlanMonth')?.value; // "YYYY-MM"
+    if (!monthVal) { showToast('Pilih bulan dulu', 'error'); return; }
+    const [yearStr, monthStr] = monthVal.split('-');
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10) - 1;
+
+    const bulanPrefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
+    const existingDates = new Set(igContentPlan
+        .filter(pl => pl.tanggal && pl.tanggal.startsWith(bulanPrefix) && pl.status !== 'dilewati')
+        .map(pl => pl.tanggal));
+
+    const t = new Date();
+    const hariIni = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    const { rows, dilewati, lampau } = igBuildPolaMingguan(year, month, existingDates, hariIni);
+    if (!rows.length) { showToast('Tidak ada tanggal pola (Sen/Rab/Jum/Min) yang tersisa di bulan ini (sudah lewat atau sudah punya ide)', 'info'); return; }
+
+    const berisi = rows.filter(r => r._berisi).length;
+    const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const ket = `Pola mingguan akan menambah ${rows.length} ide di ${monthNames[month]} ${year} ` +
+        `(${berisi} berisi draf teks gambar + caption, ${rows.length - berisi} kerangka kosong).` +
+        (dilewati ? ` ${dilewati} tanggal dilewati karena sudah ada ide.` : '') +
+        (lampau ? ` ${lampau} tanggal yang sudah lewat tidak diisi.` : '') +
+        `\n\nBagian [isi ...] di draf harus diganti data asli (program, kutipan jamaah, dll). Lanjutkan?`;
+    if (!confirm(ket)) return;
+
+    const btn = document.getElementById('btnIgApplyPola');
+    if (btn) btn.disabled = true;
+    try {
+        const payload = rows.map(r => {
+            const o = {
+                bulan: r.bulan, tanggal: r.tanggal, tema: r.tema, tipe_konten: r.tipe_konten,
+                draft_caption: r.draft_caption, status: 'idea'
+            };
+            if (igPlannerColsReady) { o.pilar = r.pilar; o.tahap = r.tahap; }
+            if (igTeksGambarReady) o.teks_gambar = r.teks_gambar;
+            return o;
+        });
+        const { error } = await supabaseClient.from('ig_content_plan').insert(payload);
+        if (error) throw error;
+
+        let pesan = `${payload.length} ide pola mingguan ditambahkan`;
+        if (!igTeksGambarReady) pesan += ' (jalankan sql/tambah_ig_content_plan_pola_amiru.sql agar teks gambar ikut tersimpan)';
+        showToast(pesan, 'success');
+        await loadIgContentPlan();
+        renderIgPlanResultList(year, month);
+        const genWrap = document.getElementById('igPlanGenerateWrap');
+        const resultWrap = document.getElementById('igPlanResultWrap');
+        if (genWrap) genWrap.style.display = 'none';
+        if (resultWrap) resultWrap.style.display = 'block';
+    } catch (err) {
+        console.error('igApplyPolaMingguan error:', err);
+        showToast('Gagal menerapkan pola mingguan: ' + err.message, 'error');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
 // Expose functions globally
 window.openIgUploadModal = openIgUploadModal;
 window.closeIgUploadModal = closeIgUploadModal;
@@ -15698,6 +15969,8 @@ window.igSkipPlanItem = igSkipPlanItem;
 window.igDeletePlanItem = igDeletePlanItem;
 window.igPlanUpdateField = igPlanUpdateField;
 window.loadIgContentPlan = loadIgContentPlan;
+window.igApplyPolaMingguan = igApplyPolaMingguan;
+window.igCopyPlanImageText = igCopyPlanImageText;
 
 
 // Membungkus <select class="searchable-select"> dengan UI kustom (bisa dicari)
