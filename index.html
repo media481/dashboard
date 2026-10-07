@@ -1420,60 +1420,51 @@
 
 <!-- Modal: Content Planner Bulanan (AI) -->
 <div class="modal-overlay" id="igContentPlanModal">
-    <div class="modal-content" style="max-width:640px;">
+    <div class="modal-content" style="max-width:480px;">
         <div class="modal-header">
-            <h2><i class="bi bi-magic"></i> Rencana Konten Bulanan (AI)</h2>
+            <h2>Rencana Konten AI</h2>
             <button class="modal-close" onclick="closeIgContentPlanModal()">&times;</button>
         </div>
         <div class="modal-body">
             <div id="igPlanGenerateWrap">
-                <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 14px;">
-                    AI akan langsung mengisi kalender untuk 1 bulan penuh: semua tanggal pola (Senin/Rabu/Jumat/Minggu)
-                    yang masih kosong, otomatis memakai konteks program Umroh yang berangkat/aktif di bulan tsb.
-                    Ide yang dibuat <strong>tidak akan sama</strong> dengan konten yang pernah dibuat sebelumnya
-                    (semua bulan). Hasilnya berupa <strong>rencana</strong> (ide + draft caption) — belum jadi post asli,
-                    tinggal pilih "Jadikan Post" satu-satu nanti kalau medianya sudah siap.
+                <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 12px;">
+                    Isi tanggal kosong di bulan pilihan dengan ide baru yang tidak sama dengan konten sebelumnya.
                 </p>
-                <div class="form-row">
+                <div class="form-row" style="gap:10px;">
                     <div class="form-group">
                         <label>Bulan</label>
                         <input type="month" id="igPlanMonth">
                     </div>
                     <div class="form-group">
-                        <label>Jumlah Ide (opsional)</label>
-                        <input type="number" id="igPlanCount" min="1" max="60" placeholder="Kosong = isi semua tanggal">
+                        <label>Jumlah ide</label>
+                        <input type="number" id="igPlanCount" min="1" max="60" placeholder="Semua tanggal">
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Arahan Tambahan (opsional)</label>
-                    <textarea id="igPlanArahan" rows="2" placeholder="Contoh: fokuskan ke promo Umroh Desember, atau selipkan tema Maulid Nabi..." style="width:100%;font-family:'Inter',sans-serif;padding:10px;border:1.5px solid var(--line);border-radius:10px;resize:vertical;"></textarea>
-                </div>
-                <div class="form-actions" style="border-top:none;padding-top:4px;">
+                <details style="margin:0 0 12px;">
+                    <summary style="font-size:12px;color:var(--ink-soft);cursor:pointer;">Arahan tambahan (opsional)</summary>
+                    <textarea id="igPlanArahan" rows="2" placeholder="Contoh: fokus promo Umroh Desember, atau selipkan tema Maulid Nabi" style="width:100%;margin-top:8px;font-family:'Inter',sans-serif;padding:10px;border:1.5px solid var(--line);border-radius:10px;resize:vertical;"></textarea>
+                </details>
+                <div class="form-actions" style="border-top:none;padding-top:0;">
                     <button class="btn-primary" id="btnIgGeneratePlan" onclick="generateIgContentPlanAI()" style="font-size:12px;padding:8px 16px;">
-                        <i class="bi bi-stars"></i> <span id="btnIgGeneratePlanText">Generate dengan AI</span>
+                        <span id="btnIgGeneratePlanText">Generate dengan AI</span>
                     </button>
                     <button class="btn-secondary" id="btnIgApplyPola" onclick="igApplyPolaMingguan()" style="font-size:12px;padding:8px 16px;"
-                        title="Isi bulan ini dengan pola Senin/Rabu/Jumat/Minggu beserta draf teks gambar + caption (tanpa AI)">
-                        <i class="bi bi-calendar-week"></i> Pola Mingguan Amiru
+                        title="Tanpa AI: Senin storytelling, Rabu edukasi, Jumat testimoni, Minggu info program. Isi bagian [isi ...] dengan data asli. Tanggal yang sudah lewat atau sudah ada ide tidak diisi.">
+                        Pola Mingguan
                     </button>
                 </div>
-                <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;margin:12px 0 0;cursor:pointer;">
-                    <input type="checkbox" id="igAutoPlanToggle" onchange="igSetAutoPlan(this.checked)" style="margin-top:2px;">
-                    <span>Isi otomatis ide 14 hari ke depan setiap IG Scheduler dibuka (berlanjut ke bulan berikutnya secara bertahap, hemat token)</span>
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-soft);margin:14px 0 0;cursor:pointer;"
+                    title="Setiap IG Scheduler dibuka, ide 14 hari ke depan diisi otomatis (hemat token)">
+                    <input type="checkbox" id="igAutoPlanToggle" onchange="igSetAutoPlan(this.checked)">
+                    <span>Isi otomatis 14 hari ke depan</span>
                 </label>
-                <p style="font-size:11.5px;color:var(--ink-soft);margin:10px 0 0;line-height:1.5;">
-                    <strong>Pola Mingguan Amiru</strong> (tanpa AI): Senin storytelling, Rabu edukasi (carousel),
-                    Jumat testimoni (Reels), Minggu info program. Draf teks di gambar + caption sudah terisi,
-                    tinggal ganti bagian <code>[isi ...]</code> dengan data asli. Tanggal yang sudah lewat atau sudah
-                    punya ide tidak diisi.
-                </p>
             </div>
 
             <div id="igPlanResultWrap" style="display:none;">
                 <div class="ig-plan-result-header">
                     <span id="igPlanResultCount"></span>
                     <button class="btn-secondary" onclick="showIgPlanGenerateForm()" style="font-size:11.5px;padding:5px 12px;">
-                        <i class="bi bi-arrow-counterclockwise"></i> Generate Ulang
+                        Generate Ulang
                     </button>
                 </div>
                 <div class="ig-plan-result-list" id="igPlanResultList">
