@@ -15337,9 +15337,11 @@ function openIgContentPlanModal() {
 
     const autoToggle = document.getElementById('igAutoPlanToggle');
     if (autoToggle) autoToggle.checked = igAutoPlanEnabled();
+    renderIgPlanPolaStrip();
     showIgPlanGenerateForm();
     modal.classList.add('open');
-    loadIgContentPlan(); // refresh data terbaru tiap kali modal dibuka (bisa saja ada rencana lama dari sesi lain)
+    // refresh data terbaru tiap kali modal dibuka (bisa saja ada rencana lama dari sesi lain), lalu hitung ulang pratinjau slot
+    Promise.resolve(loadIgContentPlan()).then(igRefreshPlanPreview);
 }
 
 function closeIgContentPlanModal() {
@@ -15353,6 +15355,52 @@ function showIgPlanGenerateForm() {
     const resultWrap = document.getElementById('igPlanResultWrap');
     if (genWrap) genWrap.style.display = 'block';
     if (resultWrap) resultWrap.style.display = 'none';
+    igRefreshPlanPreview();
+}
+
+// Label pilar untuk tampilan modal Rencana AI (mengikuti istilah Pola Amiru; warna dari IG_PILLARS)
+const IG_POLA_LABEL = { testimoni: 'Bukti Sosial', promo: 'Info Program' };
+function igPolaPilarLabel(pilar) {
+    return IG_POLA_LABEL[pilar] || (IG_PILLARS[pilar] && IG_PILLARS[pilar].label) || pilar;
+}
+
+// ---- Strip pola 7 hari (Senin-Minggu) di atas form, dibaca langsung dari IG_POLA_AMIRU ----
+function renderIgPlanPolaStrip() {
+    const el = document.getElementById('igPlanPolaStrip');
+    if (!el) return;
+    el.innerHTML = [1, 2, 3, 4, 5, 6, 0].map(dow => {
+        const p = IG_POLA_AMIRU[dow];
+        const color = (IG_PILLARS[p.pilar] && IG_PILLARS[p.pilar].color) || 'var(--brand)';
+        const ikon = p.tipe === 'carousel' ? 'bi-images' : 'bi-image';
+        return `<div class="ig-plan-pola-chip" style="--pillar:${color}" title="${escapeHtmlAttr(p.hari + ': ' + igPolaPilarLabel(p.pilar) + ' (' + (p.tipe === 'carousel' ? 'carousel' : 'image') + ')')}">
+            <b>${p.hari.slice(0, 3)}</b>
+            <span>${escapeHtml(igPolaPilarLabel(p.pilar))}</span>
+            <i class="bi ${ikon}"></i>
+        </div>`;
+    }).join('');
+}
+
+// ---- Pratinjau: berapa slot kosong yang akan diisi untuk bulan & jumlah yang dipilih ----
+function igRefreshPlanPreview() {
+    const el = document.getElementById('igPlanPreview');
+    if (!el) return;
+    const monthVal = document.getElementById('igPlanMonth')?.value;
+    if (!monthVal) { el.textContent = ''; return; }
+    const [y, m] = monthVal.split('-').map(Number);
+    const batas = parseInt(document.getElementById('igPlanCount')?.value, 10) || 0;
+    let slots = igBuildSlotBulan(y, m - 1, igTanggalTerisiSet(), igLocalDateKey(new Date()));
+    if (!slots.length) {
+        el.innerHTML = '<i class="bi bi-info-circle"></i> Tidak ada slot kosong di bulan ini (sudah lewat atau sudah terisi semua).';
+        return;
+    }
+    const total = slots.length;
+    if (batas > 0 && batas < total) slots = igPickEvenly(slots, batas);
+    const carousel = slots.filter(s => s.tipe_konten === 'carousel').length;
+    const info = slots.filter(s => s.pilar === 'promo').length;
+    const bagian = [`${slots.length - carousel} image`, `${carousel} carousel`];
+    if (info) bagian.push(`${info} info program`);
+    el.innerHTML = `<i class="bi bi-calendar-check"></i> <strong>${slots.length}</strong> ide akan dibuat` +
+        (slots.length < total ? ` dari ${total} slot kosong` : '') + ` (${bagian.join(' · ')})`;
 }
 
 // ---- Susun ringkasan program aktif sebagai konteks AI ----
@@ -15857,9 +15905,13 @@ function renderIgPlanResultList(year, month) {
                 </div>
                 <p class="ig-plan-caption-preview">${escapeHtml((pl.draft_caption || '').slice(0, 140))}${(pl.draft_caption || '').length > 140 ? '…' : ''}</p>`;
 
+        const pilarMeta = pl.pilar && IG_PILLARS[pl.pilar]
+            ? `<div class="ig-plan-result-pilar" style="--pillar:${IG_PILLARS[pl.pilar].color}">${escapeHtml(igPolaPilarLabel(pl.pilar))}</div>`
+            : '';
         return `<div class="ig-plan-result-item">
             <div class="ig-plan-result-date">${tglLabel}</div>
             <div class="ig-plan-result-body">
+                ${pilarMeta}
                 ${topAndCaption}
                 <div class="ig-plan-result-actions">${actions}</div>
             </div>
@@ -16344,6 +16396,7 @@ window.igReplyComment = igReplyComment;
 window.igToggleHideComment = igToggleHideComment;
 window.igDeleteComment = igDeleteComment;
 window.openIgContentPlanModal = openIgContentPlanModal;
+window.igRefreshPlanPreview = igRefreshPlanPreview;
 window.closeIgContentPlanModal = closeIgContentPlanModal;
 window.showIgPlanGenerateForm = showIgPlanGenerateForm;
 window.generateIgContentPlanAI = generateIgContentPlanAI;
