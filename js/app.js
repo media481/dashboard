@@ -15992,13 +15992,16 @@ async function igDeletePlanItem(planId) {
 }
 
 // ============================================================
-// 24d. POLA MINGGUAN AMIRU (Senin / Rabu / Jumat / Minggu)
+// 24d. POLA MINGGUAN AMIRU (7 hari, maksimal 7 ide per pekan)
 // Menerapkan pola konten Amiru ke 1 bulan di Content Planner TANPA AI:
 //   Senin  = Storytelling (rindu & kedekatan)       -> image
 //   Rabu   = Edukasi (manfaat, bisa disimpan)       -> carousel
-//   Jumat  = Bukti Sosial (testimoni / momen jamaah)-> Reels
+//   Jumat  = Bukti Sosial (testimoni / momen jamaah)-> image
 //   Minggu = Info Program (jadwal, seat, ajakan)    -> image
-// Rasio sehat: ~3 konten non-jualan : 1 Info Program.
+//   Selasa = Manasik (tata cara, doa, perlengkapan) -> image
+//   Kamis  = Storytelling (cerita bertahap)         -> carousel
+//   Sabtu  = Engagement (pertanyaan / polling)      -> image
+// Rasio sehat: 6 konten non-jualan : 1 Info Program.
 // Tiap ide terdiri dari: teks di gambar (pemancing pendek) + caption
 // (lanjutan dari gambar, bukan pengulangan) + 5 hashtag di akhir caption.
 // Slot yang belum punya draf dibuat sebagai KERANGKA kosong (pilar & tipe
@@ -16078,7 +16081,7 @@ Simpan postingan ini, lalu kirim ke teman seberangkatan. Lebih baik belajar bare
         ]
     },
     5: { // Jumat
-        hari: 'Jumat', pilar: 'testimoni', tipe: 'video',
+        hari: 'Jumat', pilar: 'testimoni', tipe: 'image',
         kosong: { tema: 'Testimoni jamaah — isi kutipan (wajib izin jamaah)', teks: '[isi kutipan asli jamaah]\n[nama jamaah, kota]' },
         isi: [
             {
@@ -16094,6 +16097,21 @@ Terima kasih sudah mempercayakan perjalanan sucimu kepada kami. 🤍
 #TestimoniJamaah #CeritaJamaah #UmrohBersamaAmiru #MasjidilHaram #AmiruTour`
             }
         ]
+    },
+    2: { // Selasa
+        hari: 'Selasa', pilar: 'manasik', tipe: 'image',
+        kosong: { tema: 'Manasik — isi tema (tata cara / doa / perlengkapan)', teks: '[isi 2-4 baris pendek]' },
+        isi: []
+    },
+    4: { // Kamis
+        hari: 'Kamis', pilar: 'storytelling', tipe: 'carousel',
+        kosong: { tema: 'Storytelling (carousel) — isi momen ibadah / suasana Tanah Suci', teks: 'Slide 1: [isi kalimat pemancing]\\nSlide 2-5: [isi alur cerita per slide]\\nSlide 6: [isi penutup / ajakan ringan]' },
+        isi: []
+    },
+    6: { // Sabtu
+        hari: 'Sabtu', pilar: 'engagement', tipe: 'image',
+        kosong: { tema: 'Engagement — isi pertanyaan / polling', teks: '[isi pertanyaan pemancing 2-3 baris]' },
+        isi: []
     },
     0: { // Minggu
         hari: 'Minggu', pilar: 'promo', tipe: 'image',

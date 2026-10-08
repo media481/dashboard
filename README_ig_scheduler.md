@@ -289,13 +289,16 @@ Menerapkan pola konten Amiru ke Content Planner (tombol **Rencana AI** → **Pol
 | Hari | Jenis | Pilar planner | Tipe |
 |---|---|---|---|
 | Senin | Storytelling (rindu & kedekatan) | `storytelling` | Image |
+| Selasa | Manasik (tata cara, doa, perlengkapan) | `manasik` | Image |
 | Rabu | Edukasi (bisa disimpan) | `edukasi` | Carousel |
-| Jumat | Bukti Sosial (testimoni/momen jamaah) | `testimoni` | Reels |
+| Kamis | Storytelling bertahap (momen ibadah) | `storytelling` | Carousel |
+| Jumat | Bukti Sosial (testimoni/momen jamaah) | `testimoni` | Image |
+| Sabtu | Engagement (pertanyaan / polling) | `engagement` | Image |
 | Minggu | Info Program (jadwal, seat, ajakan) | `promo` | Image |
 
-- Rasio sehat ≈ 3 konten non-jualan : 1 Info Program.
+- Maksimal 7 ide per pekan (1 per hari). Hanya single post (image) dan carousel — Rencana AI tidak membuat ide video/Reels. Rasio sehat ≈ 6 konten non-jualan : 1 Info Program.
 - Tiap ide punya **Teks di gambar** (2–4 baris pemancing) dan **caption** yang melanjutkannya, ditutup 5 hashtag. Ejaan resmi "Umroh".
-- Draf yang sudah ditulis dipakai berurutan per hari (3 Senin, 2 Rabu, 1 Jumat, 3 Minggu); slot sisanya dibuat sebagai kerangka kosong (pilar & tipe sudah terisi). Draf lengkap ada di konstanta `IG_POLA_AMIRU` di `js/app.js`.
+- Draf yang sudah ditulis dipakai berurutan per hari (3 Senin, 2 Rabu, 1 Jumat, 3 Minggu); Selasa/Kamis/Sabtu belum punya draf (selalu kerangka kosong); slot sisanya dibuat sebagai kerangka kosong (pilar & tipe sudah terisi). Draf lengkap ada di konstanta `IG_POLA_AMIRU` di `js/app.js`.
 - Tanggal yang sudah lewat atau sudah punya ide dilewati, jadi aman dijalankan di bulan berjalan.
 - Bagian `[isi ...]` di draf (program, hotel, nomor WA, **kutipan asli jamaah**) harus diganti data asli sebelum diposting. Testimoni wajib dari jamaah asli dan seizin mereka.
 - Tombol **Rencana AI → Generate dengan AI** sekarang juga mengikuti pola & gaya ini (edge function `generate-ig-content-plan` perlu di-deploy ulang).
@@ -308,7 +311,7 @@ Deploy: `supabase functions deploy generate-ig-content-plan --no-verify-jwt`
 
 Tombol **Rencana AI → Generate dengan AI** sekarang langsung mengisi kalender untuk 1 bulan penuh:
 
-- **Slot tanggal otomatis**: semua tanggal pola Amiru (Senin/Rabu/Jumat/Minggu) yang masih kosong di bulan terpilih
+- **Slot tanggal otomatis**: semua tanggal pola Amiru (semua hari, Senin–Minggu) yang masih kosong di bulan terpilih
   (tanggal yang sudah lewat, sudah punya ide aktif, atau sudah punya post tidak diisi). Kolom "Jumlah Ide" opsional —
   kosong = isi semua; kalau diisi lebih kecil dari jumlah slot, slot dipilih tersebar merata.
 - **Anti-duplikat**: sebelum generate, dashboard mengumpulkan SEMUA konten yang pernah dibuat (semua bulan & semua

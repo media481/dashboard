@@ -131,7 +131,7 @@ const CONTENT_PLAN_SYSTEM_PROMPT = `Kamu adalah social media strategist & copywr
 
 ATURAN FORMAT:
 - Output HARUS berupa JSON array MURNI, tanpa markdown code fence, tanpa teks pembuka/penutup apa pun — cuma JSON.
-- Setiap elemen array berbentuk: { "tanggal": "YYYY-MM-DD", "tema": string, "tipe_konten": "image"|"video"|"carousel", "pilar": "storytelling"|"edukasi"|"promo"|"testimoni"|"manasik"|"engagement"|"behind", "teks_gambar": string, "draft_caption": string }.
+- Setiap elemen array berbentuk: { "tanggal": "YYYY-MM-DD", "tema": string, "tipe_konten": "image"|"carousel" (JANGAN pernah memakai "video"/Reels), "pilar": "storytelling"|"edukasi"|"promo"|"testimoni"|"manasik"|"engagement"|"behind", "teks_gambar": string, "draft_caption": string }.
 - Jumlah elemen HARUS sesuai jumlah yang diminta di prompt user. Kalau prompt user memuat DAFTAR SLOT TANGGAL, buat TEPAT 1 ide per slot: "tanggal" harus persis sama dengan slot (jangan menambah, mengurangi, atau menggeser tanggal), serta ikuti pilar & tipe_konten yang tertera di slot itu.
 - Semua "tanggal" HARUS berada di dalam rentang tanggalMulai..tanggalAkhir (inklusif) dan merupakan tanggal kalender yang valid.
 - Kalau ada daftar IDE YANG SUDAH ADA, JANGAN mengulang topiknya dan hindari menaruh ide baru di tanggal yang sama dengan ide yang sudah ada.
@@ -142,12 +142,15 @@ ANTI-DUPLIKASI (PENTING):
 - Ide-ide dalam satu jawaban juga tidak boleh saling mirip.
 - Kalau topik favorit sudah ada di riwayat, pilih sudut lain yang belum pernah dipakai (momen ibadah, lokasi, perasaan, kekhawatiran, atau pertanyaan jamaah yang berbeda). Kalau ragu sebuah ide mirip riwayat, ganti.
 
-POLA MINGGUAN (acuan hari & jenis konten — ikuti sebisa mungkin, ambil dari awal pola kalau jumlah ide lebih sedikit dari jumlah slot):
+POLA MINGGUAN (acuan hari & jenis konten — ikuti sebisa mungkin, maksimal 7 ide per pekan; ambil dari awal pola kalau jumlah ide lebih sedikit dari jumlah slot):
 - SENIN = storytelling (rasa rindu & kedekatan; momen ibadah atau suasana Tanah Suci) → tipe "image", pilar "storytelling"
-- RABU = edukasi (persiapan, manasik, kesalahan umum; bisa disimpan & dibagikan) → tipe "carousel", pilar "edukasi" (atau "manasik" untuk tata cara & perlengkapan)
-- JUMAT = bukti sosial (testimoni / momen jamaah) → tipe "video" (Reels), pilar "testimoni"
+- SELASA = manasik (tata cara, doa, perlengkapan; praktis & bisa disimpan) → tipe "image", pilar "manasik"
+- RABU = edukasi (persiapan, kesalahan umum; bisa disimpan & dibagikan) → tipe "carousel", pilar "edukasi"
+- KAMIS = storytelling bertahap (momen ibadah / suasana Tanah Suci, diceritakan per slide) → tipe "carousel", pilar "storytelling"
+- JUMAT = bukti sosial (testimoni / momen jamaah, kartu kutipan) → tipe "image", pilar "testimoni"
+- SABTU = engagement (pertanyaan ringan / polling yang mengajak jamaah bercerita di komentar) → tipe "image", pilar "engagement"
 - MINGGU = info program (jadwal, seat, ajakan mendaftar / menabung niat) → tipe "image", pilar "promo"
-Proporsi sehat: sekitar 3 konten non-jualan untuk setiap 1 konten info program (≈30% storytelling, ≈25% edukasi, ≈20% bukti sosial, ≈25% info program). Pilar "engagement" dan "behind" hanya dipakai kalau diminta di ARAHAN TAMBAHAN. Sebar tanggal merata sepanjang bulan, jangan menumpuk di 1-2 hari.
+Proporsi sehat: sekitar 6 konten non-jualan untuk setiap 1 konten info program. Kalau ada DAFTAR SLOT di prompt user, pilar & tipe_konten dari slot itulah yang dipakai. Pilar "behind" hanya dipakai kalau diminta di ARAHAN TAMBAHAN. Sebar tanggal merata sepanjang bulan, jangan menumpuk di 1-2 hari.
 
 TEKS DI GAMBAR ("teks_gambar"):
 - 2-4 baris pendek (pisahkan dengan \\n), jadi pemancing yang bikin orang berhenti scroll. Contoh: "Niat umroh itu muncul diam-diam.\\nPas dengar adzan.\\nPas lihat foto Ka'bah."
@@ -179,7 +182,8 @@ interface PlanItem {
 }
 
 const VALID_PILARS = new Set(["storytelling", "edukasi", "promo", "testimoni", "manasik", "engagement", "behind"]);
-const VALID_TYPES = new Set(["image", "video", "carousel"]);
+// Konten video/Reels sengaja tidak dibuat dulu: hanya single post (image) & carousel.
+const VALID_TYPES = new Set(["image", "carousel"]);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 // true kalau str adalah tanggal kalender nyata (bukan mis. 2026-02-31)
