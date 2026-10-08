@@ -15331,7 +15331,7 @@ function openIgContentPlanModal() {
         monthInput.value = `${y}-${m}`;
     }
     const countInput = document.getElementById('igPlanCount');
-    if (countInput) countInput.value = ''; // kosong = isi semua tanggal kosong di bulan itu
+    if (countInput) countInput.value = '7'; // default 7 ide (selaras generate mingguan, hemat token); kosongkan = isi semua tanggal kosong
     const arahanEl = document.getElementById('igPlanArahan');
     if (arahanEl) arahanEl.value = '';
 
