@@ -4872,3 +4872,24 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .ig-dm-edit-label em { font-style: normal; font-weight: 400; }
 .ig-dm-textarea.ig-dm-imgtext-input { min-height: 64px; margin-bottom: 4px; }
 .ig-plan-edit-imgtext { min-height: 44px; margin-bottom: 6px; }
+
+/* ---- Border sel kalender IG per tipe konten (warna pastel lembut) ----
+   Sel yang belum punya ide/post tidak diberi kelas ig-type-*, jadi tampilannya tidak berubah.
+   Hari ini tetap memakai border brand; hover tetap memakai border brand. */
+:root {
+    --ig-type-image: #a8cdf2;     /* biru muda   -> single post */
+    --ig-type-carousel: #cbb8ee;  /* lavender    -> carousel */
+    --ig-type-video: #f5c4a1;     /* peach       -> video / Reels */
+}
+.ig-cal-day.ig-type-image:not(.ig-cal-today) { border: 1.5px solid var(--ig-type-image); }
+.ig-cal-day.ig-type-carousel:not(.ig-cal-today) { border: 1.5px solid var(--ig-type-carousel); }
+.ig-cal-day.ig-type-video:not(.ig-cal-today) { border: 1.5px solid var(--ig-type-video); }
+.ig-cal-day.ig-type-image:not(.ig-cal-today):hover,
+.ig-cal-day.ig-type-carousel:not(.ig-cal-today):hover,
+.ig-cal-day.ig-type-video:not(.ig-cal-today):hover { border-color: var(--brand); }
+.ig-cal-type-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font-size: 11.5px; color: var(--ink-soft); }
+.ig-cal-type-item { display: inline-flex; align-items: center; gap: 6px; }
+.ig-cal-type-swatch { width: 14px; height: 10px; border-radius: 3px; background: transparent; flex-shrink: 0; }
+.ig-cal-type-swatch.ig-type-image { border: 1.5px solid var(--ig-type-image); }
+.ig-cal-type-swatch.ig-type-carousel { border: 1.5px solid var(--ig-type-carousel); }
+.ig-cal-type-swatch.ig-type-video { border: 1.5px solid var(--ig-type-video); }

@@ -13699,6 +13699,10 @@ function renderIgCalendar() {
         if (isWeekend) cellClasses.push('ig-cal-weekend');
         if (dayPosts.length) cellClasses.push('has-posts');
         if (dayPlans.length && !dayPosts.length) cellClasses.push('has-plan-only');
+        // Warna border sel per tipe konten (image / carousel / video); sel tanpa item tidak diberi kelas.
+        // Tipe diambil dari item pertama yang tampil (post dulu, lalu ide) -- sama dengan urutan chip.
+        const tipeSel = dayPosts.length ? dayPosts[0].media_type : (dayPlans.length ? dayPlans[0].tipe_konten : null);
+        if (tipeSel) cellClasses.push('ig-type-' + (['image', 'carousel', 'video'].includes(tipeSel) ? tipeSel : 'image'));
         if (!allDayPosts.length && !allDayPlans.length && !isPast) cellClasses.push('ig-cal-gap');
 
         html += `<div class="${cellClasses.join(' ')}" data-date="${dateKey}" onclick="igOnDayClick('${dateKey}')">
