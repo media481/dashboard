@@ -4483,6 +4483,20 @@
 }
 
 
+/* Mode edit kartu rencana: sembunyikan preview yang sama persis dengan isi form
+   (judul, teks gambar, caption, label tipe) supaya yang tampil cuma satu versi. */
+.ig-dm .ig-dm-plan.is-editing .ig-dm-card-title,
+.ig-dm .ig-dm-plan.is-editing .ig-dm-imgtext,
+.ig-dm .ig-dm-plan.is-editing .ig-dm-cap,
+.ig-dm .ig-dm-plan.is-editing .ig-dm-typelabel { display: none; }
+.ig-dm .ig-dm-plan.is-editing .ig-dm-card-top { padding-bottom: 0; }
+.ig-dm .ig-dm-plan.is-editing .ig-dm-badges { margin-top: 0; }
+.ig-dm .ig-dm-plan.is-editing .ig-dm-card-main { cursor: default; }
+.ig-dm .ig-dm-edit-label { display: block; margin: 12px 0 6px; font-size: 12px; font-weight: 600; color: var(--ink); }
+.ig-dm .ig-dm-edit-label em { font-style: normal; font-weight: 400; color: var(--ink-soft); }
+.ig-dm .ig-dm-imgtext-input { min-height: 84px; }
+
+
 /* ============================================================
    Tile statistik -- warna tegas tapi lembut
    Tiap tile punya satu warna sendiri (biru -> ungu -> hijau sesuai alur

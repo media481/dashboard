@@ -14086,7 +14086,7 @@ function igDmPlanCard(pl, canEdit) {
                 ${pilOpts}
                 <input type="date" class="ig-dm-input" value="${escapeHtmlAttr(pl.tanggal)}" title="Pindah ke tanggal lain" onchange="igMovePlanToDate('${pl.id}',this.value,true)">
             </div>
-            ${igTeksGambarReady ? `<label class="ig-dm-edit-label">Teks di gambar <em>(2–4 baris pendek, jadi pemancing; caption melanjutkan)</em></label>
+            ${igTeksGambarReady ? `<label class="ig-dm-edit-label">Teks di gambar <em>(2–4 baris pendek)</em></label>
             <textarea class="ig-dm-input ig-dm-textarea ig-dm-imgtext-input" rows="3" maxlength="300" placeholder="Contoh: Niat umroh itu muncul diam-diam."
                 onblur="igPlanUpdateField('${pl.id}','teks_gambar',this.value)">${escapeHtml(imgTxt)}</textarea>
             <label class="ig-dm-edit-label">Caption</label>` : ''}
