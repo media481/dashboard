@@ -16096,99 +16096,26 @@ async function igDeletePlanItem(planId) {
 // Rasio sehat: 6 konten non-jualan : 1 Info Program.
 // Tiap ide terdiri dari: teks di gambar (pemancing pendek) + caption
 // (lanjutan dari gambar, bukan pengulangan) + 5 hashtag di akhir caption.
-// Slot yang belum punya draf dibuat sebagai KERANGKA kosong (pilar & tipe
-// sudah terisi) supaya tinggal diisi atau digenerate ulang pakai AI.
+// Semua slot dibuat sebagai KERANGKA kosong (pilar & tipe sudah terisi) -- draf
+// bawaan sudah dihapus (array `isi` dikosongkan) supaya tinggal diisi manual atau
+// digenerate pakai AI. Isi `isi` lagi kalau mau draf bawaan kembali.
 // Pilar "Bukti Sosial" memakai pilar `testimoni`, "Info Program" memakai `promo`.
 // ============================================================
 const IG_POLA_AMIRU = {
     1: { // Senin
         hari: 'Senin', pilar: 'storytelling', tipe: 'image',
         kosong: { tema: 'Storytelling — isi tema', teks: '[isi 2-4 baris pendek]' },
-        isi: [
-            {
-                tema: 'Niat umroh',
-                teks: "Niat umroh itu muncul diam-diam.\nPas dengar adzan.\nPas lihat foto Ka'bah.",
-                caption: `Pernah nggak, tiba-tiba kepikiran Tanah Suci padahal lagi biasa-biasa aja? Lagi nunggu lampu merah, lagi scroll HP, atau lagi sendirian di kamar. Dada rasanya hangat, terus muncul bisikan kecil: "Kapan ya aku ke sana?"
-
-Jangan buru-buru ditepis. Bisa jadi itu cara Allah memanggil pelan-pelan. Niat itu kayak benih: nggak perlu langsung besar, yang penting dijaga dan disiram sedikit demi sedikit.
-
-Kalau kamu lagi di fase itu, nggak apa-apa mulai dari tanya-tanya dulu. Cerita aja ke kami lewat WA, kami dengarkan dan bantu dari langkah paling awal.
-
-#NiatUmroh #UmrohBersamaAmiru #RinduTanahSuci #PanggilanIlahi #AmiruTour`
-            },
-            {
-                tema: "Pertama kali lihat Ka'bah",
-                teks: "Pertama kali lihat Ka'bah dari dekat.\nDada sesak. Mata basah.\nSemua yang dibawa dari rumah, mendadak hilang.",
-                caption: `Banyak jamaah yang bilang hal yang sama: sebelum berangkat, kepala penuh. Urusan kerja, cicilan, rencana ini itu. Tapi begitu Ka'bah terlihat di depan mata, semuanya seperti pelan-pelan luruh. Yang tersisa cuma kamu dan Allah.
-
-Ada yang diam lama. Ada yang langsung menangis tanpa sempat berpikir. Nggak ada yang salah, karena setiap orang punya caranya sendiri untuk bertemu dengan rumah-Nya.
-
-Kalau hatimu mulai kepikiran momen ini, jangan dipendam sendiri. Chat WA aja ya, kami temani dari persiapan sampai kamu sampai di sana.
-
-#Kabah #UmrohMomen #RinduMakkah #UmrohBersamaAmiru #AmiruTour`
-            },
-            {
-                tema: "Sa'i: Safa dan Marwah",
-                teks: "Tujuh kali bolak-balik.\nBukan untuk sampai.\nTapi untuk percaya.",
-                caption: `Ada jalan yang panjangnya cuma beberapa ratus meter, tapi rasanya seperti menyeberangi seluruh hidup. Di antara bukit Safa dan Marwah, langkah-langkah itu pelan, tenang, dan nggak ada yang buru-buru.
-
-Kalau kamu perhatikan lebih lama, jamaah yang sedang sa'i ini nggak sekadar berjalan. Ada yang bibirnya bergerak lirih menyebut doa. Ada yang berhenti sebentar, menarik napas, lalu melangkah lagi. Ada yang matanya basah tanpa sempat disembunyikan. Tujuh kali bolak-balik, dan di setiap putarannya ada beban kecil yang pelan-pelan diletakkan.
-
-Jalan ini mengingatkan kita pada Siti Hajar, seorang ibu yang berlari mencari air untuk anaknya, tanpa tahu apakah usahanya akan berbuah. Beliau tetap melangkah, karena percaya Allah melihat setiap usaha. Dan dari keyakinan itu, air zamzam memancar. Mungkin itu pesan paling lembut dari sa'i: ikhtiar kita tidak pernah sia-sia, meski jawabannya datang dari arah yang tidak kita duga.
-
-Pernah nggak kamu merasa lelah mengejar sesuatu, lalu diam-diam berharap ada tempat untuk mengistirahatkan hati? Kalau iya, tulis di kolom komentar doa apa yang ingin kamu titipkan di langkah-langkah ini. Kami ikut mengaminkan. 🤍
-
-Semoga Allah mudahkan setiap langkahmu, hingga suatu hari kamu berjalan di jalan ini dengan hati yang tenang dan penuh syukur. Aamiin.
-
-#Saii #SafaMarwah #UmrohBersamaAmiru #RinduTanahSuci #AmiruTour`
-            }
-        ]
+        isi: []
     },
     3: { // Rabu
         hari: 'Rabu', pilar: 'edukasi', tipe: 'carousel',
         kosong: { tema: 'Edukasi (carousel) — isi tema', teks: 'Slide 1: [isi pertanyaan pemancing]\nSlide 2-6: [isi satu poin per slide]\nSlide 7: Simpan, biar nggak panik nanti.' },
-        isi: [
-            {
-                tema: 'Bawaan yang sering ketinggalan',
-                teks: "Slide 1: Sandal jepit ketinggalan pas udah di bandara? 😅\nSlide 2-7: satu barang per slide [isi barang 1-6]\nSlide 8: Simpan dulu, cek lagi H-3 berangkat.",
-                caption: `Ini cerita yang sering kami dengar dari jamaah: koper udah ditutup rapi, eh pas di hotel baru sadar ada yang kelupaan. Sepele sih kelihatannya, tapi di Tanah Suci hal kecil kayak gini bisa bikin repot dan ganggu fokus ibadah.
-
-Makanya kami rangkum 7 barang yang paling sering ketinggalan. Geser sampai slide terakhir, ya. Beberapa mungkin nggak kepikiran sama sekali.
-
-Simpan postingan ini, cek lagi tiga hari sebelum berangkat, dan kirim ke teman atau keluarga yang berangkat bareng kamu. Lebih tenang kalau semuanya saling ingat. 🤍
-
-#PersiapanUmroh #TipsUmroh #PerlengkapanUmroh #UmrohBersamaAmiru #AmiruTour`
-            },
-            {
-                tema: 'Kesalahan umum saat umroh',
-                teks: "Slide 1: Baru sadar urutan thawaf-nya keliru pas udah sampai sana?\nSlide 2-6: satu kesalahan per slide [isi kesalahan 1-5]\nSlide 7: Simpan, biar nggak panik nanti.",
-                caption: `Jujur aja, banyak jamaah yang baru ngeh ada yang keliru setelah sampai di lokasi. Bukan karena nggak niat belajar, tapi karena suasananya ramai, emosional, dan semuanya terasa baru. Wajar kalau ada yang terlewat.
-
-Biar kamu lebih siap, kami rangkum 5 kesalahan yang paling sering terjadi, lengkap dengan cara menghindarinya. Geser pelan-pelan, ya.
-
-Simpan postingan ini, lalu kirim ke teman seberangkatan. Lebih baik belajar bareng dari sekarang daripada panik di tengah ibadah. Kalau ada yang mau ditanyakan, tulis di kolom komentar atau chat WA aja.
-
-#PanduanUmroh #ManasikUmroh #Thawaf #UmrohBersamaAmiru #AmiruTour`
-            }
-        ]
+        isi: []
     },
     5: { // Jumat
         hari: 'Jumat', pilar: 'testimoni', tipe: 'image',
         kosong: { tema: 'Testimoni jamaah — isi kutipan (wajib izin jamaah)', teks: '[isi kutipan asli jamaah]\n[nama jamaah, kota]' },
-        isi: [
-            {
-                // CONTOH FORMAT: kutipan & nama WAJIB diganti dengan testimoni asli yang sudah diizinkan jamaah
-                tema: 'Testimoni sujud pertama — GANTI dengan kutipan asli (izin jamaah)',
-                teks: '"[isi kutipan asli jamaah, mis. kesan sujud pertama di Masjidil Haram]"\n[nama jamaah, kota]',
-                caption: `Kalimat ini datang dari salah satu jamaah kami setelah pulang dari Tanah Suci. [ceritakan singkat latar belakang jamaah: awalnya ragu soal apa, lalu apa yang berubah].
-
-Cerita-cerita seperti ini yang bikin kami tetap semangat mengurus jamaah, dari urusan dokumen sampai pendampingan di lapangan. Bagi kami, ini bukan sekadar perjalanan, tapi amanah.
-
-Terima kasih sudah mempercayakan perjalanan sucimu kepada kami. 🤍
-
-#TestimoniJamaah #CeritaJamaah #UmrohBersamaAmiru #MasjidilHaram #AmiruTour`
-            }
-        ]
+        isi: []
     },
     2: { // Selasa
         hari: 'Selasa', pilar: 'manasik', tipe: 'image',
@@ -16208,44 +16135,7 @@ Terima kasih sudah mempercayakan perjalanan sucimu kepada kami. 🤍
     0: { // Minggu
         hari: 'Minggu', pilar: 'promo', tipe: 'image',
         kosong: { tema: 'Info program — isi data program', teks: 'Berangkat [bulan].\nHotel [nama].\nSeat tinggal [jumlah].' },
-        isi: [
-            {
-                tema: 'Info keberangkatan',
-                teks: 'Berangkat [bulan].\nHotel [nama].\nSeat tinggal [jumlah].',
-                caption: `Kalau kamu udah mulai ngitung-ngitung dan ngebayangin diri sendiri di sana, jangan dipendam sendiri. Keberangkatan [bulan] lagi buka, dan seat-nya terbatas.
-
-Yang kamu dapat:
-[fasilitas 1]
-[fasilitas 2]
-[pendampingan]
-
-Belum yakin atau masih banyak pertanyaan? Santai, nggak ada paksaan. Chat WA aja ya, kami jelaskan pelan-pelan sampai kamu nyaman: [nomor].
-
-#PaketUmroh #DaftarUmroh #JadwalUmroh #UmrohBersamaAmiru #AmiruTour`
-            },
-            {
-                tema: 'Mulai dari yang kecil',
-                teks: 'Nggak harus nunggu semuanya siap.\nMulai dulu dari niat.',
-                caption: `Sering kita nunda dengan alasan "nanti kalau uangnya udah cukup" atau "nanti kalau udah tenang". Padahal kesiapan itu jarang datang sekaligus. Biasanya dia tumbuh pelan-pelan, mulai dari niat yang dijaga.
-
-Sisihkan sedikit tiap bulan, rapikan niatnya, dan percaya bahwa sisanya Allah yang atur. Yang penting kamu sudah mulai melangkah.
-
-Penasaran gimana skema persiapannya? Tanya dulu aja lewat WA. Nggak ada kewajiban apa-apa, kami cuma ingin membantu kamu melihat jalannya lebih jelas.
-
-#TabunganUmroh #MenabungUmroh #NiatBaik #UmrohBersamaAmiru #AmiruTour`
-            },
-            {
-                tema: 'Umroh bersama orang tua',
-                teks: 'Bapak ibu pengin banget ke Tanah Suci.\nTapi kamu khawatir soal tenaganya?',
-                caption: `Mungkin bapak atau ibu pernah bilang, "Pengin sih, tapi nanti aja." Padahal di balik kalimat itu ada rindu yang udah lama disimpan. Dan kamu sebagai anak, di satu sisi pengin banget mewujudkan, di sisi lain khawatir: kuat nggak ya jalannya? Gimana kalau tiba-tiba sakit?
-
-Kekhawatiran itu wajar banget, dan kami paham. Makanya di setiap keberangkatan ada pembimbing yang mendampingi dari berangkat sampai pulang, supaya jamaah lansia bisa beribadah dengan lebih tenang dan nggak kewalahan.
-
-Tanya-tanya dulu lewat WA juga boleh. Ceritakan kondisi orang tuamu, nanti kita lihat bareng apa yang paling cocok.
-
-#UmrohOrangTua #UmrohLansia #HadiahTerbaikUntukOrangTua #UmrohBersamaAmiru #AmiruTour`
-            }
-        ]
+        isi: []
     }
 };
 
@@ -16313,16 +16203,14 @@ async function igApplyPolaMingguan() {
     const t = new Date();
     const hariIni = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
     const { rows, dilewati, lampau, sudahPernah } = igBuildPolaMingguan(year, month, existingDates, hariIni, igBuildRiwayat());
-    if (!rows.length) { showToast('Tidak ada tanggal pola (Sen/Rab/Jum/Min) yang tersisa di bulan ini (sudah lewat atau sudah punya ide)', 'info'); return; }
+    if (!rows.length) { showToast('Tidak ada tanggal pola yang tersisa di bulan ini (sudah lewat atau sudah punya ide)', 'info'); return; }
 
-    const berisi = rows.filter(r => r._berisi).length;
     const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-    const ket = `Pola mingguan akan menambah ${rows.length} ide di ${monthNames[month]} ${year} ` +
-        `(${berisi} berisi draf teks gambar + caption, ${rows.length - berisi} kerangka kosong).` +
+    const ket = `Pola mingguan akan menambah ${rows.length} kerangka ide di ${monthNames[month]} ${year} ` +
+        `(pilar & tipe sudah terisi, teks gambar & caption masih kosong).` +
         (dilewati ? ` ${dilewati} tanggal dilewati karena sudah ada ide.` : '') +
         (lampau ? ` ${lampau} tanggal yang sudah lewat tidak diisi.` : '') +
-        (sudahPernah ? ` ${sudahPernah} draf contoh tidak dipakai lagi karena topiknya sudah pernah dibuat (jadi kerangka kosong — isi manual atau pakai Generate dengan AI).` : '') +
-        `\n\nBagian [isi ...] di draf harus diganti data asli (program, kutipan jamaah, dll). Lanjutkan?`;
+        `\n\nLanjutkan?`;
     if (!confirm(ket)) return;
 
     const btn = document.getElementById('btnIgApplyPola');

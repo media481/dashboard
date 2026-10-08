@@ -194,13 +194,11 @@ test('igPickEvenly: n elemen tersebar tanpa duplikat', () => {
   assert.strictEqual(new Set(pick).size, 5);
   assert.strictEqual(T.igPickEvenly(arr, 99).length, 17);
 });
-test('igBuildPolaMingguan: draf contoh yang sudah pernah dipakai tidak diulang', () => {
-  const tanpa = T.igBuildPolaMingguan(2026, 9, new Set(), null);
-  const riwayat = mkRiwayat('Niat umroh', 'Pertama kali lihat Ka\'bah');
-  const dengan = T.igBuildPolaMingguan(2026, 9, new Set(), null, riwayat);
-  assert.ok(dengan.sudahPernah >= 2);
-  assert.ok(dengan.rows.filter(r => r._berisi).length < tanpa.rows.filter(r => r._berisi).length);
-  assert.ok(!dengan.rows.some(r => r.tema === 'Niat umroh'));
+test('igBuildPolaMingguan: semua slot berupa kerangka kosong (tanpa draf bawaan)', () => {
+  const r = T.igBuildPolaMingguan(2026, 9, new Set(), null);
+  assert.ok(r.rows.length > 0);
+  assert.ok(r.rows.every(x => !x._berisi && x.draft_caption === '' && x.tahap === 'ide'));
+  assert.ok(r.rows.every(x => x.pilar && x.tipe_konten));
 });
 
 // ============================================================

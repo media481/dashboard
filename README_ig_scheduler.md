@@ -298,7 +298,7 @@ Menerapkan pola konten Amiru ke Content Planner (tombol **Rencana AI** → **Pol
 
 - Maksimal 7 ide per pekan (1 per hari). Hanya single post (image) dan carousel — Rencana AI tidak membuat ide video/Reels. Rasio sehat ≈ 6 konten non-jualan : 1 Info Program.
 - Tiap ide punya **Teks di gambar** (2–4 baris pemancing) dan **caption** yang melanjutkannya, ditutup 5 hashtag. Ejaan resmi "Umroh".
-- Draf bawaan dipakai berurutan per hari: 3 Senin, 2 Rabu, 1 Jumat, 3 Minggu. Selasa, Kamis, dan Sabtu belum punya draf bawaan. Slot tanpa draf dibuat sebagai kerangka kosong (pilar & tipe sudah terisi), tinggal diisi manual atau digenerate pakai AI. Draf lengkap ada di konstanta `IG_POLA_AMIRU` di `js/app.js`.
+- Draf bawaan sudah dihapus: semua slot Senin–Minggu dibuat sebagai kerangka kosong (pilar & tipe sudah terisi), tinggal diisi manual atau digenerate pakai AI. Array `isi` di konstanta `IG_POLA_AMIRU` (`js/app.js`) sengaja dikosongkan; isi lagi kalau ingin draf bawaan kembali.
 - Tanggal yang sudah lewat atau sudah punya ide dilewati, jadi aman dijalankan di bulan berjalan.
 - Bagian `[isi ...]` di draf (program, hotel, nomor WA, **kutipan asli jamaah**) harus diganti data asli sebelum diposting. Testimoni wajib dari jamaah asli dan seizin mereka.
 - Tombol **Rencana AI → Generate dengan AI** sekarang juga mengikuti pola & gaya ini (edge function `generate-ig-content-plan` perlu di-deploy ulang).
