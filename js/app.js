@@ -1318,7 +1318,8 @@ function openIgSchedulerPage() {
         loadIgPosts(),          // renderIgCalendar() sudah dipanggil di dalam loadIgPosts()
         loadIgContentPlan()     // dulu tidak ikut dimuat -> ide kosong/basi sampai tombol Refresh ditekan
     ]);
-    dataMuat.then(() => igAutoPlanCheck()); // isi otomatis ide 1 pekan (Minggu-Sabtu) kalau masih ada tanggal kosong
+    // Generate otomatis per pekan DINONAKTIFKAN: ide hanya dibuat saat tombol Generate / Isi dari Pola diklik.
+    void dataMuat;
     requestAnimationFrame(igFitCalendarChips); // halaman baru tampil: ukur ulang chip kalender
     if (IG_AUTOPUBLISH_ENABLED) {
         loadIgAccounts();
@@ -15335,8 +15336,6 @@ function openIgContentPlanModal() {
     const arahanEl = document.getElementById('igPlanArahan');
     if (arahanEl) arahanEl.value = '';
 
-    const autoToggle = document.getElementById('igAutoPlanToggle');
-    if (autoToggle) autoToggle.checked = igAutoPlanEnabled();
     renderIgPlanPolaStrip();
     showIgPlanGenerateForm();
     modal.classList.add('open');
@@ -15775,15 +15774,8 @@ const IG_AUTO_PLAN_KEY = 'igAutoPlanEnabled';   // '0' = dimatikan (default akti
 const IG_AUTO_PLAN_FAIL_KEY = 'igAutoPlanFailAt'; // waktu gagal terakhir -> jeda 1 jam sebelum coba lagi
 const IG_AUTO_PLAN_LOCK_KEY = 'igAutoPlanLockAt'; // kunci antar-tab (kedaluwarsa 10 menit)
 
-function igAutoPlanEnabled() {
-    try { return localStorage.getItem(IG_AUTO_PLAN_KEY) !== '0'; } catch (e) { return true; }
-}
-
-function igSetAutoPlan(on) {
-    try { localStorage.setItem(IG_AUTO_PLAN_KEY, on ? '1' : '0'); } catch (e) {}
-    showToast(on ? 'Generate otomatis 1 pekan (Minggu-Sabtu) diaktifkan' : 'Generate otomatis dimatikan', 'info');
-    if (on) igAutoPlanCheck();
-}
+// Generate otomatis DINONAKTIFKAN permanen (hanya jalan saat tombol Generate diklik).
+function igAutoPlanEnabled() { return false; }
 
 // Rentang 1 pekan (Minggu s/d Sabtu) yang memuat tanggal `basis`.
 function igPekanRange(basis) {

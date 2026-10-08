@@ -325,7 +325,9 @@ Tombol **Rencana AI → Generate dengan AI** sekarang langsung mengisi kalender 
 - **Wajib deploy ulang** edge function: `supabase functions deploy generate-ig-content-plan --no-verify-jwt`.
   Kalau belum, dashboard menampilkan pesan "belum di-deploy ulang ke versi terbaru".
 
-## Generate Otomatis per Pekan (maks. 7 ide)
+## Generate Otomatis per Pekan (maks. 7 ide) — DINONAKTIFKAN
+
+> **Status: nonaktif.** Dashboard tidak lagi membuat ide otomatis saat IG Scheduler dibuka, dan checkbox "Isi otomatis 1 pekan" dihapus dari modal Rencana AI. Ide hanya dibuat saat tombol **Generate dengan AI** atau **Isi dari Pola (tanpa AI)** diklik. Bagian di bawah dipertahankan sebagai dokumentasi perilaku lama (`igAutoPlanCheck` masih ada di kode tapi tidak dipanggil).
 
 Setiap menu **IG Scheduler** dibuka, dashboard memeriksa pekan berjalan (Minggu–Sabtu) dan mengisi otomatis slot pola yang masih kosong (`igAutoPlanCheck`):
 
