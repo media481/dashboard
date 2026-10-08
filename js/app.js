@@ -14743,11 +14743,7 @@ async function generateIgCaptionAI() {
         const response = await fetch(IG_CAPTION_FUNCTION_URL, {
             method: 'POST',
             signal: ctrl.signal,
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
-            },
+            headers: await igAiAuthHeaders(),
             body: JSON.stringify({ userMsg: raw, tujuan, mediaType, hindari })
         });
         if (!response.ok) {
@@ -15359,13 +15355,17 @@ function showIgPlanGenerateForm() {
     if (resultWrap) resultWrap.style.display = 'none';
 }
 
-// ---- Susun ringkasan program aktif/berangkat di bulan target sebagai konteks AI ----
-// Query langsung ke Supabase (bukan pakai cache dataUmroh) supaya tetap akurat
-// walau tab dashboard utama belum pernah dibuka di sesi ini.
+// ---- Susun ringkasan program aktif sebagai konteks AI ----
+// Jendela waktu: dari awal bulan target sampai akhir 2 bulan setelahnya (3 bulan), dan program yang sudah
+// berangkat (sebelum hari ini) dibuang -- konten promo harus menawarkan keberangkatan yang masih bisa didaftar,
+// bukan hanya yang berangkat di bulan yang sama dengan tanggal posting. Tiap program membawa SISA SEAT nyata
+// (kuota_pax dikurangi jamaah aktif non-batal) supaya AI tidak lagi menulis placeholder [jumlah].
+// Query langsung ke Supabase (bukan pakai cache dataUmroh/kbJamaahList) supaya tetap akurat walau tab
+// dashboard utama belum pernah dibuka di sesi ini.
 async function buildIgPlanProgramContext(year, month) {
     try {
         const { data, error } = await supabaseClient.from('programs')
-            .select('nama, tgl, durasi, harga_quint, is_active, admin_data_lengkap')
+            .select('id, nama, tgl, durasi, harga_quint, is_active, admin_data_lengkap, kuota_pax')
             .eq('is_active', true);
         if (error) throw error;
 
@@ -15375,21 +15375,47 @@ async function buildIgPlanProgramContext(year, month) {
         // sebelum bisa dipakai, kalau tidak p.harga_quad selalu undefined.
         const unpacked = (data || []).map(p => unpackProgramAdminData(p));
 
-        const relevant = unpacked.filter(p => {
-            if (!p.tgl) return false;
-            const d = parseDateFromString(p.tgl);
-            return d && d.getFullYear() === year && d.getMonth() === month;
-        });
+        const awalJendela = new Date(year, month, 1);
+        const akhirJendela = new Date(year, month + 3, 0, 23, 59, 59); // akhir bulan ke-3
+        const hariIni = new Date(); hariIni.setHours(0, 0, 0, 0);
+
+        const relevant = unpacked
+            .map(p => ({ p, d: p.tgl ? parseDateFromString(p.tgl) : null }))
+            .filter(x => x.d && !isNaN(x.d) && x.d >= awalJendela && x.d <= akhirJendela && x.d >= hariIni)
+            .sort((a, b) => a.d - b.d);
 
         if (!relevant.length) return '';
 
-        return relevant.map(p => {
+        // Sisa seat: hitung dari kb_jamaah (aktif, non-batal). Kalau query gagal, info seat dilewati saja.
+        const terisiPerProgram = {};
+        let seatOk = false;
+        try {
+            const { data: jam, error: jErr } = await supabaseClient.from('kb_jamaah')
+                .select('program_id, status')
+                .in('program_id', relevant.map(x => x.p.id))
+                .eq('diarsipkan', false);
+            if (jErr) throw jErr;
+            (jam || []).forEach(j => {
+                if (j.status === 'batal') return;
+                terisiPerProgram[j.program_id] = (terisiPerProgram[j.program_id] || 0) + 1;
+            });
+            seatOk = true;
+        } catch (seatErr) {
+            console.warn('Hitung sisa seat untuk konteks AI gagal:', seatErr);
+        }
+
+        return relevant.map(({ p }) => {
             const hargaParts = [];
             if (p.harga_quint) hargaParts.push(`Quint ${p.harga_quint}`);
             if (p.harga_quad) hargaParts.push(`Quad ${p.harga_quad}`);
             if (p.harga_triple) hargaParts.push(`Triple ${p.harga_triple}`);
             if (p.harga_double) hargaParts.push(`Double ${p.harga_double}`);
-            return `- ${p.nama} | Berangkat: ${p.tgl}${p.durasi ? ` | Durasi: ${p.durasi}` : ''}${hargaParts.length ? ` | Harga: ${hargaParts.join(', ')}` : ''}`;
+            const kuota = p.kuota_pax || 45;
+            const terisi = terisiPerProgram[p.id] || 0;
+            const seatInfo = seatOk
+                ? ` | Sisa seat: ${Math.max(0, kuota - terisi)} dari ${kuota}`
+                : '';
+            return `- ${p.nama} | Berangkat: ${p.tgl}${p.durasi ? ` | Durasi: ${p.durasi}` : ''}${hargaParts.length ? ` | Harga: ${hargaParts.join(', ')}` : ''}${seatInfo}`;
         }).join('\n');
     } catch (err) {
         console.error('buildIgPlanProgramContext error:', err);
@@ -15505,14 +15531,22 @@ function igPickEvenly(arr, n) {
 const IG_PLAN_BATCH = 6;    // jumlah slot per panggilan AI (batch kecil = tidak timeout, hasil tersimpan bertahap)
 const IG_PLAN_MAX_PASS = 3; // total putaran (1 putaran awal + 2 percobaan ulang untuk slot yang ditolak karena duplikat)
 
+// Header untuk edge function AI IG. Function memverifikasi token login (bukan anon key), jadi
+// yang dikirim adalah access_token sesi dashboard yang sedang aktif.
+async function igAiAuthHeaders() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session?.access_token) throw new Error('Sesi login berakhir, silakan login ulang');
+    return {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + session.access_token
+    };
+}
+
 async function igCallPlanFunction(payload) {
     const response = await fetch(IG_CONTENT_PLAN_FUNCTION_URL, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
-        },
+        headers: await igAiAuthHeaders(),
         body: JSON.stringify(payload)
     });
     if (!response.ok) {
@@ -15521,7 +15555,7 @@ async function igCallPlanFunction(payload) {
         throw new Error(detail || 'Gagal memanggil API (status ' + response.status + ')');
     }
     const data = await response.json();
-    if (!data || data.versi !== 2) {
+    if (!data || !(data.versi >= 3)) {
         throw new Error('Edge function generate-ig-content-plan belum di-deploy ulang ke versi terbaru.');
     }
     return data;
@@ -15746,6 +15780,12 @@ async function igAutoPlanCheck() {
         // Server AI sibuk (503) bersifat sementara: jeda coba lagi cukup 10 menit, bukan 1 jam.
         if (errMsg) localStorage.setItem(IG_AUTO_PLAN_FAIL_KEY, String(Date.now() - (sibuk ? 50 * 60 * 1000 : 0)));
     } catch (e) {}
+
+    // Tanpa error tapi masih ada slot sisa (hasil AI terus ditolak karena mirip konten lama): beri jeda 30 menit
+    // supaya setiap membuka IG Scheduler tidak memicu panggilan AI berulang yang boros token.
+    if (!errMsg && sisa > 0) {
+        try { localStorage.setItem(IG_AUTO_PLAN_FAIL_KEY, String(Date.now() - 30 * 60 * 1000)); } catch (e) {}
+    }
 
     if (errMsg && sibuk) showToast(`Server AI sedang sibuk${berhasil ? ` (${berhasil} ide sudah tersimpan)` : ''}. Akan dicoba lagi otomatis nanti.`, 'info');
     else if (errMsg) showToast(`Generate otomatis berhenti (${berhasil} ide tersimpan): ${errMsg}`, 'error');

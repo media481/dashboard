@@ -28,15 +28,18 @@
 //                                // slot tanggal yang HARUS diisi (1 ide per slot). Kalau ada, jumlah ide = jumlah slot,
 //                                // tanggal/pilar/tipe_konten dipaksa mengikuti slot (tanggal lain dibuang).
 //   }
-//   Response: { items: [{ tanggal, tema, tipe_konten, pilar, teks_gambar, draft_caption }, ...], versi: 2 }
-//   (versi: 2 = function ini sudah mengenali slots & riwayatTema; frontend memakainya untuk mendeteksi
-//    function lama yang belum di-deploy ulang)
+//   Header: Authorization: Bearer <access_token sesi login dashboard> (admin/user). Anon key saja DITOLAK (401).
+//   Response: { items: [{ tanggal, tema, tipe_konten, pilar, teks_gambar, draft_caption }, ...], versi: 3 }
+//   (versi: 3 = function ini memverifikasi token login + konteks program berisi sisa seat; frontend memakainya
+//    untuk mendeteksi function lama yang belum di-deploy ulang)
 //   (tanggal dijamin valid & di dalam tanggalMulai..tanggalAkhir, jumlah item <= jumlahPost,
 //    pilar salah satu dari storytelling|edukasi|promo|testimoni|manasik|engagement|behind,
 //    teks_gambar = teks pemancing 2-4 baris untuk ditaruh di gambar; caption melanjutkannya)
 //
 // Deploy:
 //   supabase functions deploy generate-ig-content-plan --no-verify-jwt
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Helper Gemini (fallback multi-key) digabung langsung di sini, bukan import dari
 // "../_shared/gemini.ts", supaya file ini berdiri sendiri dan bisa dideploy lewat
@@ -125,6 +128,36 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Hanya akun dashboard ber-role admin/user yang boleh memakai function ini. Function di-deploy dengan
+// --no-verify-jwt (anon key lolos gateway), jadi token pemanggil WAJIB diverifikasi di sini: anon key
+// saja (publik, tertanam di JS) tidak cukup, sehingga kuota Gemini tidak bisa dihabiskan orang luar.
+// Pola sama dengan admin-create-user (cek token ke Supabase Auth + role ke dashboard_profiles).
+async function requireStaff(req: Request): Promise<Response | null> {
+  const deny = (msg: string, status: number) =>
+    new Response(JSON.stringify({ error: msg }), {
+      status,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    });
+  const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!token) return deny("Harus login dulu (token tidak ada)", 401);
+
+  const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
+    auth: { persistSession: false },
+  });
+  const { data: userRes, error: userErr } = await admin.auth.getUser(token);
+  if (userErr || !userRes?.user) return deny("Sesi login tidak valid atau sudah berakhir, silakan login ulang", 401);
+
+  const { data: profile } = await admin
+    .from("dashboard_profiles")
+    .select("dashboard_role")
+    .eq("id", userRes.user.id)
+    .single();
+  if (!profile || !["admin", "user"].includes(profile.dashboard_role)) {
+    return deny("Akun Anda tidak punya izin memakai fitur AI ini", 403);
+  }
+  return null;
+}
+
 const GEMINI_MODEL = "gemini-3.5-flash";
 
 const CONTENT_PLAN_SYSTEM_PROMPT = `Kamu adalah social media strategist & copywriter untuk biro umroh "Amiru Tour". Tugasmu menyusun RENCANA KONTEN INSTAGRAM 1 BULAN PENUH dalam Bahasa Indonesia, berupa daftar ide post. Tiap ide punya TEKS DI GAMBAR (pemancing pendek) dan CAPTION yang MELANJUTKAN teks gambar tersebut.
@@ -169,6 +202,8 @@ CAPTION ("draft_caption") — GAYA BAHASA:
 
 DATA & KEJUJURAN:
 - Untuk info program: sebut tanggal/harga PERSIS seperti di KONTEKS PROGRAM — JANGAN mengarang angka, tanggal, nama hotel, atau fasilitas yang tidak ada di konteks. Kalau datanya tidak ada, tulis placeholder seperti [bulan], [hotel], [nomor WA].
+- KONTEKS PROGRAM memuat keberangkatan bulan ini sampai ±2 bulan ke depan. Untuk konten info program/promo, utamakan keberangkatan yang MASIH JAUH dari tanggal posting (orang mendaftar jauh hari); jangan menawarkan program yang tanggal berangkatnya sudah lewat atau terlalu dekat dengan tanggal posting.
+- "Sisa seat" di konteks adalah angka nyata: sebut persis kalau dipakai. JANGAN menulis "seat tinggal sedikit"/"hampir penuh" kecuali sisa seat <= 10; kalau sudah penuh (sisa 0), jangan tawarkan program itu.
 - Untuk testimoni/bukti sosial: JANGAN mengarang kutipan atau nama jamaah. Tulis placeholder "[isi kutipan asli jamaah]" dan "[nama jamaah, kota]" di teks_gambar, dan beri catatan di tema bahwa kutipan asli & izin jamaah wajib diisi sebelum diposting.
 - Kalau KONTEKS PROGRAM kosong/tidak ada program aktif, tetap buat rencana penuh tapi kurangi porsi info program dan ganti dengan ajakan umum (tanya-tanya lewat WA, menabung niat).`;
 
@@ -210,6 +245,9 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  const authFail = await requireStaff(req);
+  if (authFail) return authFail;
+
   try {
     const body = await req.json();
     const { bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir, konteksProgram, arahan, ideSudahAda, riwayatTema, slots } = body || {};
@@ -237,8 +275,8 @@ Deno.serve(async (req: Request) => {
 
     const userMsg = `Susun rencana konten Instagram untuk bulan ${bulanLabel} (rentang tanggal ${tanggalMulai} s/d ${tanggalAkhir}), sebanyak TEPAT ${jumlah} ide post.
 
-KONTEKS PROGRAM AKTIF/BERANGKAT BULAN INI:
-${konteksProgram && String(konteksProgram).trim() ? konteksProgram : '(tidak ada data program spesifik untuk bulan ini)'}
+KONTEKS PROGRAM (keberangkatan bulan ini s/d ±2 bulan ke depan):
+${konteksProgram && String(konteksProgram).trim() ? konteksProgram : '(tidak ada data program spesifik untuk periode ini)'}
 ${arahan && String(arahan).trim() ? `\nARAHAN TAMBAHAN DARI ADMIN:\n${arahan}` : ''}
 ${slotList.length ? `\nDAFTAR SLOT TANGGAL (isi TEPAT 1 ide per slot, tanggal persis sama, ikuti pilar & tipe_konten-nya):\n${slotList.map((s) => `- ${s.tanggal}${s.hari ? ` (${s.hari})` : ''} | pilar: ${s.pilar} | tipe_konten: ${s.tipe_konten}`).join('\n')}` : ''}
 ${ideSudahAda && String(ideSudahAda).trim() ? `\nIDE YANG SUDAH ADA BULAN INI (jangan diulang):\n${String(ideSudahAda).slice(0, 4000)}` : ''}
@@ -311,7 +349,7 @@ Ingat: balas HANYA dengan JSON array sesuai format yang sudah dijelaskan, tidak 
       throw new Error("Semua item hasil AI tidak valid (tanggal di luar rentang bulan atau data kurang lengkap). Coba generate ulang.");
     }
 
-    return new Response(JSON.stringify({ items: cleaned, versi: 2 }), {
+    return new Response(JSON.stringify({ items: cleaned, versi: 3 }), {
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   } catch (err) {

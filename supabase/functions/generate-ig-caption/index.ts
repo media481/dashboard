@@ -23,6 +23,7 @@
 // File ini BERDIRI SENDIRI (helper Gemini & pasca-proses digabung di bawah), jadi bisa dideploy
 // lewat Supabase Dashboard (paste satu file) maupun CLI:
 //   supabase functions deploy generate-ig-caption --no-verify-jwt
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // ===== Helper Gemini (fallback multi-key + retry + model cadangan) =====
 // Logika sama dengan _shared/gemini.ts, digabung di sini supaya tidak bergantung
@@ -269,9 +270,38 @@ function json(body: unknown, status = 200) {
   });
 }
 
+// Hanya akun dashboard ber-role admin/user yang boleh memakai function ini. Function di-deploy dengan
+// --no-verify-jwt (anon key lolos gateway), jadi token pemanggil WAJIB diverifikasi di sini: anon key
+// saja (publik, tertanam di JS) tidak cukup, sehingga kuota Gemini tidak bisa dihabiskan orang luar.
+// Pola sama dengan admin-create-user (cek token ke Supabase Auth + role ke dashboard_profiles).
+async function requireStaff(req: Request): Promise<Response | null> {
+  const deny = (msg: string, status: number) => json({ error: msg }, status);
+  const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!token) return deny("Harus login dulu (token tidak ada)", 401);
+
+  const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
+    auth: { persistSession: false },
+  });
+  const { data: userRes, error: userErr } = await admin.auth.getUser(token);
+  if (userErr || !userRes?.user) return deny("Sesi login tidak valid atau sudah berakhir, silakan login ulang", 401);
+
+  const { data: profile } = await admin
+    .from("dashboard_profiles")
+    .select("dashboard_role")
+    .eq("id", userRes.user.id)
+    .single();
+  if (!profile || !["admin", "user"].includes(profile.dashboard_role)) {
+    return deny("Akun Anda tidak punya izin memakai fitur AI ini", 403);
+  }
+  return null;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  const authFail = await requireStaff(req);
+  if (authFail) return authFail;
 
   try {
     const body = await req.json();

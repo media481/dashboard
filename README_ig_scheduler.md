@@ -332,7 +332,7 @@ Setiap menu **IG Scheduler** dibuka, dashboard memeriksa pekan berjalan (Mingguâ
 - Kalau pekan berjalan sudah penuh, giliran pekan berikutnya. Pekan yang menyentuh 2 bulan (mis. 25â€“31 Okt, atau 29 Novâ€“5 Des) ditangani otomatis.
 - **Hanya single post (image) dan carousel.** Tidak ada ide video/Reels; edge function memaksa tipe selain `image`/`carousel` menjadi `image`. Form posting manual tetap menyediakan opsi Video/Reels.
 - Hanya akun yang boleh mengelola program/data (admin/user) yang memicu generate otomatis. Bisa dimatikan lewat checkbox di modal **Rencana AI**.
-- Kalau gagal, dicoba lagi paling cepat 1 jam kemudian (10 menit kalau penyebabnya server AI sibuk/503).
+- Kalau gagal, dicoba lagi paling cepat 1 jam kemudian (10 menit kalau penyebabnya server AI sibuk/503). Kalau tidak error tapi masih ada slot sisa (hasil AI terus mirip konten lama), jeda 30 menit sebelum dicoba lagi.
 - **Wajib deploy ulang** edge function: `supabase functions deploy generate-ig-content-plan --no-verify-jwt`.
 
 ## Generator Caption/Iklan IG: versi dioptimalkan
@@ -347,3 +347,13 @@ Setiap menu **IG Scheduler** dibuka, dashboard memeriksa pekan berjalan (Mingguâ
 
 Deploy ulang: `supabase functions deploy generate-ig-caption --no-verify-jwt`
 (Opsional untuk fungsi lain: `generate-wa-caption` tidak berubah perilakunya; retry/model cadangan di `_shared/gemini.ts` bersifat opt-in.)
+
+## Pengamanan Function AI & Konteks Program (Rencana AI)
+
+- **Function AI sekarang memverifikasi login.** `generate-ig-content-plan` dan `generate-ig-caption` menolak (401/403) panggilan yang hanya membawa anon key; yang diterima hanya `access_token` sesi dashboard milik akun ber-role `admin`/`user` (dicek ke `dashboard_profiles`, pola sama dengan `admin-create-user`). Frontend mengirim token itu lewat `igAiAuthHeaders()`. Tetap di-deploy dengan `--no-verify-jwt` (verifikasi dilakukan di dalam function).
+- **Konteks program untuk AI** (`buildIgPlanProgramContext`): bukan lagi hanya program yang berangkat di bulan target, tapi dari bulan target sampai 2 bulan setelahnya, tanpa program yang sudah lewat. Tiap baris memuat **Sisa seat** nyata (`kuota_pax` dikurangi jamaah aktif non-batal di `kb_jamaah`). Prompt diarahkan: promo mengutamakan keberangkatan yang masih jauh, dan klaim "seat tinggal sedikit" hanya boleh kalau sisa <= 10.
+- Response function naik ke `versi: 3`; frontend menolak function lama dengan pesan "belum di-deploy ulang".
+- **Wajib deploy ulang KEDUA function** (urutan bebas, tapi deploy function dulu baru frontend):
+  `supabase functions deploy generate-ig-content-plan --no-verify-jwt`
+  `supabase functions deploy generate-ig-caption --no-verify-jwt`
+  Function butuh secret `SUPABASE_URL` & `SUPABASE_SERVICE_ROLE_KEY` (otomatis tersedia di Supabase).
