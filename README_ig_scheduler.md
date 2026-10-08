@@ -319,6 +319,7 @@ Tombol **Rencana AI → Generate dengan AI** sekarang langsung mengisi kalender 
   sebagai `riwayatTema`. Hasil AI yang topiknya masih mirip konten lama dibuang di sisi dashboard (`igIsDuplicateIdea`),
   lalu slot itu dicoba ulang (maks. 3 putaran). Slot yang tetap gagal dibiarkan kosong — klik Generate lagi untuk melengkapi.
 - Generate berjalan per batch 6 slot (`IG_PLAN_BATCH`) dan disimpan per batch, jadi kalau terputus di tengah, hasil yang sudah jadi tidak hilang. Dengan pola 7 hari, 1 pekan penuh = 2 panggilan (6 + 1) dan 1 bulan ≈ 30 ide.
+- **Pembatasan "Jumlah ide" menjaga keseimbangan pola**: kalau jumlah lebih kecil dari slot kosong, slot dipilih tersebar sepanjang bulan sambil memeratakan hari (Sen–Min), jadi campuran image/carousel/Info Program tetap utuh (`igPickEvenly`). Sebelumnya bisa jatuh di hari yang sama terus (mis. 7 image, 0 carousel).
 - **Pola Mingguan Amiru** (tanpa AI) juga tidak lagi memakai ulang draf contoh yang topiknya sudah pernah dibuat
   (slotnya jadi kerangka kosong).
 - **Wajib deploy ulang** edge function: `supabase functions deploy generate-ig-content-plan --no-verify-jwt`.

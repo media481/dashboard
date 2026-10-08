@@ -15568,12 +15568,30 @@ function igBuildSlotBulan(year, month, tanggalTerisi, mulaiDari) {
     return slots;
 }
 
-// Ambil n elemen yang tersebar merata dari arr (dipakai kalau user membatasi jumlah ide)
+// Ambil n slot dari arr (dipakai kalau user membatasi jumlah ide), tersebar merata sepanjang bulan
+// DAN menjaga keseimbangan Pola Amiru: tiap pick dekat posisi idealnya, tapi hari yang sudah sering terpilih
+// dikenai penalti sehingga Sen..Min bergantian rata (carousel Rab/Kam & Info Program Min ikut terpilih).
+// Dulu hanya merata per indeks sehingga bisa jatuh di hari yang itu-itu saja (mis. 7 ide = 7 image, 0 carousel).
 function igPickEvenly(arr, n) {
     if (n >= arr.length) return arr.slice();
+    const dow = s => { const [y, m, d] = s.tanggal.split('-').map(Number); return new Date(y, m - 1, d).getDay(); };
+    const hari = arr.map(dow);
+    const dipakai = new Set();
+    const pakaiHari = {};
     const out = [];
-    for (let i = 0; i < n; i++) out.push(arr[Math.floor((i + 0.5) * arr.length / n)]);
-    return out;
+    for (let i = 0; i < n; i++) {
+        const ideal = (i + 0.5) * arr.length / n - 0.5;
+        let best = -1, bestSkor = Infinity;
+        for (let j = 0; j < arr.length; j++) {
+            if (dipakai.has(j)) continue;
+            const skor = Math.abs(j - ideal) + (pakaiHari[hari[j]] || 0) * 10;
+            if (skor < bestSkor) { bestSkor = skor; best = j; }
+        }
+        dipakai.add(best);
+        pakaiHari[hari[best]] = (pakaiHari[hari[best]] || 0) + 1;
+        out.push(arr[best]);
+    }
+    return out.sort((x, y) => x.tanggal.localeCompare(y.tanggal));
 }
 
 const IG_PLAN_BATCH = 6;    // jumlah slot per panggilan AI (batch kecil = tidak timeout, hasil tersimpan bertahap)
