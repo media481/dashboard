@@ -4497,6 +4497,17 @@
 .ig-dm .ig-dm-imgtext-input { min-height: 84px; }
 
 
+/* Mode edit: badge tahap (kiri) dan aksi Lewati / Hapus / Jadikan Post (kanan) satu baris,
+   form di baris berikutnya. */
+.ig-dm .ig-dm-plan.is-editing { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.ig-dm .ig-dm-plan.is-editing .ig-dm-card-top { grid-column: 1; grid-row: 1; padding: 12px 0 12px 20px; }
+.ig-dm .ig-dm-plan.is-editing .ig-dm-plan-actions { grid-column: 2; grid-row: 1; width: auto; padding: 10px 12px 10px 0; gap: 4px; }
+.ig-dm .ig-dm-plan.is-editing .ig-dm-edit { grid-column: 1 / -1; grid-row: 2; }
+@media (max-width: 600px) {
+    .ig-dm .ig-dm-plan.is-editing .ig-dm-plan-actions { flex-direction: row; justify-content: flex-end; }
+}
+
+
 /* ============================================================
    Tile statistik -- warna tegas tapi lembut
    Tiap tile punya satu warna sendiri (biru -> ungu -> hijau sesuai alur

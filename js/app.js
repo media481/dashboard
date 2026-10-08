@@ -14068,8 +14068,6 @@ function igDmPlanCard(pl, canEdit) {
             `<button type="button" class="${k === stage ? 'active' : ''}" onclick="igPlanSetStage('${pl.id}','${k}')">${v}</button>`).join('')}</div>` : '';
     const actions = canEdit ? `<div class="ig-dm-card-actions ig-dm-plan-actions">
             <div class="ig-dm-icons">
-                <button type="button" class="ig-dm-iconbtn" title="Salin caption" onclick="igCopyPlanCaption('${pl.id}')">Salin</button>
-                ${igTeksGambarReady && imgTxt ? `<button type="button" class="ig-dm-iconbtn" title="Salin teks untuk gambar" onclick="igCopyPlanImageText('${pl.id}')">Teks gambar</button>` : ''}
                 <button type="button" class="ig-dm-iconbtn" title="Lewati (sembunyikan dari kalender)" onclick="igSkipPlanItem('${pl.id}')">Lewati</button>
                 <button type="button" class="ig-dm-iconbtn ig-dm-danger" title="Hapus" onclick="igArmDelete(this,'${pl.id}')">Hapus</button>
             </div>
@@ -14228,18 +14226,6 @@ function igBindDayModalKeys() {
 async function igPlanSetStage(planId, stage) {
     await igPlanUpdateField(planId, 'tahap', stage);
     if (igDayModalDateKey) igOpenDayModal(igDayModalDateKey);
-}
-async function igCopyPlanCaption(planId) {
-    const pl = igContentPlan.find(p => p.id === planId);
-    if (!pl || !pl.draft_caption) { showToast('Caption masih kosong', 'info'); return; }
-    try { await navigator.clipboard.writeText(pl.draft_caption); showToast('Caption disalin', 'success'); }
-    catch (err) { showToast('Gagal menyalin caption', 'error'); }
-}
-async function igCopyPlanImageText(planId) {
-    const pl = igContentPlan.find(p => p.id === planId);
-    if (!pl || !pl.teks_gambar) { showToast('Teks gambar masih kosong', 'info'); return; }
-    try { await navigator.clipboard.writeText(pl.teks_gambar); showToast('Teks gambar disalin', 'success'); }
-    catch (err) { showToast('Gagal menyalin teks gambar', 'error'); }
 }
 // Hapus 2 langkah: klik pertama meminta konfirmasi (3 detik), klik kedua menghapus
 function igArmDelete(btn, planId) {
@@ -16391,7 +16377,6 @@ window.igPickQuickTipe = igPickQuickTipe;
 window.igPickQuickPilar = igPickQuickPilar;
 window.igFillQuickIdea = igFillQuickIdea;
 window.igPlanSetStage = igPlanSetStage;
-window.igCopyPlanCaption = igCopyPlanCaption;
 window.igArmDelete = igArmDelete;
 window.igNewIdea = igNewIdea;
 window.igSetCalFilter = igSetCalFilter;
@@ -16420,7 +16405,6 @@ window.igDeletePlanItem = igDeletePlanItem;
 window.igPlanUpdateField = igPlanUpdateField;
 window.loadIgContentPlan = loadIgContentPlan;
 window.igApplyPolaMingguan = igApplyPolaMingguan;
-window.igCopyPlanImageText = igCopyPlanImageText;
 
 
 // Membungkus <select class="searchable-select"> dengan UI kustom (bisa dicari)
