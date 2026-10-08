@@ -1318,7 +1318,7 @@ function openIgSchedulerPage() {
         loadIgPosts(),          // renderIgCalendar() sudah dipanggil di dalam loadIgPosts()
         loadIgContentPlan()     // dulu tidak ikut dimuat -> ide kosong/basi sampai tombol Refresh ditekan
     ]);
-    dataMuat.then(() => igAutoPlanCheck()); // isi otomatis ide 2 minggu ke depan kalau masih ada tanggal kosong
+    dataMuat.then(() => igAutoPlanCheck()); // isi otomatis ide 1 pekan (Minggu-Sabtu) kalau masih ada tanggal kosong
     requestAnimationFrame(igFitCalendarChips); // halaman baru tampil: ukur ulang chip kalender
     if (IG_AUTOPUBLISH_ENABLED) {
         loadIgAccounts();
@@ -15663,14 +15663,14 @@ async function generateIgContentPlanAI() {
 }
 
 // ============================================================
-// 24e. GENERATE OTOMATIS PER 2 MINGGU
-// Tiap IG Scheduler dibuka, dashboard memeriksa jendela 14 hari ke depan (mulai hari ini). Kalau ada tanggal
-// pola (Sen/Rab/Jum/Min) yang masih kosong, ide untuk tanggal itu dibuat otomatis. Jendela yang bergeser
-// maju otomatis melewati pergantian bulan, jadi bulan berikutnya terisi bertahap tiap 2 minggu --
-// bukan sebulan penuh sekaligus (hemat token; ide jauh ke depan juga sering basi karena program berubah).
+// 24e. GENERATE OTOMATIS PER PEKAN (MINGGU - SABTU)
+// Tiap IG Scheduler dibuka, dashboard memeriksa pekan berjalan (Minggu s/d Sabtu). Kalau ada tanggal pola
+// yang masih kosong (dan belum lewat), ide untuk tanggal itu dibuat otomatis. Kalau pekan berjalan sudah
+// penuh/terlewat, giliran pekan berikutnya -- jadi yang diisi selalu SATU pekan saja, bukan sebulan penuh
+// (hemat token; ide jauh ke depan juga sering basi karena program berubah). Pekan yang menyentuh 2 bulan
+// (mis. Minggu 25 Okt - Sabtu 31 Okt, atau 29 Nov - 5 Des) ditangani otomatis.
 // Hanya admin/user yang boleh mengelola; bisa dimatikan lewat checkbox di modal Rencana AI.
 // ============================================================
-const IG_AUTO_PLAN_DAYS = 14;
 const IG_AUTO_PLAN_KEY = 'igAutoPlanEnabled';   // '0' = dimatikan (default aktif)
 const IG_AUTO_PLAN_FAIL_KEY = 'igAutoPlanFailAt'; // waktu gagal terakhir -> jeda 1 jam sebelum coba lagi
 const IG_AUTO_PLAN_LOCK_KEY = 'igAutoPlanLockAt'; // kunci antar-tab (kedaluwarsa 10 menit)
@@ -15681,8 +15681,30 @@ function igAutoPlanEnabled() {
 
 function igSetAutoPlan(on) {
     try { localStorage.setItem(IG_AUTO_PLAN_KEY, on ? '1' : '0'); } catch (e) {}
-    showToast(on ? 'Generate otomatis 2 minggu diaktifkan' : 'Generate otomatis dimatikan', 'info');
+    showToast(on ? 'Generate otomatis 1 pekan (Minggu-Sabtu) diaktifkan' : 'Generate otomatis dimatikan', 'info');
     if (on) igAutoPlanCheck();
+}
+
+// Rentang 1 pekan (Minggu s/d Sabtu) yang memuat tanggal `basis`.
+function igPekanRange(basis) {
+    const awal = new Date(basis.getFullYear(), basis.getMonth(), basis.getDate() - basis.getDay()); // getDay(): 0 = Minggu
+    const akhir = new Date(awal.getFullYear(), awal.getMonth(), awal.getDate() + 6);
+    return { awal: igLocalDateKey(awal), akhir: igLocalDateKey(akhir), tepiAwal: awal, tepiAkhir: akhir };
+}
+
+// Slot pola yang masih kosong di dalam 1 pekan, dikelompokkan per bulan (pekan bisa menyentuh 2 bulan).
+function igSlotPekanPerBulan(pekan, terisi, hariIni) {
+    const grup = [];
+    let y = pekan.tepiAwal.getFullYear(), m = pekan.tepiAwal.getMonth();
+    const yAkhir = pekan.tepiAkhir.getFullYear(), mAkhir = pekan.tepiAkhir.getMonth();
+    while (y < yAkhir || (y === yAkhir && m <= mAkhir)) {
+        const slots = igBuildSlotBulan(y, m, terisi, hariIni)
+            .filter(s => s.tanggal >= pekan.awal && s.tanggal <= pekan.akhir);
+        if (slots.length) grup.push({ y, m, slots });
+        m++;
+        if (m > 11) { m = 0; y++; }
+    }
+    return grup;
 }
 
 async function igAutoPlanCheck() {
@@ -15694,24 +15716,21 @@ async function igAutoPlanCheck() {
 
     const t = new Date();
     const hariIni = igLocalDateKey(t);
-    const akhirJendela = igLocalDateKey(new Date(t.getFullYear(), t.getMonth(), t.getDate() + IG_AUTO_PLAN_DAYS - 1));
     const terisi = igTanggalTerisiSet();
 
-    // Jendela bisa menyentuh 2 bulan (mis. 25 Okt - 7 Nov): kelompokkan slot per bulan.
-    const grup = [];
-    const tepi = new Date(t.getFullYear(), t.getMonth(), 1);
-    while (igLocalDateKey(tepi) <= akhirJendela) {
-        const y = tepi.getFullYear(), m = tepi.getMonth();
-        const slots = igBuildSlotBulan(y, m, terisi, hariIni).filter(s => s.tanggal <= akhirJendela);
-        if (slots.length) grup.push({ y, m, slots });
-        tepi.setMonth(tepi.getMonth() + 1);
+    // Pekan berjalan dulu; kalau tidak ada slot kosong yang tersisa, pindah ke pekan berikutnya.
+    let pekan = igPekanRange(t);
+    let grup = igSlotPekanPerBulan(pekan, terisi, hariIni);
+    if (!grup.length) {
+        pekan = igPekanRange(new Date(t.getFullYear(), t.getMonth(), t.getDate() + 7));
+        grup = igSlotPekanPerBulan(pekan, terisi, hariIni);
     }
     if (!grup.length) return;
 
     const total = grup.reduce((n, g) => n + g.slots.length, 0);
     igPlanBusy = true;
     try { localStorage.setItem(IG_AUTO_PLAN_LOCK_KEY, String(Date.now())); } catch (e) {}
-    showToast(`Menyusun ${total} ide konten untuk ${IG_AUTO_PLAN_DAYS} hari ke depan...`, 'info');
+    showToast(`Menyusun ${total} ide konten untuk pekan ${pekan.awal} s/d ${pekan.akhir} (Minggu-Sabtu)...`, 'info');
 
     let berhasil = 0, errMsg = '', sisa = 0;
     for (const g of grup) {
