@@ -298,7 +298,7 @@ Menerapkan pola konten Amiru ke Content Planner (tombol **Rencana AI** → **Pol
 
 - Maksimal 7 ide per pekan (1 per hari). Hanya single post (image) dan carousel — Rencana AI tidak membuat ide video/Reels. Rasio sehat ≈ 6 konten non-jualan : 1 Info Program.
 - Tiap ide punya **Teks di gambar** (2–4 baris pemancing) dan **caption** yang melanjutkannya, ditutup 5 hashtag. Ejaan resmi "Umroh".
-- Draf yang sudah ditulis dipakai berurutan per hari (3 Senin, 2 Rabu, 1 Jumat, 3 Minggu); Selasa/Kamis/Sabtu belum punya draf (selalu kerangka kosong); slot sisanya dibuat sebagai kerangka kosong (pilar & tipe sudah terisi). Draf lengkap ada di konstanta `IG_POLA_AMIRU` di `js/app.js`.
+- Draf bawaan dipakai berurutan per hari: 3 Senin, 2 Rabu, 1 Jumat, 3 Minggu. Selasa, Kamis, dan Sabtu belum punya draf bawaan. Slot tanpa draf dibuat sebagai kerangka kosong (pilar & tipe sudah terisi), tinggal diisi manual atau digenerate pakai AI. Draf lengkap ada di konstanta `IG_POLA_AMIRU` di `js/app.js`.
 - Tanggal yang sudah lewat atau sudah punya ide dilewati, jadi aman dijalankan di bulan berjalan.
 - Bagian `[isi ...]` di draf (program, hotel, nomor WA, **kutipan asli jamaah**) harus diganti data asli sebelum diposting. Testimoni wajib dari jamaah asli dan seizin mereka.
 - Tombol **Rencana AI → Generate dengan AI** sekarang juga mengikuti pola & gaya ini (edge function `generate-ig-content-plan` perlu di-deploy ulang).
@@ -318,11 +318,22 @@ Tombol **Rencana AI → Generate dengan AI** sekarang langsung mengisi kalender 
   status termasuk "dilewati" dari `ig_content_plan`, plus baris pertama caption di `ig_posts`) dan mengirimnya ke AI
   sebagai `riwayatTema`. Hasil AI yang topiknya masih mirip konten lama dibuang di sisi dashboard (`igIsDuplicateIdea`),
   lalu slot itu dicoba ulang (maks. 3 putaran). Slot yang tetap gagal dibiarkan kosong — klik Generate lagi untuk melengkapi.
-- Generate berjalan per batch 6 slot dan disimpan per batch, jadi kalau terputus di tengah, hasil yang sudah jadi tidak hilang.
+- Generate berjalan per batch 6 slot (`IG_PLAN_BATCH`) dan disimpan per batch, jadi kalau terputus di tengah, hasil yang sudah jadi tidak hilang. Dengan pola 7 hari, 1 pekan penuh = 2 panggilan (6 + 1) dan 1 bulan ≈ 30 ide.
 - **Pola Mingguan Amiru** (tanpa AI) juga tidak lagi memakai ulang draf contoh yang topiknya sudah pernah dibuat
   (slotnya jadi kerangka kosong).
 - **Wajib deploy ulang** edge function: `supabase functions deploy generate-ig-content-plan --no-verify-jwt`.
   Kalau belum, dashboard menampilkan pesan "belum di-deploy ulang ke versi terbaru".
+
+## Generate Otomatis per Pekan (maks. 7 ide)
+
+Setiap menu **IG Scheduler** dibuka, dashboard memeriksa pekan berjalan (Minggu–Sabtu) dan mengisi otomatis slot pola yang masih kosong (`igAutoPlanCheck`):
+
+- **Maksimal 7 ide per pekan** (1 per hari). Slot yang tanggalnya sudah lewat, sudah punya ide aktif, atau sudah punya post dilewati — mis. dibuka hari Kamis, yang terisi hanya Jumat, Sabtu, dan Minggu.
+- Kalau pekan berjalan sudah penuh, giliran pekan berikutnya. Pekan yang menyentuh 2 bulan (mis. 25–31 Okt, atau 29 Nov–5 Des) ditangani otomatis.
+- **Hanya single post (image) dan carousel.** Tidak ada ide video/Reels; edge function memaksa tipe selain `image`/`carousel` menjadi `image`. Form posting manual tetap menyediakan opsi Video/Reels.
+- Hanya akun yang boleh mengelola program/data (admin/user) yang memicu generate otomatis. Bisa dimatikan lewat checkbox di modal **Rencana AI**.
+- Kalau gagal, dicoba lagi paling cepat 1 jam kemudian (10 menit kalau penyebabnya server AI sibuk/503).
+- **Wajib deploy ulang** edge function: `supabase functions deploy generate-ig-content-plan --no-verify-jwt`.
 
 ## Generator Caption/Iklan IG: versi dioptimalkan
 
