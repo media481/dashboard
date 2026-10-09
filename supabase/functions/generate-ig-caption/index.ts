@@ -18,6 +18,8 @@
 //               promo/testimoni/engagement sedang dijeda tapi tetap didukung)
 //     mediaType?: "image"|"video"|"carousel"                               (default "image")
 //     hindari?: string        // caption hasil generate sebelumnya -> AI wajib ganti sudut & pembuka
+//     konteks?: string        // konteks seri mingguan dari rencana (hari/peran, Tema Minggu, teks di gambar,
+//                             // tema hari sebelumnya & sesudahnya) -> caption menyambung, bukan berdiri sendiri
 //   }
 //   Response: { text: string, warnings: string[], versi: 2 }
 //     text     = caption final (sudah dirapikan: ejaan "Umroh", 5 hashtag, <= 2200 karakter)
@@ -326,9 +328,13 @@ Deno.serve(async (req: Request) => {
     const tujuan: Tujuan = Object.hasOwn(TUJUAN_GUIDE, String(body?.tujuan)) ? body.tujuan : "promo";
     const mediaType: MediaType = Object.hasOwn(MEDIA_GUIDE, String(body?.mediaType)) ? body.mediaType : "image";
     const hindari = typeof body?.hindari === "string" ? body.hindari.trim().slice(0, 1500) : "";
+    const konteks = typeof body?.konteks === "string" ? body.konteks.trim().slice(0, 1500) : "";
 
     // Frontend lama mengirim awalan "KONSEP/IDE:" sendiri; yang baru mengirim teks mentah.
     let prompt = /^KONSEP\/IDE:/i.test(userMsg) ? userMsg : `KONSEP/IDE:\n${userMsg}`;
+    if (konteks) {
+      prompt += `\n\nKONTEKS SERI MINGGUAN (caption harus menyambung dengan ini; jangan menyalin teks di gambar, jangan mengarang isi hari lain):\n${konteks}`;
+    }
     if (hindari) {
       prompt += `\n\nCAPTION SEBELUMNYA (JANGAN diulang — buat hook, sudut pandang, dan kalimat pembuka yang benar-benar berbeda):\n${hindari}`;
     }
@@ -352,7 +358,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const text = normalizeCaption(raw);
-    const warnings = findUnknownNumbers(userMsg, text).map(
+    const warnings = findUnknownNumbers(`${userMsg}\n${konteks}`, text).map(
       (n) => `Angka "${n}" ada di caption tapi tidak ada di konsep — cek sebelum posting`,
     );
 

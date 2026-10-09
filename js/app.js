@@ -14705,6 +14705,31 @@ function undoIgCaptionAI() {
     showToast('Caption dikembalikan', 'info');
 }
 
+// Konteks seri mingguan untuk caption AI: hari & peran, Tema Minggu, teks di gambar (tanpa baris label), dan tema
+// hari sebelumnya/sesudahnya di rencana yang sama. Kosong kalau modal tidak dibuka dari "Jadikan Post".
+function igBuildKonteksSeri(planId) {
+    const plan = planId ? igContentPlan.find(pl => pl.id === planId) : null;
+    if (!plan || !plan.tanggal) return '';
+    const [y, m, d] = plan.tanggal.split('-').map(Number);
+    const pola = IG_POLA_AMIRU[new Date(y, m - 1, d).getDay()];
+    const tetangga = selisih => {
+        const key = igLocalDateKey(new Date(y, m - 1, d + selisih));
+        const t = igContentPlan.find(pl => pl.tanggal === key && pl.status !== 'dilewati' && pl.id !== plan.id
+            && (!plan.tema_minggu || pl.tema_minggu === plan.tema_minggu));
+        return t ? t.tema : '';
+    };
+    const teksGambar = String(plan.teks_gambar || '').split('\n').filter(l => !/^Label gambar:/i.test(l)).join('\n').trim();
+    const baris = [];
+    if (pola) baris.push(`Hari: ${pola.hari} (${pola.urutan}/7), peran: ${pola.peran}`);
+    if (plan.tema_minggu) baris.push(`Tema Minggu: ${plan.tema_minggu}`);
+    if (plan.tema) baris.push(`Judul ide: ${plan.tema}`);
+    if (teksGambar) baris.push(`Teks di gambar (caption adalah lanjutannya):\n${teksGambar}`);
+    const kemarin = tetangga(-1), besok = tetangga(1);
+    if (kemarin) baris.push(`Konten kemarin: ${kemarin}`);
+    if (besok) baris.push(`Konten besok (untuk teaser penutup): ${besok}`);
+    return baris.join('\n');
+}
+
 async function generateIgCaptionAI() {
     const btn = document.getElementById('btnGenIgCaptionAI');
     const btnText = document.getElementById('btnGenIgCaptionAIText');
@@ -14725,6 +14750,7 @@ async function generateIgCaptionAI() {
     // Hanya kirim "hindari" kalau caption saat ini MASIH hasil AI sebelumnya (belum diedit manual);
     // kalau admin sudah mengubahnya, jangan paksa AI menjauhi tulisan admin.
     const hindari = (igLastAICaption && captionEl.value.trim() === igLastAICaption) ? igLastAICaption : '';
+    const konteks = igBuildKonteksSeri(igActivePlanId);
 
     if (btn) btn.disabled = true;
     if (btnText) btnText.textContent = 'Menyusun...';
@@ -14737,7 +14763,7 @@ async function generateIgCaptionAI() {
             method: 'POST',
             signal: ctrl.signal,
             headers: await igAiAuthHeaders(),
-            body: JSON.stringify({ userMsg: raw, tujuan, mediaType, hindari })
+            body: JSON.stringify({ userMsg: raw, tujuan, mediaType, hindari, konteks })
         });
         if (!response.ok) {
             let detail = '';

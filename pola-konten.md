@@ -236,7 +236,7 @@ Yang berubah:
 - Kolom baru `ig_content_plan.tema_minggu` (`sql/tambah_ig_content_plan_tema_minggu.sql`, opsional).
 - Anti-duplikat tetap berjalan (riwayat rencana + caption post, plus daftar topik awal di bagian 6). Kata tema minggu diabaikan saat membandingkan, supaya ide satu pekan tidak saling dianggap kembar.
 - Caption dirapikan di server: ejaan "Umroh", tepat 5 hashtag (`#UmrohBersamaAmiru` dan `#AmiruTour` selalu ada), maksimal 2200 karakter.
-- Generator caption manual (modal post) punya tujuan **Manasik** dan **Kontemplasi**; tombol "Jadikan Post" memilih tujuan sesuai pilar rencana.
+- Generator caption manual (modal post) punya tujuan **Manasik** dan **Kontemplasi**; tombol "Jadikan Post" memilih tujuan sesuai pilar rencana dan mengirim konteks seri (hari/peran, Tema Minggu, teks di gambar, tema kemarin & besok) supaya caption yang digenerate ulang tetap menyambung.
 - Bukti sosial, engagement, dan info program tetap **dijeda**. Info program hanya muncul bila **Arahan tambahan** memintanya.
 
 Deploy ulang (urutan bebas): `supabase functions deploy generate-ig-content-plan --no-verify-jwt` dan `supabase functions deploy generate-ig-caption --no-verify-jwt`. Frontend menolak function lama (butuh `versi >= 4`), jadi lupa deploy akan muncul sebagai pesan error yang jelas.
