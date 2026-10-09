@@ -17675,4 +17675,121 @@ window.igApplyPolaMingguan = igApplyPolaMingguan;
     window.enhanceSearchableSelect = enhanceSearchableSelect;
 })();
 
+// ============================================================
+// Tooltip kustom: menggantikan hint bawaan browser (atribut title).
+// Cara kerja: saat kursor masuk ke elemen ber-title, teks dipindah ke
+// data-tip (supaya hint native tidak muncul) lalu ditampilkan lewat
+// elemen .amiru-tip. Berlaku juga untuk elemen yang dibuat dinamis.
+// Hanya aktif di perangkat dengan mouse (hover); layar sentuh dilewati.
+// ============================================================
+(function () {
+    if (!window.matchMedia || !window.matchMedia('(hover: hover)').matches) return;
+
+    const GAP = 8, EDGE = 8, DELAY = 220;
+    let tip = null, current = null, showTimer = null, watchTimer = null;
+
+    function ensureTip() {
+        if (tip) return tip;
+        tip = document.createElement('div');
+        tip.className = 'amiru-tip';
+        tip.setAttribute('role', 'tooltip');
+        document.body.appendChild(tip);
+        return tip;
+    }
+
+    // Pindahkan title -> data-tip; kembalikan elemen kalau valid
+    function prepare(el) {
+        if (el.hasAttribute('title')) {
+            const t = (el.getAttribute('title') || '').trim();
+            el.removeAttribute('title');
+            if (t) {
+                el.setAttribute('data-tip', t);
+                // Tombol ikon tanpa teks tetap punya nama untuk screen reader
+                if (!el.hasAttribute('aria-label') && !el.textContent.trim()) el.setAttribute('aria-label', t);
+            }
+        }
+        return el.getAttribute('data-tip') ? el : null;
+    }
+
+    function place(el) {
+        const t = ensureTip();
+        t.style.left = '0px'; t.style.top = '0px';
+        const r = el.getBoundingClientRect();
+        const tw = t.offsetWidth, th = t.offsetHeight;
+        const vw = document.documentElement.clientWidth, vh = window.innerHeight;
+        const inSidebar = !!el.closest('nav, .sidebar') && el.classList.contains('nav-item');
+
+        let pos = inSidebar ? 'right' : 'bottom';
+        if (pos === 'right' && r.right + GAP + tw > vw - EDGE) pos = 'bottom';
+        if (pos === 'bottom' && r.bottom + GAP + th > vh - EDGE) pos = 'top';
+        if (pos === 'top' && r.top - GAP - th < EDGE) pos = 'bottom';
+
+        let x, y;
+        if (pos === 'right') { x = r.right + GAP; y = r.top + r.height / 2 - th / 2; }
+        else {
+            x = r.left + r.width / 2 - tw / 2;
+            y = pos === 'bottom' ? r.bottom + GAP : r.top - GAP - th;
+        }
+        x = Math.max(EDGE, Math.min(x, vw - tw - EDGE));
+        y = Math.max(EDGE, Math.min(y, vh - th - EDGE));
+
+        t.dataset.pos = pos;
+        t.style.setProperty('--tip-shift', pos === 'top' ? '-4px' : pos === 'right' ? '0px' : '4px');
+        t.style.setProperty('--arrow-x', Math.max(10, Math.min(tw - 10, r.left + r.width / 2 - x)) + 'px');
+        t.style.setProperty('--arrow-y', Math.max(10, Math.min(th - 10, r.top + r.height / 2 - y)) + 'px');
+        t.style.left = Math.round(x) + 'px';
+        t.style.top = Math.round(y) + 'px';
+    }
+
+    function hide() {
+        clearTimeout(showTimer); clearInterval(watchTimer);
+        showTimer = watchTimer = null; current = null;
+        if (tip) tip.classList.remove('show');
+    }
+
+    function show(el) {
+        const t = ensureTip();
+        t.textContent = el.getAttribute('data-tip');
+        place(el);
+        t.classList.add('show');
+        // Sembunyikan kalau elemen hilang / disembunyikan saat tooltip tampil
+        clearInterval(watchTimer);
+        watchTimer = setInterval(() => {
+            if (!current || !document.contains(current) || current.getClientRects().length === 0) hide();
+        }, 300);
+    }
+
+    function enter(e) {
+        const raw = e.target && e.target.closest ? e.target.closest('[title], [data-tip]') : null;
+        if (!raw || raw === current) return;
+        const el = prepare(raw);
+        if (!el) return;
+        hide();
+        current = el;
+        showTimer = setTimeout(() => { if (current === el) show(el); }, DELAY);
+    }
+
+    function leave(e) {
+        if (!current) return;
+        const to = e.relatedTarget;
+        if (to && current.contains(to)) return;
+        hide();
+    }
+
+    document.addEventListener('mouseover', enter, true);
+    document.addEventListener('mouseout', leave, true);
+    document.addEventListener('focusin', (e) => {
+        const raw = e.target && e.target.closest ? e.target.closest('[title], [data-tip]') : null;
+        if (!raw || !e.target.matches(':focus-visible')) return;
+        const el = prepare(raw);
+        if (!el) return;
+        hide(); current = el; show(el);
+    }, true);
+    document.addEventListener('focusout', hide, true);
+    document.addEventListener('mousedown', hide, true);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hide(); }, true);
+    window.addEventListener('scroll', hide, true);
+    window.addEventListener('resize', hide);
+})();
+
 console.log('🚀 Amiru Admin Dashboard loaded!');

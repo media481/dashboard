@@ -5107,3 +5107,34 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     .ig-cal-chip, .ig-cal-chip.ig-cal-chip-plan { width: 8px; height: 8px; }
     .ig-cal-past:not(.ig-cal-today) { opacity: .75; }
 }
+
+
+/* ============================================================
+   Tooltip kustom (pengganti hint bawaan browser / atribut title)
+   Dikelola oleh IIFE "Tooltip kustom" di akhir js/app.js.
+   ============================================================ */
+.amiru-tip {
+    position: fixed; left: 0; top: 0; z-index: 2147483000;
+    max-width: 260px; padding: 7px 11px;
+    background: var(--brand-deep); color: #fff;
+    font: 500 12px/1.4 'Inter', sans-serif; letter-spacing: .005em;
+    border-radius: 8px; box-shadow: 0 6px 20px rgba(15, 33, 56, .28);
+    pointer-events: none; opacity: 0; visibility: hidden;
+    transform: translateY(var(--tip-shift, 4px));
+    transition: opacity .14s ease, transform .14s ease, visibility 0s linear .14s;
+    overflow-wrap: anywhere;
+}
+.amiru-tip.show {
+    opacity: 1; visibility: visible; transform: translateY(0);
+    transition: opacity .14s ease, transform .14s ease, visibility 0s;
+}
+.amiru-tip::after {
+    content: ""; position: absolute; width: 8px; height: 8px;
+    background: var(--brand-deep); transform: rotate(45deg); border-radius: 2px;
+}
+.amiru-tip[data-pos="bottom"]::after { top: -3px; left: calc(var(--arrow-x, 50%) - 4px); }
+.amiru-tip[data-pos="top"]::after    { bottom: -3px; left: calc(var(--arrow-x, 50%) - 4px); }
+.amiru-tip[data-pos="right"]::after  { left: -3px; top: calc(var(--arrow-y, 50%) - 4px); }
+@media (prefers-reduced-motion: reduce) {
+    .amiru-tip, .amiru-tip.show { transition: none; transform: none; }
+}
