@@ -1450,7 +1450,7 @@
                 <div class="ig-plan-grid">
                     <section class="ig-plan-col ig-plan-col-form">
                         <h3 class="ig-plan-col-title">Pekan yang disusun</h3>
-                        <div class="form-row" style="gap:12px;">
+                        <div class="form-row">
                             <div class="form-group">
                                 <label for="igPlanMonth">Bulan</label>
                                 <input type="month" id="igPlanMonth" onchange="igRenderPlanWeekOptions()">
@@ -1460,18 +1460,20 @@
                                 <select id="igPlanWeek" onchange="igRefreshPlanPreview()"></select>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label for="igPlanTema">Tema Minggu</label>
-                            <input type="text" id="igPlanTema" maxlength="80" placeholder="Contoh: Talbiyah" oninput="igOnTemaMingguInput()">
-                            <div class="ig-plan-saran" id="igPlanTemaSaran"></div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="igPlanTema">Tema Minggu</label>
+                                <input type="text" id="igPlanTema" maxlength="80" placeholder="Contoh: Talbiyah" oninput="igOnTemaMingguInput()">
+                            </div>
+                            <div class="form-group">
+                                <label for="igPlanTemaDepan">Tema pekan depan</label>
+                                <input type="text" id="igPlanTemaDepan" maxlength="80" placeholder="Kosongkan kalau belum ada" title="Dipakai untuk teaser penutup Minggu" oninput="this.dataset.auto='0'">
+                            </div>
                         </div>
+                        <div class="ig-plan-saran" id="igPlanTemaSaran"></div>
                         <div class="form-group">
-                            <label for="igPlanTemaDepan">Tema pekan depan <span class="ig-plan-hint">(untuk teaser penutup Minggu)</span></label>
-                            <input type="text" id="igPlanTemaDepan" maxlength="80" placeholder="Kosongkan kalau belum ditentukan" oninput="this.dataset.auto='0'">
-                        </div>
-                        <div class="form-group" style="margin-bottom:0;">
                             <label for="igPlanArahan">Arahan tambahan</label>
-                            <textarea id="igPlanArahan" rows="3" placeholder="Contoh: fokus promo Umroh Desember, atau selipkan tema Maulid Nabi"></textarea>
+                            <textarea id="igPlanArahan" rows="2" placeholder="Contoh: fokus promo Umroh Desember, atau selipkan tema Maulid Nabi"></textarea>
                         </div>
                     </section>
 
