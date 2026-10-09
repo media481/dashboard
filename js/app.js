@@ -15771,11 +15771,53 @@ function igFirstLine(text) {
     return String(text || '').split('\n')[0].trim();
 }
 
-// Tambah 1 entri ke riwayat (struktur: { tema, tgl, _t, _h } -- _t/_h = token siap bandingkan)
-function igRiwayatAdd(riwayat, tema, teksGambar, tgl) {
+// 3 kata pertama (tanpa tanda baca, tanpa filter kata umum) = "rumus pembuka" ("kemarin kita bahas"). '' kalau < 3 kata.
+function igRumusPembuka(teks) {
+    const w = String(teks || '').toLowerCase().replace(/[’'`ʼ]/g, '').replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+    return w.length >= 3 ? w.slice(0, 3).join(' ') : '';
+}
+
+// Tambah 1 entri ke riwayat (struktur: { tema, tgl, _t, _h, hook, buka, _o, _o3 }).
+// _t/_h = token tema / hook siap bandingkan. caption (opsional) -> pembuka caption (_o token, _o3 rumus 3 kata) dan
+// hook (hook teks, apa adanya) disimpan juga supaya bisa dikirim ke AI & dicek ("20 posting terakhir").
+function igRiwayatAdd(riwayat, tema, teksGambar, tgl, caption) {
     const t = String(tema || '').trim();
     if (!t) return;
-    riwayat.push({ tema: t, tgl: tgl || '', _t: igTokenSet(t), _h: igTokenSet(igFirstLine(teksGambar)) });
+    const buka = igFirstLine(caption).slice(0, 160);
+    riwayat.push({
+        tema: t, tgl: tgl || '', _t: igTokenSet(t), _h: igTokenSet(igFirstLine(teksGambar)),
+        hook: igFirstLine(teksGambar).slice(0, 120), buka, _o: igTokenSet(buka), _o3: igRumusPembuka(buka)
+    });
+}
+
+const IG_GAYA_JUMLAH = 20; // aturan pola-konten.md bagian 6: hook & pembuka caption tidak boleh mirip 20 posting terakhir
+
+// 20 entri terbaru (menurut tanggal) yang punya hook atau pembuka caption. Entri tanpa tanggal (tema yang baru ditolak) tidak dihitung.
+function igGayaTerbaru(riwayat) {
+    return (riwayat || []).filter(r => r.tgl && (r.hook || r.buka))
+        .sort((a, b) => String(b.tgl).localeCompare(String(a.tgl)))
+        .slice(0, IG_GAYA_JUMLAH);
+}
+
+// true kalau pembuka caption item mengulang pembuka salah satu dari 20 posting terakhir: rumus 3 kata pertama sama
+// ("Kemarin kita bahas..." lagi) ATAU token pembukanya hampir sama (kata tema minggu dibuang lewat `abaikan`).
+function igIsPembukaMirip(item, riwayat, abaikan) {
+    const buka = igFirstLine(item.draft_caption).slice(0, 160);
+    if (!buka) return false;
+    const o3 = igRumusPembuka(buka);
+    const o = igMinusTokens(igTokenSet(buka), abaikan);
+    return igGayaTerbaru(riwayat).some(r => {
+        if (!r.buka) return false;
+        if (o3 && r._o3 && o3 === r._o3) return true;
+        const ro = igMinusTokens(r._o, abaikan);
+        return o.size >= 3 && ro.size >= 3 && igIsSimilarText(o, ro);
+    });
+}
+
+// Hook + pembuka caption 20 posting terakhir -> teks untuk AI (supaya ia bisa menghindarinya, bukan cuma ditolak sesudahnya).
+function igRiwayatGayaToText(riwayat) {
+    return igGayaTerbaru(riwayat).map(r =>
+        `- ${r.tgl}${r.hook ? ' | hook: ' + r.hook : ''}${r.buka ? ' | pembuka: ' + r.buka : ''}`).join('\n');
 }
 
 // Kumpulkan SEMUA konten yang pernah dibuat (semua bulan, semua status termasuk "dilewati")
@@ -15784,11 +15826,13 @@ function igBuildRiwayat() {
     const riwayat = [];
     igContentPlan.forEach(pl => {
         if (/—\s*isi\b/i.test(pl.tema || '')) return; // kerangka kosong pola mingguan, bukan konten asli
-        igRiwayatAdd(riwayat, pl.tema, pl.teks_gambar, pl.tanggal);
+        igRiwayatAdd(riwayat, pl.tema, pl.teks_gambar, pl.tanggal, pl.draft_caption);
     });
     (typeof igPosts !== 'undefined' && Array.isArray(igPosts) ? igPosts : []).forEach(p => {
         const baris = igFirstLine(p.caption);
-        if (baris) igRiwayatAdd(riwayat, baris.slice(0, 100), '', '');
+        if (!baris) return;
+        const d = (typeof igPostRefDate === 'function') ? igPostRefDate(p) : null;
+        igRiwayatAdd(riwayat, baris.slice(0, 100), '', d ? igLocalDateKey(d) : '', p.caption);
     });
     return riwayat;
 }
@@ -15811,7 +15855,7 @@ function igIsDuplicateIdea(item, riwayat, abaikan) {
         const rt = igMinusTokens(r._t, abaikan);
         const rh = igMinusTokens(r._h, abaikan);
         return igIsSimilarText(t, rt) || (h.size >= 3 && rh.size >= 3 && igIsSimilarText(h, rh));
-    });
+    }) || igIsPembukaMirip(item, riwayat, abaikan);
 }
 
 // Riwayat -> teks untuk dikirim ke AI (terbaru dulu, tanpa tema kembar, dibatasi supaya prompt tidak membengkak)
@@ -15995,7 +16039,7 @@ async function igGeneratePlanForSlots(year, month, slots, arahan, onProgress, op
                 const batch = sisa.slice(i, i + batchSize);
                 const data = await igCallPlanFunction({
                     bulanLabel, jumlahPost: batch.length, tanggalMulai, tanggalAkhir,
-                    konteksProgram, arahan: arahan || '', slots: batch, riwayatTema: igRiwayatToText(riwayat),
+                    konteksProgram, arahan: arahan || '', slots: batch, riwayatTema: igRiwayatToText(riwayat), riwayatGaya: igRiwayatGayaToText(riwayat),
                     ...(pekan ? {
                         temaMinggu,
                         temaMingguDepan: String(opsi.temaMingguDepan || '').trim(),
@@ -16012,7 +16056,7 @@ async function igGeneratePlanForSlots(year, month, slots, arahan, onProgress, op
                         igRiwayatAdd(riwayat, it.tema, it.teks_gambar, '');
                         return null;
                     }
-                    igRiwayatAdd(riwayat, it.tema, it.teks_gambar, it.tanggal);
+                    igRiwayatAdd(riwayat, it.tema, it.teks_gambar, it.tanggal, it.draft_caption);
                     // Label kecil di pojok gambar (pola-konten.md): "Seri Talbiyah · 3/7". Ditaruh di baris sendiri di akhir teks gambar.
                     let teksGambar = String(it.teks_gambar || '').trim();
                     if (pekan && slot.urutan) teksGambar += `${teksGambar ? '\n' : ''}Label gambar: Seri ${temaMinggu} · ${slot.urutan}/7`;
@@ -16261,7 +16305,7 @@ async function igRegenerasiHariPlan(planId) {
         for (let pass = 0; pass < IG_PLAN_MAX_PASS && !hasil; pass++) {
             const data = await igCallPlanFunction({
                 bulanLabel, jumlahPost: 1, tanggalMulai: ctx.senin, tanggalAkhir: ctx.minggu,
-                konteksProgram, arahan, slots: [ctx.slot], riwayatTema: igRiwayatToText(riwayat),
+                konteksProgram, arahan, slots: [ctx.slot], riwayatTema: igRiwayatToText(riwayat), riwayatGaya: igRiwayatGayaToText(riwayat),
                 ...(ctx.temaMinggu ? { temaMinggu: ctx.temaMinggu } : {}),
                 ...(ctx.temaMingguDepan ? { temaMingguDepan: ctx.temaMingguDepan } : {}),
                 konteksPekan: ctx.barisPekan.join('\n')
@@ -16360,6 +16404,7 @@ ANTI-PENGULANGAN (PENTING):
 - Bank topik per hari: Senin = matriks lokasi x momen x perasaan; Selasa = kurikulum manasik berurutan (miqat, niat, talbiyah, thawaf, doa, sa'i, tahallul, adab); Rabu = rotasi kategori persiapan; Kamis = alur/tokoh berbeda tiap seri; Jumat = kesalahan umum & FAQ; Sabtu = sisi manusiawi; Minggu = makna rukun/wajib dan hikmahnya.
 - Topik yang SUDAH PERNAH dipakai (awal pola, jangan diulang): niat umroh; pertama kali lihat Ka'bah; sa'i dan kisah Siti Hajar; Raudhah; subuh di Madinah; bawaan yang sering ketinggalan; kesalahan umum thawaf; urutan umroh (ihram, thawaf, sa'i, tahallul); larangan ihram; persiapan fisik; hari terakhir di Makkah; Makkah atau Madinah; umroh bersama orang tua; mulai dari yang kecil / menabung niat.
 - Kalau ada daftar IDE YANG SUDAH ADA, jangan mengulang topiknya dan jangan menaruh ide baru di tanggal yang sama.
+- Kalau ada daftar HOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR, hook (teks_gambar baris pertama) dan 3 kata pertama pembuka caption TIDAK boleh sama atau mirip dengan daftar itu, juga tidak antarhari dalam jawaban yang sama. Variasikan rumus pembuka (jangan terus memakai "Kemarin kita bahas").
 
 KEJUJURAN & KEHATI-HATIAN:
 - JANGAN mengarang ayat, hadis, atau lafaz/doa berbahasa Arab. Untuk lafaz dan tata cara tulis "sesuai manasik dari pembimbing". Soal agama dan hukum ibadah tulis secara umum, tanpa fatwa; tandai di akhir kolom "tema" dengan "[cek pembimbing]" kalau memuat tata cara/hukum/doa.
@@ -16370,7 +16415,7 @@ KEJUJURAN & KEHATI-HATIAN:
 
 // Susun satu teks prompt utuh yang bisa ditempel ke ChatGPT / Claude / AI lain. Fungsi murni (mudah dites):
 // bagian "permintaan" mengikuti susunan userMsg di edge function, bagian kosong dibuang.
-// f: { bulanLabel, tanggalMulai, tanggalAkhir, temaMinggu, temaMingguDepan, slots, konteksPekan, arahan, konteksProgram, riwayatTema }
+// f: { bulanLabel, tanggalMulai, tanggalAkhir, temaMinggu, temaMingguDepan, slots, konteksPekan, arahan, konteksProgram, riwayatTema, riwayatGaya }
 function igSusunPromptEksternal(f) {
     const slots = Array.isArray(f.slots) ? f.slots : [];
     const bagian = [
@@ -16392,6 +16437,9 @@ function igSusunPromptEksternal(f) {
         + (f.konteksProgram && String(f.konteksProgram).trim() ? String(f.konteksProgram) : '(tidak ada data program spesifik untuk periode ini)'));
     if (f.riwayatTema && String(f.riwayatTema).trim()) {
         bagian.push('RIWAYAT TEMA, SUDAH PERNAH DIBUAT (jangan diulang & jangan dibuat mirip):\n' + String(f.riwayatTema).slice(0, 20000));
+    }
+    if (f.riwayatGaya && String(f.riwayatGaya).trim()) {
+        bagian.push('HOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR (hook dan 3 kata pertama pembuka caption TIDAK boleh sama atau mirip dengan ini):\n' + String(f.riwayatGaya).slice(0, 6000));
     }
     bagian.push('Ingat: balas HANYA dengan JSON array sesuai format yang sudah dijelaskan, tidak ada teks lain.');
 
@@ -16458,7 +16506,8 @@ async function igSalinPromptPlan() {
             temaMinggu, temaMingguDepan: (document.getElementById('igPlanTemaDepan')?.value || '').trim(),
             slots, konteksPekan, konteksProgram,
             arahan: (document.getElementById('igPlanArahan')?.value || '').trim(),
-            riwayatTema: igRiwayatToText(igBuildRiwayat())
+            riwayatTema: igRiwayatToText(igBuildRiwayat()),
+            riwayatGaya: igRiwayatGayaToText(igBuildRiwayat())
         });
         if (await igSalinTeks(prompt)) {
             showToast(`Prompt disalin (${prompt.length.toLocaleString('id-ID')} karakter, ${slots.length} hari). Tempel ke AI lain, minta balasan JSON.`, 'success');

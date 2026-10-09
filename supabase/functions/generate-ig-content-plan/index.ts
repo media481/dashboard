@@ -23,6 +23,7 @@
 //     arahan?: string,           // arahan tambahan opsional dari admin
 //     ideSudahAda?: string,      // (lama) ide yang sudah ada ("YYYY-MM-DD — tema" per baris)
 //     riwayatTema?: string,      // tema yang SUDAH PERNAH dibuat (satu per baris) -> wajib dihindari
+//     riwayatGaya?: string,      // hook + pembuka caption 20 posting terakhir ("- tgl | hook: ... | pembuka: ...") -> wajib dihindari
 //     temaMinggu?: string,       // BARU: tema pekan ini (mis. "Talbiyah"). Kosong = AI memilih sendiri
 //     temaMingguDepan?: string,  // BARU: tema pekan depan, hanya untuk teaser penutup Minggu (opsional)
 //     konteksPekan?: string,     // BARU: hari lain di pekan yang SUDAH jadi ("Senin 2026-10-12 | tema | hook"),
@@ -211,6 +212,7 @@ ANTI-PENGULANGAN (PENTING):
 - Bank topik per hari: Senin = matriks lokasi x momen x perasaan; Selasa = kurikulum manasik berurutan (miqat, niat, talbiyah, thawaf, doa, sa'i, tahallul, adab); Rabu = rotasi kategori persiapan; Kamis = alur/tokoh berbeda tiap seri; Jumat = kesalahan umum & FAQ; Sabtu = sisi manusiawi; Minggu = makna rukun/wajib dan hikmahnya.
 - Topik yang SUDAH PERNAH dipakai (awal pola, jangan diulang): niat umroh; pertama kali lihat Ka'bah; sa'i dan kisah Siti Hajar; Raudhah; subuh di Madinah; bawaan yang sering ketinggalan; kesalahan umum thawaf; urutan umroh (ihram, thawaf, sa'i, tahallul); larangan ihram; persiapan fisik; hari terakhir di Makkah; Makkah atau Madinah; umroh bersama orang tua; mulai dari yang kecil / menabung niat.
 - Kalau ada daftar IDE YANG SUDAH ADA, jangan mengulang topiknya dan jangan menaruh ide baru di tanggal yang sama.
+- Kalau ada daftar HOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR, hook (teks_gambar baris pertama) dan 3 kata pertama pembuka caption TIDAK boleh sama atau mirip dengan daftar itu, juga tidak antarhari dalam jawaban yang sama. Variasikan rumus pembuka (jangan terus memakai "Kemarin kita bahas").
 
 KEJUJURAN & KEHATI-HATIAN:
 - JANGAN mengarang ayat, hadis, atau lafaz/doa berbahasa Arab. Untuk lafaz dan tata cara tulis "sesuai manasik dari pembimbing". Soal agama dan hukum ibadah tulis secara umum, tanpa fatwa; tandai di akhir kolom "tema" dengan "[cek pembimbing]" kalau memuat tata cara/hukum/doa.
@@ -377,7 +379,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir, konteksProgram, arahan, ideSudahAda, riwayatTema, slots, temaMinggu, temaMingguDepan, konteksPekan } = body || {};
+    const { bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir, konteksProgram, arahan, ideSudahAda, riwayatTema, riwayatGaya, slots, temaMinggu, temaMingguDepan, konteksPekan } = body || {};
 
     if (!bulanLabel || !jumlahPost || !tanggalMulai || !tanggalAkhir) {
       return new Response(JSON.stringify({ error: "bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir wajib diisi" }), {
@@ -418,6 +420,7 @@ KONTEKS PROGRAM (hanya dipakai kalau ARAHAN TAMBAHAN meminta info program):
 ${programCtx}
 ${ideSudahAda && String(ideSudahAda).trim() ? `\nIDE YANG SUDAH ADA (jangan diulang):\n${String(ideSudahAda).slice(0, 4000)}` : ""}
 ${riwayatTema && String(riwayatTema).trim() ? `\nRIWAYAT TEMA, SUDAH PERNAH DIBUAT (jangan diulang & jangan dibuat mirip):\n${String(riwayatTema).slice(0, 20000)}` : ""}
+${riwayatGaya && String(riwayatGaya).trim() ? `\nHOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR (hook dan 3 kata pertama pembuka caption TIDAK boleh sama atau mirip dengan ini):\n${String(riwayatGaya).slice(0, 6000)}` : ""}
 
 Ingat: balas HANYA dengan JSON array sesuai format yang sudah dijelaskan, tidak ada teks lain.`;
 
