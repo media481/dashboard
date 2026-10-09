@@ -5083,3 +5083,22 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     .ig-about-footer .btn-secondary { flex: 1 1 auto; justify-content: center; }
     .ig-about-footer .ig-plan-footer-spacer { display: none; }
 }
+
+/* =====================================================================
+   Sel kalender: optimasi isi sel
+   - Sel pendek (mode pas-layar) memakai chip satu baris ("is-compact") sebelum menyerah, jadi tidak ada sel
+     yang hanya berisi "+N lagi" tanpa satu pun item (diatur igFitCalendarChips()).
+   - "+N lagi" tidak boleh pecah baris; di HP cukup "+N".
+   - Label seri hanya di awal rentang hari (lihat renderIgCalendar()), sel lanjutan tanpa label.
+   ===================================================================== */
+.ig-cal-chips.is-compact .ig-cal-chip { padding-top: 1px; padding-bottom: 1px; }
+.ig-cal-chips.is-compact .ig-cal-chip > span { -webkit-line-clamp: 1; }
+.ig-cal-chip-more { white-space: nowrap; }
+
+@media (max-width: 560px) {
+    .ig-cal-more-l { display: none; }
+    /* sel HP hanya berisi titik: tinggi 96px berlebihan, 5-6 baris bulan jadi sangat panjang */
+    .ig-planner-mode .ig-cal-day { min-height: 60px; }
+    .ig-cal-chip, .ig-cal-chip.ig-cal-chip-plan { width: 8px; height: 8px; }
+    .ig-cal-past:not(.ig-cal-today) { opacity: .75; }
+}

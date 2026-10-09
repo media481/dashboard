@@ -13597,6 +13597,16 @@ function igChipText(text, fallback) {
     return first.trim() || fallback;
 }
 
+// Awalan peran Pola 7 Hari di judul ide ("Rasakan: ...", "Siapkan (carousel) — ..."). Perannya sudah ditentukan hari
+// dalam pekan, jadi di chip kalender awalan ini hanya memakan tempat; yang membedakan ide adalah topiknya.
+// Teks lengkap tetap ada di tooltip chip dan di panel/modal.
+const IG_AWALAN_PERAN = /^(?:rasakan|pahami|siapkan|bayangkan|hindari|terinspirasi|renungkan)\b(?:\s*\([^)]*\))?\s*[:\u2014\u2013-]\s*/i;
+function igChipTopik(teks) {
+    const t = String(teks || '');
+    const sisa = t.replace(IG_AWALAN_PERAN, '').trim();
+    return sisa ? sisa.charAt(0).toUpperCase() + sisa.slice(1) : t;
+}
+
 function renderIgCalendar() {
     const monthEl = document.getElementById('igCalMonth');
     const daysEl = document.getElementById('igCalDays');
@@ -13689,10 +13699,11 @@ function renderIgCalendar() {
         });
         dayPlans.forEach(pl => {
             const text = igChipText(pl.tema, '(tanpa tema)');
+            const topik = igChipTopik(text);
             const pil = IG_PILLARS[pl.pilar];
             const tahap = pl.tahap && pl.tahap !== 'ide' ? ` ig-cal-chip-${pl.tahap}` : '';
-            const tip = `Rencana (${IG_TYPE_LABELS[pl.tipe_konten] || 'Image'}${pil ? ' · ' + pil.label : ''} · ${IG_STAGES[pl.tahap || 'ide'] || 'Ide'}) — ${text}${canDrag ? ' · seret ke tanggal lain untuk memindah' : ''}`;
-            chips.push(`<div class="ig-cal-chip ig-cal-chip-plan${tahap}" data-plan-id="${pl.id}" ${canDrag ? 'draggable="true"' : ''} style="${pil ? `--pillar:${pil.color};` : ''}" title="${escapeHtmlAttr(tip)}"><span>${escapeHtml(text)}</span></div>`);
+            const tip = `Rencana (${IG_TYPE_LABELS[pl.tipe_konten] || 'Image'}${pil ? ' · ' + pil.label : ''} · ${IG_STAGES[pl.tahap || 'ide'] || 'Ide'}${pl.tema_minggu ? ' · Seri ' + pl.tema_minggu : ''}) — ${text}${canDrag ? ' · seret ke tanggal lain untuk memindah' : ''}`;
+            chips.push(`<div class="ig-cal-chip ig-cal-chip-plan${tahap}" data-plan-id="${pl.id}" ${canDrag ? 'draggable="true"' : ''} style="${pil ? `--pillar:${pil.color};` : ''}" title="${escapeHtmlAttr(tip)}"><span>${escapeHtml(topik)}</span></div>`);
         });
 
         // Semua chip dirender; berapa yang tampil + teks "+N lagi" dihitung di igFitCalendarChips()
@@ -13711,10 +13722,17 @@ function renderIgCalendar() {
         if (tipeSel) cellClasses.push('ig-type-' + (['image', 'carousel', 'video'].includes(tipeSel) ? tipeSel : 'image'));
         if (!allDayPosts.length && !allDayPlans.length && !isPast) cellClasses.push('ig-cal-gap');
 
+        // Label seri cukup sekali per rentang hari berurutan dalam satu baris kalender (bukan di tiap sel):
+        // tujuh sel berlabel sama hanya memakan lebar/tinggi chip dan di layar sempit terpotong jadi "T…".
+        const kolom = (startDay + day - 1) % 7;
+        const seriHariIni = showPlans ? seriesByDay[day] : '';
+        const lanjutan = !!seriHariIni && kolom !== 0 && seriesByDay[day - 1] === seriHariIni;
+        if (lanjutan) cellClasses.push('ig-cal-series-cont');
+
         html += `<div class="${cellClasses.join(' ')}" data-date="${dateKey}" onclick="igOnDayClick('${dateKey}')">
             <div class="ig-cal-day-top">
                 <span class="ig-cal-day-num">${day}</span>
-                ${showPlans && seriesByDay[day] ? `<span class="ig-cal-series" title="${escapeHtmlAttr('Seri: ' + seriesByDay[day])}">${escapeHtml(seriesByDay[day])}</span>` : ''}
+                ${seriHariIni && !lanjutan ? `<span class="ig-cal-series" title="${escapeHtmlAttr('Seri: ' + seriHariIni)}">${escapeHtml(seriHariIni)}</span>` : ''}
                 <span class="ig-cal-add-hint" title="Tambah ide / post">+</span>
             </div>
             ${chipsHtml}
@@ -13758,13 +13776,16 @@ function igFitCalendarChips() {
             chips.forEach((c, i) => { c.style.display = i < n ? '' : 'none'; });
             const hidden = chips.length - n;
             if (hidden > 0) {
-                more.textContent = `+${hidden} lagi`;
+                // "+N" saja di layar sempit (kata "lagi" disembunyikan CSS) supaya tidak terpecah dua baris
+                more.innerHTML = `+${hidden}<span class="ig-cal-more-l"> lagi</span>`;
+                more.title = `${hidden} item lagi, klik hari untuk melihat semuanya`;
                 if (!more.parentNode) box.appendChild(more);
             } else if (more.parentNode) {
                 more.remove();
             }
         };
 
+        box.classList.remove('is-compact');
         const cap = fitMode ? chips.length : Math.min(chips.length, IG_CAL_MAX_CHIPS);
         apply(cap);
         if (!fitMode) return;
@@ -13772,7 +13793,12 @@ function igFitCalendarChips() {
         const cs = getComputedStyle(cell);
         const limit = cell.getBoundingClientRect().bottom - (parseFloat(cs.paddingBottom) || 0) - (parseFloat(cs.borderBottomWidth) || 0);
         const fits = () => { const last = box.lastElementChild; return !last || last.getBoundingClientRect().bottom <= limit + 0.5; };
-        for (let n = cap; n > 0 && !fits(); n--) apply(n - 1);
+        // Banyak chip yang muat; 0 kalau tidak ada yang muat
+        const muat = () => { for (let n = cap; n > 0; n--) { apply(n); if (fits()) return n; } return 0; };
+        let n = fits() ? cap : muat();
+        // Sel pendek: pakai chip satu baris dulu, baru menyerah. Sel tidak boleh cuma berisi "+N lagi" tanpa satu pun item.
+        if (!n) { box.classList.add('is-compact'); n = muat(); }
+        if (!n) apply(1);
     });
 }
 

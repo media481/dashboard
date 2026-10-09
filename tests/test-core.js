@@ -74,7 +74,7 @@ const code = fs.readFileSync(APP_PATH, 'utf8');
 const context = vm.createContext(sandbox);
 // Tambahkan penangkap: deklarasikan fungsi sebagai property di sandbox
 // dengan meng-append kode yang menaruh fungsi ke globalThis
-const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah, igIsSimilarText, igIsDuplicateIdea, igRiwayatAdd, igBuildSlotBulan, igPickEvenly, igBuildPolaMingguan, igBuildSlotPekan, igDaftarPekanBulan, igMinusTokens, IG_POLA_AMIRU, IG_PILLARS };';
+const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah, igIsSimilarText, igIsDuplicateIdea, igRiwayatAdd, igBuildSlotBulan, igPickEvenly, igBuildPolaMingguan, igBuildSlotPekan, igDaftarPekanBulan, igMinusTokens, igChipTopik, IG_POLA_AMIRU, IG_PILLARS };';
 vm.runInContext(wrapped, context, { filename: 'app.js' });
 const T = sandbox.__T;
 
@@ -245,6 +245,20 @@ test('igIsDuplicateIdea: kata tema minggu diabaikan, ide sepekan tidak saling ke
   assert.ok(T.igIsDuplicateIdea(item, r, abaikan)); // sisa "miqat" sama persis -> tetap duplikat
   assert.ok(!T.igIsDuplicateIdea({ tema: 'Talbiyah menghafal 2 minggu', teks_gambar: '' }, r, abaikan));
 });
+test('igChipTopik: awalan peran Pola 7 Hari dibuang dari chip kalender', () => {
+  assert.strictEqual(T.igChipTopik('Rasakan: pertama kali mendengar talbiyah'), 'Pertama kali mendengar talbiyah');
+  assert.strictEqual(T.igChipTopik('Siapkan (carousel) \u2014 isi persiapan fisik'), 'Isi persiapan fisik');
+  assert.strictEqual(T.igChipTopik('Renungkan - apa yang kita jawab?'), 'Apa yang kita jawab?');
+});
+
+test('igChipTopik: teks tanpa awalan peran, atau yang hanya berisi awalan, dibiarkan utuh', () => {
+  assert.strictEqual(T.igChipTopik('Ide tambahan A'), 'Ide tambahan A');
+  assert.strictEqual(T.igChipTopik('Hindari kesalahan umum thawaf'), 'Hindari kesalahan umum thawaf'); // tanpa pemisah = bagian kalimat
+  assert.strictEqual(T.igChipTopik('Rasakan:'), 'Rasakan:');
+  assert.strictEqual(T.igChipTopik(''), '');
+  assert.strictEqual(T.igChipTopik(null), '');
+});
+
 test('igBuildPolaMingguan: semua slot berupa kerangka kosong (tanpa draf bawaan)', () => {
   const r = T.igBuildPolaMingguan(2026, 9, new Set(), null);
   assert.ok(r.rows.length > 0);
