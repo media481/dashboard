@@ -1444,18 +1444,14 @@
         </div>
         <div class="modal-body">
             <div id="igPlanGenerateWrap">
-                <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 12px;">
-                    Susun satu pekan konten (Senin–Minggu) dengan satu tema, tujuh sudut berurutan yang saling menyambung (Pola Amiru), tanpa mengulang konten lama.
-                </p>
-                <div class="ig-plan-pola-label"><span>Pola 7 hari</span> <span>· satu tema, tujuh sudut berurutan</span></div>
-                <div class="ig-plan-pola" id="igPlanPolaStrip"></div>
+                <p class="ig-plan-intro">Satu pekan (Senin–Minggu), satu tema, tujuh sudut yang saling menyambung, tanpa mengulang konten lama.</p>
                 <div class="form-row" style="gap:10px;">
                     <div class="form-group">
                         <label>Bulan</label>
                         <input type="month" id="igPlanMonth" onchange="igRenderPlanWeekOptions()">
                     </div>
                     <div class="form-group">
-                        <label>Pekan (Senin–Minggu)</label>
+                        <label>Pekan</label>
                         <select id="igPlanWeek" onchange="igRefreshPlanPreview()"></select>
                     </div>
                 </div>
@@ -1463,14 +1459,19 @@
                     <label>Tema Minggu</label>
                     <input type="text" id="igPlanTema" maxlength="80" placeholder="Contoh: Talbiyah">
                 </div>
-                <div class="form-group">
-                    <label>Tema pekan depan <span style="font-weight:400;color:var(--ink-soft);">(opsional, untuk teaser penutup Minggu)</span></label>
-                    <input type="text" id="igPlanTemaDepan" maxlength="80" placeholder="Kosongkan kalau belum ditentukan">
-                </div>
                 <div class="ig-plan-preview" id="igPlanPreview"></div>
-                <details style="margin:0 0 12px;">
-                    <summary style="font-size:12px;color:var(--ink-soft);cursor:pointer;">Arahan tambahan (opsional)</summary>
-                    <textarea id="igPlanArahan" rows="2" placeholder="Contoh: fokus promo Umroh Desember, atau selipkan tema Maulid Nabi" style="width:100%;margin-top:8px;font-family:'Inter',sans-serif;padding:10px;border:1.5px solid var(--line);border-radius:10px;resize:vertical;"></textarea>
+                <details class="ig-plan-more">
+                    <summary>Opsi tambahan</summary>
+                    <div class="form-group">
+                        <label>Tema pekan depan <span class="ig-plan-hint">(untuk teaser penutup Minggu)</span></label>
+                        <input type="text" id="igPlanTemaDepan" maxlength="80" placeholder="Kosongkan kalau belum ditentukan">
+                    </div>
+                    <div class="form-group">
+                        <label>Arahan tambahan</label>
+                        <textarea id="igPlanArahan" rows="2" placeholder="Contoh: fokus promo Umroh Desember, atau selipkan tema Maulid Nabi"></textarea>
+                    </div>
+                    <div class="ig-plan-pola-label">Pola 7 hari</div>
+                    <div class="ig-plan-pola" id="igPlanPolaStrip"></div>
                 </details>
                 <div class="form-actions" style="border-top:none;padding-top:0;">
                     <button class="btn-primary" id="btnIgGeneratePlan" onclick="generateIgContentPlanAI()" style="font-size:12px;padding:8px 16px;">

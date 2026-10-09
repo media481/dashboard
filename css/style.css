@@ -3644,24 +3644,25 @@
     .ig-plan-result-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
     .ig-plan-result-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 
-    /* Strip pola 7 hari + pratinjau slot di form Rencana AI */
-    .ig-plan-pola-label {
-        display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px;
-        font-size: 11px; font-weight: 700; color: var(--ink-soft);
+    /* Form Rencana AI: ringkas; pola 7 hari, tema pekan depan & arahan disimpan di "Opsi tambahan" */
+    .ig-plan-intro { font-size: 12.5px; color: var(--ink-soft); margin: 0 0 14px; }
+    .ig-plan-hint { font-weight: 400; color: var(--ink-soft); }
+    .ig-plan-more { margin: 0 0 14px; }
+    .ig-plan-more summary { font-size: 12px; color: var(--ink-soft); cursor: pointer; margin-bottom: 10px; }
+    .ig-plan-more textarea {
+        width: 100%; font-family: 'Inter', sans-serif; padding: 10px;
+        border: 1.5px solid var(--line); border-radius: 10px; resize: vertical;
     }
-    .ig-plan-pola-label span:last-child { font-weight: 400; }
-    .ig-plan-pola { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 14px; }
+    .ig-plan-pola-label { font-size: 11px; font-weight: 700; color: var(--ink-soft); margin-bottom: 6px; }
+    .ig-plan-pola { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
     .ig-plan-pola-chip {
-        border: 1px solid var(--line); border-top: 3px solid var(--pillar, var(--brand)); border-radius: 8px;
+        border: 1px solid var(--line); border-radius: 8px;
         padding: 5px 2px 6px; text-align: center; background: var(--surface); min-width: 0;
     }
     .ig-plan-pola-chip b { display: block; font-size: 11px; color: var(--ink); }
-    .ig-plan-pola-chip span { display: block; font-size: 9.5px; line-height: 1.25; color: var(--ink-soft); overflow-wrap: anywhere; min-height: 24px; }
-    .ig-plan-pola-chip i { font-size: 11px; color: var(--pillar, var(--brand)); }
-    .ig-plan-preview {
-        font-size: 12px; color: var(--ink-soft); background: var(--brand-tint); border-radius: 8px;
-        padding: 7px 10px; margin: 0 0 12px;
-    }
+    .ig-plan-pola-chip span { display: block; font-size: 9.5px; line-height: 1.25; color: var(--ink-soft); overflow-wrap: anywhere; }
+    .ig-plan-pola-chip i { font-size: 11px; color: var(--ink-soft); }
+    .ig-plan-preview { font-size: 12px; color: var(--ink-soft); margin: 0 0 12px; }
     .ig-plan-preview:empty { display: none; }
     .ig-plan-preview strong { color: var(--brand); }
     .ig-plan-result-pilar {
