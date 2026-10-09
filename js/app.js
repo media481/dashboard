@@ -15846,21 +15846,49 @@ function igMinusTokens(set, abaikan) {
     return out;
 }
 
-// Cek 1 ide ({ tema, teks_gambar | teks }) terhadap riwayat.
+// Jeda topik (pola-konten.md bagian 6): topik/hook yang sama baru boleh muncul lagi (dengan sudut baru) setelah
+// minimal 6 bulan. Jadi riwayat yang lebih tua dari jendela ini tidak lagi memblokir ide baru dan tidak dikirim ke AI.
+// Beda dengan Tema Minggu (igKandidatTemaMinggu): itu memakai jeda 12 bulan, sengaja lebih ketat supaya peta
+// satu tahun tidak punya tema pekan kembar; 12 bulan sudah memenuhi syarat "minimal 6 bulan".
+const IG_JEDA_TOPIK_BULAN = 6;
+
+// Batas tanggal terlama (YYYY-MM-DD) yang masih dihitung, dihitung mundur dari refKey (default: hari ini).
+function igBatasRiwayat(refKey) {
+    const [y, m, d] = String(refKey || igLocalDateKey(new Date())).split('-').map(Number);
+    // Hari dijepit ke akhir bulan tujuan (31 Agustus - 6 bulan = 28 Februari, bukan 3 Maret).
+    const akhirBulan = new Date(y, m - 1 - IG_JEDA_TOPIK_BULAN + 1, 0).getDate();
+    return igLocalDateKey(new Date(y, m - 1 - IG_JEDA_TOPIK_BULAN, Math.min(d, akhirBulan)));
+}
+
+// Entri riwayat yang masih memblokir: tanpa tanggal (tema yang baru ditolak di proses ini), atau tanggalnya >= batas.
+// Tanggal di masa depan (rencana pekan-pekan mendatang) tetap memblokir.
+function igRiwayatAktif(riwayat, refKey) {
+    const batas = igBatasRiwayat(refKey);
+    return (riwayat || []).filter(r => !r.tgl || r.tgl >= batas);
+}
+
+// Cek 1 ide ({ tema, teks_gambar | teks, tanggal? }) terhadap riwayat.
 // abaikan (opsional): Set token yang tidak dihitung saat membandingkan (lihat igMinusTokens).
+// Tanggal ide (kalau ada) menentukan jendela 6 bulan; tanpa tanggal dipakai hari ini.
 function igIsDuplicateIdea(item, riwayat, abaikan) {
     const t = igMinusTokens(igTokenSet(item.tema), abaikan);
     const h = igMinusTokens(igTokenSet(igFirstLine(item.teks_gambar != null ? item.teks_gambar : item.teks)), abaikan);
-    return riwayat.some(r => {
+    const aktif = igRiwayatAktif(riwayat, item.tanggal);
+    return aktif.some(r => {
         const rt = igMinusTokens(r._t, abaikan);
         const rh = igMinusTokens(r._h, abaikan);
         return igIsSimilarText(t, rt) || (h.size >= 3 && rh.size >= 3 && igIsSimilarText(h, rh));
     }) || igIsPembukaMirip(item, riwayat, abaikan);
 }
 
-// Riwayat -> teks untuk dikirim ke AI (terbaru dulu, tanpa tema kembar, dibatasi supaya prompt tidak membengkak)
-function igRiwayatToText(riwayat) {
-    const urut = riwayat.slice().sort((a, b) => String(b.tgl).localeCompare(String(a.tgl)));
+// Riwayat -> teks untuk dikirim ke AI: hanya yang masih dalam jendela jeda topik (igRiwayatAktif), tanpa tema kembar,
+// dibatasi 200 baris supaya prompt tidak membengkak. Urutan: entri tanpa tanggal DULU (tema yang baru ditolak di proses
+// ini -- paling relevan untuk percobaan ulang, jangan sampai terpotong), lalu yang terbaru ke yang terlama.
+function igRiwayatToText(riwayat, refKey) {
+    const urut = igRiwayatAktif(riwayat, refKey).sort((a, b) => {
+        if (!a.tgl !== !b.tgl) return a.tgl ? 1 : -1;
+        return String(b.tgl).localeCompare(String(a.tgl));
+    });
     const seen = new Set();
     const baris = [];
     for (const r of urut) {
@@ -16039,7 +16067,7 @@ async function igGeneratePlanForSlots(year, month, slots, arahan, onProgress, op
                 const batch = sisa.slice(i, i + batchSize);
                 const data = await igCallPlanFunction({
                     bulanLabel, jumlahPost: batch.length, tanggalMulai, tanggalAkhir,
-                    konteksProgram, arahan: arahan || '', slots: batch, riwayatTema: igRiwayatToText(riwayat), riwayatGaya: igRiwayatGayaToText(riwayat),
+                    konteksProgram, arahan: arahan || '', slots: batch, riwayatTema: igRiwayatToText(riwayat, tanggalMulai), riwayatGaya: igRiwayatGayaToText(riwayat),
                     ...(pekan ? {
                         temaMinggu,
                         temaMingguDepan: String(opsi.temaMingguDepan || '').trim(),
@@ -16305,7 +16333,7 @@ async function igRegenerasiHariPlan(planId) {
         for (let pass = 0; pass < IG_PLAN_MAX_PASS && !hasil; pass++) {
             const data = await igCallPlanFunction({
                 bulanLabel, jumlahPost: 1, tanggalMulai: ctx.senin, tanggalAkhir: ctx.minggu,
-                konteksProgram, arahan, slots: [ctx.slot], riwayatTema: igRiwayatToText(riwayat), riwayatGaya: igRiwayatGayaToText(riwayat),
+                konteksProgram, arahan, slots: [ctx.slot], riwayatTema: igRiwayatToText(riwayat, ctx.tanggal), riwayatGaya: igRiwayatGayaToText(riwayat),
                 ...(ctx.temaMinggu ? { temaMinggu: ctx.temaMinggu } : {}),
                 ...(ctx.temaMingguDepan ? { temaMingguDepan: ctx.temaMingguDepan } : {}),
                 konteksPekan: ctx.barisPekan.join('\n')
@@ -16400,9 +16428,9 @@ CAPTION ("draft_caption"):
 - Ejaan selalu "Umroh" (bukan "Umrah"), termasuk di hashtag.
 
 ANTI-PENGULANGAN (PENTING):
-- Satu topik hanya sekali. Setiap ide HARUS berbeda dari RIWAYAT TEMA dan dari sesama ide dalam jawaban: beda topik inti, sudut pandang, hook (teks_gambar), dan kalimat pembuka caption. Mengganti beberapa kata TIDAK dianggap berbeda. Kalau ragu sebuah ide mirip riwayat, ganti.
+- Satu topik hanya sekali dalam 6 bulan terakhir; sudut baru atas topik lama baru boleh muncul setelah jeda minimal 6 bulan (RIWAYAT TEMA hanya memuat 6 bulan terakhir). Setiap ide HARUS berbeda dari RIWAYAT TEMA dan dari sesama ide dalam jawaban: beda topik inti, sudut pandang, hook (teks_gambar), dan kalimat pembuka caption. Mengganti beberapa kata TIDAK dianggap berbeda. Kalau ragu sebuah ide mirip riwayat, ganti.
 - Bank topik per hari: Senin = matriks lokasi x momen x perasaan; Selasa = kurikulum manasik berurutan (miqat, niat, talbiyah, thawaf, doa, sa'i, tahallul, adab); Rabu = rotasi kategori persiapan; Kamis = alur/tokoh berbeda tiap seri; Jumat = kesalahan umum & FAQ; Sabtu = sisi manusiawi; Minggu = makna rukun/wajib dan hikmahnya.
-- Topik yang SUDAH PERNAH dipakai (awal pola, jangan diulang): niat umroh; pertama kali lihat Ka'bah; sa'i dan kisah Siti Hajar; Raudhah; subuh di Madinah; bawaan yang sering ketinggalan; kesalahan umum thawaf; urutan umroh (ihram, thawaf, sa'i, tahallul); larangan ihram; persiapan fisik; hari terakhir di Makkah; Makkah atau Madinah; umroh bersama orang tua; mulai dari yang kecil / menabung niat.
+- Topik yang SUDAH PERNAH dipakai (awal pola, sebelum 12 Oktober 2026; jangan diulang sebelum 12 April 2027): niat umroh; pertama kali lihat Ka'bah; sa'i dan kisah Siti Hajar; Raudhah; subuh di Madinah; bawaan yang sering ketinggalan; kesalahan umum thawaf; urutan umroh (ihram, thawaf, sa'i, tahallul); larangan ihram; persiapan fisik; hari terakhir di Makkah; Makkah atau Madinah; umroh bersama orang tua; mulai dari yang kecil / menabung niat.
 - Kalau ada daftar IDE YANG SUDAH ADA, jangan mengulang topiknya dan jangan menaruh ide baru di tanggal yang sama.
 - Kalau ada daftar HOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR, hook (teks_gambar baris pertama) dan 3 kata pertama pembuka caption TIDAK boleh sama atau mirip dengan daftar itu, juga tidak antarhari dalam jawaban yang sama. Variasikan rumus pembuka (jangan terus memakai "Kemarin kita bahas").
 
@@ -16506,7 +16534,7 @@ async function igSalinPromptPlan() {
             temaMinggu, temaMingguDepan: (document.getElementById('igPlanTemaDepan')?.value || '').trim(),
             slots, konteksPekan, konteksProgram,
             arahan: (document.getElementById('igPlanArahan')?.value || '').trim(),
-            riwayatTema: igRiwayatToText(igBuildRiwayat()),
+            riwayatTema: igRiwayatToText(igBuildRiwayat(), senin),
             riwayatGaya: igRiwayatGayaToText(igBuildRiwayat())
         });
         if (await igSalinTeks(prompt)) {

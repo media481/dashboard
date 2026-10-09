@@ -574,6 +574,52 @@ testAsync('regen satu hari: payload ke AI memuat riwayatGaya', async () => {
   assert.ok(typeof log.panggilan[0].riwayatGaya === 'string' && log.panggilan[0].riwayatGaya.includes('Caption contoh.'));
 });
 
+// ---- #6: jeda topik 6 bulan (sesuai pola-konten.md), riwayat tidak memblokir selamanya ----
+console.log('\n=== TEST: jendela jeda topik 6 bulan ===');
+const dupAda = (entri, item, abaikan) => { const r = []; entri.forEach(([tgl, tema, hook]) => run('igRiwayatAdd')(r, tema, hook || '', tgl)); return run('igIsDuplicateIdea')(item, r, abaikan); };
+const itemTawaf = { tanggal: '2026-10-13', tema: 'Kesalahan umum tawaf', teks_gambar: 'x' };
+test('batas jendela: 12 Okt 2026 - 6 bulan = 12 Apr 2026; akhir bulan dijepit (31 Agu -> 28 Feb)', () => {
+  assert.strictEqual(run('igBatasRiwayat')('2026-10-12'), '2026-04-12');
+  assert.strictEqual(run('igBatasRiwayat')('2026-08-31'), '2026-02-28');
+  assert.strictEqual(run('igBatasRiwayat')('2026-12-31'), '2026-06-30');
+});
+test('topik yang sama 5 bulan lalu -> masih memblokir', () => {
+  assert.strictEqual(dupAda([['2026-05-20', 'Kesalahan umum thawaf']], itemTawaf), true);
+});
+test('topik yang sama 7 bulan lalu -> boleh kembali (sudut baru)', () => {
+  assert.strictEqual(dupAda([['2026-03-01', 'Kesalahan umum thawaf']], itemTawaf), false);
+});
+test('entri tanpa tanggal (baru ditolak di proses ini) selalu memblokir', () => {
+  assert.strictEqual(dupAda([['', 'Kesalahan umum thawaf']], itemTawaf), true);
+});
+test('entri di masa depan (rencana pekan mendatang) tetap memblokir', () => {
+  assert.strictEqual(dupAda([['2026-11-10', 'Kesalahan umum thawaf']], itemTawaf), true);
+});
+test('tanggal ide menentukan jendela: entri Okt 2026 sudah 7 bulan bagi ide bertanggal Mei 2027', () => {
+  assert.strictEqual(dupAda([['2026-10-01', 'Kesalahan umum thawaf']], { ...itemTawaf, tanggal: '2027-05-01' }), false);
+  assert.strictEqual(dupAda([['2026-10-01', 'Kesalahan umum thawaf']], { ...itemTawaf, tanggal: '2027-03-01' }), true);
+});
+test('igRiwayatToText: hanya yang di dalam jendela, tanpa-tanggal dulu, lalu terbaru ke terlama', () => {
+  const r = [];
+  [['2025-01-01', 'Tua sekali'], ['2026-03-01', 'Tujuh bulan'], ['2026-06-01', 'Empat bulan'], ['2026-09-20', 'Baru sekali'], ['', 'Baru ditolak']].forEach(([tgl, tm]) => run('igRiwayatAdd')(r, tm, '', tgl));
+  assert.strictEqual(run('igRiwayatToText')(r, '2026-10-12'), '- Baru ditolak\n- Baru sekali\n- Empat bulan');
+});
+test('igRiwayatToText: tema yang baru ditolak tidak terpotong batas 200 baris', () => {
+  const r = [];
+  for (let i = 0; i < 250; i++) run('igRiwayatAdd')(r, 'Topik nomor ' + i, '', `2026-09-${String(1 + (i % 28)).padStart(2, '0')}`);
+  run('igRiwayatAdd')(r, 'Tema yang baru ditolak', '', '');
+  const baris = run('igRiwayatToText')(r, '2026-10-12').split('\n');
+  assert.strictEqual(baris.length, 200);
+  assert.strictEqual(baris[0], '- Tema yang baru ditolak');
+});
+testAsync('generate pekan: tema serupa dari >6 bulan lalu tidak menolak Senin (1 panggilan saja)', async () => {
+  const log = siapkanGenPekan([balasSemua(0)], [{ ...planLama[0], tanggal: '2026-03-01' }]);
+  sandbox.__slots = slotPekan(); sandbox.__opsi = opsiPekan;
+  const r = await run("igGeneratePlanForSlots(2026, 9, __slots, '', null, __opsi)");
+  assert.strictEqual(log.panggilan.length, 1); assert.strictEqual(r.berhasil, 7);
+  assert.ok(!log.panggilan[0].riwayatTema.includes('Kerinduan ladang pasir sunyi'), 'riwayat >6 bulan tidak dikirim ke AI');
+});
+
 // ============================================================
 (async () => {
   for (const t of asyncTests) {

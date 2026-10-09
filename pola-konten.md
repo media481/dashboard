@@ -105,6 +105,8 @@ Acuan (JANGAN vs TULIS):
 ## 6. Aturan Anti-Pengulangan
 
 - Satu topik hanya sekali. Sudut baru atas topik lama baru boleh muncul setelah jeda minimal 6 bulan.
+  - **Cara sistem menegakkannya:** deteksi duplikat dan daftar riwayat yang dikirim ke AI hanya memuat 6 bulan terakhir (`IG_JEDA_TOPIK_BULAN` di `js/app.js`); topik atau hook yang lebih tua boleh kembali dengan sudut baru. Tema Minggu memakai jeda lebih ketat, 12 bulan, supaya peta setahun tidak punya tema pekan kembar.
+  - Hook dan pembuka caption dibandingkan dengan 20 posting terakhir, terlepas dari jendela 6 bulan.
 - Hook dan kalimat pembuka caption tidak boleh mirip dengan 20 posting terakhir.
 - Isi diambil dari bank topik per hari:
 
