@@ -5102,3 +5102,35 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     .ig-cal-chip, .ig-cal-chip.ig-cal-chip-plan { width: 8px; height: 8px; }
     .ig-cal-past:not(.ig-cal-today) { opacity: .75; }
 }
+
+
+/* ============================================================
+   Kalender IG Scheduler: warna pilar (jenis konten) lebih mencolok
+   - chip rencana: bilah warna 5px + latar lebih pekat + teks agak tebal
+   - tahap makin matang makin pekat: ide < dikerjakan < siap posting
+   - tampilan HP (titik): titik lebih besar, tahap "ide" berisi tipis (bukan cincin kosong)
+   ============================================================ */
+.ig-cal-chip.ig-cal-chip-plan {
+    border-left: 5px solid var(--pillar); border-radius: 5px; font-weight: 600;
+    padding: 3px 6px 3px 7px;
+}
+@supports (background: color-mix(in srgb, red 10%, transparent)) {
+    .ig-cal-chip.ig-cal-chip-plan {
+        background: color-mix(in srgb, var(--pillar) 20%, transparent);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pillar) 35%, transparent);
+        color: color-mix(in srgb, var(--pillar) 35%, var(--ink));
+    }
+    .ig-cal-chip.ig-cal-chip-dikerjakan { background: color-mix(in srgb, var(--pillar) 32%, transparent); }
+    .ig-cal-chip.ig-cal-chip-siap {
+        background: color-mix(in srgb, var(--pillar) 46%, transparent); font-weight: 700;
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pillar) 60%, transparent);
+    }
+    .ig-cal-chip.ig-cal-chip-post { background: color-mix(in srgb, var(--chip) 20%, transparent); }
+}
+.ig-cal-chip.ig-cal-chip-post { border-left-width: 5px; font-weight: 600; }
+.ig-side-dot { width: 9px; height: 9px; }
+@media (max-width: 560px) {
+    .ig-cal-chip, .ig-cal-chip.ig-cal-chip-plan { width: 10px; height: 10px; }
+    .ig-cal-chip.ig-cal-chip-plan { background: color-mix(in srgb, var(--pillar) 30%, transparent); box-shadow: inset 0 0 0 2px var(--pillar); }
+    .ig-cal-chip.ig-cal-chip-dikerjakan, .ig-cal-chip.ig-cal-chip-siap { background: var(--pillar); box-shadow: none; }
+}
