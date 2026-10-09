@@ -4,6 +4,8 @@ Dokumen acuan untuk membuat konten Instagram Amiru Tour (PT Amiru Haramain Indon
 
 > Status: disepakati Oktober 2026. Uji coba alur mingguan yang menyambung dimulai pekan Senin, 12 Oktober 2026.
 > Ejaan resmi: **"Umroh"** (bukan "Umrah"), termasuk di hashtag.
+>
+> Versi ringkas yang bisa dibaca, disalin, dan direvisi lewat Claude ada di tombol **About Planner** (IG Scheduler), teksnya di `ABOUT_PLANNER_MD` pada `js/app.js`. Kalau konsep berubah, perbarui keduanya.
 
 ---
 

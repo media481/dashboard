@@ -15374,6 +15374,334 @@ function closeIgContentPlanModal() {
     if (modal) modal.classList.remove('open');
 }
 
+// ============================================================
+// 24e. ABOUT PLANNER (konsep perencanaan konten Amiru, bisa dibaca, disalin, dan direvisi lewat Claude)
+// SUMBER TUNGGAL konsep ada di konstanta ABOUT_PLANNER_MD di bawah. Alur revisi:
+//   1. Klik "About Planner" di IG Scheduler > "Salin untuk Claude" (atau "Unduh .md"), tempel/unggah ke Claude.
+//   2. Claude mengembalikan dokumen utuh versi baru (Versi naik, Riwayat Revisi bertambah).
+//   3. Unggah hasilnya ke sesi pengembangan: isi ABOUT_PLANNER_MD diganti, lalu aturan yang berubah disinkronkan ke
+//      IG_PLAN_PROMPT_SISTEM, IG_POLA_AMIRU, edge function generate-ig-content-plan, dan pola-konten.md
+//      (lihat bagian "About Planner" di CLAUDE.md).
+// Aturan menulis isinya: jangan pakai karakter backtick atau urutan dollar-kurung-kurawal di dalam teks (ini template literal).
+// Baris "Versi:" dan "Diperbarui:" dibaca otomatis untuk header modal, jadi format dua baris itu jangan diubah.
+// ============================================================
+const ABOUT_PLANNER_MD = `# About Planner: Konsep Perencanaan Konten Instagram Amiru Tour
+Versi: 1
+Diperbarui: 9 Oktober 2026
+Status: disepakati Oktober 2026. Uji coba alur mingguan yang menyambung dimulai pekan Senin, 12 Oktober 2026. Ejaan resmi: "Umroh" (bukan "Umrah"), termasuk di hashtag.
+
+## 1. Tujuan dan Prinsip
+
+Dokumen acuan untuk membuat konten Instagram Amiru Tour (PT Amiru Haramain Indonesia) lewat fitur Perencanaan Konten di dashboard.
+
+1. **Menyambung.** Tujuh posting dalam seminggu membahas satu tema dari tujuh sudut berurutan, supaya jamaah merasa tiap konten melanjutkan yang kemarin.
+2. **Seimbang.** Hati (cerita, perasaan, renungan) dan akal (tata cara, persiapan, kesalahan umum) bergantian.
+3. **Tahan jangka panjang.** Topik, hook, dan kalimat pembuka tidak boleh berulang antarhari, antarminggu, maupun antarbulan.
+4. **Jujur.** Tidak ada testimoni, kutipan, angka, atau janji yang dikarang.
+5. **Storytelling, bukan hard-selling.** Ajakan cukup berupa CTA ringan ("chat WA aja ya").
+
+## 2. Kategori Konten
+
+Hanya 3 kategori, semuanya berbasis gambar (tanpa video, Reels, atau live).
+
+| Kategori | Keterangan |
+|---|---|
+| Single Post | Satu gambar |
+| Carousel | Maksimal 5 slide |
+| Story | Dipakai bila dibutuhkan; belum masuk pola mingguan saat ini |
+
+Sedang dijeda: bukti sosial/testimoni, engagement (polling/pertanyaan), dan info program. Aktifkan lagi hanya bila diminta (misalnya ada keberangkatan yang perlu dipromosikan). Info program hanya muncul bila Arahan tambahan di modal Perencanaan Konten memintanya.
+
+## 3. Pola 7 Hari (satu tema mingguan)
+
+Urutan perjalanan hati calon jamaah: rasakan > pahami > siapkan > bayangkan > hindari kesalahan > terinspirasi > renungkan.
+
+| Hari | Pilar | Format | Peran | Jembatan ke hari berikutnya |
+|---|---|---|---|---|
+| Senin | Storytelling | Single Post | Rasakan: momen emosional tema minggu ini | Pertanyaan: "tahu nggak caranya?" |
+| Selasa | Manasik | Image (kartu praktis) | Pahami: tata cara/doa terkait tema | "Biar siap, besok kita bahas persiapannya." |
+| Rabu | Edukasi | Carousel | Siapkan: persiapan fisik/perlengkapan terkait tema | "Besok kita bayangkan perjalanannya." |
+| Kamis | Storytelling bertahap | Carousel | Bayangkan: satu alur waktu/perjalanan, per slide | "Besok: kekeliruan yang sering terjadi." |
+| Jumat | Edukasi | Carousel | Hindari: kesalahan umum dan FAQ | "Besok ada cerita yang mengingatkan kenapa kita berangkat." |
+| Sabtu | Storytelling | Carousel | Terinspirasi: satu cerita manusiawi dalam 5 slide | "Besok kita renungkan maknanya." |
+| Minggu | Kontemplasi ibadah umroh | Carousel | Renungkan: makna tema, tanpa tokoh | Menutup dan memberi teaser tema minggu depan |
+
+Keseimbangan: 4 hari menyentuh hati (Senin, Kamis, Sabtu, Minggu) dan 3 hari praktis (Selasa, Rabu, Jumat).
+
+**Penyambung yang terlihat jamaah**
+- Pembuka caption (kecuali Senin) merujuk hari sebelumnya ("Kemarin kita bahas..."), dengan rumus pembuka yang divariasikan.
+- Penutup caption memancing hari berikutnya.
+- Label kecil di pojok gambar, misalnya "Seri Talbiyah · 3/7". Ditambahkan otomatis oleh sistem di akhir teks gambar.
+
+**Membedakan hari-hari storytelling**
+- Senin: momen ibadah di satu lokasi atau peristiwa.
+- Kamis (bertahap): alur waktu atau perjalanan dipecah per slide (pagi ke malam, hari pertama ke terakhir).
+- Sabtu: satu cerita manusiawi yang selesai dalam 5 slide. Berbentuk ilustrasi/umum ("banyak jamaah bercerita..."), bukan klaim kejadian nyata.
+- Minggu (kontemplasi) beda dari Sabtu: tanpa tokoh, murni renungan makna.
+
+**Contoh satu minggu: tema Talbiyah**
+
+| Hari | Hook |
+|---|---|
+| Senin | Pertama kali mendengar ribuan suara bertalbiyah bersamaan |
+| Selasa | Kapan talbiyah mulai dibaca dan kapan berhenti (sesuai manasik pembimbing) |
+| Rabu | Menghafal talbiyah dari sekarang, jadwal latihan 2 minggu |
+| Kamis | Dari miqat sampai Masjidil Haram sambil bertalbiyah |
+| Jumat | Kesalahan umum soal talbiyah |
+| Sabtu | Cerita ilustrasi tentang menjawab panggilan |
+| Minggu | "Aku datang memenuhi panggilan-Mu": apa yang sebenarnya kita jawab? Teaser tema minggu depan |
+
+## 4. Gaya Bahasa
+
+- Sastrawi tapi membumi: puitis, hangat, santai seperti ngobrol dengan teman.
+- Sapa pembaca dengan "kamu". Kata sehari-hari secukupnya (nggak, aja, banget), tetap sopan.
+- Utamakan momen konkret yang bisa dibayangkan (gerakan, suasana, ekspresi jamaah, kekhawatiran nyata), bukan klaim umum atau bahasa brosur.
+- Fokus ke perasaan: rindu, ketenangan, proses transisi jiwa, makna di balik ibadah.
+- Hindari kata kaku: "tersedia", "silakan", "hubungi kami".
+
+| JANGAN | TULIS |
+|---|---|
+| Umroh Oktober tersedia. Silakan daftar via WA. | Bayangin pertama kali lihat Ka'bah dari dekat. Dada sesak, mata basah, semua yang dibawa dari rumah mendadak hilang. Kalau hatimu mulai kepikiran, chat WA aja ya. |
+
+## 5. Format Tiap Posting
+
+1. **Teks di gambar:** 2-4 baris pendek, jadi pemancing. Untuk carousel tulis per slide: Slide 1 pemancing, Slide 2-4 isi, Slide 5 penutup (ajakan simpan/kirim atau doa singkat). Tidak diulang di caption.
+2. **Caption:** lanjutan dari teks gambar, tidak terlalu singkat (3-5 paragraf pendek, sekitar 600-1200 karakter, dipisah baris kosong), maksimal 2200 karakter.
+   - Konten emosional: pembukaan = suasana/refleksi; isi = hubungkan dengan pengalaman batin jamaah; penutup = pertanyaan hangat (rindu/doa) + satu kalimat doa penutup sederhana dalam Bahasa Indonesia.
+   - Konten praktis: pembukaan = masalah yang relatable; isi = poin ringkas; penutup = ajakan simpan/kirim + CTA ringan.
+3. **Hashtag:** tepat 5, langsung di baris terakhir caption, tanpa label "Hashtag:" (supaya mudah disalin). #UmrohBersamaAmiru dan #AmiruTour selalu ada, 3 lainnya relevan dengan topik.
+
+## 6. Aturan Anti-Pengulangan
+
+- Satu topik hanya sekali. Sudut baru atas topik lama baru boleh muncul setelah jeda minimal 6 bulan.
+- Hook dan pembuka caption tidak boleh mirip dengan 20 posting terakhir, terlepas dari jendela 6 bulan. Rumus 3 kata pertama pembuka caption yang sama juga dianggap mirip.
+- Tema Minggu memakai jeda lebih ketat, 12 bulan, supaya peta setahun tidak punya tema pekan kembar.
+- Kata tema minggu diabaikan saat membandingkan ide dalam satu pekan, supaya ketujuh ide tidak saling dianggap kembar.
+- Isi diambil dari bank topik per hari:
+
+| Hari | Mesin topik |
+|---|---|
+| Senin | Matriks lokasi x momen x perasaan |
+| Selasa | Kurikulum manasik berurutan (miqat, niat, talbiyah, thawaf, doa, sa'i, tahallul, adab) |
+| Rabu | Rotasi kategori persiapan: fisik, dokumen, perlengkapan, kesehatan, keuangan, adab |
+| Kamis | Seri 4 minggu dengan alur/tokoh berbeda |
+| Jumat | Kesalahan umum dan FAQ calon jamaah |
+| Sabtu | Sisi manusiawi: pertama kali, orang tua, pasangan, rindu setelah pulang, doa yang dititipkan |
+| Minggu | Renungan makna rukun/wajib dan hikmahnya |
+
+- Tiap kuartal tambahkan topik musiman (menjelang Ramadan, musim haji, libur sekolah, akhir tahun).
+
+**Riwayat topik awal (jangan diulang sebelum 12 April 2027)**
+
+| Topik | Pilar | Sumber |
+|---|---|---|
+| Niat umroh | Storytelling | Set awal |
+| Pertama kali lihat Ka'bah | Storytelling | Set awal |
+| Sa'i dan kisah Siti Hajar | Storytelling | Set awal |
+| Raudhah | Storytelling | Set awal |
+| Subuh di Madinah | Storytelling | Paket mingguan pertama |
+| Bawaan yang sering ketinggalan | Edukasi | Set awal |
+| Kesalahan umum thawaf | Edukasi | Set awal |
+| Urutan umroh (ihram, thawaf, sa'i, tahallul) | Edukasi | Set awal |
+| Larangan ihram | Manasik | Paket mingguan pertama |
+| Persiapan fisik | Edukasi | Paket mingguan pertama |
+| Hari terakhir di Makkah | Storytelling bertahap | Paket mingguan pertama |
+| Makkah atau Madinah | Engagement | Paket mingguan pertama |
+| Umroh bersama orang tua | Info program | Set awal |
+| Mulai dari yang kecil / menabung niat | Info program | Set awal |
+
+## 7. Tema Minggu Otomatis
+
+Dashboard menyarankan Tema Minggu tanpa AI, dengan tiga sumber dalam urutan prioritas:
+
+1. **Tema yang sudah dipakai di pekan itu** (kalau pekan sudah pernah digenerate sebagian) tetap dipertahankan.
+2. **Tema musiman** menurut bulan Hijriah/Masehi pekan itu (Maulid, Isra Miraj, Ramadhan, musim haji, libur sekolah, dan seterusnya). Tema musiman yang mengarah ke penjualan sengaja tayang 2-3 bulan sebelum musimnya, karena calon jamaah memesan jauh hari, dan didahulukan atas tema musiman biasa.
+3. **Alur perjalanan jamaah** yang dilanjutkan dari tema alur terakhir yang dipakai, supaya pekan ke pekan terasa satu cerita: niat dan persiapan, miqat dan ihram, thawaf, sa'i, tahallul, Madinah, lalu pulang dan rindu Tanah Suci.
+
+Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati. Admin tetap bisa mengetik Tema Minggu sendiri, dan mengisi Tema pekan depan (opsional) untuk teaser penutup Minggu.
+
+## 8. Kejujuran dan Kehati-hatian
+
+- Jangan mengarang ayat, hadis, atau lafaz/doa berbahasa Arab. Untuk lafaz dan tata cara tulis "sesuai manasik dari pembimbing".
+- Jangan mengarang testimoni, nama jamaah, angka, harga, tanggal, hotel, atau fasilitas. Pakai placeholder [bulan], [hotel], [nomor WA] bila data belum ada.
+- Testimoni hanya dari jamaah asli dan seizin jamaah.
+- Jangan memberi janji berlebihan ("pasti mabrur", "dijamin berangkat", "seat pasti ada").
+- Konten tata cara dan hukum ibadah ditulis secara umum, tanpa fatwa, dan dicek ke pembimbing/ustaz sebelum diposting. Di dashboard, ide yang memuat tata cara/hukum/doa ditandai "[cek pembimbing]" pada judul ide.
+- Cerita Sabtu dan renungan Minggu bersifat ilustrasi/umum, bukan klaim kejadian nyata.
+
+## 9. Cara Kerja di Dashboard
+
+- Modal **Perencanaan Konten** memilih satu pekan (Senin-Minggu), mengisi Tema Minggu (wajib), dan Tema pekan depan (opsional).
+- **Generate Konten** menyusun ketujuh hari dalam satu panggilan AI, dengan peran per hari sesuai bagian 3. Hari yang sudah lewat atau sudah terisi dilewati.
+- Hasil AI yang memuat carousel lebih dari 5 slide ditolak dan slotnya dicoba ulang.
+- Caption dirapikan di server: ejaan "Umroh", tepat 5 hashtag (#UmrohBersamaAmiru dan #AmiruTour selalu ada), maksimal 2200 karakter.
+- Label seri "Seri [Tema] · n/7" ditambahkan otomatis di akhir teks gambar.
+- **Isi dari Pola** membuat kerangka kosong 7 hari (pilar dan format sudah terisi) tanpa AI; bagian [isi ...] diganti data asli.
+- **Salin Prompt** menyalin prompt lengkap (pola 7 hari, konteks, riwayat konten lama) untuk ditempel ke asisten AI lain bila server penyusun konten bermasalah.
+- Tombol **Jadikan Post** memilih tujuan caption sesuai pilar rencana (termasuk Manasik dan Kontemplasi) dan mengirim konteks seri (hari/peran, Tema Minggu, teks di gambar, tema kemarin dan besok) supaya caption yang digenerate ulang tetap menyambung.
+- **Peta tema 12 bulan** di modal menampilkan tema pekan-pekan setahun supaya tidak ada tema kembar.
+- Riwayat konten dibaca dari rencana dan post tersimpan, jadi AI menghindari topik lama otomatis.
+
+## 10. Alur Kerja Mingguan
+
+1. Buka Perencanaan Konten, pilih pekan, isi Tema Minggu (atau pakai saran tema).
+2. Generate paket 7 hari, paling lambat Jumat/Sabtu sebelum pekan tayang agar ada waktu desain.
+3. Cek ide yang bertanda [cek pembimbing] ke pembimbing/ustaz.
+4. Desain gambar, lalu jadikan post dan jadwalkan.
+
+## 11. Yang Dijeda dan Belum Otomatis
+
+- Dijeda: bukti sosial/testimoni, engagement (polling), info program, dan Story dalam pola mingguan.
+- Belum otomatis: tabel Riwayat topik awal (bagian 6) masih diperbarui manual; dashboard sudah membaca riwayat dari rencana dan post tersimpan sehingga AI tetap menghindari topik lama.
+- Desain gambar dan pengecekan ke pembimbing/ustaz dilakukan manusia.
+
+## 12. Riwayat Revisi
+
+| Versi | Tanggal | Perubahan |
+|---|---|---|
+| 1 | 9 Oktober 2026 | Versi awal About Planner, disusun dari pola-konten.md dan perilaku Perencanaan Konten di dashboard |
+`;
+
+// Petunjuk yang ikut tersalin di depan dokumen supaya Claude mengembalikan dokumen dalam format yang bisa dipakai lagi.
+const ABOUT_PLANNER_PETUNJUK = `PETUNJUK UNTUK CLAUDE
+Di bawah garis adalah dokumen "About Planner": konsep perencanaan konten Instagram Amiru Tour yang dipakai di fitur Perencanaan Konten dashboard. Saya akan meminta perubahan pada konsep ini. Setelah mengubah:
+1. Kembalikan SELURUH dokumen (bukan potongan) dalam format markdown yang sama, mulai dari baris judul "# About Planner".
+2. Pertahankan dua baris "Versi:" dan "Diperbarui:" dengan format yang sama. Naikkan Versi 1 angka, isi tanggal hari ini, dan tambahkan satu baris di bagian "Riwayat Revisi" yang menjelaskan perubahannya.
+3. Pertahankan nomor dan judul bagian yang tidak diubah. Jangan menambah klaim, angka, atau fakta baru yang tidak saya minta.
+4. Setelah dokumen, tulis daftar singkat "Dampak ke sistem": aturan mana yang berubah, supaya bisa disinkronkan ke generator konten di dashboard.
+
+PERUBAHAN YANG SAYA MINTA:
+[tulis perubahan di sini]
+
+----------------------------------------------------------------------
+
+`;
+
+// Ambil nilai baris "Versi:" dan "Diperbarui:" dari dokumen.
+function igAboutPlannerMeta(md) {
+    const ambil = (kunci) => {
+        const m = String(md || '').match(new RegExp('^' + kunci + ':\\s*(.+)$', 'm'));
+        return m ? m[1].trim() : '';
+    };
+    return { versi: ambil('Versi') || '?', diperbarui: ambil('Diperbarui') };
+}
+
+// Teks yang disalin/diunduh: petunjuk untuk Claude + dokumen utuh.
+function igAboutPlannerTeksSalin() {
+    return ABOUT_PLANNER_PETUNJUK + ABOUT_PLANNER_MD.trim() + '\n';
+}
+
+// Markdown ringan -> HTML aman (semua teks di-escape dulu). Mendukung judul, tabel, daftar, kutipan, tebal, miring.
+// Judul level 1 serta baris "Versi:"/"Diperbarui:" tidak dirender (sudah ada di header modal).
+function igAboutPlannerRender(md) {
+    const inline = (s) => escapeHtml(s)
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/(^|[\s(])\*([^*\s][^*]*?)\*(?=[\s).,;:]|$)/g, '$1<em>$2</em>');
+    const lines = String(md || '').replace(/\r/g, '').split('\n');
+    const isRow = (l) => /^\s*\|.*\|\s*$/.test(l);
+    const isSep = (l) => /^\s*\|[\s:|-]+\|\s*$/.test(l);
+    const cells = (l) => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+    const out = [];
+    let i = 0;
+    while (i < lines.length) {
+        const l = lines[i];
+        if (!l.trim()) { i++; continue; }
+        let m = l.match(/^(#{1,3})\s+(.*)$/);
+        if (m) {
+            if (m[1].length > 1) out.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`);
+            i++; continue;
+        }
+        if (/^(Versi|Diperbarui):/.test(l)) { i++; continue; }
+        if (isRow(l) && i + 1 < lines.length && isSep(lines[i + 1])) {
+            const head = cells(l);
+            i += 2;
+            const rows = [];
+            while (i < lines.length && isRow(lines[i])) { rows.push(cells(lines[i])); i++; }
+            out.push('<div class="ig-about-table-wrap"><table><thead><tr>'
+                + head.map(c => `<th>${inline(c)}</th>`).join('') + '</tr></thead><tbody>'
+                + rows.map(r => '<tr>' + r.map(c => `<td>${inline(c)}</td>`).join('') + '</tr>').join('')
+                + '</tbody></table></div>');
+            continue;
+        }
+        if (/^\s*(?:[-*]|\d+\.)\s+/.test(l)) {
+            const urut = /^\s*\d+\./.test(l);
+            const items = [];
+            while (i < lines.length && (/^\s*(?:[-*]|\d+\.)\s+/.test(lines[i]) || (/^\s{2,}\S/.test(lines[i]) && items.length))) {
+                if (/^\s*(?:[-*]|\d+\.)\s+/.test(lines[i])) {
+                    const nested = /^\s{2,}/.test(lines[i]);
+                    const teks = lines[i].replace(/^\s*(?:[-*]|\d+\.)\s+/, '');
+                    if (nested && items.length) items[items.length - 1] += `<div class="ig-about-sub">${inline(teks)}</div>`;
+                    else items.push(inline(teks));
+                } else {
+                    items[items.length - 1] += ' ' + inline(lines[i].trim());
+                }
+                i++;
+            }
+            const tag = urut ? 'ol' : 'ul';
+            out.push(`<${tag}>` + items.map(t => `<li>${t}</li>`).join('') + `</${tag}>`);
+            continue;
+        }
+        if (/^>\s?/.test(l)) {
+            const q = [];
+            while (i < lines.length && /^>\s?/.test(lines[i])) { q.push(lines[i].replace(/^>\s?/, '')); i++; }
+            out.push(`<blockquote>${inline(q.join(' '))}</blockquote>`);
+            continue;
+        }
+        const para = [];
+        while (i < lines.length && lines[i].trim() && !/^(#{1,3})\s+/.test(lines[i]) && !isRow(lines[i])
+            && !/^\s*(?:[-*]|\d+\.)\s+/.test(lines[i]) && !/^(Versi|Diperbarui):/.test(lines[i])) {
+            para.push(lines[i].trim()); i++;
+        }
+        if (para.length) out.push(`<p>${inline(para.join(' '))}</p>`);
+        else i++;
+    }
+    return out.join('\n');
+}
+
+function openIgAboutPlannerModal() {
+    const modal = document.getElementById('igAboutPlannerModal');
+    if (!modal) return;
+    const meta = igAboutPlannerMeta(ABOUT_PLANNER_MD);
+    const metaEl = document.getElementById('igAboutPlannerMeta');
+    if (metaEl) metaEl.textContent = `Versi ${meta.versi}${meta.diperbarui ? ' · Diperbarui ' + meta.diperbarui : ''}`;
+    const body = document.getElementById('igAboutPlannerBody');
+    if (body) { body.innerHTML = igAboutPlannerRender(ABOUT_PLANNER_MD); body.scrollTop = 0; }
+    modal.classList.add('open');
+}
+
+function closeIgAboutPlannerModal() {
+    const modal = document.getElementById('igAboutPlannerModal');
+    if (modal) modal.classList.remove('open');
+}
+
+async function igSalinAboutPlanner() {
+    const ok = await igSalinTeks(igAboutPlannerTeksSalin());
+    if (ok) showToast('About Planner disalin. Tempel ke Claude, tulis perubahan yang diminta, lalu unggah hasilnya ke sesi pengembangan.');
+    else showToast('Gagal menyalin. Coba tombol Unduh .md', 'error');
+}
+
+function igUnduhAboutPlanner() {
+    try {
+        const meta = igAboutPlannerMeta(ABOUT_PLANNER_MD);
+        const blob = new Blob([igAboutPlannerTeksSalin()], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `about-planner-v${String(meta.versi).replace(/[^\w.-]/g, '')}.md`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+        showToast('File about-planner diunduh');
+    } catch (e) {
+        showToast('Gagal mengunduh: ' + (e.message || e), 'error');
+    }
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeIgAboutPlannerModal();
+});
+
 // ---- Balik ke form generate (dipakai tombol "Generate Ulang") ----
 function showIgPlanGenerateForm() {
     igPlanResultRange = null; // daftar hasil kembali ke tampilan per bulan
@@ -17102,6 +17430,10 @@ window.openIgContentPlanModal = openIgContentPlanModal;
 window.igRefreshPlanPreview = igRefreshPlanPreview;
 window.igRenderPlanWeekOptions = igRenderPlanWeekOptions;
 window.closeIgContentPlanModal = closeIgContentPlanModal;
+window.openIgAboutPlannerModal = openIgAboutPlannerModal;
+window.closeIgAboutPlannerModal = closeIgAboutPlannerModal;
+window.igSalinAboutPlanner = igSalinAboutPlanner;
+window.igUnduhAboutPlanner = igUnduhAboutPlanner;
 window.showIgPlanGenerateForm = showIgPlanGenerateForm;
 window.generateIgContentPlanAI = generateIgContentPlanAI;
 window.igConvertPlanToPost = igConvertPlanToPost;

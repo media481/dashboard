@@ -381,3 +381,11 @@ Deploy ulang: `supabase functions deploy generate-ig-caption --no-verify-jwt`
   `supabase functions deploy generate-ig-content-plan --no-verify-jwt`
   `supabase functions deploy generate-ig-caption --no-verify-jwt`
   Function butuh secret `SUPABASE_URL` & `SUPABASE_SERVICE_ROLE_KEY` (otomatis tersedia di Supabase).
+
+## About Planner
+
+Tombol **About Planner** (di samping "Perencanaan Konten") menampilkan konsep perencanaan konten Amiru: tujuan, pola 7 hari,
+gaya bahasa, format posting, aturan anti-pengulangan, Tema Minggu otomatis, kejujuran, dan cara kerja di dashboard.
+**Salin untuk Claude** menyalin dokumen beserta petunjuk revisi; **Unduh .md** menyimpannya sebagai file. Hasil revisi dari
+Claude diunggah ke sesi pengembangan untuk memperbarui isi modal (lihat bagian "About Planner" di `CLAUDE.md`). Tidak butuh migrasi SQL maupun deploy edge function.
+

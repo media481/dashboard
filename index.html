@@ -448,6 +448,9 @@
                 <button class="btn-secondary" id="btnIgContentPlan" onclick="openIgContentPlanModal()" style="font-size:12px;padding:6px 14px;" title="Susun rencana konten per pekan: tema, teks gambar, dan caption">
                     Perencanaan Konten
                 </button>
+                <button class="btn-secondary" id="btnIgAboutPlanner" onclick="openIgAboutPlannerModal()" style="font-size:12px;padding:6px 14px;" title="Konsep perencanaan konten Amiru: baca, salin untuk direvisi lewat Claude, atau unduh">
+                    About Planner
+                </button>
                 <span class="ig-scheduler-count" id="igSchedulerCount">0 post</span>
             </div>
         </div>
@@ -1516,6 +1519,30 @@
                     <!-- Diisi oleh JS -->
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: About Planner (konsep perencanaan konten; sumber teks = ABOUT_PLANNER_MD di js/app.js) -->
+<div class="modal-overlay" id="igAboutPlannerModal">
+    <div class="modal-content ig-plan-modal ig-about-modal">
+        <div class="modal-header">
+            <div class="ig-plan-head-text">
+                <h2>About Planner</h2>
+                <p id="igAboutPlannerMeta"></p>
+            </div>
+            <button class="modal-close" onclick="closeIgAboutPlannerModal()" aria-label="Tutup">&times;</button>
+        </div>
+        <div class="modal-body ig-about-body" id="igAboutPlannerBody"></div>
+        <div class="ig-about-footer">
+            <span class="ig-about-hint">Salin &rarr; tempel ke Claude &rarr; minta perubahan &rarr; unggah hasilnya ke sesi pengembangan.</span>
+            <span class="ig-plan-footer-spacer"></span>
+            <button class="btn-secondary" onclick="igUnduhAboutPlanner()" title="Unduh sebagai file .md untuk diunggah ke Claude">
+                <i class="bi bi-download"></i> Unduh .md
+            </button>
+            <button class="btn-primary" onclick="igSalinAboutPlanner()" title="Salin konsep lengkap beserta petunjuk untuk Claude">
+                <i class="bi bi-clipboard"></i> Salin untuk Claude
+            </button>
         </div>
     </div>
 </div>

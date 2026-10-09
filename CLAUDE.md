@@ -269,3 +269,23 @@ Kalau perubahan cuma menyentuh sebagian kecil file (bukan restrukturisasi besar)
 User tinggal replace file itu langsung di repo lalu push — re-zip seluruh proyek
 cuma buang-buang waktu/token dan bikin user harus extract & diff manual buat
 cari apa yang sebenarnya berubah.
+
+## About Planner (konsep perencanaan konten, IG Scheduler)
+
+Tombol **About Planner** di sebelah "Perencanaan Konten" (halaman IG Scheduler) membuka modal `#igAboutPlannerModal`
+berisi konsep perencanaan konten Amiru yang bisa dibaca, disalin ("Salin untuk Claude"), dan diunduh (.md).
+
+- **Sumber tunggal teks:** konstanta `ABOUT_PLANNER_MD` di `js/app.js` (section 24e). Header modal (Versi, Diperbarui)
+  dibaca otomatis dari dua baris `Versi:` dan `Diperbarui:` di awal dokumen, jadi format dua baris itu jangan diubah.
+  Teksnya template literal: jangan pakai karakter backtick atau urutan dollar-kurung-kurawal di dalamnya.
+- `ABOUT_PLANNER_PETUNJUK` ikut tersalin di depan dokumen, menyuruh Claude mengembalikan dokumen UTUH, menaikkan Versi,
+  dan menambah baris di "Riwayat Revisi".
+- **Alur revisi:** salin/unduh > ubah di Claude > unggah hasilnya ke sesi pengembangan. Saat menerima dokumen revisi:
+  1. Ganti isi `ABOUT_PLANNER_MD` dengan dokumen revisi (buang bagian petunjuk dan "Dampak ke sistem" kalau ikut terbawa).
+  2. Pastikan Versi naik dan Riwayat Revisi bertambah.
+  3. Sinkronkan aturan yang berubah ke logika yang benar-benar berjalan, sesuai bagian "Dampak ke sistem":
+     `IG_PLAN_PROMPT_SISTEM`, `IG_POLA_AMIRU`, `IG_TEMA_ALUR`/`IG_TEMA_MUSIM`, `IG_JEDA_TOPIK_BULAN`, edge function
+     `generate-ig-content-plan` dan `generate-ig-caption` (deploy ulang kalau berubah), serta `pola-konten.md`.
+  4. Naikkan `CACHE_NAME` di `service-worker.js`.
+  Mengubah teks About Planner saja TIDAK mengubah perilaku generator; generator hanya berubah lewat langkah 3.
+
