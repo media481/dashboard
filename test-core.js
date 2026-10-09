@@ -76,7 +76,7 @@ const code = fs.readFileSync(APP_PATH, 'utf8');
 const context = vm.createContext(sandbox);
 // Tambahkan penangkap: deklarasikan fungsi sebagai property di sandbox
 // dengan meng-append kode yang menaruh fungsi ke globalThis
-const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah, igBangunKonteksRegenHari, igFormatBarisPekan, igRegenerasiHariPlan };';
+const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah, igBangunKonteksRegenHari, igFormatBarisPekan, igRegenerasiHariPlan, igSusunPromptEksternal, igSalinPromptPlan, IG_PLAN_PROMPT_SISTEM };';
 vm.runInContext(wrapped, context, { filename: 'app.js' });
 const T = sandbox.__T;
 
@@ -158,6 +158,36 @@ test('harga_custom kosong string -> tidak override, tetap pakai tipe_kamar', () 
   assert.strictEqual(T.getHargaKamarJamaah(progFull, { tipe_kamar: 'triple', harga_custom: '' }), 37500000);
 });
 
+
+
+console.log('\n=== TEST: Salin Prompt untuk AI lain ===');
+test('prompt sistem di app.js SAMA PERSIS dengan edge function generate-ig-content-plan', () => {
+  const ts = fs.readFileSync(path.resolve(path.dirname(APP_PATH), '..', 'supabase', 'functions', 'generate-ig-content-plan', 'index.ts'), 'utf8');
+  const a = ts.indexOf('const CONTENT_PLAN_SYSTEM_PROMPT = `') + 'const CONTENT_PLAN_SYSTEM_PROMPT = `'.length;
+  const b = ts.indexOf('`;', a);
+  const dariServer = vm.runInNewContext('`' + ts.slice(a, b) + '`');
+  assert.strictEqual(T.IG_PLAN_PROMPT_SISTEM, dariServer);
+});
+const contohPrompt = () => T.igSusunPromptEksternal({
+  bulanLabel: 'Oktober 2026', tanggalMulai: '2026-10-12', tanggalAkhir: '2026-10-18', temaMinggu: 'Talbiyah', temaMingguDepan: 'Thawaf',
+  slots: [{ tanggal: '2026-10-12', hari: 'Senin', pilar: 'storytelling', tipe_konten: 'image' }, { tanggal: '2026-10-13', hari: 'Selasa', pilar: 'manasik', tipe_konten: 'image' }],
+  konteksPekan: 'Rabu 2026-10-14 | Siapkan | Persiapan fisik', arahan: 'fokus promo Desember', konteksProgram: '', riwayatTema: '- Niat umroh\n- Raudhah'
+});
+test('prompt memuat instruksi sistem, tema, slot, konteks pekan, arahan, dan riwayat', () => {
+  const p = contohPrompt();
+  assert.ok(p.includes('=== INSTRUKSI SISTEM ===') && p.includes('POLA 7 HARI'));
+  assert.ok(p.includes('sebanyak TEPAT 2 ide post'));
+  assert.ok(p.includes('TEMA MINGGU: Talbiyah') && p.includes('TEMA PEKAN DEPAN (untuk teaser penutup Minggu): Thawaf'));
+  assert.ok(p.includes('- 2026-10-13 (Selasa) | pilar: manasik | tipe_konten: image'));
+  assert.ok(p.includes('Rabu 2026-10-14 | Siapkan') && p.includes('fokus promo Desember') && p.includes('- Raudhah'));
+  assert.ok(p.trim().endsWith('tidak ada teks lain.'));
+});
+test('program kosong -> teks "tidak ada data program"; bagian opsional kosong tidak muncul', () => {
+  const p = T.igSusunPromptEksternal({ bulanLabel: 'Oktober 2026', tanggalMulai: '2026-10-12', tanggalAkhir: '2026-10-18', temaMinggu: 'Talbiyah', slots: [{ tanggal: '2026-10-12', hari: 'Senin', pilar: 'storytelling', tipe_konten: 'image' }], konteksProgram: '' });
+  const permintaan = p.slice(p.indexOf('=== PERMINTAAN ==='));  // prompt sistem sendiri menyebut istilah-istilah ini
+  assert.ok(permintaan.includes('(tidak ada data program spesifik untuk periode ini)'));
+  assert.ok(!permintaan.includes('TEMA PEKAN DEPAN') && !permintaan.includes('KONTEKS PEKAN') && !permintaan.includes('ARAHAN TAMBAHAN DARI ADMIN') && !permintaan.includes('RIWAYAT TEMA, SUDAH'));
+});
 
 // ============================================================
 // TES TAHAP 6: generate ulang SATU hari dengan konteks pekan

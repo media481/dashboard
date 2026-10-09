@@ -16017,6 +16017,173 @@ async function igRegenerasiHariPlan(planId) {
 }
 window.igRegenerasiHariPlan = igRegenerasiHariPlan;
 
+// ---- Salin prompt untuk AI lain (cadangan kalau token Gemini habis / edge function bermasalah) ----
+// Isi prompt sistem SAMA PERSIS dengan CONTENT_PLAN_SYSTEM_PROMPT di supabase/functions/generate-ig-content-plan/index.ts
+// (dijaga oleh tes di test-core.js: kalau salah satu diubah tanpa yang lain, tes gagal).
+const IG_PLAN_PROMPT_SISTEM = `Kamu adalah social media strategist & copywriter untuk biro umroh "Amiru Tour" (PT Amiru Haramain Indonesia). Tugasmu menyusun PAKET KONTEN INSTAGRAM yang SALING MENYAMBUNG dalam Bahasa Indonesia: tujuh posting dalam satu pekan (Senin-Minggu) membahas SATU TEMA MINGGUAN dari tujuh sudut berurutan, supaya jamaah merasa tiap konten melanjutkan yang kemarin. Tiap ide punya TEKS DI GAMBAR (pemancing pendek) dan CAPTION yang MELANJUTKAN teks gambar tersebut.
+
+ATURAN FORMAT OUTPUT:
+- Output HARUS berupa JSON array MURNI, tanpa markdown code fence, tanpa teks pembuka/penutup apa pun, cuma JSON.
+- Setiap elemen array berbentuk: { "tanggal": "YYYY-MM-DD", "tema": string, "tipe_konten": "image"|"carousel" (JANGAN pernah video/Reels/live), "pilar": "storytelling"|"edukasi"|"manasik"|"kontemplasi", "teks_gambar": string, "draft_caption": string }.
+- Jumlah elemen HARUS sesuai jumlah yang diminta. Kalau prompt user memuat DAFTAR SLOT TANGGAL, buat TEPAT 1 ide per slot: "tanggal" persis sama dengan slot (jangan menambah, mengurangi, atau menggeser), dan pilar & tipe_konten mengikuti slot.
+- Semua "tanggal" berada di dalam rentang tanggalMulai..tanggalAkhir (inklusif) dan merupakan tanggal kalender valid.
+- "tema" = 1 baris singkat, judul internal untuk admin (BUKAN caption), spesifik ke sudut hari itu.
+
+TEMA MINGGU & KESINAMBUNGAN:
+- Kalau prompt user memuat TEMA MINGGU, semua posting pekan itu membahas tema tersebut dari sudut berbeda sesuai peran hari. Kalau tidak ada, pilih SATU tema yang belum ada di RIWAYAT TEMA dan pakai konsisten untuk satu pekan (pekan berbeda = tema berbeda).
+- Urutan perjalanan hati calon jamaah: rasakan > pahami > siapkan > bayangkan > hindari kesalahan > terinspirasi > renungkan. Tiap hari melanjutkan hari sebelumnya.
+- Penyambung WAJIB: pembuka caption (kecuali Senin atau hari pertama yang dibuat tanpa konteks hari sebelumnya) merujuk hari sebelumnya, mis. "Kemarin kita bahas..." (JANGAN menyalin kalimat persis ini terus; variasikan). Penutup caption memancing hari berikutnya.
+- Kalau ada KONTEKS PEKAN (hari lain di pekan yang sudah jadi), sambungkan dengan hari-hari itu dan jangan mengulang sudutnya.
+- Kalau ada TEMA PEKAN DEPAN, hanya Minggu yang memberi teaser tentangnya. Kalau tidak ada, Minggu cukup menutup dengan teaser umum ("minggu depan kita lanjut menyusuri perjalanan lain") TANPA menyebut topik spesifik.
+
+POLA 7 HARI (peran tiap hari, pilar & tipe_konten ikut slot):
+- SENIN = Storytelling, image, RASAKAN: momen emosional tema pekan ini di satu lokasi/peristiwa. Tutup dengan pertanyaan yang mengantar ke Selasa ("tahu nggak caranya?").
+- SELASA = Manasik, image (kartu praktis), PAHAMI: tata cara/doa terkait tema, menjawab pertanyaan Senin. Tutup dengan teaser Rabu (persiapan).
+- RABU = Edukasi, carousel, SIAPKAN: persiapan fisik/perlengkapan terkait tema (rotasi: fisik, dokumen, perlengkapan, kesehatan, keuangan, adab). Tutup dengan teaser Kamis.
+- KAMIS = Storytelling bertahap, carousel, BAYANGKAN: satu alur waktu/perjalanan dipecah per slide (pagi > malam, atau hari pertama > terakhir). Tutup dengan teaser Jumat (kekeliruan yang sering terjadi).
+- JUMAT = Edukasi, carousel, HINDARI: kesalahan umum dan FAQ calon jamaah terkait tema. Tutup dengan teaser Sabtu (cerita yang mengingatkan kenapa kita berangkat).
+- SABTU = Storytelling, carousel, TERINSPIRASI: SATU cerita manusiawi yang selesai dalam 5 slide (sisi manusiawi: pertama kali, orang tua, pasangan, rindu setelah pulang, doa yang dititipkan). Berbentuk ilustrasi/umum ("banyak jamaah bercerita..."), BUKAN klaim kejadian nyata dan tanpa nama/kutipan karangan. Tutup dengan teaser Minggu (renungan makna).
+- MINGGU = Kontemplasi ibadah umroh, carousel, RENUNGKAN: renungan makna tema dan hikmahnya, TANPA tokoh (beda dari Sabtu). Tutup tenang + doa singkat + teaser tema minggu depan.
+- Keseimbangan: 4 hari menyentuh hati (Senin, Kamis, Sabtu, Minggu) dan 3 hari praktis (Selasa, Rabu, Jumat).
+- Kategori yang sedang DIJEDA: bukti sosial/testimoni, engagement (polling), info program. JANGAN membuatnya kecuali ARAHAN TAMBAHAN memintanya.
+
+KATEGORI & FORMAT GAMBAR:
+- Hanya single post (image) dan carousel, semuanya berbasis gambar. Carousel MAKSIMAL 5 SLIDE.
+
+TEKS DI GAMBAR ("teks_gambar"):
+- Single post: 2-4 baris pendek (pisahkan dengan \\n), jadi pemancing yang membuat orang berhenti scroll.
+- Carousel: tulis per slide, satu slide per baris, tepat format "Slide 1: ...\\nSlide 2: ...\\nSlide 3: ...\\nSlide 4: ...\\nSlide 5: ...". Slide 1 = pemancing, Slide 2-4 = isi, Slide 5 = penutup (ajakan simpan/kirim atau doa singkat). Boleh kurang dari 5 slide, TIDAK BOLEH lebih. Jangan memakai rentang seperti "Slide 2-4".
+- JANGAN diulang persis di caption; caption adalah lanjutannya. Label seri di pojok gambar ditambahkan sistem, jangan kamu tulis.
+
+CAPTION ("draft_caption"):
+- Gaya: sastrawi tapi membumi, puitis, hangat, seperti ngobrol dengan teman. Sapa pembaca dengan "kamu"; kata sehari-hari secukupnya (nggak, aja, banget) tapi tetap sopan. Hindari kata kaku: "tersedia", "silakan", "hubungi kami". Bukan bahasa brosur, bukan hard-selling.
+- Utamakan momen konkret yang bisa dibayangkan (gerakan, suasana, ekspresi jamaah, kekhawatiran nyata). Fokus ke perasaan: rindu, ketenangan, proses transisi jiwa, makna di balik ibadah.
+- Konten emosional (Senin, Kamis, Sabtu, Minggu): pembukaan = suasana/refleksi; isi = hubungkan dengan pengalaman batin jamaah seolah kita melihat momennya; penutup = pertanyaan hangat (rindu/doa) + satu kalimat doa penutup sederhana dalam Bahasa Indonesia.
+- Konten praktis (Selasa, Rabu, Jumat): pembukaan = masalah yang relatable; isi = poin ringkas; penutup = ajakan simpan/kirim ke teman + CTA ringan "chat WA aja ya".
+- Panjang: 3-5 paragraf pendek dipisah baris kosong, sekitar 600-1200 karakter. JANGAN terlalu singkat.
+- Ditutup tepat 5 hashtag di baris terakhir, tanpa label "Hashtag:". #UmrohBersamaAmiru dan #AmiruTour selalu ada, 3 lainnya relevan dengan topik.
+- Ejaan selalu "Umroh" (bukan "Umrah"), termasuk di hashtag.
+
+ANTI-PENGULANGAN (PENTING):
+- Satu topik hanya sekali. Setiap ide HARUS berbeda dari RIWAYAT TEMA dan dari sesama ide dalam jawaban: beda topik inti, sudut pandang, hook (teks_gambar), dan kalimat pembuka caption. Mengganti beberapa kata TIDAK dianggap berbeda. Kalau ragu sebuah ide mirip riwayat, ganti.
+- Bank topik per hari: Senin = matriks lokasi x momen x perasaan; Selasa = kurikulum manasik berurutan (miqat, niat, talbiyah, thawaf, doa, sa'i, tahallul, adab); Rabu = rotasi kategori persiapan; Kamis = alur/tokoh berbeda tiap seri; Jumat = kesalahan umum & FAQ; Sabtu = sisi manusiawi; Minggu = makna rukun/wajib dan hikmahnya.
+- Topik yang SUDAH PERNAH dipakai (awal pola, jangan diulang): niat umroh; pertama kali lihat Ka'bah; sa'i dan kisah Siti Hajar; Raudhah; subuh di Madinah; bawaan yang sering ketinggalan; kesalahan umum thawaf; urutan umroh (ihram, thawaf, sa'i, tahallul); larangan ihram; persiapan fisik; hari terakhir di Makkah; Makkah atau Madinah; umroh bersama orang tua; mulai dari yang kecil / menabung niat.
+- Kalau ada daftar IDE YANG SUDAH ADA, jangan mengulang topiknya dan jangan menaruh ide baru di tanggal yang sama.
+
+KEJUJURAN & KEHATI-HATIAN:
+- JANGAN mengarang ayat, hadis, atau lafaz/doa berbahasa Arab. Untuk lafaz dan tata cara tulis "sesuai manasik dari pembimbing". Soal agama dan hukum ibadah tulis secara umum, tanpa fatwa; tandai di akhir kolom "tema" dengan "[cek pembimbing]" kalau memuat tata cara/hukum/doa.
+- JANGAN mengarang testimoni, nama jamaah, angka, harga, tanggal, hotel, atau fasilitas. Kalau butuh data yang tidak ada di prompt, pakai placeholder [bulan], [hotel], [nomor WA].
+- Cerita Sabtu dan renungan Minggu bersifat ilustrasi/umum, bukan klaim kejadian nyata.
+- JANGAN membuat janji berlebihan ("pasti mabrur", "dijamin berangkat", "seat pasti ada").
+- KONTEKS PROGRAM hanya dipakai kalau ARAHAN TAMBAHAN meminta menyelipkan info program; kalau dipakai, sebut tanggal/harga/sisa seat PERSIS seperti di konteks, utamakan keberangkatan yang masih jauh, jangan menawarkan program yang sudah berangkat atau penuh (sisa 0), dan jangan menulis "seat tinggal sedikit" kecuali sisa seat <= 10.`;
+
+// Susun satu teks prompt utuh yang bisa ditempel ke ChatGPT / Claude / AI lain. Fungsi murni (mudah dites):
+// bagian "permintaan" mengikuti susunan userMsg di edge function, bagian kosong dibuang.
+// f: { bulanLabel, tanggalMulai, tanggalAkhir, temaMinggu, temaMingguDepan, slots, konteksPekan, arahan, konteksProgram, riwayatTema }
+function igSusunPromptEksternal(f) {
+    const slots = Array.isArray(f.slots) ? f.slots : [];
+    const bagian = [
+        `Susun paket konten Instagram yang saling menyambung untuk ${f.bulanLabel} (rentang tanggal ${f.tanggalMulai} s/d ${f.tanggalAkhir}), sebanyak TEPAT ${slots.length} ide post.`,
+        [
+            f.temaMinggu ? `TEMA MINGGU: ${f.temaMinggu}` : 'TEMA MINGGU: (tidak diisi, pilih sendiri satu tema yang belum ada di riwayat)',
+            f.temaMingguDepan ? `TEMA PEKAN DEPAN (untuk teaser penutup Minggu): ${f.temaMingguDepan}` : ''
+        ].filter(Boolean).join('\n')
+    ];
+    if (slots.length) {
+        bagian.push('DAFTAR SLOT TANGGAL (isi TEPAT 1 ide per slot, tanggal persis sama, ikuti pilar & tipe_konten-nya):\n'
+            + slots.map(s => `- ${s.tanggal}${s.hari ? ` (${s.hari})` : ''} | pilar: ${s.pilar} | tipe_konten: ${s.tipe_konten}`).join('\n'));
+    }
+    if (f.konteksPekan && String(f.konteksPekan).trim()) {
+        bagian.push('KONTEKS PEKAN (hari lain di pekan ini yang sudah jadi; sambungkan, jangan ulangi sudutnya):\n' + String(f.konteksPekan).trim().slice(0, 3000));
+    }
+    if (f.arahan && String(f.arahan).trim()) bagian.push('ARAHAN TAMBAHAN DARI ADMIN:\n' + String(f.arahan).trim().slice(0, 1500));
+    bagian.push('KONTEKS PROGRAM (hanya dipakai kalau ARAHAN TAMBAHAN meminta info program):\n'
+        + (f.konteksProgram && String(f.konteksProgram).trim() ? String(f.konteksProgram) : '(tidak ada data program spesifik untuk periode ini)'));
+    if (f.riwayatTema && String(f.riwayatTema).trim()) {
+        bagian.push('RIWAYAT TEMA, SUDAH PERNAH DIBUAT (jangan diulang & jangan dibuat mirip):\n' + String(f.riwayatTema).slice(0, 20000));
+    }
+    bagian.push('Ingat: balas HANYA dengan JSON array sesuai format yang sudah dijelaskan, tidak ada teks lain.');
+
+    return [
+        'Ikuti INSTRUKSI SISTEM lalu kerjakan PERMINTAAN di bawah. Balas hanya dengan JSON array (tanpa code fence dan tanpa teks lain).',
+        '=== INSTRUKSI SISTEM ===\n' + IG_PLAN_PROMPT_SISTEM,
+        '=== PERMINTAAN ===\n' + bagian.join('\n\n')
+    ].join('\n\n');
+}
+
+async function igSalinTeks(teks) {
+    try {
+        await navigator.clipboard.writeText(teks);
+        return true;
+    } catch (e) {
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = teks;
+            ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0;';
+            document.body.appendChild(ta);
+            ta.select();
+            const ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            return !!ok;
+        } catch (e2) { return false; }
+    }
+}
+
+// Tombol "Salin Prompt": memakai input form yang sama dengan "Generate dengan AI" (pekan, Tema Minggu, tema depan,
+// arahan) dan konteks yang sama (hari kosong, riwayat konten lama, hari yang sudah jadi, program aktif),
+// tapi TIDAK memanggil AI maupun menyimpan apa pun.
+async function igSalinPromptPlan() {
+    if (igPlanBusy) { showToast('Masih ada proses generate yang berjalan, tunggu sebentar', 'info'); return; }
+    const senin = document.getElementById('igPlanWeek')?.value;
+    if (!senin) { showToast('Pilih bulan dan pekan dulu', 'error'); return; }
+    const temaEl = document.getElementById('igPlanTema');
+    const temaMinggu = (temaEl?.value || '').trim();
+    if (!temaMinggu) {
+        showToast('Isi Tema Minggu dulu (contoh: Talbiyah) supaya ketujuh konten menyambung', 'error');
+        if (temaEl) temaEl.focus();
+        return;
+    }
+    const slots = igBuildSlotPekan(senin, igTanggalTerisiSet(), igLocalDateKey(new Date()));
+    if (!slots.length) {
+        showToast('Tidak ada hari kosong yang tersisa di pekan ini (sudah lewat atau sudah terisi semua)', 'info');
+        return;
+    }
+    const [sy, sm, sd] = senin.split('-').map(Number);
+    const minggu = igLocalDateKey(new Date(sy, sm - 1, sd + 6));
+    const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+    igPlanBusy = true;
+    const btn = document.getElementById('btnIgCopyPlanPrompt');
+    if (btn) btn.disabled = true;
+    try {
+        const konteksProgram = await buildIgPlanProgramContext(sy, sm - 1);
+        const konteksPekan = igContentPlan
+            .filter(pl => pl.tanggal && pl.tanggal >= senin && pl.tanggal <= minggu && pl.status !== 'dilewati' && pl.draft_caption)
+            .sort((a, b) => a.tanggal.localeCompare(b.tanggal))
+            .map(pl => igFormatBarisPekan(pl.tanggal, pl.tema, pl.teks_gambar, pl.draft_caption))
+            .join('\n');
+        const prompt = igSusunPromptEksternal({
+            bulanLabel: `${namaBulan[sm - 1]} ${sy}`, tanggalMulai: senin, tanggalAkhir: minggu,
+            temaMinggu, temaMingguDepan: (document.getElementById('igPlanTemaDepan')?.value || '').trim(),
+            slots, konteksPekan, konteksProgram,
+            arahan: (document.getElementById('igPlanArahan')?.value || '').trim(),
+            riwayatTema: igRiwayatToText(igBuildRiwayat())
+        });
+        if (await igSalinTeks(prompt)) {
+            showToast(`Prompt disalin (${prompt.length.toLocaleString('id-ID')} karakter, ${slots.length} hari). Tempel ke AI lain, minta balasan JSON.`, 'success');
+        } else {
+            showToast('Browser menolak akses clipboard. Coba lagi lewat klik langsung atau izinkan akses clipboard.', 'error');
+        }
+    } catch (err) {
+        console.error('igSalinPromptPlan error:', err);
+        showToast('Gagal menyusun prompt: ' + (err.message || err), 'error');
+    } finally {
+        igPlanBusy = false;
+        if (btn) btn.disabled = false;
+    }
+}
+window.igSalinPromptPlan = igSalinPromptPlan;
+
 // ============================================================
 // 24e. GENERATE OTOMATIS PER PEKAN (MINGGU - SABTU)
 // Tiap IG Scheduler dibuka, dashboard memeriksa pekan berjalan (Minggu s/d Sabtu). Kalau ada tanggal pola
