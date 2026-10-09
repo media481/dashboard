@@ -18,7 +18,9 @@ const path = require('path');
 const vm = require('vm');
 const assert = require('assert');
 
-const APP_PATH = path.resolve(__dirname, '..', 'js', 'app.js');
+// test-core.js bisa ditaruh di root repo ATAU di folder tests/ -- pakai lokasi js/app.js yang ada.
+const APP_PATH = [path.resolve(__dirname, 'js', 'app.js'), path.resolve(__dirname, '..', 'js', 'app.js')]
+  .find(p => fs.existsSync(p)) || path.resolve(__dirname, '..', 'js', 'app.js');
 
 // ---- Mock DOM/window minimal supaya app.js bisa di-eval di Node ----
 function makeEl() {
@@ -74,7 +76,7 @@ const code = fs.readFileSync(APP_PATH, 'utf8');
 const context = vm.createContext(sandbox);
 // Tambahkan penangkap: deklarasikan fungsi sebagai property di sandbox
 // dengan meng-append kode yang menaruh fungsi ke globalThis
-const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah };';
+const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah, igBangunKonteksRegenHari, igFormatBarisPekan, igRegenerasiHariPlan };';
 vm.runInContext(wrapped, context, { filename: 'app.js' });
 const T = sandbox.__T;
 
@@ -156,6 +158,178 @@ test('harga_custom kosong string -> tidak override, tetap pakai tipe_kamar', () 
   assert.strictEqual(T.getHargaKamarJamaah(progFull, { tipe_kamar: 'triple', harga_custom: '' }), 37500000);
 });
 
+
 // ============================================================
-console.log(`\n=== HASIL: ${passed} passed, ${failed} failed ===`);
-process.exit(failed ? 1 : 0);
+// TES TAHAP 6: generate ulang SATU hari dengan konteks pekan
+// ============================================================
+const asyncTests = [];
+function testAsync(name, fn) { asyncTests.push({ name, fn }); }
+const run = code => vm.runInContext(code, context);
+
+// Pekan Senin 12 Okt - Minggu 18 Okt 2026; pekan depan (19 Okt) bertema "Thawaf".
+function contohRencana() {
+  const base = { status: 'idea', tema_minggu: 'Talbiyah', pilar: 'storytelling', tipe_konten: 'image', draft_caption: 'Caption contoh.\nBaris dua.', teks_gambar: 'Hook contoh\nBaris dua' };
+  return [
+    { ...base, id: 'sen', tanggal: '2026-10-12', tema: 'Gemetar saat pertama bilang labbaik', teks_gambar: 'Pernah merinding?\nLabel gambar: Seri Talbiyah · 1/7' },
+    { ...base, id: 'sel', tanggal: '2026-10-13', tema: 'Lafaz talbiyah dan artinya', pilar: 'manasik', draft_caption: 'Kartu praktis talbiyah.' },
+    { ...base, id: 'rab', tanggal: '2026-10-14', tema: 'Persiapan fisik sebelum berangkat', pilar: 'edukasi', tipe_konten: 'carousel' },
+    { ...base, id: 'kam', tanggal: '2026-10-15', tema: 'Hari yang dilewati', status: 'dilewati' },
+    { ...base, id: 'jum', tanggal: '2026-10-16', tema: 'Seri lain nyasar', tema_minggu: 'Sa\'i' },
+    { ...base, id: 'min', tanggal: '2026-10-18', tema: 'Renungan labbaik', pilar: 'kontemplasi', tipe_konten: 'carousel' },
+    { ...base, id: 'dpn', tanggal: '2026-10-19', tema: 'Thawaf pertama', tema_minggu: 'Thawaf' },
+    { ...base, id: 'post', tanggal: '2026-10-17', tema: 'Sudah jadi post', status: 'dijadikan_post' }
+  ];
+}
+
+console.log('\n=== TEST: igBangunKonteksRegenHari (konteks pekan untuk 1 hari) ===');
+test('Selasa -> rentang pekan Senin 12 s/d Minggu 18 Okt', () => {
+  const c = T.igBangunKonteksRegenHari(contohRencana(), 'sel');
+  assert.strictEqual(c.senin, '2026-10-12'); assert.strictEqual(c.minggu, '2026-10-18');
+});
+test('Minggu tetap masuk pekan yang sama (Senin 12 Okt), bukan pekan berikutnya', () => {
+  const c = T.igBangunKonteksRegenHari(contohRencana(), 'min');
+  assert.strictEqual(c.senin, '2026-10-12'); assert.strictEqual(c.minggu, '2026-10-18');
+});
+test('slot memuat hari, pilar, tipe, urutan & peran', () => {
+  const s = T.igBangunKonteksRegenHari(contohRencana(), 'sel').slot;
+  assert.strictEqual(s.tanggal, '2026-10-13'); assert.strictEqual(s.hari, 'Selasa');
+  assert.strictEqual(s.pilar, 'manasik'); assert.strictEqual(s.tipe_konten, 'image');
+  assert.strictEqual(s.urutan, 2); assert.strictEqual(s.peran, 'Pahami');
+});
+test('Tema Minggu diambil dari rencana itu', () => assert.strictEqual(T.igBangunKonteksRegenHari(contohRencana(), 'sel').temaMinggu, 'Talbiyah'));
+test('baris pekan: hari lain seri yang sama saja, urut tanggal, tanpa hari itu sendiri / dilewati / seri lain / pekan lain', () => {
+  const b = T.igBangunKonteksRegenHari(contohRencana(), 'sel').barisPekan;
+  assert.deepStrictEqual(b.map(x => x.split(' | ')[0]), ['Senin 2026-10-12', 'Rabu 2026-10-14', 'Sabtu 2026-10-17', 'Minggu 2026-10-18']);
+  assert.ok(!b.join('\n').includes('Lafaz talbiyah'), 'hari yang diganti tidak boleh jadi konteks');
+  assert.ok(!b.join('\n').includes('dilewati') && !b.join('\n').includes('Seri lain nyasar') && !b.join('\n').includes('Thawaf'));
+});
+test('format baris: hari | peran | tema | hook (baris pertama teks gambar) | caption dibuka', () => {
+  const b = T.igBangunKonteksRegenHari(contohRencana(), 'sel').barisPekan[0];
+  assert.strictEqual(b, 'Senin 2026-10-12 | Rasakan | Gemetar saat pertama bilang labbaik | hook: Pernah merinding? | caption dibuka: Caption contoh.');
+});
+test('teaser pekan depan hanya untuk Minggu', () => {
+  assert.strictEqual(T.igBangunKonteksRegenHari(contohRencana(), 'sel').temaMingguDepan, '');
+  assert.strictEqual(T.igBangunKonteksRegenHari(contohRencana(), 'min').temaMingguDepan, 'Thawaf');
+});
+test('ide yang sudah jadi post / dilewati / tidak ada -> null', () => {
+  assert.strictEqual(T.igBangunKonteksRegenHari(contohRencana(), 'post'), null);
+  assert.strictEqual(T.igBangunKonteksRegenHari(contohRencana(), 'kam'), null);
+  assert.strictEqual(T.igBangunKonteksRegenHari(contohRencana(), 'tidak-ada'), null);
+});
+test('data lama tanpa tema_minggu meminjam Tema Minggu dari hari lain di pekan itu', () => {
+  const rencana = contohRencana(); rencana.find(p => p.id === 'sel').tema_minggu = null;
+  assert.strictEqual(T.igBangunKonteksRegenHari(rencana, 'sel').temaMinggu, 'Talbiyah');
+});
+test('tanpa Tema Minggu sama sekali -> semua hari pekan itu jadi penyambung, temaMinggu kosong', () => {
+  const rencana = contohRencana().map(p => ({ ...p, tema_minggu: null }));
+  const c = T.igBangunKonteksRegenHari(rencana, 'sel');
+  assert.strictEqual(c.temaMinggu, ''); assert.ok(c.barisPekan.length >= 4);
+});
+test('tipe video (tidak didukung AI) kembali ke tipe pola hari', () => {
+  const rencana = contohRencana(); rencana.find(p => p.id === 'sel').tipe_konten = 'video';
+  assert.strictEqual(T.igBangunKonteksRegenHari(rencana, 'sel').slot.tipe_konten, 'image');
+});
+test('tipe carousel hasil edit admin dipertahankan', () => {
+  const rencana = contohRencana(); rencana.find(p => p.id === 'sel').tipe_konten = 'carousel';
+  assert.strictEqual(T.igBangunKonteksRegenHari(rencana, 'sel').slot.tipe_konten, 'carousel');
+});
+
+// ---- Alur lengkap igRegenerasiHariPlan dengan semua dependensi di-mock ----
+function siapkanMock({ balasan, updateRows = [{ id: 'sel' }], konfirmasi = true }) {
+  const log = { panggilan: [], patch: null, filter: [], toast: [], reload: 0 };
+  sandbox.__log = log; sandbox.__balasan = balasan.slice(); sandbox.__updateRows = updateRows; sandbox.__konfirmasi = konfirmasi;
+  sandbox.__rencana = contohRencana();
+  run(`
+    igContentPlan = __rencana; igPosts = []; igPlanBusy = false; igTeksGambarReady = true; igPlannerColsReady = true; igDayModalDateKey = null;
+    canManageProgramData = () => true;
+    openActionConfirm = async () => __konfirmasi;
+    buildIgPlanProgramContext = async () => '';
+    showToast = (m, t) => __log.toast.push({ m, t });
+    loadIgContentPlan = async () => { __log.reload++; };
+    igRefreshPlanResultListIfOpen = () => {};
+    igCallPlanFunction = async (payload) => { __log.panggilan.push(payload); return { items: [__balasan.shift()].filter(Boolean), versi: 4 }; };
+    supabaseClient = { from: () => ({ update: (patch) => { __log.patch = patch; const q = { eq: (k, v) => { __log.filter.push([k, v]); return q; }, select: async () => ({ data: __updateRows, error: null }) }; return q; } }) };
+  `);
+  return log;
+}
+const ideBaru = { tanggal: '2026-10-13', tema: 'Tiga kesalahan saat mengucap labbaik', teks_gambar: 'Sudah benar bacaanmu?\nCek lagi', draft_caption: 'Isi caption baru.\n#umroh' };
+const ideKembar = { tanggal: '2026-10-13', tema: 'Lafaz talbiyah dan artinya versi lain', teks_gambar: 'x', draft_caption: 'c' };
+
+testAsync('berhasil: 1 baris di-UPDATE (bukan insert), label seri ditambah, tahap kembali ke ide', async () => {
+  const log = siapkanMock({ balasan: [ideBaru] });
+  await T.igRegenerasiHariPlan('sel');
+  assert.strictEqual(log.panggilan.length, 1);
+  assert.strictEqual(log.patch.tema, ideBaru.tema);
+  assert.strictEqual(log.patch.draft_caption, ideBaru.draft_caption);
+  assert.ok(log.patch.teks_gambar.endsWith('\nLabel gambar: Seri Talbiyah · 2/7'), log.patch.teks_gambar);
+  assert.strictEqual(log.patch.tahap, 'ide');
+  assert.strictEqual(JSON.stringify(log.filter), JSON.stringify([['id', 'sel'], ['status', 'idea']]));
+  assert.strictEqual(log.reload, 1);
+  assert.strictEqual(log.toast.at(-1).t, 'success');
+});
+testAsync('payload ke AI: 1 slot, Tema Minggu, konteks pekan, ide lama ada di riwayat', async () => {
+  const log = siapkanMock({ balasan: [ideBaru] });
+  await T.igRegenerasiHariPlan('sel');
+  const p = log.panggilan[0];
+  assert.strictEqual(p.jumlahPost, 1); assert.strictEqual(p.slots.length, 1); assert.strictEqual(p.slots[0].tanggal, '2026-10-13');
+  assert.strictEqual(p.tanggalMulai, '2026-10-12'); assert.strictEqual(p.tanggalAkhir, '2026-10-18');
+  assert.strictEqual(p.temaMinggu, 'Talbiyah');
+  assert.ok(p.konteksPekan.includes('Senin 2026-10-12 | Rasakan'));
+  assert.ok(!p.konteksPekan.includes('Lafaz talbiyah'));
+  assert.ok(p.riwayatTema.includes('Lafaz talbiyah dan artinya'), 'ide lama harus dihindari');
+  assert.ok(p.arahan.includes('BERBEDA'));
+});
+testAsync('hasil AI yang kembar dengan ide lama ditolak lalu dicoba ulang', async () => {
+  const log = siapkanMock({ balasan: [ideKembar, ideBaru] });
+  await T.igRegenerasiHariPlan('sel');
+  assert.strictEqual(log.panggilan.length, 2);
+  assert.strictEqual(log.patch.tema, ideBaru.tema);
+  assert.ok(log.panggilan[1].riwayatTema.includes('versi lain'), 'percobaan ulang harus menghindari hasil yang ditolak');
+});
+testAsync('semua percobaan kembar -> ide lama dipertahankan (tidak ada update), flag busy kembali false', async () => {
+  const log = siapkanMock({ balasan: [ideKembar, ideKembar, ideKembar] });
+  await T.igRegenerasiHariPlan('sel');
+  assert.strictEqual(log.panggilan.length, 3); assert.strictEqual(log.patch, null); assert.strictEqual(log.reload, 0);
+  assert.strictEqual(run('igPlanBusy'), false);
+});
+testAsync('batal di dialog konfirmasi -> tidak memanggil AI maupun menyimpan', async () => {
+  const log = siapkanMock({ balasan: [ideBaru], konfirmasi: false });
+  await T.igRegenerasiHariPlan('sel');
+  assert.strictEqual(log.panggilan.length, 0); assert.strictEqual(log.patch, null);
+});
+testAsync('status berubah selama AI bekerja (update 0 baris) -> tidak reload, user diberi tahu', async () => {
+  const log = siapkanMock({ balasan: [ideBaru], updateRows: [] });
+  await T.igRegenerasiHariPlan('sel');
+  assert.strictEqual(log.reload, 0); assert.strictEqual(log.toast.at(-1).t, 'info');
+  assert.strictEqual(run('igPlanBusy'), false);
+});
+testAsync('sedang ada generate lain (igPlanBusy) -> ditolak tanpa panggilan AI', async () => {
+  const log = siapkanMock({ balasan: [ideBaru] });
+  run('igPlanBusy = true');
+  await T.igRegenerasiHariPlan('sel');
+  assert.strictEqual(log.panggilan.length, 0);
+  run('igPlanBusy = false');
+});
+testAsync('error dari AI -> toast error, flag busy kembali false, tidak menyimpan', async () => {
+  const log = siapkanMock({ balasan: [ideBaru] });
+  run('igCallPlanFunction = async () => { throw new Error("server sibuk"); }');
+  await T.igRegenerasiHariPlan('sel');
+  assert.strictEqual(log.patch, null); assert.strictEqual(log.toast.at(-1).t, 'error');
+  assert.strictEqual(run('igPlanBusy'), false);
+});
+testAsync('tanpa kolom teks_gambar/tahap (migrasi belum jalan) -> patch hanya tema & caption', async () => {
+  const log = siapkanMock({ balasan: [ideBaru] });
+  run('igTeksGambarReady = false; igPlannerColsReady = false;');
+  await T.igRegenerasiHariPlan('sel');
+  assert.deepStrictEqual(Object.keys(log.patch).sort(), ['draft_caption', 'tema']);
+});
+
+// ============================================================
+(async () => {
+  for (const t of asyncTests) {
+    try { await t.fn(); passed++; console.log('  ✓ ' + t.name); }
+    catch (e) { failed++; console.error('  ✗ ' + t.name + '\n      ' + e.message); }
+  }
+  console.log(`\n=== HASIL: ${passed} passed, ${failed} failed ===`);
+  process.exit(failed ? 1 : 0);
+})();

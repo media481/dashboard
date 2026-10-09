@@ -15672,6 +15672,16 @@ function igPickEvenly(arr, n) {
     return out.sort((x, y) => x.tanggal.localeCompare(y.tanggal));
 }
 
+// Satu baris konteks pekan untuk AI: "Senin 2026-10-12 | Rasakan | tema | hook: ... | caption dibuka: ...".
+// Dipakai generate pekan (hari yang sudah jadi) dan generate ulang satu hari.
+function igFormatBarisPekan(tgl, tema, teksGambar, caption) {
+    const [yy, mm, dd] = String(tgl).split('-').map(Number);
+    const pola = IG_POLA_AMIRU[new Date(yy, mm - 1, dd).getDay()];
+    const hook = igFirstLine(teksGambar).slice(0, 90);
+    const buka = igFirstLine(caption).slice(0, 90);
+    return `${pola ? pola.hari + ' ' : ''}${tgl} | ${pola ? pola.peran + ' | ' : ''}${String(tema).slice(0, 90)}${hook ? ' | hook: ' + hook : ''}${buka ? ' | caption dibuka: ' + buka : ''}`;
+}
+
 const IG_PLAN_BATCH = 6;    // jumlah slot per panggilan AI mode bulan (batch kecil = tidak timeout, hasil tersimpan bertahap)
 const IG_PLAN_BATCH_PEKAN = 7; // mode pekan: ketujuh hari dalam SATU panggilan supaya konten menyambung
 const IG_PLAN_MAX_PASS = 3; // total putaran (1 putaran awal + 2 percobaan ulang untuk slot yang ditolak karena duplikat)
@@ -15733,13 +15743,7 @@ async function igGeneratePlanForSlots(year, month, slots, arahan, onProgress, op
 
     // Hari-hari yang sudah jadi di pekan ini (dari rencana tersimpan + hasil putaran ini): jadi konteks penyambung.
     const barisPekan = [];
-    const urutHari = tgl => { const [yy, mm, dd] = tgl.split('-').map(Number); return IG_POLA_AMIRU[new Date(yy, mm - 1, dd).getDay()]; };
-    const catatPekan = (tgl, tema, teksGambar, caption) => {
-        const pola = urutHari(tgl);
-        const hook = igFirstLine(teksGambar).slice(0, 90);
-        const buka = igFirstLine(caption).slice(0, 90);
-        barisPekan.push(`${pola ? pola.hari + ' ' : ''}${tgl} | ${pola ? pola.peran + ' | ' : ''}${String(tema).slice(0, 90)}${hook ? ' | hook: ' + hook : ''}${buka ? ' | caption dibuka: ' + buka : ''}`);
-    };
+    const catatPekan = (tgl, tema, teksGambar, caption) => barisPekan.push(igFormatBarisPekan(tgl, tema, teksGambar, caption));
     if (pekan) {
         igContentPlan
             .filter(pl => pl.tanggal && pl.tanggal >= tanggalMulai && pl.tanggal <= tanggalAkhir && pl.status !== 'dilewati' && pl.draft_caption)
@@ -15881,6 +15885,138 @@ async function generateIgContentPlanAI() {
     }
 }
 
+// ---- Generate ulang SATU hari di daftar hasil (dengan konteks pekan) ----
+// Fungsi murni (mudah dites): kumpulkan semua yang dibutuhkan AI untuk mengganti ide satu hari --
+// slot hari itu, Tema Minggu, hari-hari lain di pekan yang sama sebagai penyambung, dan (khusus Minggu)
+// tema pekan depan untuk teaser penutup. Return null kalau rencana tidak ada / bukan ide aktif.
+function igBangunKonteksRegenHari(plans, planId) {
+    const plan = (plans || []).find(pl => pl.id === planId);
+    if (!plan || !plan.tanggal || plan.status !== 'idea') return null;
+    const [y, m, d] = plan.tanggal.split('-').map(Number);
+    const pola = IG_POLA_AMIRU[new Date(y, m - 1, d).getDay()];
+    if (!pola) return null;
+    const mundur = (new Date(y, m - 1, d).getDay() + 6) % 7; // jarak ke Senin (Senin = 0)
+    const senin = igLocalDateKey(new Date(y, m - 1, d - mundur));
+    const minggu = igLocalDateKey(new Date(y, m - 1, d - mundur + 6));
+
+    const lain = (plans || []).filter(pl => pl.id !== plan.id && pl.tanggal && pl.tanggal >= senin && pl.tanggal <= minggu && pl.status !== 'dilewati');
+    // Tema Minggu: milik rencana ini; kalau kosong (data lama), pinjam dari hari lain di pekan yang sama.
+    const temaMinggu = plan.tema_minggu || (lain.find(pl => pl.tema_minggu) || {}).tema_minggu || '';
+    // Hanya hari dari seri yang sama yang jadi penyambung (kalau seri diketahui); tanpa seri: semua hari di pekan itu.
+    const barisPekan = lain
+        .filter(pl => pl.draft_caption && (!temaMinggu || pl.tema_minggu === temaMinggu))
+        .sort((a, b) => a.tanggal.localeCompare(b.tanggal))
+        .map(pl => igFormatBarisPekan(pl.tanggal, pl.tema, pl.teks_gambar, pl.draft_caption));
+
+    // Teaser penutup hanya relevan untuk Minggu: ambil Tema Minggu terdekat sesudah pekan ini yang beda dari tema sekarang.
+    let temaMingguDepan = '';
+    if (pola.urutan === 7) {
+        const depan = (plans || [])
+            .filter(pl => pl.tanggal && pl.tanggal > minggu && pl.status !== 'dilewati' && pl.tema_minggu && pl.tema_minggu !== temaMinggu)
+            .sort((a, b) => a.tanggal.localeCompare(b.tanggal))[0];
+        if (depan) temaMingguDepan = depan.tema_minggu;
+    }
+
+    // Tipe & pilar mengikuti ide yang ada (admin mungkin sudah mengubahnya); di luar yang didukung AI, pakai pola hari.
+    const tipe = (plan.tipe_konten === 'image' || plan.tipe_konten === 'carousel') ? plan.tipe_konten : pola.tipe;
+    const pilar = (plan.pilar && IG_PILLARS[plan.pilar]) ? plan.pilar : pola.pilar;
+    return {
+        plan, tanggal: plan.tanggal, senin, minggu, temaMinggu, temaMingguDepan, barisPekan, pola,
+        slot: { tanggal: plan.tanggal, hari: pola.hari, pilar, tipe_konten: tipe, urutan: pola.urutan, peran: pola.peran }
+    };
+}
+
+// Tombol "Generate Ulang" per hari: ganti tema, teks gambar, dan caption satu hari saja (baris yang sama di-UPDATE,
+// bukan ditambah), tanpa menyentuh hari lain. Ide lama ikut masuk riwayat supaya hasil barunya pasti beda sudut.
+async function igRegenerasiHariPlan(planId) {
+    if (!canManageProgramData()) {
+        showToast('Akun Anda tidak punya izin untuk mengubah rencana konten', 'error');
+        return;
+    }
+    if (igPlanBusy) { showToast('Masih ada proses generate yang berjalan, tunggu sebentar', 'info'); return; }
+    const ctx = igBangunKonteksRegenHari(igContentPlan, planId);
+    if (!ctx) { showToast('Hanya ide yang belum dijadikan post yang bisa digenerate ulang', 'info'); return; }
+    const plan = ctx.plan;
+
+    const bln = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const [ty, tm, td] = ctx.tanggal.split('-').map(Number);
+    const labelHari = `${ctx.pola.hari} ${td} ${bln[tm - 1]}`;
+    const ok = await openActionConfirm({
+        title: 'Generate Ulang Hari Ini',
+        message: `Ide <b>${escapeHtml(labelHari)}</b> (&ldquo;${escapeHtml(plan.tema)}&rdquo;) akan diganti ide baru yang tetap menyambung dengan hari lain di pekan ini. `
+            + `Tema, teks di gambar, dan caption hari ini <b>ditimpa</b>, termasuk hasil edit manual. Hari lain tidak berubah.`,
+        confirmLabel: 'Ya, Generate Ulang',
+        danger: false
+    });
+    if (!ok) return;
+    if (igPlanBusy) return; // dialog terbuka lama; proses lain bisa saja sudah mulai
+
+    igPlanBusy = true;
+    const btn = document.getElementById(`igPlanRegen-${planId}`);
+    const btnHtml = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Menyusun...'; }
+
+    try {
+        const bulanLabel = `${['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][tm - 1]} ${ty}`;
+        const konteksProgram = await buildIgPlanProgramContext(ty, tm - 1);
+        // Riwayat memuat ide hari ini yang lama juga -> AI diminta menghindarinya, dan hasil yang mirip ditolak.
+        const riwayat = igBuildRiwayat();
+        const abaikan = ctx.temaMinggu ? igTokenSet(ctx.temaMinggu) : null;
+        const arahanForm = (document.getElementById('igPlanArahan')?.value || '').trim();
+        const arahan = [arahanForm, `Ganti ide hari ini ("${String(plan.tema).slice(0, 100)}") dengan sudut yang BERBEDA, tetap menyambung dengan hari lain di pekan ini.`]
+            .filter(Boolean).join('\n');
+
+        let hasil = null;
+        for (let pass = 0; pass < IG_PLAN_MAX_PASS && !hasil; pass++) {
+            const data = await igCallPlanFunction({
+                bulanLabel, jumlahPost: 1, tanggalMulai: ctx.senin, tanggalAkhir: ctx.minggu,
+                konteksProgram, arahan, slots: [ctx.slot], riwayatTema: igRiwayatToText(riwayat),
+                ...(ctx.temaMinggu ? { temaMinggu: ctx.temaMinggu } : {}),
+                ...(ctx.temaMingguDepan ? { temaMingguDepan: ctx.temaMingguDepan } : {}),
+                konteksPekan: ctx.barisPekan.join('\n')
+            });
+            const it = (data.items || []).find(x => x && x.tanggal === ctx.tanggal && x.tema && x.draft_caption);
+            if (!it) continue;
+            if (igIsDuplicateIdea(it, riwayat, abaikan)) { igRiwayatAdd(riwayat, it.tema, it.teks_gambar, ''); continue; }
+            hasil = it;
+        }
+        if (!hasil) {
+            showToast('AI belum menghasilkan ide yang cukup beda dari konten lama atau melebihi 5 slide. Ide lama dipertahankan, coba klik lagi.', 'info');
+            return;
+        }
+
+        // Label kecil di pojok gambar, sama seperti saat generate pekan ("Seri Talbiyah · 3/7").
+        let teksGambar = String(hasil.teks_gambar || '').trim();
+        if (ctx.temaMinggu && ctx.slot.urutan) teksGambar += `${teksGambar ? '\n' : ''}Label gambar: Seri ${ctx.temaMinggu} · ${ctx.slot.urutan}/7`;
+        const patch = {
+            tema: String(hasil.tema).trim(),
+            draft_caption: hasil.draft_caption,
+            ...(igTeksGambarReady ? { teks_gambar: teksGambar || null } : {}),
+            ...(igPlannerColsReady ? { tahap: 'ide' } : {}) // isi baru belum ditinjau -> kembali ke tahap Ide
+        };
+        // Hanya timpa kalau barisnya masih ide aktif (bisa saja sudah dijadikan post / dilewati dari tab lain selama menunggu AI).
+        const { data: terubah, error } = await supabaseClient.from('ig_content_plan')
+            .update(patch).eq('id', planId).eq('status', 'idea').select('id');
+        if (error) throw error;
+        if (!terubah || !terubah.length) {
+            showToast('Ide ini sudah berubah status selama AI bekerja, jadi hasil baru tidak disimpan.', 'info');
+            return;
+        }
+        await loadIgContentPlan();
+        if (igDayModalDateKey) igOpenDayModal(igDayModalDateKey);
+        igRefreshPlanResultListIfOpen();
+        showToast(`Ide ${labelHari} diganti. Cek bagian yang bertanda [cek pembimbing] sebelum diposting.`, 'success');
+    } catch (err) {
+        console.error('igRegenerasiHariPlan error:', err);
+        showToast('Gagal generate ulang hari ini: ' + (err.message || err), 'error');
+    } finally {
+        igPlanBusy = false;
+        const b = document.getElementById(`igPlanRegen-${planId}`);
+        if (b) { b.disabled = false; b.innerHTML = btnHtml; }
+    }
+}
+window.igRegenerasiHariPlan = igRegenerasiHariPlan;
+
 // ============================================================
 // 24e. GENERATE OTOMATIS PER PEKAN (MINGGU - SABTU)
 // Tiap IG Scheduler dibuka, dashboard memeriksa pekan berjalan (Minggu s/d Sabtu). Kalau ada tanggal pola
@@ -16005,6 +16141,7 @@ function renderIgPlanResultList(year, month) {
         const isIdea = pl.status === 'idea';
         const actions = isIdea
             ? `<button type="button" class="btn-secondary" onclick="igConvertPlanToPost('${pl.id}')" style="font-size:11px;padding:4px 10px;"><i class="bi bi-arrow-up-right-circle"></i> Jadikan Post</button>
+               <button type="button" class="btn-secondary" id="igPlanRegen-${pl.id}" onclick="igRegenerasiHariPlan('${pl.id}')" style="font-size:11px;padding:4px 10px;" title="Ganti ide hari ini dengan AI, tetap menyambung dengan hari lain di pekan ini"><i class="bi bi-arrow-repeat"></i> Generate Ulang</button>
                <button type="button" class="btn-secondary" onclick="igSkipPlanItem('${pl.id}')" style="font-size:11px;padding:4px 10px;" title="Lewati (sembunyikan dari kalender)"><i class="bi bi-eye-slash"></i></button>
                <button type="button" class="btn-secondary ig-btn-danger" onclick="igDeletePlanItem('${pl.id}')" style="font-size:11px;padding:4px 10px;" title="Hapus"><i class="bi bi-trash"></i></button>`
             : (pl.status === 'dilewati'
