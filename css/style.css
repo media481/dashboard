@@ -5037,3 +5037,17 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     .ig-plan-footer .btn-secondary { flex: 1 1 auto; justify-content: center; }
     .ig-plan-footer-spacer { display: none; }
 }
+
+/* Nama tema / seri pekan di baris atas sel kalender (di samping angka tanggal) */
+.ig-cal-day-top { min-width: 0; }
+.ig-cal-series {
+    flex: 0 1 auto; min-width: 0; max-width: 100%;
+    margin-left: 6px; padding: 1px 7px; border-radius: 999px;
+    font-size: 10px; font-weight: 600; line-height: 16px; letter-spacing: .01em;
+    color: var(--brand); background: var(--brand-tint);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ig-cal-past:not(.ig-cal-today) .ig-cal-series { opacity: .85; }
+.ig-cal-day-top .ig-cal-add-hint { flex-shrink: 0; }
+@media (max-width: 1000px) { .ig-cal-series { font-size: 9.5px; padding: 0 6px; } }
+@media (max-width: 560px) { .ig-cal-series { display: none; } }

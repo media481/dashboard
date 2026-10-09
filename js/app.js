@@ -13629,6 +13629,7 @@ function renderIgCalendar() {
     // tidak perlu chip terpisah karena post aslinya sudah tampil dari igPosts,
     // dan yang 'dilewati' memang sengaja disembunyikan dari kalender).
     const planByDay = {};
+    const seriesByDay = {};   // nama tema / seri pekan per tanggal (ide aktif maupun yang sudah jadi post)
     const monthPlans = [];
     // Untuk bar keseimbangan pilar: ide aktif + ide yang sudah dijadikan post
     // (post IG tidak punya kolom pilar, jadi pilarnya diambil dari rencana asalnya).
@@ -13637,7 +13638,10 @@ function renderIgCalendar() {
         if (!pl.tanggal) return;
         const [py, pm, pd] = pl.tanggal.split('-').map(Number);
         if (py !== year || (pm - 1) !== month) return;
-        if (pl.status === 'idea' || pl.status === 'dijadikan_post') pillarPlans.push(pl);
+        if (pl.status === 'idea' || pl.status === 'dijadikan_post') {
+            pillarPlans.push(pl);
+            if (pl.tema_minggu && !seriesByDay[pd]) seriesByDay[pd] = pl.tema_minggu;
+        }
         if (pl.status !== 'idea') return;
         monthPlans.push(pl);
         (planByDay[pd] = planByDay[pd] || []).push(pl);
@@ -13710,6 +13714,7 @@ function renderIgCalendar() {
         html += `<div class="${cellClasses.join(' ')}" data-date="${dateKey}" onclick="igOnDayClick('${dateKey}')">
             <div class="ig-cal-day-top">
                 <span class="ig-cal-day-num">${day}</span>
+                ${showPlans && seriesByDay[day] ? `<span class="ig-cal-series" title="${escapeHtmlAttr('Seri: ' + seriesByDay[day])}">${escapeHtml(seriesByDay[day])}</span>` : ''}
                 <span class="ig-cal-add-hint" title="Tambah ide / post">+</span>
             </div>
             ${chipsHtml}
