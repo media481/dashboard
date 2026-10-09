@@ -15713,12 +15713,45 @@ const IG_DEDUP_STOPWORDS = new Set([
     'slide', 'ide'
 ]);
 
+// Varian ejaan istilah umroh -> satu bentuk baku, supaya "tawaf" = "thawaf", "Mekah" = "Makkah", dst.
+// Dipakai SETELAH apostrof dibuang (Ka'bah -> kabah, Sa'i -> sai).
+const IG_DEDUP_EJAAN = {
+    thawaf: 'tawaf', thowaf: 'tawaf', towaf: 'tawaf', tawwaf: 'tawaf',
+    mekah: 'makkah', mekkah: 'makkah', makah: 'makkah',
+    medina: 'madinah', madina: 'madinah',
+    raudhah: 'raudhah', raudah: 'raudhah', roudhoh: 'raudhah', rawdah: 'raudhah', roudhah: 'raudhah',
+    talbiah: 'talbiyah', talbiyyah: 'talbiyah', talbiya: 'talbiyah',
+    kakbah: 'kabah', kaabah: 'kabah', kabbah: 'kabah',
+    safa: 'shafa', shofa: 'shafa', marwa: 'marwah', marwan: 'marwah',
+    say: 'sai', saii: 'sai',
+    tahalul: 'tahallul', tahalyl: 'tahallul',
+    ihrom: 'ihram', mikat: 'miqat', miqot: 'miqat',
+    manasik: 'manasik', manasek: 'manasik', manasikh: 'manasik'
+};
+// Stemming ringan bahasa Indonesia (awalan & akhiran umum) supaya "bertawaf" = "tawaf", "melihat" = "lihat".
+// Hanya dipotong kalau sisa kata masih >= 4 huruf, supaya kata pendek tidak rusak. Dipakai sama di kedua sisi
+// perbandingan, jadi bentuk hasilnya tidak perlu kata baku.
+function igStemToken(t) {
+    let w = IG_DEDUP_EJAAN[t] || t;
+    const awalan = ['mem', 'men', 'meng', 'meny', 'ber', 'ter', 'per', 'pe', 'me', 'di', 'ke', 'se'];
+    for (const a of awalan) {
+        if (w.startsWith(a) && w.length - a.length >= 4) { w = w.slice(a.length); break; }
+    }
+    const akhiran = ['kan', 'an', 'nya', 'lah', 'kah', 'i'];
+    for (const a of akhiran) {
+        if (w.endsWith(a) && w.length - a.length >= 4) { w = w.slice(0, -a.length); break; }
+    }
+    return IG_DEDUP_EJAAN[w] || w;
+}
+
 function igTokenSet(text) {
     const tokens = String(text || '').toLowerCase()
         .replace(/[’'`ʼ]/g, '')        // Ka'bah -> kabah, Sa'i -> sai
         .replace(/[^a-z0-9\s]/g, ' ')
         .split(/\s+/)
-        .filter(t => t.length > 2 && !IG_DEDUP_STOPWORDS.has(t));
+        .filter(t => t.length > 2 && !IG_DEDUP_STOPWORDS.has(t))
+        .map(igStemToken)
+        .filter(t => t.length > 2);
     return new Set(tokens);
 }
 

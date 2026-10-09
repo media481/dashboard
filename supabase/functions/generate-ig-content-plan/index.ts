@@ -248,6 +248,10 @@ function fixSpelling(t: string): string {
   return t.replace(/umrah/gi, (m) => (m === m.toUpperCase() ? "UMROH" : m[0] === "U" ? "Umroh" : "umroh"));
 }
 
+// Ambil hashtag di akhir teks: baris yang isinya hanya hashtag, ATAU hashtag di ujung baris terakhir
+// yang masih menempel pada kalimat ("... doa. #A #B"). Hashtag yang terselip di tengah kalimat
+// diubah jadi kata biasa (#Talbiyah -> Talbiyah) dan ikut dihitung sebagai kandidat hashtag.
+const TRAILING_TAGS_RE = /(?:\s+#[\p{L}\p{N}_]+)+\s*$/u;
 function splitTrailingHashtags(t: string): { body: string; tags: string[] } {
   const lines = t.split("\n");
   const tags: string[] = [];
@@ -255,13 +259,29 @@ function splitTrailingHashtags(t: string): { body: string; tags: string[] } {
     const line = lines.pop() as string;
     tags.unshift(...(line.match(TAG_RE) || []));
   }
-  return { body: lines.join("\n").trim(), tags };
+  if (lines.length) {
+    const last = lines[lines.length - 1];
+    const m = last.match(TRAILING_TAGS_RE);
+    if (m) {
+      tags.unshift(...(m[0].match(TAG_RE) || []));
+      lines[lines.length - 1] = last.slice(0, last.length - m[0].length);
+    }
+  }
+  let body = lines.join("\n").trim();
+  body = body.replace(TAG_RE, (tag) => {
+    tags.push(tag);
+    return tag.slice(1);
+  });
+  return { body, tags };
 }
+
+// Cadangan netral kalau AI memberi kurang dari 5 hashtag (supaya tetap tepat 5, tanpa klaim apa pun).
+const FALLBACK_HASHTAGS = ["#PersiapanUmroh", "#UmrohIndonesia", "#PerjalananIbadah", "#TanahSuci", "#CeritaUmroh"];
 
 function buildTagLine(tags: string[]): string {
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const tag of [...REQUIRED_HASHTAGS, ...tags]) {
+  for (const tag of [...REQUIRED_HASHTAGS, ...tags, ...FALLBACK_HASHTAGS]) {
     const k = tag.toLowerCase();
     if (seen.has(k)) continue;
     seen.add(k);
@@ -300,6 +320,33 @@ function maxSlideNumber(teks: string): number {
   return max;
 }
 
+
+// ===== Validator kejujuran (aturan pola-konten.md bagian 7, ditegakkan di server) =====
+const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/;
+const PROMISE_RE = /pasti\s+(mabrur|berangkat|diterima|dikabulkan|ada)|dijamin|jaminan\s+(berangkat|mabrur)|100\s*%\s*(mabrur|berangkat)/i;
+const IBADAH_RE = /\b(doa|tata\s*cara|niat|lafaz|talbiyah|hukum|wajib|rukun|sunnah|sunah|haram|ihram|thawaf|tawaf|sa'?i|tahallul|miqat)\b/i;
+const CAPTION_MIN = 500; // pola: sekitar 600-1200 karakter; toleransi sedikit
+const CAPTION_MAX = 1500;
+const CEK_PEMBIMBING = "[cek pembimbing]";
+
+// Return alasan penolakan (string) atau "" kalau lolos. Item yang ditolak dibuang; slotnya dicoba ulang frontend.
+function tolakAlasan(it: { tema: string; teks_gambar: string; draft_caption: string }): string {
+  const all = `${it.tema}\n${it.teks_gambar}\n${it.draft_caption}`;
+  if (ARABIC_RE.test(all)) return "memuat teks Arab (dilarang mengarang lafaz/ayat/doa)";
+  if (PROMISE_RE.test(all)) return "memuat janji berlebihan";
+  const bodyLen = it.draft_caption.replace(TAG_RE, "").trim().length;
+  if (bodyLen < CAPTION_MIN) return `caption terlalu pendek (${bodyLen} karakter)`;
+  if (bodyLen > CAPTION_MAX) return `caption terlalu panjang (${bodyLen} karakter)`;
+  return "";
+}
+
+// Tandai "[cek pembimbing]" otomatis di akhir tema kalau isinya soal tata cara/hukum/doa.
+function tandaiCekPembimbing(tema: string, teksGambar: string, caption: string): string {
+  if (/\[cek pembimbing\]/i.test(tema)) return tema;
+  if (!IBADAH_RE.test(`${tema}\n${teksGambar}\n${caption}`)) return tema;
+  const base = tema.slice(0, 200 - CEK_PEMBIMBING.length - 1).trim();
+  return `${base} ${CEK_PEMBIMBING}`;
+}
 
 // true kalau str adalah tanggal kalender nyata (bukan mis. 2026-02-31)
 function isRealDate(str: string): boolean {
@@ -433,11 +480,27 @@ Ingat: balas HANYA dengan JSON array sesuai format yang sudah dijelaskan, tidak 
           return { ...it, pilar: slot.pilar, tipe_konten: slot.tipe_konten };
         });
     }
+    // Validator kejujuran & panjang caption; tandai [cek pembimbing] otomatis.
+    const ditolak: string[] = [];
+    cleaned = cleaned
+      .filter((it) => {
+        const alasan = tolakAlasan(it);
+        if (alasan) ditolak.push(`${it.tanggal}: ${alasan}`);
+        return !alasan;
+      })
+      .map((it) => ({ ...it, tema: tandaiCekPembimbing(it.tema, it.teks_gambar, it.draft_caption) }));
+    if (ditolak.length) console.warn("generate-ig-content-plan: item ditolak validator ->", ditolak.join(" | "));
     // Carousel maksimal 5 slide (dicek SETELAH tipe dipaksa mengikuti slot): ide yang melebihi dibuang,
     // slotnya dicoba ulang oleh frontend.
     cleaned = cleaned.filter((it) => it.tipe_konten !== "carousel" || maxSlideNumber(it.teks_gambar) <= MAX_CAROUSEL_SLIDES);
     cleaned = cleaned.slice(0, jumlah);
 
+    if (!cleaned.length && ditolak.length) {
+      // Semua ditolak validator (bukan error): kembalikan kosong supaya frontend mencoba ulang slotnya.
+      return new Response(JSON.stringify({ items: [], ditolak, versi: 4 }), {
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
+    }
     if (!cleaned.length) {
       throw new Error("Semua item hasil AI tidak valid (tanggal di luar rentang bulan atau data kurang lengkap). Coba generate ulang.");
     }
