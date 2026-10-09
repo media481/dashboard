@@ -15354,6 +15354,7 @@ function openIgContentPlanModal() {
         monthInput.value = `${y}-${m}`;
     }
     ['igPlanTema', 'igPlanTemaDepan', 'igPlanArahan'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['igPlanTema', 'igPlanTemaDepan'].forEach(id => { const el = document.getElementById(id); if (el) el.dataset.auto = '1'; }); // isi otomatis sampai diketik manual
     igRenderPlanWeekOptions();
 
     renderIgPlanPolaStrip();
@@ -15424,6 +15425,7 @@ function igRenderPlanWeekOptions() {
 function igRefreshPlanPreview() {
     const el = document.getElementById('igPlanPreview');
     if (!el) return;
+    igPerbaruiSaranTema();
     const senin = document.getElementById('igPlanWeek')?.value;
     if (!senin) { el.textContent = ''; return; }
     const slots = igBuildSlotPekan(senin, igTanggalTerisiSet(), igLocalDateKey(new Date()));
@@ -15435,6 +15437,188 @@ function igRefreshPlanPreview() {
     el.innerHTML = `<i class="bi bi-calendar-check"></i> <strong>${slots.length}</strong> ide akan dibuat: ` +
         `${slots.map(s => s.hari.slice(0, 3)).join(', ')} (${slots.length - carousel} image · ${carousel} carousel)`;
 }
+
+// ============================================================
+// TEMA MINGGU OTOMATIS (saran tema supaya setahun penuh relevan & harmonis)
+// Tiga sumber, dalam urutan prioritas:
+//  1. Pekan itu sudah punya tema (generate sebagian) -> tema itu dipertahankan.
+//  2. TEMA MUSIMAN menurut bulan Hijriah pekan itu (Maulid, Isra Miraj, Ramadhan, musim haji, dst).
+//  3. ALUR PERJALANAN JAMAAH (niat > persiapan > ihram > thawaf > sa'i > Madinah > pulang) yang dilanjutkan
+//     dari tema alur terakhir yang dipakai, jadi pekan ke pekan terasa satu cerita.
+// Tema yang sudah dipakai dalam +-365 hari (semua status) dilewati, jadi tidak ada pengulangan dalam setahun.
+// Seluruhnya dihitung lokal (tanpa AI), jadi tetap jalan walau token AI habis.
+// ============================================================
+const IG_TEMA_ALUR = [
+    'Niat dan Panggilan', 'Umroh Pertama Kali', 'Restu dan Doa Keluarga', 'Menabung Niat', 'Dokumen dan Administrasi',
+    'Anggaran dan Keuangan Perjalanan', 'Persiapan Fisik', 'Menjaga Kesehatan', 'Perlengkapan Perjalanan',
+    'Kesiapan Hati dan Kesabaran', 'Belajar Manasik', 'Miqat dan Ihram', 'Larangan Ihram', 'Talbiyah',
+    'Tiba di Tanah Suci', 'Sejarah Makkah dan Kabah', 'Pertama Melihat Kabah', 'Thawaf', 'Multazam dan Doa',
+    'Maqam Ibrahim', 'Air Zamzam', 'Sa\'i dan Siti Hajar', 'Tahallul', 'Adab di Masjidil Haram', 'Shalat di Tanah Suci',
+    'Sabar di Keramaian', 'Ikhlas dalam Ibadah', 'Menjaga Akhlak di Perjalanan', 'Kebersamaan Rombongan',
+    'Mengisi Waktu di Tanah Suci', 'Ziarah di Makkah', 'Perjalanan ke Madinah', 'Masjid Nabawi', 'Raudhah',
+    'Ziarah di Madinah', 'Doa Titipan', 'Doa untuk Diri Sendiri', 'Sedekah dan Berbagi', 'Umroh Bersama Orang Tua',
+    'Umroh Bersama Pasangan', 'Umroh Bersama Keluarga', 'Umroh untuk Lansia', 'Thawaf Wada', 'Hari Terakhir di Makkah',
+    'Pulang dan Oleh-oleh Hati', 'Menjaga Kemabruran', 'Rindu Tanah Suci', 'Berbagi Cerita Setelah Pulang'
+];
+// Kunci = nomor bulan Hijriah (1 Muharram ... 12 Dzulhijjah). Bulan tanpa tema musiman langsung mengikuti alur.
+const IG_TEMA_MUSIM = {
+    1: ['Hijrah dan Awal Tahun Baru'],
+    3: ['Cinta Rasulullah dan Rindu Madinah'],
+    7: ['Isra Miraj dan Makna Shalat'],
+    8: ['Menyambut Ramadhan'],
+    9: ['Ramadhan dan Rindu Tanah Suci', 'Sepuluh Malam Terakhir Ramadhan'],
+    10: ['Menjaga Semangat Setelah Ramadhan'],
+    11: ['Bersiap Menyambut Musim Haji'],
+    12: ['Rindu Berhaji dan Makna Kurban']
+};
+const IG_NAMA_HIJRI = ['Muharram', 'Safar', 'Rabiul Awal', 'Rabiul Akhir', 'Jumadil Awal', 'Jumadil Akhir', 'Rajab', 'Sya\'ban', 'Ramadhan', 'Syawal', 'Dzulqa\'dah', 'Dzulhijjah'];
+
+// Nomor bulan Hijriah (1-12) dari sebuah tanggal; 0 kalau browser tidak mendukung kalender Hijriah.
+function igHijriMonth(date) {
+    try {
+        const part = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', { month: 'numeric' })
+            .formatToParts(date).find(p => p.type === 'month');
+        const v = parseInt(part && part.value, 10);
+        return v >= 1 && v <= 12 ? v : 0;
+    } catch (e) { return 0; }
+}
+
+// Daftar tema yang cocok untuk pekan yang dimulai seninKey, urut dari yang paling disarankan (fungsi murni).
+// plans = igContentPlan (butuh kolom tema_minggu). Return [{ tema, alasan, tetap? }], paling banyak `maks`.
+function igKandidatTemaMinggu(seninKey, plans, maks) {
+    const [y, m, d] = seninKey.split('-').map(Number);
+    const kunci = (selisih) => igLocalDateKey(new Date(y, m - 1, d + selisih));
+    const mingguKey = kunci(6);
+    const berTema = (plans || []).filter(pl => pl.tanggal && pl.tema_minggu);
+
+    const ada = berTema.filter(pl => pl.tanggal >= seninKey && pl.tanggal <= mingguKey)
+        .sort((a, b) => a.tanggal.localeCompare(b.tanggal))[0];
+    if (ada) return [{ tema: ada.tema_minggu, alasan: 'Tema yang sudah dipakai di pekan ini', tetap: true }];
+
+    const awal = kunci(-365), akhir = kunci(365);
+    const terpakai = berTema.filter(pl => pl.tanggal >= awal && pl.tanggal <= akhir).map(pl => igTokenSet(pl.tema_minggu));
+    const sudah = tema => { const t = igTokenSet(tema); return terpakai.some(u => igIsSimilarText(t, u)); };
+    const batas = Math.max(1, maks || 6);
+    const hasil = [];
+
+    const bulanH = igHijriMonth(new Date(y, m - 1, d + 3)); // Kamis = tengah pekan
+    (IG_TEMA_MUSIM[bulanH] || []).forEach(t => {
+        if (hasil.length < batas && !sudah(t)) hasil.push({ tema: t, alasan: `Musim ${IG_NAMA_HIJRI[bulanH - 1]}` });
+    });
+
+    // Lanjutkan alur dari tema alur terakhir yang dipakai sebelum pekan ini.
+    let idx = -1;
+    const sebelum = berTema.filter(pl => pl.tanggal < seninKey).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+    for (const pl of sebelum) {
+        const i = IG_TEMA_ALUR.findIndex(a => igIsSimilarText(a, pl.tema_minggu));
+        if (i >= 0) { idx = i; break; }
+    }
+    const n = IG_TEMA_ALUR.length;
+    let pertama = true;
+    for (let k = 1; k <= n && hasil.length < batas; k++) {
+        const t = IG_TEMA_ALUR[(idx + k) % n];
+        if (sudah(t)) continue;
+        hasil.push({ tema: t, alasan: pertama ? (idx >= 0 ? `Lanjutan alur setelah "${IG_TEMA_ALUR[idx]}"` : 'Awal alur perjalanan jamaah') : 'Alur perjalanan jamaah' });
+        pertama = false;
+    }
+    // Semua tema alur sudah dipakai dalam setahun: ulang dari lanjutan alur, jangan sampai kosong.
+    if (!hasil.length) hasil.push({ tema: IG_TEMA_ALUR[(idx + 1) % n], alasan: 'Semua tema sudah dipakai setahun terakhir, mengulang alur' });
+    return hasil;
+}
+
+// Peta tema untuk `jumlah` pekan ke depan mulai seninKey: tiap pekan memakai saran teratas, dan pilihan itu
+// dianggap terpakai untuk pekan berikutnya. temaAwal (opsional) = tema yang sudah dipilih admin untuk pekan pertama.
+function igPetaTemaSetahun(seninKey, plans, jumlah, temaAwal) {
+    const [y, m, d] = seninKey.split('-').map(Number);
+    const sim = (plans || []).slice();
+    const out = [];
+    for (let k = 0; k < (jumlah || 52); k++) {
+        const senin = igLocalDateKey(new Date(y, m - 1, d + 7 * k));
+        const minggu = igLocalDateKey(new Date(y, m - 1, d + 7 * k + 6));
+        const pilihan = (k === 0 && temaAwal) ? { tema: temaAwal, alasan: 'Tema yang Anda pilih' } : igKandidatTemaMinggu(senin, sim, 1)[0];
+        out.push({ senin, minggu, tema: pilihan.tema, alasan: pilihan.alasan });
+        sim.push({ tanggal: senin, tema_minggu: pilihan.tema, status: 'idea' });
+    }
+    return out;
+}
+
+// ---- Sambungan ke form Rencana AI ----
+let igSaranKandidat = [];
+let igSaranIdx = 0;
+const igTglPendek = key => { const [, mm, dd] = key.split('-').map(Number); return `${dd} ${['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][mm - 1]}`; };
+
+function igRenderSaranTema() {
+    const el = document.getElementById('igPlanTemaSaran');
+    const temaEl = document.getElementById('igPlanTema');
+    if (!el || !temaEl) return;
+    const k = igSaranKandidat[igSaranIdx];
+    if (!k || temaEl.dataset.auto === '0') { el.innerHTML = ''; return; }
+    el.innerHTML = `<i class="bi bi-stars"></i> Saran otomatis: ${escapeHtml(k.alasan)}`
+        + (igSaranKandidat.length > 1 ? ` · <button type="button" class="ig-plan-link" onclick="igSaranTemaLain()">Saran lain</button>` : '');
+}
+
+// Tema pekan depan (untuk teaser Minggu) mengikuti tema pekan ini, selama admin belum mengetik sendiri.
+function igPerbaruiSaranDepan() {
+    const senin = document.getElementById('igPlanWeek')?.value;
+    const temaEl = document.getElementById('igPlanTema');
+    const depanEl = document.getElementById('igPlanTemaDepan');
+    if (!senin || !depanEl || depanEl.dataset.auto === '0') return;
+    const [y, m, d] = senin.split('-').map(Number);
+    const seninDepan = igLocalDateKey(new Date(y, m - 1, d + 7));
+    const sim = (igContentPlan || []).slice();
+    const temaIni = (temaEl?.value || '').trim();
+    if (temaIni) sim.push({ tanggal: senin, tema_minggu: temaIni, status: 'idea' });
+    const k = igKandidatTemaMinggu(seninDepan, sim, 1)[0];
+    depanEl.value = k ? k.tema : '';
+    depanEl.dataset.auto = '1';
+}
+
+function igRenderPetaTema() {
+    const wrap = document.getElementById('igPlanPetaWrap');
+    const el = document.getElementById('igPlanPeta');
+    const senin = document.getElementById('igPlanWeek')?.value;
+    if (!wrap || !el || !wrap.open || !senin) return;
+    const temaAwal = (document.getElementById('igPlanTema')?.value || '').trim();
+    el.innerHTML = igPetaTemaSetahun(senin, igContentPlan, 52, temaAwal).map(r =>
+        `<div class="ig-plan-peta-row"><span class="ig-plan-peta-tgl">${igTglPendek(r.senin)} – ${igTglPendek(r.minggu)}</span>`
+        + `<span>${escapeHtml(r.tema)}<small>${escapeHtml(r.alasan)}</small></span></div>`).join('');
+}
+
+// Dipanggil tiap pekan/bulan berubah atau data rencana selesai dimuat: isi Tema Minggu otomatis selama belum diketik manual.
+function igPerbaruiSaranTema() {
+    const senin = document.getElementById('igPlanWeek')?.value;
+    const temaEl = document.getElementById('igPlanTema');
+    if (!senin || !temaEl) return;
+    igSaranKandidat = igKandidatTemaMinggu(senin, igContentPlan, 8);
+    igSaranIdx = 0;
+    if (temaEl.dataset.auto !== '0' && igSaranKandidat[0]) { temaEl.value = igSaranKandidat[0].tema; temaEl.dataset.auto = '1'; }
+    igRenderSaranTema();
+    igPerbaruiSaranDepan();
+    igRenderPetaTema();
+}
+
+function igSaranTemaLain() {
+    const temaEl = document.getElementById('igPlanTema');
+    if (!temaEl || igSaranKandidat.length < 2) return;
+    igSaranIdx = (igSaranIdx + 1) % igSaranKandidat.length;
+    temaEl.value = igSaranKandidat[igSaranIdx].tema;
+    temaEl.dataset.auto = '1';
+    igRenderSaranTema();
+    igPerbaruiSaranDepan();
+    igRenderPetaTema();
+}
+
+// Admin mengetik Tema Minggu sendiri: berhenti menimpa, tapi tema pekan depan & peta tetap menyesuaikan.
+function igOnTemaMingguInput() {
+    const temaEl = document.getElementById('igPlanTema');
+    if (temaEl) temaEl.dataset.auto = '0';
+    igRenderSaranTema();
+    igPerbaruiSaranDepan();
+    igRenderPetaTema();
+}
+window.igSaranTemaLain = igSaranTemaLain;
+window.igOnTemaMingguInput = igOnTemaMingguInput;
+window.igRenderPetaTema = igRenderPetaTema;
 
 // ---- Susun ringkasan program aktif sebagai konteks AI ----
 // Jendela waktu: dari awal bulan target sampai akhir 2 bulan setelahnya (3 bulan), dan program yang sudah

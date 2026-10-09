@@ -1457,19 +1457,24 @@
                 </div>
                 <div class="form-group">
                     <label>Tema Minggu</label>
-                    <input type="text" id="igPlanTema" maxlength="80" placeholder="Contoh: Talbiyah">
+                    <input type="text" id="igPlanTema" maxlength="80" placeholder="Contoh: Talbiyah" oninput="igOnTemaMingguInput()">
+                    <div class="ig-plan-saran" id="igPlanTemaSaran"></div>
                 </div>
                 <div class="ig-plan-preview" id="igPlanPreview"></div>
                 <details class="ig-plan-more">
                     <summary>Opsi tambahan</summary>
                     <div class="form-group">
                         <label>Tema pekan depan <span class="ig-plan-hint">(untuk teaser penutup Minggu)</span></label>
-                        <input type="text" id="igPlanTemaDepan" maxlength="80" placeholder="Kosongkan kalau belum ditentukan">
+                        <input type="text" id="igPlanTemaDepan" maxlength="80" placeholder="Kosongkan kalau belum ditentukan" oninput="this.dataset.auto='0'">
                     </div>
                     <div class="form-group">
                         <label>Arahan tambahan</label>
                         <textarea id="igPlanArahan" rows="2" placeholder="Contoh: fokus promo Umroh Desember, atau selipkan tema Maulid Nabi"></textarea>
                     </div>
+                    <details class="ig-plan-peta" id="igPlanPetaWrap" ontoggle="igRenderPetaTema()">
+                        <summary>Peta tema 12 bulan</summary>
+                        <div id="igPlanPeta"></div>
+                    </details>
                     <div class="ig-plan-pola-label">Pola 7 hari</div>
                     <div class="ig-plan-pola" id="igPlanPolaStrip"></div>
                 </details>

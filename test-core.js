@@ -76,7 +76,7 @@ const code = fs.readFileSync(APP_PATH, 'utf8');
 const context = vm.createContext(sandbox);
 // Tambahkan penangkap: deklarasikan fungsi sebagai property di sandbox
 // dengan meng-append kode yang menaruh fungsi ke globalThis
-const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah, igBangunKonteksRegenHari, igFormatBarisPekan, igRegenerasiHariPlan, igSusunPromptEksternal, igSalinPromptPlan, IG_PLAN_PROMPT_SISTEM };';
+const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah, igBangunKonteksRegenHari, igFormatBarisPekan, igRegenerasiHariPlan, igSusunPromptEksternal, igSalinPromptPlan, IG_PLAN_PROMPT_SISTEM, igHijriMonth, igKandidatTemaMinggu, igPetaTemaSetahun, IG_TEMA_ALUR, IG_TEMA_MUSIM };';
 vm.runInContext(wrapped, context, { filename: 'app.js' });
 const T = sandbox.__T;
 
@@ -187,6 +187,56 @@ test('program kosong -> teks "tidak ada data program"; bagian opsional kosong ti
   const permintaan = p.slice(p.indexOf('=== PERMINTAAN ==='));  // prompt sistem sendiri menyebut istilah-istilah ini
   assert.ok(permintaan.includes('(tidak ada data program spesifik untuk periode ini)'));
   assert.ok(!permintaan.includes('TEMA PEKAN DEPAN') && !permintaan.includes('KONTEKS PEKAN') && !permintaan.includes('ARAHAN TAMBAHAN DARI ADMIN') && !permintaan.includes('RIWAYAT TEMA, SUDAH'));
+});
+
+
+console.log('\n=== TEST: Tema Minggu otomatis ===');
+const tp = (tanggal, tema) => ({ tanggal, tema_minggu: tema, status: 'idea' });
+test('bulan Hijriah: 22 Feb 2027 = Ramadhan (9), 15 Okt 2026 = Jumadil Awal (5)', () => {
+  assert.strictEqual(T.igHijriMonth(new Date(2027, 1, 22)), 9);
+  assert.strictEqual(T.igHijriMonth(new Date(2026, 9, 15)), 5);
+});
+test('tanpa riwayat & bukan musim tema: mulai dari awal alur perjalanan', () => {
+  const k = T.igKandidatTemaMinggu('2026-10-12', [], 3);
+  assert.strictEqual(k[0].tema, T.IG_TEMA_ALUR[0]); assert.ok(/Awal alur/.test(k[0].alasan));
+  assert.strictEqual(k.length, 3);
+});
+test('melanjutkan alur dari tema alur terakhir yang dipakai', () => {
+  const k = T.igKandidatTemaMinggu('2026-10-19', [tp('2026-10-12', T.IG_TEMA_ALUR[0])], 1);
+  assert.strictEqual(k[0].tema, T.IG_TEMA_ALUR[1]);
+});
+test('pekan yang sudah punya tema -> tema itu saja (generate sebagian tidak ganti tema)', () => {
+  const k = T.igKandidatTemaMinggu('2026-10-12', [tp('2026-10-14', 'Talbiyah')], 5);
+  assert.strictEqual(k.length, 1); assert.strictEqual(k[0].tema, 'Talbiyah');
+});
+test('pekan di bulan Ramadhan: tema musiman didahulukan', () => {
+  const k = T.igKandidatTemaMinggu('2027-02-22', [], 4);
+  assert.ok(/Ramadhan/.test(k[0].tema), k[0].tema); assert.ok(/Musim Ramadhan/.test(k[0].alasan));
+});
+test('tema yang sudah dipakai (bahkan di pekan depan) dilewati', () => {
+  const k = T.igKandidatTemaMinggu('2026-10-12', [tp('2026-10-26', T.IG_TEMA_ALUR[0])], 1);
+  assert.strictEqual(k[0].tema, T.IG_TEMA_ALUR[1]);
+});
+test('tema lebih dari setahun lalu tidak lagi memblokir (alur melingkar kembali ke tema lama)', () => {
+  const A = T.IG_TEMA_ALUR;
+  const plans = [tp('2025-05-26', A[0]), tp('2025-06-02', A[A.length - 1])]; // keduanya di luar jendela 365 hari
+  assert.strictEqual(T.igKandidatTemaMinggu('2026-10-12', plans, 1)[0].tema, A[0]);
+});
+test('semua tema alur sudah terpakai -> tetap ada saran (tidak kosong)', () => {
+  const semua = T.IG_TEMA_ALUR.map((tema, i) => tp(`2026-${String(1 + Math.floor(i / 4)).padStart(2, '0')}-${String(1 + (i % 4) * 7).padStart(2, '0')}`, tema));
+  assert.ok(T.igKandidatTemaMinggu('2026-10-12', semua, 1)[0].tema);
+});
+test('peta 52 pekan: berurutan, tidak ada tema kembar, pekan pertama bisa dikunci pilihan admin', () => {
+  const peta = T.igPetaTemaSetahun('2026-10-12', [], 52, 'Talbiyah');
+  assert.strictEqual(peta.length, 52);
+  assert.strictEqual(peta[0].tema, 'Talbiyah'); assert.strictEqual(peta[0].senin, '2026-10-12'); assert.strictEqual(peta[1].senin, '2026-10-19');
+  const unik = new Set(peta.map(r => r.tema.toLowerCase()));
+  assert.strictEqual(unik.size, 52);
+});
+test('peta setahun memuat tema musiman Ramadhan dan musim haji pada pekan yang tepat', () => {
+  const peta = T.igPetaTemaSetahun('2026-10-12', [], 52);
+  assert.ok(peta.some(r => /Ramadhan/.test(r.tema) && /Musim Ramadhan/.test(r.alasan)));
+  assert.ok(peta.some(r => /Musim Dzulhijjah/.test(r.alasan)));
 });
 
 // ============================================================
