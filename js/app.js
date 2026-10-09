@@ -17679,25 +17679,35 @@ window.igApplyPolaMingguan = igApplyPolaMingguan;
 // Tooltip kustom: menggantikan hint bawaan browser (atribut title).
 // Cara kerja: saat kursor masuk ke elemen ber-title, teks dipindah ke
 // data-tip (supaya hint native tidak muncul) lalu ditampilkan lewat
-// elemen .amiru-tip. Berlaku juga untuk elemen yang dibuat dinamis.
-// Hanya aktif di perangkat dengan mouse (hover); layar sentuh dilewati.
+// satu elemen .amiru-tip yang dipakai ulang. Berlaku juga untuk elemen
+// dinamis. Hanya aktif di perangkat bermouse; layar sentuh dilewati.
+// Optimasi: satu elemen tooltip, listener pasif, tanpa polling terus-
+// menerus, "warm start" (pindah antar tombol tanpa jeda ulang) dan
+// transisi meluncur saat berpindah target.
 // ============================================================
 (function () {
-    if (!window.matchMedia || !window.matchMedia('(hover: hover)').matches) return;
+    if (!window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
 
-    const GAP = 8, EDGE = 8, DELAY = 220;
-    let tip = null, current = null, showTimer = null, watchTimer = null;
+    const GAP = 8, EDGE = 8;
+    const DELAY = 280;        // jeda sebelum tooltip pertama muncul
+    const WARM_MS = 600;      // setelah tooltip tampil, target berikutnya muncul tanpa jeda
+    const LEAVE_GRACE = 90;   // toleransi saat melintasi celah antar tombol
+    const SEL = '[title], [data-tip]';
+
+    let tip = null, current = null, visible = false;
+    let showTimer = 0, hideTimer = 0, lastShown = 0, mo = null;
 
     function ensureTip() {
         if (tip) return tip;
         tip = document.createElement('div');
         tip.className = 'amiru-tip';
         tip.setAttribute('role', 'tooltip');
+        tip.id = 'amiruTip';
         document.body.appendChild(tip);
         return tip;
     }
 
-    // Pindahkan title -> data-tip; kembalikan elemen kalau valid
+    // Pindahkan title -> data-tip; kembalikan elemen kalau punya teks
     function prepare(el) {
         if (el.hasAttribute('title')) {
             const t = (el.getAttribute('title') || '').trim();
@@ -17711,13 +17721,12 @@ window.igApplyPolaMingguan = igApplyPolaMingguan;
         return el.getAttribute('data-tip') ? el : null;
     }
 
-    function place(el) {
+    function place(el, glide) {
         const t = ensureTip();
-        t.style.left = '0px'; t.style.top = '0px';
         const r = el.getBoundingClientRect();
         const tw = t.offsetWidth, th = t.offsetHeight;
         const vw = document.documentElement.clientWidth, vh = window.innerHeight;
-        const inSidebar = !!el.closest('nav, .sidebar') && el.classList.contains('nav-item');
+        const inSidebar = el.classList.contains('nav-item') && !!el.closest('nav, .sidebar');
 
         let pos = inSidebar ? 'right' : 'bottom';
         if (pos === 'right' && r.right + GAP + tw > vw - EDGE) pos = 'bottom';
@@ -17733,6 +17742,7 @@ window.igApplyPolaMingguan = igApplyPolaMingguan;
         x = Math.max(EDGE, Math.min(x, vw - tw - EDGE));
         y = Math.max(EDGE, Math.min(y, vh - th - EDGE));
 
+        t.classList.toggle('glide', !!glide);
         t.dataset.pos = pos;
         t.style.setProperty('--tip-shift', pos === 'top' ? '-4px' : pos === 'right' ? '0px' : '4px');
         t.style.setProperty('--arrow-x', Math.max(10, Math.min(tw - 10, r.left + r.width / 2 - x)) + 'px');
@@ -17741,55 +17751,78 @@ window.igApplyPolaMingguan = igApplyPolaMingguan;
         t.style.top = Math.round(y) + 'px';
     }
 
-    function hide() {
-        clearTimeout(showTimer); clearInterval(watchTimer);
-        showTimer = watchTimer = null; current = null;
-        if (tip) tip.classList.remove('show');
+    // Awasi DOM hanya selama tooltip tampil: kalau target dilepas/disembunyikan, tutup.
+    function watch() {
+        if (mo || !window.MutationObserver) return;
+        mo = new MutationObserver(() => {
+            if (!current || !document.contains(current) || current.getClientRects().length === 0) hide(true);
+        });
+        mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
     }
+    function unwatch() { if (mo) { mo.disconnect(); mo = null; } }
 
     function show(el) {
         const t = ensureTip();
+        const glide = visible;                       // sudah tampil -> meluncur ke target baru
         t.textContent = el.getAttribute('data-tip');
-        place(el);
-        t.classList.add('show');
-        // Sembunyikan kalau elemen hilang / disembunyikan saat tooltip tampil
-        clearInterval(watchTimer);
-        watchTimer = setInterval(() => {
-            if (!current || !document.contains(current) || current.getClientRects().length === 0) hide();
-        }, 300);
+        place(el, glide);
+        if (!visible) { visible = true; t.classList.add('show'); }
+        el.setAttribute('aria-describedby', 'amiruTip');
+        lastShown = Date.now();
+        watch();
     }
 
-    function enter(e) {
-        const raw = e.target && e.target.closest ? e.target.closest('[title], [data-tip]') : null;
-        if (!raw || raw === current) return;
-        const el = prepare(raw);
-        if (!el) return;
-        hide();
+    function hide(now) {
+        clearTimeout(showTimer); clearTimeout(hideTimer);
+        showTimer = hideTimer = 0;
+        const el = current;
+        current = null;
+        if (el && el.getAttribute) el.removeAttribute('aria-describedby');
+        if (!visible) return;
+        const doHide = () => { visible = false; unwatch(); if (tip) tip.classList.remove('show', 'glide'); };
+        if (now) doHide(); else hideTimer = setTimeout(doHide, LEAVE_GRACE);
+    }
+
+    function activate(el, instant) {
+        clearTimeout(showTimer); clearTimeout(hideTimer);
+        if (current && current !== el) current.removeAttribute('aria-describedby');
         current = el;
-        showTimer = setTimeout(() => { if (current === el) show(el); }, DELAY);
+        const warm = visible || (Date.now() - lastShown < WARM_MS);
+        if (instant || warm) show(el);
+        else showTimer = setTimeout(() => { if (current === el) show(el); }, DELAY);
     }
 
-    function leave(e) {
+    document.addEventListener('mouseover', (e) => {
+        const raw = e.target && e.target.closest ? e.target.closest(SEL) : null;
+        if (!raw) return;
+        if (raw === current) { clearTimeout(hideTimer); hideTimer = 0; return; }
+        const el = prepare(raw);
+        if (el) activate(el, false);
+    }, { capture: true, passive: true });
+
+    document.addEventListener('mouseout', (e) => {
         if (!current) return;
         const to = e.relatedTarget;
         if (to && current.contains(to)) return;
-        hide();
-    }
+        hide(false);
+    }, { capture: true, passive: true });
 
-    document.addEventListener('mouseover', enter, true);
-    document.addEventListener('mouseout', leave, true);
     document.addEventListener('focusin', (e) => {
-        const raw = e.target && e.target.closest ? e.target.closest('[title], [data-tip]') : null;
+        const raw = e.target && e.target.closest ? e.target.closest(SEL) : null;
         if (!raw || !e.target.matches(':focus-visible')) return;
         const el = prepare(raw);
-        if (!el) return;
-        hide(); current = el; show(el);
-    }, true);
-    document.addEventListener('focusout', hide, true);
-    document.addEventListener('mousedown', hide, true);
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hide(); }, true);
-    window.addEventListener('scroll', hide, true);
-    window.addEventListener('resize', hide);
+        if (el) activate(el, true);
+    }, { capture: true, passive: true });
+
+    const closeNow = () => { if (current || visible) hide(true); };
+    document.addEventListener('focusout', closeNow, true);
+    document.addEventListener('mousedown', closeNow, true);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeNow(); }, true);
+    document.addEventListener('visibilitychange', closeNow);
+    document.documentElement.addEventListener('mouseleave', closeNow);
+    window.addEventListener('scroll', closeNow, { capture: true, passive: true });
+    window.addEventListener('resize', closeNow, { passive: true });
+    window.addEventListener('blur', closeNow);
 })();
 
 console.log('🚀 Amiru Admin Dashboard loaded!');

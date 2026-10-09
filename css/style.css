@@ -5122,8 +5122,9 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     pointer-events: none; opacity: 0; visibility: hidden;
     transform: translateY(var(--tip-shift, 4px));
     transition: opacity .14s ease, transform .14s ease, visibility 0s linear .14s;
-    overflow-wrap: anywhere;
+    overflow-wrap: anywhere; white-space: pre-line; will-change: opacity, transform;
 }
+.amiru-tip.glide { transition: opacity .14s ease, transform .14s ease, left .12s ease-out, top .12s ease-out, visibility 0s; }
 .amiru-tip.show {
     opacity: 1; visibility: visible; transform: translateY(0);
     transition: opacity .14s ease, transform .14s ease, visibility 0s;
@@ -5136,5 +5137,5 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .amiru-tip[data-pos="top"]::after    { bottom: -3px; left: calc(var(--arrow-x, 50%) - 4px); }
 .amiru-tip[data-pos="right"]::after  { left: -3px; top: calc(var(--arrow-y, 50%) - 4px); }
 @media (prefers-reduced-motion: reduce) {
-    .amiru-tip, .amiru-tip.show { transition: none; transform: none; }
+    .amiru-tip, .amiru-tip.show, .amiru-tip.glide { transition: none; transform: none; }
 }
