@@ -13494,16 +13494,14 @@ function igPostRefDate(post) {
 // status 'scheduled') tidak menerbitkan apa pun.
 const IG_AUTOPUBLISH_ENABLED = false;
 const IG_PILLARS = {
-    // Warna dipilih sejauh mungkin di roda warna supaya pilar yang aktif (storytelling, edukasi, manasik, kontemplasi)
-    // langsung terbedakan di sel kalender: oranye, biru, hijau, ungu. Pilar yang dijeda memakai warna di luar keempatnya.
-    storytelling: { label: 'Storytelling',     color: '#ef5b0c' },
-    edukasi:    { label: 'Edukasi',            color: '#1971f0' },
-    promo:      { label: 'Promo Program',      color: '#e0245e' },
-    testimoni:  { label: 'Testimoni',          color: '#0bb5a4' },
-    manasik:    { label: 'Info Manasik',       color: '#2b9d3e' },
-    engagement: { label: 'Engagement',         color: '#e6a700' },
-    behind:     { label: 'Behind the Scenes',  color: '#5c6f82' },
-    kontemplasi: { label: 'Kontemplasi',       color: '#7a3ff2' }
+    storytelling: { label: 'Storytelling',     color: '#d35400' },
+    edukasi:    { label: 'Edukasi',            color: '#2b7de9' },
+    promo:      { label: 'Promo Program',      color: '#e0457b' },
+    testimoni:  { label: 'Testimoni',          color: '#1f9d6b' },
+    manasik:    { label: 'Info Manasik',       color: '#b9770e' },
+    engagement: { label: 'Engagement',         color: '#8e44ad' },
+    behind:     { label: 'Behind the Scenes',  color: '#16899a' },
+    kontemplasi: { label: 'Kontemplasi',       color: '#5b6abf' }
 };
 const IG_STAGES = { ide: 'Ide', dikerjakan: 'Dikerjakan', siap: 'Siap posting' };
 let igPlannerColsReady = false; // true kalau sql/tambah_ig_content_plan_planner.sql sudah dijalankan (kolom pilar & tahap)
