@@ -1,40 +1,42 @@
 // Supabase Edge Function: generate-ig-content-plan
-// Menyusun RENCANA KONTEN IG 1 BULAN (list ide + draft caption per
-// tanggal) sekaligus, dipanggil oleh js/app.js (generateIgContentPlanAI)
-// dari tombol "Generate Rencana Bulanan AI" di halaman IG Scheduler.
+// Menyusun PAKET KONTEN IG yang SALING MENYAMBUNG sesuai pola-konten.md: tujuh
+// posting Senin-Minggu membahas SATU TEMA MINGGUAN dari tujuh sudut berurutan
+// (rasakan > pahami > siapkan > bayangkan > hindari kesalahan > terinspirasi >
+// renungkan). Dipanggil oleh js/app.js (generateIgContentPlanAI) dari tombol
+// "Generate dengan AI" di modal Rencana Konten IG Scheduler.
 //
-// Beda dengan generate-ig-caption (yang menyusun SATU caption dari SATU
-// ide manual) — function ini yang MENGARANG daftar ide+jadwalnya sendiri,
-// berdasarkan konteks program yang dikirim dari frontend (hasil query
-// tabel `programs` yang jadwal keberangkatannya jatuh di bulan terkait).
+// Beda dengan generate-ig-caption (SATU caption dari SATU ide manual) -- function
+// ini yang MENGARANG ide + teks gambar + caption per hari, memakai konteks program
+// yang dikirim frontend (hasil query tabel `programs`).
 //
-// Pakai Gemini API dengan response_mime_type=application/json supaya
-// hasilnya langsung JSON terstruktur (bukan teks bebas yang perlu di-parse
-// manual). Secret GEMINI_API_KEY sama dengan fungsi AI lain (fallback
-// multi-key, logikanya digabung inline di file ini).
+// Pakai Gemini API dengan response_mime_type=application/json supaya hasilnya
+// langsung JSON terstruktur. Secret GEMINI_API_KEY sama dengan fungsi AI lain
+// (fallback multi-key, logikanya digabung inline di file ini).
 //
 // Kontrak (dipakai oleh js/app.js -> generateIgContentPlanAI):
 //   POST body: {
-//     bulanLabel: string,        // mis. "September 2026" (untuk konteks AI)
-//     jumlahPost: number,        // target jumlah ide dalam 1 bulan
-//     tanggalMulai: string,      // "2026-09-01"
-//     tanggalAkhir: string,      // "2026-09-30"
-//     konteksProgram: string,    // ringkasan program aktif/berangkat bulan ini
-//     arahan?: string,           // arahan tambahan opsional dari admin (tema campaign, dst)
-//     ideSudahAda?: string,      // (lama) daftar ide yang sudah ada di bulan itu ("YYYY-MM-DD — tema" per baris)
-//     riwayatTema?: string,      // daftar tema yang SUDAH PERNAH dibuat (semua bulan, satu tema per baris)
-//                                // -> AI wajib membuat ide yang benar-benar beda dari daftar ini
+//     bulanLabel: string,        // mis. "Oktober 2026" (konteks AI)
+//     jumlahPost: number,        // target jumlah ide (diabaikan kalau slots ada)
+//     tanggalMulai: string,      // "2026-10-12"
+//     tanggalAkhir: string,      // "2026-10-18"
+//     konteksProgram: string,    // ringkasan program aktif/berangkat (boleh kosong)
+//     arahan?: string,           // arahan tambahan opsional dari admin
+//     ideSudahAda?: string,      // (lama) ide yang sudah ada ("YYYY-MM-DD — tema" per baris)
+//     riwayatTema?: string,      // tema yang SUDAH PERNAH dibuat (satu per baris) -> wajib dihindari
+//     temaMinggu?: string,       // BARU: tema pekan ini (mis. "Talbiyah"). Kosong = AI memilih sendiri
+//     temaMingguDepan?: string,  // BARU: tema pekan depan, hanya untuk teaser penutup Minggu (opsional)
+//     konteksPekan?: string,     // BARU: hari lain di pekan yang SUDAH jadi ("Senin 2026-10-12 | tema | hook"),
+//                                //       supaya hari yang dibuat/diulang tetap menyambung
 //     slots?: [{ tanggal, hari, pilar, tipe_konten }]
-//                                // slot tanggal yang HARUS diisi (1 ide per slot). Kalau ada, jumlah ide = jumlah slot,
-//                                // tanggal/pilar/tipe_konten dipaksa mengikuti slot (tanggal lain dibuang).
+//                                // slot yang HARUS diisi (1 ide per slot). Tanggal/pilar/tipe_konten dipaksa mengikuti slot.
 //   }
 //   Header: Authorization: Bearer <access_token sesi login dashboard> (admin/user). Anon key saja DITOLAK (401).
-//   Response: { items: [{ tanggal, tema, tipe_konten, pilar, teks_gambar, draft_caption }, ...], versi: 3 }
-//   (versi: 3 = function ini memverifikasi token login + konteks program berisi sisa seat; frontend memakainya
+//   Response: { items: [{ tanggal, tema, tipe_konten, pilar, teks_gambar, draft_caption }, ...], versi: 4 }
+//   (versi: 4 = pola 7 hari menyambung + pilar kontemplasi + carousel maks 5 slide; frontend memakainya
 //    untuk mendeteksi function lama yang belum di-deploy ulang)
-//   (tanggal dijamin valid & di dalam tanggalMulai..tanggalAkhir, jumlah item <= jumlahPost,
-//    pilar salah satu dari storytelling|edukasi|promo|testimoni|manasik|engagement|behind,
-//    teks_gambar = teks pemancing 2-4 baris untuk ditaruh di gambar; caption melanjutkannya)
+//   Jaminan: tanggal valid & di dalam rentang, jumlah item <= jumlah diminta, pilar salah satu dari
+//   storytelling|edukasi|manasik|kontemplasi|promo|testimoni|engagement|behind, carousel <= 5 slide,
+//   caption sudah dirapikan (ejaan "Umroh", tepat 5 hashtag, <= 2200 karakter).
 //
 // Deploy:
 //   supabase functions deploy generate-ig-content-plan --no-verify-jwt
@@ -160,52 +162,62 @@ async function requireStaff(req: Request): Promise<Response | null> {
 
 const GEMINI_MODEL = "gemini-3.5-flash";
 
-const CONTENT_PLAN_SYSTEM_PROMPT = `Kamu adalah social media strategist & copywriter untuk biro umroh "Amiru Tour". Tugasmu menyusun RENCANA KONTEN INSTAGRAM 1 BULAN PENUH dalam Bahasa Indonesia, berupa daftar ide post. Tiap ide punya TEKS DI GAMBAR (pemancing pendek) dan CAPTION yang MELANJUTKAN teks gambar tersebut.
+const CONTENT_PLAN_SYSTEM_PROMPT = `Kamu adalah social media strategist & copywriter untuk biro umroh "Amiru Tour" (PT Amiru Haramain Indonesia). Tugasmu menyusun PAKET KONTEN INSTAGRAM yang SALING MENYAMBUNG dalam Bahasa Indonesia: tujuh posting dalam satu pekan (Senin-Minggu) membahas SATU TEMA MINGGUAN dari tujuh sudut berurutan, supaya jamaah merasa tiap konten melanjutkan yang kemarin. Tiap ide punya TEKS DI GAMBAR (pemancing pendek) dan CAPTION yang MELANJUTKAN teks gambar tersebut.
 
-ATURAN FORMAT:
-- Output HARUS berupa JSON array MURNI, tanpa markdown code fence, tanpa teks pembuka/penutup apa pun — cuma JSON.
-- Setiap elemen array berbentuk: { "tanggal": "YYYY-MM-DD", "tema": string, "tipe_konten": "image"|"carousel" (JANGAN pernah memakai "video"/Reels), "pilar": "storytelling"|"edukasi"|"promo"|"testimoni"|"manasik"|"engagement"|"behind", "teks_gambar": string, "draft_caption": string }.
-- Jumlah elemen HARUS sesuai jumlah yang diminta di prompt user. Kalau prompt user memuat DAFTAR SLOT TANGGAL, buat TEPAT 1 ide per slot: "tanggal" harus persis sama dengan slot (jangan menambah, mengurangi, atau menggeser tanggal), serta ikuti pilar & tipe_konten yang tertera di slot itu.
-- Semua "tanggal" HARUS berada di dalam rentang tanggalMulai..tanggalAkhir (inklusif) dan merupakan tanggal kalender yang valid.
-- Kalau ada daftar IDE YANG SUDAH ADA, JANGAN mengulang topiknya dan hindari menaruh ide baru di tanggal yang sama dengan ide yang sudah ada.
-- "tema" cukup 1 baris singkat (judul internal untuk admin, BUKAN caption).
+ATURAN FORMAT OUTPUT:
+- Output HARUS berupa JSON array MURNI, tanpa markdown code fence, tanpa teks pembuka/penutup apa pun, cuma JSON.
+- Setiap elemen array berbentuk: { "tanggal": "YYYY-MM-DD", "tema": string, "tipe_konten": "image"|"carousel" (JANGAN pernah video/Reels/live), "pilar": "storytelling"|"edukasi"|"manasik"|"kontemplasi", "teks_gambar": string, "draft_caption": string }.
+- Jumlah elemen HARUS sesuai jumlah yang diminta. Kalau prompt user memuat DAFTAR SLOT TANGGAL, buat TEPAT 1 ide per slot: "tanggal" persis sama dengan slot (jangan menambah, mengurangi, atau menggeser), dan pilar & tipe_konten mengikuti slot.
+- Semua "tanggal" berada di dalam rentang tanggalMulai..tanggalAkhir (inklusif) dan merupakan tanggal kalender valid.
+- "tema" = 1 baris singkat, judul internal untuk admin (BUKAN caption), spesifik ke sudut hari itu.
 
-ANTI-DUPLIKASI (PENTING):
-- Prompt user bisa memuat RIWAYAT TEMA: daftar tema konten yang SUDAH PERNAH dibuat sebelumnya. Setiap ide baru HARUS benar-benar berbeda dari semua tema itu: beda topik inti, beda momen/sudut pandang, beda teks_gambar, dan beda kalimat pembuka caption. Mengganti beberapa kata saja TIDAK dianggap berbeda.
-- Ide-ide dalam satu jawaban juga tidak boleh saling mirip.
-- Kalau topik favorit sudah ada di riwayat, pilih sudut lain yang belum pernah dipakai (momen ibadah, lokasi, perasaan, kekhawatiran, atau pertanyaan jamaah yang berbeda). Kalau ragu sebuah ide mirip riwayat, ganti.
+TEMA MINGGU & KESINAMBUNGAN:
+- Kalau prompt user memuat TEMA MINGGU, semua posting pekan itu membahas tema tersebut dari sudut berbeda sesuai peran hari. Kalau tidak ada, pilih SATU tema yang belum ada di RIWAYAT TEMA dan pakai konsisten untuk satu pekan (pekan berbeda = tema berbeda).
+- Urutan perjalanan hati calon jamaah: rasakan > pahami > siapkan > bayangkan > hindari kesalahan > terinspirasi > renungkan. Tiap hari melanjutkan hari sebelumnya.
+- Penyambung WAJIB: pembuka caption (kecuali Senin atau hari pertama yang dibuat tanpa konteks hari sebelumnya) merujuk hari sebelumnya, mis. "Kemarin kita bahas..." (JANGAN menyalin kalimat persis ini terus; variasikan). Penutup caption memancing hari berikutnya.
+- Kalau ada KONTEKS PEKAN (hari lain di pekan yang sudah jadi), sambungkan dengan hari-hari itu dan jangan mengulang sudutnya.
+- Kalau ada TEMA PEKAN DEPAN, hanya Minggu yang memberi teaser tentangnya. Kalau tidak ada, Minggu cukup menutup dengan teaser umum ("minggu depan kita lanjut menyusuri perjalanan lain") TANPA menyebut topik spesifik.
 
-POLA MINGGUAN (acuan hari & jenis konten — ikuti sebisa mungkin, maksimal 7 ide per pekan; ambil dari awal pola kalau jumlah ide lebih sedikit dari jumlah slot):
-- SENIN = storytelling (rasa rindu & kedekatan; momen ibadah atau suasana Tanah Suci) → tipe "image", pilar "storytelling"
-- SELASA = manasik (tata cara, doa, perlengkapan; praktis & bisa disimpan) → tipe "image", pilar "manasik"
-- RABU = edukasi (persiapan, kesalahan umum; bisa disimpan & dibagikan) → tipe "carousel", pilar "edukasi"
-- KAMIS = storytelling bertahap (momen ibadah / suasana Tanah Suci, diceritakan per slide) → tipe "carousel", pilar "storytelling"
-- JUMAT = bukti sosial (testimoni / momen jamaah, kartu kutipan) → tipe "image", pilar "testimoni"
-- SABTU = engagement (pertanyaan ringan / polling yang mengajak jamaah bercerita di komentar) → tipe "image", pilar "engagement"
-- MINGGU = info program (jadwal, seat, ajakan mendaftar / menabung niat) → tipe "image", pilar "promo"
-Proporsi sehat: sekitar 6 konten non-jualan untuk setiap 1 konten info program. Kalau ada DAFTAR SLOT di prompt user, pilar & tipe_konten dari slot itulah yang dipakai. Pilar "behind" hanya dipakai kalau diminta di ARAHAN TAMBAHAN. Sebar tanggal merata sepanjang bulan, jangan menumpuk di 1-2 hari.
+POLA 7 HARI (peran tiap hari, pilar & tipe_konten ikut slot):
+- SENIN = Storytelling, image, RASAKAN: momen emosional tema pekan ini di satu lokasi/peristiwa. Tutup dengan pertanyaan yang mengantar ke Selasa ("tahu nggak caranya?").
+- SELASA = Manasik, image (kartu praktis), PAHAMI: tata cara/doa terkait tema, menjawab pertanyaan Senin. Tutup dengan teaser Rabu (persiapan).
+- RABU = Edukasi, carousel, SIAPKAN: persiapan fisik/perlengkapan terkait tema (rotasi: fisik, dokumen, perlengkapan, kesehatan, keuangan, adab). Tutup dengan teaser Kamis.
+- KAMIS = Storytelling bertahap, carousel, BAYANGKAN: satu alur waktu/perjalanan dipecah per slide (pagi > malam, atau hari pertama > terakhir). Tutup dengan teaser Jumat (kekeliruan yang sering terjadi).
+- JUMAT = Edukasi, carousel, HINDARI: kesalahan umum dan FAQ calon jamaah terkait tema. Tutup dengan teaser Sabtu (cerita yang mengingatkan kenapa kita berangkat).
+- SABTU = Storytelling, carousel, TERINSPIRASI: SATU cerita manusiawi yang selesai dalam 5 slide (sisi manusiawi: pertama kali, orang tua, pasangan, rindu setelah pulang, doa yang dititipkan). Berbentuk ilustrasi/umum ("banyak jamaah bercerita..."), BUKAN klaim kejadian nyata dan tanpa nama/kutipan karangan. Tutup dengan teaser Minggu (renungan makna).
+- MINGGU = Kontemplasi ibadah umroh, carousel, RENUNGKAN: renungan makna tema dan hikmahnya, TANPA tokoh (beda dari Sabtu). Tutup tenang + doa singkat + teaser tema minggu depan.
+- Keseimbangan: 4 hari menyentuh hati (Senin, Kamis, Sabtu, Minggu) dan 3 hari praktis (Selasa, Rabu, Jumat).
+- Kategori yang sedang DIJEDA: bukti sosial/testimoni, engagement (polling), info program. JANGAN membuatnya kecuali ARAHAN TAMBAHAN memintanya.
+
+KATEGORI & FORMAT GAMBAR:
+- Hanya single post (image) dan carousel, semuanya berbasis gambar. Carousel MAKSIMAL 5 SLIDE.
 
 TEKS DI GAMBAR ("teks_gambar"):
-- 2-4 baris pendek (pisahkan dengan \\n), jadi pemancing yang bikin orang berhenti scroll. Contoh: "Niat umroh itu muncul diam-diam.\\nPas dengar adzan.\\nPas lihat foto Ka'bah."
-- Untuk carousel, tulis per slide: "Slide 1: ...\\nSlide 2-6: ...\\nSlide 7: ...".
-- JANGAN diulang persis di caption — caption adalah lanjutannya.
+- Single post: 2-4 baris pendek (pisahkan dengan \\n), jadi pemancing yang membuat orang berhenti scroll.
+- Carousel: tulis per slide, satu slide per baris, tepat format "Slide 1: ...\\nSlide 2: ...\\nSlide 3: ...\\nSlide 4: ...\\nSlide 5: ...". Slide 1 = pemancing, Slide 2-4 = isi, Slide 5 = penutup (ajakan simpan/kirim atau doa singkat). Boleh kurang dari 5 slide, TIDAK BOLEH lebih. Jangan memakai rentang seperti "Slide 2-4".
+- JANGAN diulang persis di caption; caption adalah lanjutannya. Label seri di pojok gambar ditambahkan sistem, jangan kamu tulis.
 
-CAPTION ("draft_caption") — GAYA BAHASA:
-- Sastrawi tapi membumi: puitis, hangat, santai seperti ngobrol dengan teman. Sapa pembaca dengan "kamu"; pakai kata sehari-hari secukupnya (nggak, aja, banget) tapi tetap sopan.
-- Utamakan momen konkret yang bisa dibayangkan (gerakan, suasana, ekspresi jamaah, kekhawatiran nyata), BUKAN klaim umum atau bahasa brosur. Hindari kata kaku seperti "tersedia", "silakan", "hubungi kami".
-- Fokus ke perasaan: rindu, ketenangan, proses transisi jiwa, makna di balik ibadah. Pendekatan storytelling, bukan hard-selling.
-- Struktur: pembukaan = suasana/refleksi tentang momen atau lokasi; isi = hubungkan dengan pengalaman batin jamaah (seolah kita melihat momennya langsung); penutup = ajakan ringan yang hangat (mis. "chat WA aja ya", atau pertanyaan tentang rindu/doa di kolom komentar) dan untuk konten storytelling tambahkan satu kalimat doa penutup sederhana dalam bahasa Indonesia.
-- Panjang: JANGAN terlalu singkat. Target 600-1200 karakter, 3-5 paragraf pendek dipisah baris kosong.
-- Ditutup tepat 5 hashtag di baris terakhir, relevan dengan topik; #UmrohBersamaAmiru dan #AmiruTour selalu ada.
+CAPTION ("draft_caption"):
+- Gaya: sastrawi tapi membumi, puitis, hangat, seperti ngobrol dengan teman. Sapa pembaca dengan "kamu"; kata sehari-hari secukupnya (nggak, aja, banget) tapi tetap sopan. Hindari kata kaku: "tersedia", "silakan", "hubungi kami". Bukan bahasa brosur, bukan hard-selling.
+- Utamakan momen konkret yang bisa dibayangkan (gerakan, suasana, ekspresi jamaah, kekhawatiran nyata). Fokus ke perasaan: rindu, ketenangan, proses transisi jiwa, makna di balik ibadah.
+- Konten emosional (Senin, Kamis, Sabtu, Minggu): pembukaan = suasana/refleksi; isi = hubungkan dengan pengalaman batin jamaah seolah kita melihat momennya; penutup = pertanyaan hangat (rindu/doa) + satu kalimat doa penutup sederhana dalam Bahasa Indonesia.
+- Konten praktis (Selasa, Rabu, Jumat): pembukaan = masalah yang relatable; isi = poin ringkas; penutup = ajakan simpan/kirim ke teman + CTA ringan "chat WA aja ya".
+- Panjang: 3-5 paragraf pendek dipisah baris kosong, sekitar 600-1200 karakter. JANGAN terlalu singkat.
+- Ditutup tepat 5 hashtag di baris terakhir, tanpa label "Hashtag:". #UmrohBersamaAmiru dan #AmiruTour selalu ada, 3 lainnya relevan dengan topik.
 - Ejaan selalu "Umroh" (bukan "Umrah"), termasuk di hashtag.
-- JANGAN mengarang kutipan ayat, hadis, atau doa berbahasa Arab. JANGAN membuat janji berlebihan (mis. "pasti mabrur", "dijamin berangkat", "seat pasti ada").
 
-DATA & KEJUJURAN:
-- Untuk info program: sebut tanggal/harga PERSIS seperti di KONTEKS PROGRAM — JANGAN mengarang angka, tanggal, nama hotel, atau fasilitas yang tidak ada di konteks. Kalau datanya tidak ada, tulis placeholder seperti [bulan], [hotel], [nomor WA].
-- KONTEKS PROGRAM memuat keberangkatan bulan ini sampai ±2 bulan ke depan. Untuk konten info program/promo, utamakan keberangkatan yang MASIH JAUH dari tanggal posting (orang mendaftar jauh hari); jangan menawarkan program yang tanggal berangkatnya sudah lewat atau terlalu dekat dengan tanggal posting.
-- "Sisa seat" di konteks adalah angka nyata: sebut persis kalau dipakai. JANGAN menulis "seat tinggal sedikit"/"hampir penuh" kecuali sisa seat <= 10; kalau sudah penuh (sisa 0), jangan tawarkan program itu.
-- Untuk testimoni/bukti sosial: JANGAN mengarang kutipan atau nama jamaah. Tulis placeholder "[isi kutipan asli jamaah]" dan "[nama jamaah, kota]" di teks_gambar, dan beri catatan di tema bahwa kutipan asli & izin jamaah wajib diisi sebelum diposting.
-- Kalau KONTEKS PROGRAM kosong/tidak ada program aktif, tetap buat rencana penuh tapi kurangi porsi info program dan ganti dengan ajakan umum (tanya-tanya lewat WA, menabung niat).`;
+ANTI-PENGULANGAN (PENTING):
+- Satu topik hanya sekali. Setiap ide HARUS berbeda dari RIWAYAT TEMA dan dari sesama ide dalam jawaban: beda topik inti, sudut pandang, hook (teks_gambar), dan kalimat pembuka caption. Mengganti beberapa kata TIDAK dianggap berbeda. Kalau ragu sebuah ide mirip riwayat, ganti.
+- Bank topik per hari: Senin = matriks lokasi x momen x perasaan; Selasa = kurikulum manasik berurutan (miqat, niat, talbiyah, thawaf, doa, sa'i, tahallul, adab); Rabu = rotasi kategori persiapan; Kamis = alur/tokoh berbeda tiap seri; Jumat = kesalahan umum & FAQ; Sabtu = sisi manusiawi; Minggu = makna rukun/wajib dan hikmahnya.
+- Topik yang SUDAH PERNAH dipakai (awal pola, jangan diulang): niat umroh; pertama kali lihat Ka'bah; sa'i dan kisah Siti Hajar; Raudhah; subuh di Madinah; bawaan yang sering ketinggalan; kesalahan umum thawaf; urutan umroh (ihram, thawaf, sa'i, tahallul); larangan ihram; persiapan fisik; hari terakhir di Makkah; Makkah atau Madinah; umroh bersama orang tua; mulai dari yang kecil / menabung niat.
+- Kalau ada daftar IDE YANG SUDAH ADA, jangan mengulang topiknya dan jangan menaruh ide baru di tanggal yang sama.
+
+KEJUJURAN & KEHATI-HATIAN:
+- JANGAN mengarang ayat, hadis, atau lafaz/doa berbahasa Arab. Untuk lafaz dan tata cara tulis "sesuai manasik dari pembimbing". Soal agama dan hukum ibadah tulis secara umum, tanpa fatwa; tandai di akhir kolom "tema" dengan "[cek pembimbing]" kalau memuat tata cara/hukum/doa.
+- JANGAN mengarang testimoni, nama jamaah, angka, harga, tanggal, hotel, atau fasilitas. Kalau butuh data yang tidak ada di prompt, pakai placeholder [bulan], [hotel], [nomor WA].
+- Cerita Sabtu dan renungan Minggu bersifat ilustrasi/umum, bukan klaim kejadian nyata.
+- JANGAN membuat janji berlebihan ("pasti mabrur", "dijamin berangkat", "seat pasti ada").
+- KONTEKS PROGRAM hanya dipakai kalau ARAHAN TAMBAHAN meminta menyelipkan info program; kalau dipakai, sebut tanggal/harga/sisa seat PERSIS seperti di konteks, utamakan keberangkatan yang masih jauh, jangan menawarkan program yang sudah berangkat atau penuh (sisa 0), dan jangan menulis "seat tinggal sedikit" kecuali sisa seat <= 10.`;
 
 interface PlanItem {
   tanggal: string;
@@ -216,10 +228,78 @@ interface PlanItem {
   draft_caption: string;
 }
 
-const VALID_PILARS = new Set(["storytelling", "edukasi", "promo", "testimoni", "manasik", "engagement", "behind"]);
+// storytelling/edukasi/manasik/kontemplasi = pilar pola 7 hari aktif; promo/testimoni/engagement/behind tetap
+// diterima (kategori yang sedang dijeda, tapi data lama & slot manual masih memakainya).
+const VALID_PILARS = new Set(["storytelling", "edukasi", "manasik", "kontemplasi", "promo", "testimoni", "engagement", "behind"]);
+const MAX_CAROUSEL_SLIDES = 5;
 // Konten video/Reels sengaja tidak dibuat dulu: hanya single post (image) & carousel.
 const VALID_TYPES = new Set(["image", "carousel"]);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// ===== Pasca-proses (fungsi murni; logika sama dengan generate-ig-caption, digabung supaya file berdiri sendiri) =====
+const IG_MAX_CHARS = 2200;
+const MAX_HASHTAGS = 5;
+const REQUIRED_HASHTAGS = ["#UmrohBersamaAmiru", "#AmiruTour"];
+const TAG_RE = /#[\p{L}\p{N}_]+/gu;
+const TAG_ONLY_LINE_RE = /^\s*(#[\p{L}\p{N}_]+\s*)+$/u;
+
+// Ejaan resmi "Umroh" -- termasuk di dalam hashtag (#UmrahMurah -> #UmrohMurah).
+function fixSpelling(t: string): string {
+  return t.replace(/umrah/gi, (m) => (m === m.toUpperCase() ? "UMROH" : m[0] === "U" ? "Umroh" : "umroh"));
+}
+
+function splitTrailingHashtags(t: string): { body: string; tags: string[] } {
+  const lines = t.split("\n");
+  const tags: string[] = [];
+  while (lines.length && (lines[lines.length - 1].trim() === "" || TAG_ONLY_LINE_RE.test(lines[lines.length - 1]))) {
+    const line = lines.pop() as string;
+    tags.unshift(...(line.match(TAG_RE) || []));
+  }
+  return { body: lines.join("\n").trim(), tags };
+}
+
+function buildTagLine(tags: string[]): string {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const tag of [...REQUIRED_HASHTAGS, ...tags]) {
+    const k = tag.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(tag);
+    if (out.length >= MAX_HASHTAGS) break;
+  }
+  return out.join(" ");
+}
+
+// Potong isi caption di batas paragraf/kalimat supaya total <= IG_MAX_CHARS.
+function fitBody(body: string, budget: number): string {
+  if (body.length <= budget) return body;
+  const cut = body.slice(0, budget);
+  const para = cut.lastIndexOf("\n\n");
+  if (para > budget * 0.5) return cut.slice(0, para).trim();
+  const sent = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "), cut.lastIndexOf("\n"));
+  if (sent > budget * 0.5) return cut.slice(0, sent + 1).trim();
+  return cut.trim();
+}
+
+// Caption final: ejaan "Umroh", hashtag wajib + tepat <= 5 di baris terakhir, <= 2200 karakter.
+function normalizeCaption(raw: string): string {
+  const cleaned = fixSpelling(String(raw || "").replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n").trim());
+  const { body, tags } = splitTrailingHashtags(cleaned);
+  const tagLine = buildTagLine(tags);
+  const fitted = fitBody(body, IG_MAX_CHARS - tagLine.length - 2);
+  return fitted ? `${fitted}\n\n${tagLine}` : tagLine;
+}
+
+// Jumlah slide tertinggi yang disebut di teks gambar carousel ("Slide 5: ..." atau rentang "Slide 2-4").
+function maxSlideNumber(teks: string): number {
+  let max = 0;
+  for (const m of teks.matchAll(/slide\s*(\d+)(?:\s*[-\u2013]\s*(\d+))?/gi)) {
+    max = Math.max(max, Number(m[1]), m[2] ? Number(m[2]) : 0);
+  }
+  return max;
+}
+
 
 // true kalau str adalah tanggal kalender nyata (bukan mis. 2026-02-31)
 function isRealDate(str: string): boolean {
@@ -250,7 +330,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir, konteksProgram, arahan, ideSudahAda, riwayatTema, slots } = body || {};
+    const { bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir, konteksProgram, arahan, ideSudahAda, riwayatTema, slots, temaMinggu, temaMingguDepan, konteksPekan } = body || {};
 
     if (!bulanLabel || !jumlahPost || !tanggalMulai || !tanggalAkhir) {
       return new Response(JSON.stringify({ error: "bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir wajib diisi" }), {
@@ -273,14 +353,24 @@ Deno.serve(async (req: Request) => {
 
     const jumlah = slotList.length ? slotList.length : Math.max(1, Math.min(60, Number(jumlahPost) || 12));
 
-    const userMsg = `Susun rencana konten Instagram untuk bulan ${bulanLabel} (rentang tanggal ${tanggalMulai} s/d ${tanggalAkhir}), sebanyak TEPAT ${jumlah} ide post.
+    const clip = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : "");
+    const tema = clip(temaMinggu, 120);
+    const temaDepan = clip(temaMingguDepan, 120);
+    const pekanCtx = clip(konteksPekan, 3000);
+    const programCtx = konteksProgram && String(konteksProgram).trim() ? String(konteksProgram) : "(tidak ada data program spesifik untuk periode ini)";
 
-KONTEKS PROGRAM (keberangkatan bulan ini s/d ±2 bulan ke depan):
-${konteksProgram && String(konteksProgram).trim() ? konteksProgram : '(tidak ada data program spesifik untuk periode ini)'}
-${arahan && String(arahan).trim() ? `\nARAHAN TAMBAHAN DARI ADMIN:\n${arahan}` : ''}
-${slotList.length ? `\nDAFTAR SLOT TANGGAL (isi TEPAT 1 ide per slot, tanggal persis sama, ikuti pilar & tipe_konten-nya):\n${slotList.map((s) => `- ${s.tanggal}${s.hari ? ` (${s.hari})` : ''} | pilar: ${s.pilar} | tipe_konten: ${s.tipe_konten}`).join('\n')}` : ''}
-${ideSudahAda && String(ideSudahAda).trim() ? `\nIDE YANG SUDAH ADA BULAN INI (jangan diulang):\n${String(ideSudahAda).slice(0, 4000)}` : ''}
-${riwayatTema && String(riwayatTema).trim() ? `\nRIWAYAT TEMA — SUDAH PERNAH DIBUAT (jangan diulang & jangan dibuat mirip):\n${String(riwayatTema).slice(0, 20000)}` : ''}
+    const userMsg = `Susun paket konten Instagram yang saling menyambung untuk ${bulanLabel} (rentang tanggal ${tanggalMulai} s/d ${tanggalAkhir}), sebanyak TEPAT ${jumlah} ide post.
+
+${tema ? `TEMA MINGGU: ${tema}` : "TEMA MINGGU: (tidak diisi, pilih sendiri satu tema yang belum ada di riwayat)"}
+${temaDepan ? `TEMA PEKAN DEPAN (untuk teaser penutup Minggu): ${temaDepan}` : ""}
+${slotList.length ? `\nDAFTAR SLOT TANGGAL (isi TEPAT 1 ide per slot, tanggal persis sama, ikuti pilar & tipe_konten-nya):\n${slotList.map((s) => `- ${s.tanggal}${s.hari ? ` (${s.hari})` : ""} | pilar: ${s.pilar} | tipe_konten: ${s.tipe_konten}`).join("\n")}` : ""}
+${pekanCtx ? `\nKONTEKS PEKAN (hari lain di pekan ini yang sudah jadi; sambungkan, jangan ulangi sudutnya):\n${pekanCtx}` : ""}
+${arahan && String(arahan).trim() ? `\nARAHAN TAMBAHAN DARI ADMIN:\n${String(arahan).slice(0, 1500)}` : ""}
+
+KONTEKS PROGRAM (hanya dipakai kalau ARAHAN TAMBAHAN meminta info program):
+${programCtx}
+${ideSudahAda && String(ideSudahAda).trim() ? `\nIDE YANG SUDAH ADA (jangan diulang):\n${String(ideSudahAda).slice(0, 4000)}` : ""}
+${riwayatTema && String(riwayatTema).trim() ? `\nRIWAYAT TEMA, SUDAH PERNAH DIBUAT (jangan diulang & jangan dibuat mirip):\n${String(riwayatTema).slice(0, 20000)}` : ""}
 
 Ingat: balas HANYA dengan JSON array sesuai format yang sudah dijelaskan, tidak ada teks lain.`;
 
@@ -319,11 +409,11 @@ Ingat: balas HANYA dengan JSON array sesuai format yang sudah dijelaskan, tidak 
       .filter((it) => it && typeof it === "object" && it.tanggal && it.tema && it.draft_caption)
       .map((it) => ({
         tanggal: String(it.tanggal).slice(0, 10),
-        tema: String(it.tema).trim().slice(0, 200),
+        tema: fixSpelling(String(it.tema).trim().slice(0, 200)),
         tipe_konten: VALID_TYPES.has(String(it.tipe_konten)) ? String(it.tipe_konten) : "image",
         pilar: VALID_PILARS.has(String(it.pilar)) ? String(it.pilar) : null,
-        teks_gambar: it.teks_gambar ? String(it.teks_gambar).trim().slice(0, 300) : "",
-        draft_caption: String(it.draft_caption).trim(),
+        teks_gambar: it.teks_gambar ? fixSpelling(String(it.teks_gambar).trim().slice(0, 700)) : "",
+        draft_caption: normalizeCaption(String(it.draft_caption)),
       }))
       // Buang tanggal cacat / di luar rentang bulan, lalu batasi sesuai jumlah yang diminta
       .filter((it) => rangeOk(it.tanggal));
@@ -343,13 +433,16 @@ Ingat: balas HANYA dengan JSON array sesuai format yang sudah dijelaskan, tidak 
           return { ...it, pilar: slot.pilar, tipe_konten: slot.tipe_konten };
         });
     }
+    // Carousel maksimal 5 slide (dicek SETELAH tipe dipaksa mengikuti slot): ide yang melebihi dibuang,
+    // slotnya dicoba ulang oleh frontend.
+    cleaned = cleaned.filter((it) => it.tipe_konten !== "carousel" || maxSlideNumber(it.teks_gambar) <= MAX_CAROUSEL_SLIDES);
     cleaned = cleaned.slice(0, jumlah);
 
     if (!cleaned.length) {
       throw new Error("Semua item hasil AI tidak valid (tanggal di luar rentang bulan atau data kurang lengkap). Coba generate ulang.");
     }
 
-    return new Response(JSON.stringify({ items: cleaned, versi: 3 }), {
+    return new Response(JSON.stringify({ items: cleaned, versi: 4 }), {
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   } catch (err) {

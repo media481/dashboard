@@ -1,7 +1,8 @@
 // Supabase Edge Function: generate-ig-caption
 // Menyusun caption Instagram (feed post/carousel/reels) dari ide/konsep
 // singkat, dipanggil oleh js/app.js (generateIgCaptionAI) lewat tombol
-// "Generate dengan AI" di modal IG Scheduler.
+// "Generate dengan AI" di modal IG Scheduler. Aturan caption mengikuti pola-konten.md
+// (gaya sastrawi membumi, 3-5 paragraf pendek 600-1200 karakter, 5 hashtag, tanpa video).
 //
 // Sengaja dipisah dari generate-wa-caption: gaya IG beda total dari
 // broadcast WA — pendek, hook di baris pertama, nada santai untuk feed,
@@ -12,7 +13,9 @@
 // Kontrak (dipakai oleh js/app.js -> generateIgCaptionAI):
 //   POST body: {
 //     userMsg: string,        // ide/konsep mentah (WAJIB; awalan "KONSEP/IDE:" opsional)
-//     tujuan?: "promo"|"storytelling"|"edukasi"|"testimoni"|"engagement"   (default "promo")
+//     tujuan?: "storytelling"|"edukasi"|"manasik"|"kontemplasi"|"promo"|"testimoni"|"engagement"   (default "promo")
+//              (pola 7 hari menyambung, lihat pola-konten.md: storytelling/edukasi/manasik/kontemplasi;
+//               promo/testimoni/engagement sedang dijeda tapi tetap didukung)
 //     mediaType?: "image"|"video"|"carousel"                               (default "image")
 //     hindari?: string        // caption hasil generate sebelumnya -> AI wajib ganti sudut & pembuka
 //   }
@@ -215,50 +218,59 @@ const FALLBACK_MODELS = ["gemini-3.5-flash-lite"];
 const RETRY_DELAYS_MS = [2500];
 const MAX_INPUT_CHARS = 4000;
 
-type Tujuan = "promo" | "storytelling" | "edukasi" | "testimoni" | "engagement";
+type Tujuan = "promo" | "storytelling" | "edukasi" | "manasik" | "kontemplasi" | "testimoni" | "engagement";
 type MediaType = "image" | "video" | "carousel";
 
 const TUJUAN_GUIDE: Record<Tujuan, string> = {
-  promo:
-    "IKLAN/PROMO. Tonjolkan 1-2 hal paling menjual dari konsep (harga mulai dari, tanggal berangkat, fasilitas unggulan). Boleh ada urgensi HANYA kalau konsep menyebut kuota/seat terbatas — jangan mengarang kelangkaan. CTA tegas dan mudah dilakukan (chat WA/DM).",
   storytelling:
-    "STORYTELLING. Bangun suasana & perasaan (rindu, tenang, haru) dari satu momen konkret. Jualan sangat halus; CTA ringan dan hangat. Tutup dengan satu kalimat doa sederhana dalam Bahasa Indonesia.",
+    "STORYTELLING (peran Rasakan / Bayangkan / Terinspirasi). Bangun suasana & perasaan (rindu, tenang, haru) dari satu momen konkret yang bisa dibayangkan. EMOSIONAL: pembukaan = suasana/refleksi; isi = hubungkan dengan pengalaman batin jamaah seolah kita melihat momennya; penutup = pertanyaan hangat tentang rindu/doa + satu kalimat doa penutup sederhana dalam Bahasa Indonesia. Jualan sangat halus, CTA ringan. Kalau berupa cerita manusiawi, tulis sebagai ilustrasi/umum (\"banyak jamaah bercerita...\"), BUKAN klaim kejadian nyata.",
   edukasi:
-    "EDUKASI. Beri 1-3 poin praktis yang berguna dan layak disimpan (persiapan, manasik, kesalahan umum). CTA: ajak simpan/bagikan dan tanya di komentar atau WA.",
+    "EDUKASI (peran Siapkan / Hindari). PRAKTIS: pembukaan = masalah yang relatable; isi = 1-3 poin ringkas yang berguna dan layak disimpan (persiapan, kesalahan umum); penutup = ajakan simpan/kirim ke teman + CTA ringan \"chat WA aja ya\".",
+  manasik:
+    "MANASIK (peran Pahami). PRAKTIS: kartu tata cara/doa yang mudah disimpan. Pembukaan = masalah relatable (mis. bingung caranya); isi = poin ringkas; penutup = ajakan simpan/kirim + CTA ringan. Soal lafaz, doa, dan tata cara tulis secara umum dan sebut \"sesuai manasik dari pembimbing\" — tanpa fatwa dan tanpa mengarang lafaz Arab.",
+  kontemplasi:
+    "KONTEMPLASI (peran Renungkan). Renungan makna ibadah umroh dan hikmahnya, TANPA tokoh/cerita orang, ritme tenang dan pelan. EMOSIONAL: pembukaan = pertanyaan atau suasana renungan; isi = makna yang disentuh pelan-pelan; penutup = pertanyaan hangat + doa singkat sederhana dalam Bahasa Indonesia. Tanpa jualan.",
+  promo:
+    "IKLAN/PROMO (sedang dijeda dalam pola mingguan; dipakai hanya bila diminta). Tonjolkan 1-2 hal paling menjual dari konsep (harga mulai dari, tanggal berangkat, fasilitas unggulan). Boleh ada urgensi HANYA kalau konsep menyebut kuota/seat terbatas — jangan mengarang kelangkaan. CTA tegas dan mudah dilakukan (chat WA/DM).",
   testimoni:
-    "BUKTI SOSIAL. Sorot pengalaman jamaah. JANGAN mengarang kutipan atau nama jamaah — kalau tidak ada di konsep, tulis placeholder [isi kutipan asli jamaah] dan [nama jamaah, kota].",
+    "BUKTI SOSIAL (sedang dijeda; dipakai hanya bila diminta). Sorot pengalaman jamaah. JANGAN mengarang kutipan atau nama jamaah — kalau tidak ada di konsep, tulis placeholder [isi kutipan asli jamaah] dan [nama jamaah, kota].",
   engagement:
-    "ENGAGEMENT. Ajukan satu pertanyaan/ajakan yang mudah dijawab di kolom komentar. Hampir tanpa jualan.",
+    "ENGAGEMENT (sedang dijeda; dipakai hanya bila diminta). Ajukan satu pertanyaan/ajakan yang mudah dijawab di kolom komentar. Hampir tanpa jualan.",
 };
 
 const MEDIA_GUIDE: Record<MediaType, string> = {
-  image: "Konten FOTO tunggal: hook harus bisa berdiri sendiri karena orang melihat gambarnya lebih dulu.",
+  image: "Konten FOTO tunggal: pembuka harus bisa berdiri sendiri karena orang melihat gambarnya lebih dulu.",
   video:
-    "Konten REELS/VIDEO: caption jadi pelengkap video. Hook SANGAT singkat (<= 10 kata) dan selaras dengan 3 detik pertama video; body lebih ringkas dari feed biasa.",
+    "Konten VIDEO/REELS (di luar pola mingguan yang berbasis gambar): caption jadi pelengkap video. Pembuka SANGAT singkat (<= 10 kata) dan selaras dengan 3 detik pertama video; boleh lebih ringkas dari panjang standar.",
   carousel:
-    "Konten CAROUSEL: hook memancing orang menggeser. Sebut ada beberapa slide/poin, dan akhiri CTA dengan ajakan simpan atau bagikan.",
+    "Konten CAROUSEL (maksimal 5 slide): pembuka memancing orang menggeser dan menyebut ada beberapa slide/poin. Caption melanjutkan teks di slide, JANGAN mengulangnya.",
 };
 
 function buildSystemPrompt(tujuan: Tujuan, mediaType: MediaType): string {
-  return `Kamu adalah social media specialist & copywriter untuk biro umroh "Amiru Tour". Tugasmu mengubah ide/konsep mentah menjadi SATU caption Instagram siap posting dalam Bahasa Indonesia. Ini caption feed IG, BUKAN broadcast WhatsApp: santai, hangat, mengalir — bukan daftar fasilitas berformat kaku.
+  return `Kamu adalah social media specialist & copywriter untuk biro umroh "Amiru Tour" (PT Amiru Haramain Indonesia). Tugasmu mengubah ide/konsep mentah menjadi SATU caption Instagram siap posting dalam Bahasa Indonesia. Ini caption feed IG, BUKAN broadcast WhatsApp: hangat, mengalir, seperti ngobrol dengan teman — bukan daftar fasilitas berformat kaku dan bukan hard-selling.
 
 TUJUAN POST: ${TUJUAN_GUIDE[tujuan]}
 FORMAT MEDIA: ${MEDIA_GUIDE[mediaType]}
 
+GAYA BAHASA:
+- Sastrawi tapi membumi: puitis, hangat, santai. Sapa pembaca dengan "kamu". Kata sehari-hari secukupnya (nggak, aja, banget) tapi tetap sopan.
+- Utamakan momen konkret yang bisa dibayangkan (gerakan, suasana, ekspresi jamaah, kekhawatiran nyata), bukan klaim umum ala brosur. Fokus ke perasaan: rindu, ketenangan, proses transisi jiwa, makna di balik ibadah.
+- Hindari kata kaku: "tersedia", "silakan", "hubungi kami". Jangan membuka dengan sapaan generik ("Halo sahabat", "Assalamualaikum") atau "Siapa yang ingin...".
+
 STRUKTUR:
-1. HOOK — 1 baris pembuka yang menahan scroll dalam 3 detik: momen konkret, pertanyaan, atau pernyataan yang dekat dengan pembaca. Jangan mulai dengan sapaan generik ("Halo sahabat", "Assalamualaikum") atau "Siapa yang ingin...".
-2. BODY — 2-4 kalimat pendek, mengalir natural (bukan bullet panjang). Utamakan gambaran konkret (suasana, gerakan, perasaan) daripada klaim umum ala brosur. Sapa pembaca dengan "kamu".
-3. CTA — 1 baris ajakan yang jelas dan spesifik. Kalau ada nomor WA di konsep, sebut ringkas; kalau tidak ada, JANGAN mengarang nomor — pakai "chat WA kami" atau "klik link di bio".
-4. HASHTAG — blok terpisah di akhir (1 baris kosong sebelumnya), tepat 5 hashtag: #UmrohBersamaAmiru, #AmiruTour, ditambah 3 hashtag topikal yang relevan dengan konten. Tanpa spasi di dalam hashtag.
+1. 3-5 paragraf pendek (1-3 kalimat tiap paragraf), dipisah SATU baris kosong. Panjang isi caption (di luar hashtag) sekitar 600-1200 karakter — jangan terlalu singkat.
+2. Pembukaan, isi, dan penutup mengikuti pola pada TUJUAN POST di atas.
+3. Kalau konsep menyebut hari/seri mingguan (mis. "Selasa, Seri Talbiyah"), pembukaan merujuk hari sebelumnya ("Kemarin kita bahas...") dan penutup memancing hari berikutnya. Kalau konsep memuat teks di gambar, caption adalah LANJUTANNYA, bukan pengulangan.
+4. CTA ringan. Kalau ada nomor WA di konsep, sebut ringkas; kalau tidak ada, JANGAN mengarang nomor — pakai "chat WA aja ya" atau "klik link di bio".
+5. HASHTAG — blok terpisah di akhir (1 baris kosong sebelumnya), langsung tanpa tulisan "Hashtag:", tepat 5 hashtag: #UmrohBersamaAmiru, #AmiruTour, ditambah 3 hashtag topikal yang relevan. Tanpa spasi di dalam hashtag.
 
 ATURAN ISI (WAJIB):
 - Angka harga, tanggal, durasi, dan kuota disalin PERSIS dari konsep. JANGAN membulatkan, menghitung ulang, atau mengarang. Kalau data penting tidak ada di konsep, tulis placeholder seperti [tanggal], [harga], [nomor WA] — jangan ditebak.
-- JANGAN mengarang fasilitas, nama hotel, maskapai, atau info yang tidak ada di konsep.
-- JANGAN membuat janji berlebihan ("pasti mabrur", "dijamin berangkat", "seat pasti ada") dan JANGAN mengarang kutipan ayat, hadis, atau doa berbahasa Arab.
-- Highlight cukup 1-2 poin paling menjual; jangan jadi daftar harga per kategori kamar.
+- JANGAN mengarang fasilitas, nama hotel, maskapai, testimoni, nama jamaah, atau info yang tidak ada di konsep.
+- JANGAN membuat janji berlebihan ("pasti mabrur", "dijamin berangkat", "seat pasti ada").
+- JANGAN mengarang kutipan ayat, hadis, atau lafaz/doa berbahasa Arab. Untuk lafaz dan tata cara tulis "sesuai manasik dari pembimbing". Soal hukum ibadah tulis secara umum, tanpa fatwa.
 - Ejaan selalu "Umroh" (bukan "Umrah"), termasuk di hashtag.
 - Emoji secukupnya (maks 3-4 di seluruh caption).
-- Panjang total termasuk hashtag: 500-900 karakter.
 
 OUTPUT: HANYA teks caption final. Tanpa kalimat pembuka/penutup dari kamu, tanpa code fence, tanpa label seperti "Hook:" atau "CTA:".`;
 }

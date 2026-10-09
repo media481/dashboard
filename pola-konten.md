@@ -226,10 +226,19 @@ Tulis langsung ketujuh posting berurutan Senin sampai Minggu sesuai format di at
 
 ## 9. Status Implementasi di Dashboard (IG Scheduler)
 
-Content Planner dan Generate AI di dashboard **belum** mengikuti pola 7 hari yang menyambung ini. Versi terakhir yang dikirim masih memakai pola lama (Senin storytelling, Rabu edukasi, Jumat bukti sosial, Minggu info program, plus slot Story di Selasa/Kamis/Sabtu).
+Content Planner dan Generate AI di dashboard **sudah mengikuti pola 7 hari yang menyambung** (Oktober 2026).
 
-Rencana setelah uji coba manual selesai:
-- Tambah kolom **Tema Minggu** di `ig_content_plan`.
-- Generate AI menyusun tujuh hari yang saling menyambung per tema, dengan peran per hari sesuai bagian 3.
-- Pertahankan pengecekan anti-duplikat yang sudah ada (riwayat rencana + caption post).
-- Sesuaikan slot dan format: tanpa video, carousel maksimal 5 slide.
+Yang berubah:
+- Modal **Rencana Konten AI** memilih **satu pekan (Senin–Minggu)** dan mengisi **Tema Minggu** (wajib). **Tema pekan depan** opsional, hanya untuk teaser penutup Minggu.
+- Generate AI menyusun ketujuh hari **dalam satu panggilan** dengan peran per hari sesuai bagian 3 (rasakan, pahami, siapkan, bayangkan, hindari, terinspirasi, renungkan). Pembuka caption merujuk hari sebelumnya, penutup memancing hari berikutnya.
+- Slot dan format: **tanpa video**, **carousel maksimal 5 slide** (hasil AI yang melebihi 5 slide ditolak dan slotnya dicoba ulang), pilar baru `kontemplasi` untuk Minggu.
+- **Label seri** ditambahkan otomatis di akhir teks gambar: `Label gambar: Seri [Tema] · n/7`.
+- Kolom baru `ig_content_plan.tema_minggu` (`sql/tambah_ig_content_plan_tema_minggu.sql`, opsional).
+- Anti-duplikat tetap berjalan (riwayat rencana + caption post, plus daftar topik awal di bagian 6). Kata tema minggu diabaikan saat membandingkan, supaya ide satu pekan tidak saling dianggap kembar.
+- Caption dirapikan di server: ejaan "Umroh", tepat 5 hashtag (`#UmrohBersamaAmiru` dan `#AmiruTour` selalu ada), maksimal 2200 karakter.
+- Generator caption manual (modal post) punya tujuan **Manasik** dan **Kontemplasi**; tombol "Jadikan Post" memilih tujuan sesuai pilar rencana.
+- Bukti sosial, engagement, dan info program tetap **dijeda**. Info program hanya muncul bila **Arahan tambahan** memintanya.
+
+Deploy ulang (urutan bebas): `supabase functions deploy generate-ig-content-plan --no-verify-jwt` dan `supabase functions deploy generate-ig-caption --no-verify-jwt`. Frontend menolak function lama (butuh `versi >= 4`), jadi lupa deploy akan muncul sebagai pesan error yang jelas.
+
+Yang belum otomatis: tabel **Riwayat topik** (bagian 6) masih disalin manual dari "TOPIK MINGGU INI"; dashboard sudah membaca riwayat dari rencana & post tersimpan sehingga AI tetap menghindari topik lama.

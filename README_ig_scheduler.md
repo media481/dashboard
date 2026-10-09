@@ -307,6 +307,27 @@ Migrasi (opsional tapi disarankan): `sql/tambah_ig_content_plan_pola_amiru.sql` 
 
 Deploy: `supabase functions deploy generate-ig-content-plan --no-verify-jwt`
 
+## Pola 7 Hari Menyambung (Tema Minggu) — terbaru, menggantikan bagian di bawahnya
+
+Acuan: `pola-konten.md`. Bagian "Pola Mingguan Amiru" dan "Generate Rencana 1 Bulan" di bawah menjelaskan perilaku lama (Sen/Rab/Jum/Min, bukti sosial, info program, per bulan); yang berlaku sekarang:
+
+| Hari | Peran | Pilar | Format |
+|---|---|---|---|
+| Senin | Rasakan | `storytelling` | Image |
+| Selasa | Pahami | `manasik` | Image (kartu praktis) |
+| Rabu | Siapkan | `edukasi` | Carousel |
+| Kamis | Bayangkan | `storytelling` | Carousel (alur per slide) |
+| Jumat | Hindari | `edukasi` | Carousel (kesalahan umum & FAQ) |
+| Sabtu | Terinspirasi | `storytelling` | Carousel (cerita ilustrasi) |
+| Minggu | Renungkan | `kontemplasi` | Carousel (tanpa tokoh) |
+
+- **Alur:** Rencana Konten AI → pilih Bulan & Pekan → isi **Tema Minggu** → Generate. Satu pekan = satu panggilan AI (tujuh hari menyambung). Hari yang sudah terisi/lewat dilewati; kalau ada hasil yang ditolak (mirip riwayat atau >5 slide), klik Generate lagi — hari yang sudah jadi dikirim ke AI sebagai konteks penyambung.
+- **Carousel maksimal 5 slide**, tanpa video. Format teks gambar carousel: `Slide 1: ...` sampai `Slide 5: ...`.
+- **Kejujuran:** AI tidak mengarang lafaz/doa Arab, testimoni, angka, atau harga. Bagian tata cara/doa ditandai `[cek pembimbing]` di judul ide; cek ke pembimbing/ustaz sebelum posting.
+- **Isi dari Pola (tanpa AI)** kini membuat kerangka kosong 7 hari sesuai tabel di atas.
+- **Migrasi (opsional):** `sql/tambah_ig_content_plan_tema_minggu.sql` (kolom `tema_minggu`).
+- **Deploy ulang wajib:** `generate-ig-content-plan` (kontrak `versi: 4`) dan `generate-ig-caption`.
+
 ## Generate Rencana 1 Bulan: isi penuh & anti-duplikat
 
 Tombol **Rencana AI → Generate dengan AI** sekarang langsung mengisi kalender untuk 1 bulan penuh:

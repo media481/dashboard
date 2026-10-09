@@ -1333,6 +1333,8 @@
                             <option value="promo">Iklan / Promo</option>
                             <option value="storytelling">Storytelling</option>
                             <option value="edukasi">Edukasi</option>
+                            <option value="manasik">Manasik (tata cara / doa)</option>
+                            <option value="kontemplasi">Kontemplasi (renungan makna)</option>
                             <option value="testimoni">Testimoni</option>
                             <option value="engagement">Engagement (tanya jawab)</option>
                         </select>
@@ -1443,17 +1445,27 @@
         <div class="modal-body">
             <div id="igPlanGenerateWrap">
                 <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 12px;">
-                    Isi tanggal kosong di bulan pilihan dengan ide baru sesuai Pola Amiru, tanpa mengulang konten lama.
+                    Susun satu pekan konten (Senin–Minggu) dengan satu tema, tujuh sudut berurutan yang saling menyambung (Pola Amiru), tanpa mengulang konten lama.
                 </p>
+                <div class="ig-plan-pola-label"><span>Pola 7 hari</span> <span>· satu tema, tujuh sudut berurutan</span></div>
+                <div class="ig-plan-pola" id="igPlanPolaStrip"></div>
                 <div class="form-row" style="gap:10px;">
                     <div class="form-group">
                         <label>Bulan</label>
-                        <input type="month" id="igPlanMonth" onchange="igRefreshPlanPreview()">
+                        <input type="month" id="igPlanMonth" onchange="igRenderPlanWeekOptions()">
                     </div>
                     <div class="form-group">
-                        <label>Jumlah ide</label>
-                        <input type="number" id="igPlanCount" min="1" max="60" value="7" placeholder="Kosong = semua slot" oninput="igRefreshPlanPreview()">
+                        <label>Pekan (Senin–Minggu)</label>
+                        <select id="igPlanWeek" onchange="igRefreshPlanPreview()"></select>
                     </div>
+                </div>
+                <div class="form-group">
+                    <label>Tema Minggu</label>
+                    <input type="text" id="igPlanTema" maxlength="80" placeholder="Contoh: Talbiyah">
+                </div>
+                <div class="form-group">
+                    <label>Tema pekan depan <span style="font-weight:400;color:var(--ink-soft);">(opsional, untuk teaser penutup Minggu)</span></label>
+                    <input type="text" id="igPlanTemaDepan" maxlength="80" placeholder="Kosongkan kalau belum ditentukan">
                 </div>
                 <div class="ig-plan-preview" id="igPlanPreview"></div>
                 <details style="margin:0 0 12px;">

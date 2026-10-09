@@ -13500,11 +13500,13 @@ const IG_PILLARS = {
     testimoni:  { label: 'Testimoni',          color: '#1f9d6b' },
     manasik:    { label: 'Info Manasik',       color: '#b9770e' },
     engagement: { label: 'Engagement',         color: '#8e44ad' },
-    behind:     { label: 'Behind the Scenes',  color: '#16899a' }
+    behind:     { label: 'Behind the Scenes',  color: '#16899a' },
+    kontemplasi: { label: 'Kontemplasi',       color: '#5b6abf' }
 };
 const IG_STAGES = { ide: 'Ide', dikerjakan: 'Dikerjakan', siap: 'Siap posting' };
 let igPlannerColsReady = false; // true kalau sql/tambah_ig_content_plan_planner.sql sudah dijalankan (kolom pilar & tahap)
 let igTeksGambarReady = false;  // true kalau sql/tambah_ig_content_plan_pola_amiru.sql sudah dijalankan (kolom teks_gambar)
+let igTemaMingguReady = false;  // true kalau sql/tambah_ig_content_plan_tema_minggu.sql sudah dijalankan (kolom tema_minggu)
 
 function igApplyPlannerMode() {
     const root = document.getElementById('igSchedulerPageView');
@@ -14085,7 +14087,7 @@ function igDmPlanCard(pl, canEdit) {
                 <input type="date" class="ig-dm-input" value="${escapeHtmlAttr(pl.tanggal)}" title="Pindah ke tanggal lain" onchange="igMovePlanToDate('${pl.id}',this.value,true)">
             </div>
             ${igTeksGambarReady ? `<label class="ig-dm-edit-label">Teks di gambar <em>(2–4 baris pendek)</em></label>
-            <textarea class="ig-dm-input ig-dm-textarea ig-dm-imgtext-input" rows="3" maxlength="300" placeholder="Contoh: Niat umroh itu muncul diam-diam."
+            <textarea class="ig-dm-input ig-dm-textarea ig-dm-imgtext-input" rows="3" maxlength="700" placeholder="Contoh: Niat umroh itu muncul diam-diam."
                 onblur="igPlanUpdateField('${pl.id}','teks_gambar',this.value)">${escapeHtml(imgTxt)}</textarea>
             <label class="ig-dm-edit-label">Caption</label>` : ''}
             <textarea class="ig-dm-input ig-dm-textarea" rows="6" maxlength="2200" placeholder="Draft caption..."
@@ -15298,6 +15300,10 @@ async function loadIgContentPlan() {
             const probeImg = await supabaseClient.from('ig_content_plan').select('teks_gambar').limit(1);
             igTeksGambarReady = !probeImg.error;
         }
+        if (!igTemaMingguReady) {
+            const probeTema = await supabaseClient.from('ig_content_plan').select('tema_minggu').limit(1);
+            igTemaMingguReady = !probeTema.error;
+        }
         renderIgCalendar();
     } catch (err) {
         console.error('loadIgContentPlan error:', err);
@@ -15321,16 +15327,14 @@ function openIgContentPlanModal() {
         const m = String(igCalendarCurrent.getMonth() + 1).padStart(2, '0');
         monthInput.value = `${y}-${m}`;
     }
-    const countInput = document.getElementById('igPlanCount');
-    if (countInput) countInput.value = '7'; // default 7 ide (selaras generate mingguan, hemat token); kosongkan = isi semua tanggal kosong
-    const arahanEl = document.getElementById('igPlanArahan');
-    if (arahanEl) arahanEl.value = '';
+    ['igPlanTema', 'igPlanTemaDepan', 'igPlanArahan'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    igRenderPlanWeekOptions();
 
     renderIgPlanPolaStrip();
     showIgPlanGenerateForm();
     modal.classList.add('open');
     // refresh data terbaru tiap kali modal dibuka (bisa saja ada rencana lama dari sesi lain), lalu hitung ulang pratinjau slot
-    Promise.resolve(loadIgContentPlan()).then(igRefreshPlanPreview);
+    Promise.resolve(loadIgContentPlan()).then(igRenderPlanWeekOptions);
 }
 
 function closeIgContentPlanModal() {
@@ -15340,6 +15344,7 @@ function closeIgContentPlanModal() {
 
 // ---- Balik ke form generate (dipakai tombol "Generate Ulang") ----
 function showIgPlanGenerateForm() {
+    igPlanResultRange = null; // daftar hasil kembali ke tampilan per bulan
     const genWrap = document.getElementById('igPlanGenerateWrap');
     const resultWrap = document.getElementById('igPlanResultWrap');
     if (genWrap) genWrap.style.display = 'block';
@@ -15357,39 +15362,52 @@ function igPolaPilarLabel(pilar) {
 function renderIgPlanPolaStrip() {
     const el = document.getElementById('igPlanPolaStrip');
     if (!el) return;
-    el.innerHTML = [1, 2, 3, 4, 5, 6, 0].map(dow => {
+    el.innerHTML = IG_URUTAN_PEKAN.map(dow => {
         const p = IG_POLA_AMIRU[dow];
         const color = (IG_PILLARS[p.pilar] && IG_PILLARS[p.pilar].color) || 'var(--brand)';
         const ikon = p.tipe === 'carousel' ? 'bi-images' : 'bi-image';
-        return `<div class="ig-plan-pola-chip" style="--pillar:${color}" title="${escapeHtmlAttr(p.hari + ': ' + igPolaPilarLabel(p.pilar) + ' (' + (p.tipe === 'carousel' ? 'carousel' : 'image') + ')')}">
+        const tip = `${p.hari} (${p.urutan}/7): ${p.peran} · ${igPolaPilarLabel(p.pilar)} · ${p.tipe === 'carousel' ? 'carousel maks 5 slide' : 'single post'}`;
+        return `<div class="ig-plan-pola-chip" style="--pillar:${color}" title="${escapeHtmlAttr(tip)}">
             <b>${p.hari.slice(0, 3)}</b>
-            <span>${escapeHtml(igPolaPilarLabel(p.pilar))}</span>
+            <span>${escapeHtml(p.peran)}</span>
             <i class="bi ${ikon}"></i>
         </div>`;
     }).join('');
 }
 
-// ---- Pratinjau: berapa slot kosong yang akan diisi untuk bulan & jumlah yang dipilih ----
+// ---- Isi pilihan pekan (Senin-Minggu) untuk bulan yang dipilih; default = pekan pertama yang masih punya hari kosong ----
+function igRenderPlanWeekOptions() {
+    const monthVal = document.getElementById('igPlanMonth')?.value;
+    const sel = document.getElementById('igPlanWeek');
+    if (!monthVal || !sel) return;
+    const [y, m] = monthVal.split('-').map(Number);
+    const hariIni = igLocalDateKey(new Date());
+    const terisi = igTanggalTerisiSet();
+    const sebelumnya = sel.value;
+    const daftar = igDaftarPekanBulan(y, m - 1).map(pk => ({ ...pk, kosong: igBuildSlotPekan(pk.senin, terisi, hariIni).length }));
+    sel.innerHTML = daftar.map(pk => {
+        const ket = pk.minggu < hariIni ? ' (sudah lewat)' : pk.kosong === 0 ? ' (sudah terisi)' : '';
+        return `<option value="${pk.senin}">${escapeHtml(pk.label + ket)}</option>`;
+    }).join('');
+    const pilih = daftar.find(pk => pk.senin === sebelumnya) || daftar.find(pk => pk.kosong > 0) || daftar[0];
+    if (pilih) sel.value = pilih.senin;
+    igRefreshPlanPreview();
+}
+
+// ---- Pratinjau: hari kosong di pekan terpilih yang akan diisi ----
 function igRefreshPlanPreview() {
     const el = document.getElementById('igPlanPreview');
     if (!el) return;
-    const monthVal = document.getElementById('igPlanMonth')?.value;
-    if (!monthVal) { el.textContent = ''; return; }
-    const [y, m] = monthVal.split('-').map(Number);
-    const batas = parseInt(document.getElementById('igPlanCount')?.value, 10) || 0;
-    let slots = igBuildSlotBulan(y, m - 1, igTanggalTerisiSet(), igLocalDateKey(new Date()));
+    const senin = document.getElementById('igPlanWeek')?.value;
+    if (!senin) { el.textContent = ''; return; }
+    const slots = igBuildSlotPekan(senin, igTanggalTerisiSet(), igLocalDateKey(new Date()));
     if (!slots.length) {
-        el.innerHTML = '<i class="bi bi-info-circle"></i> Tidak ada slot kosong di bulan ini (sudah lewat atau sudah terisi semua).';
+        el.innerHTML = '<i class="bi bi-info-circle"></i> Tidak ada hari kosong di pekan ini (sudah lewat atau sudah terisi semua).';
         return;
     }
-    const total = slots.length;
-    if (batas > 0 && batas < total) slots = igPickEvenly(slots, batas);
     const carousel = slots.filter(s => s.tipe_konten === 'carousel').length;
-    const info = slots.filter(s => s.pilar === 'promo').length;
-    const bagian = [`${slots.length - carousel} image`, `${carousel} carousel`];
-    if (info) bagian.push(`${info} info program`);
-    el.innerHTML = `<i class="bi bi-calendar-check"></i> <strong>${slots.length}</strong> ide akan dibuat` +
-        (slots.length < total ? ` dari ${total} slot kosong` : '') + ` (${bagian.join(' · ')})`;
+    el.innerHTML = `<i class="bi bi-calendar-check"></i> <strong>${slots.length}</strong> ide akan dibuat: ` +
+        `${slots.map(s => s.hari.slice(0, 3)).join(', ')} (${slots.length - carousel} image · ${carousel} carousel)`;
 }
 
 // ---- Susun ringkasan program aktif sebagai konteks AI ----
@@ -15517,13 +15535,25 @@ function igBuildRiwayat() {
     return riwayat;
 }
 
-// Cek 1 ide ({ tema, teks_gambar | teks }) terhadap riwayat
-function igIsDuplicateIdea(item, riwayat) {
-    const t = igTokenSet(item.tema);
-    const h = igTokenSet(igFirstLine(item.teks_gambar != null ? item.teks_gambar : item.teks));
-    return riwayat.some(r =>
-        igIsSimilarText(t, r._t) || (h.size >= 3 && r._h.size >= 3 && igIsSimilarText(h, r._h))
-    );
+// Buang token yang ada di `abaikan` (Set) dari `set`. Dipakai supaya kata tema minggu (mis. "talbiyah")
+// yang pasti muncul di ketujuh ide satu pekan tidak membuat ide sepekan saling dianggap kembar.
+function igMinusTokens(set, abaikan) {
+    if (!abaikan || !abaikan.size) return set;
+    const out = new Set();
+    set.forEach(t => { if (!abaikan.has(t)) out.add(t); });
+    return out;
+}
+
+// Cek 1 ide ({ tema, teks_gambar | teks }) terhadap riwayat.
+// abaikan (opsional): Set token yang tidak dihitung saat membandingkan (lihat igMinusTokens).
+function igIsDuplicateIdea(item, riwayat, abaikan) {
+    const t = igMinusTokens(igTokenSet(item.tema), abaikan);
+    const h = igMinusTokens(igTokenSet(igFirstLine(item.teks_gambar != null ? item.teks_gambar : item.teks)), abaikan);
+    return riwayat.some(r => {
+        const rt = igMinusTokens(r._t, abaikan);
+        const rh = igMinusTokens(r._h, abaikan);
+        return igIsSimilarText(t, rt) || (h.size >= 3 && rh.size >= 3 && igIsSimilarText(h, rh));
+    });
 }
 
 // Riwayat -> teks untuk dikirim ke AI (terbaru dulu, tanpa tema kembar, dibatasi supaya prompt tidak membengkak)
@@ -15557,6 +15587,39 @@ function igBuildSlotBulan(year, month, tanggalTerisi, mulaiDari) {
     return slots;
 }
 
+// Slot 1 pekan Senin-Minggu mengikuti Pola 7 Hari (pola-konten.md bagian 3). seninKey = "YYYY-MM-DD" hari Senin.
+// tanggalTerisi: Set tanggal yang sudah punya ide/post (dilewati). mulaiDari: tanggal sebelum ini tidak diisi.
+// Tiap slot membawa `urutan` (1-7) & `peran` (Rasakan..Renungkan) untuk label seri dan konteks AI.
+function igBuildSlotPekan(seninKey, tanggalTerisi, mulaiDari) {
+    const [y, m, d] = String(seninKey).split('-').map(Number);
+    const slots = [];
+    IG_URUTAN_PEKAN.forEach((dow, i) => {
+        const pola = IG_POLA_AMIRU[dow];
+        const tanggal = igLocalDateKey(new Date(y, m - 1, d + i));
+        if (mulaiDari && tanggal < mulaiDari) return;
+        if (tanggalTerisi && tanggalTerisi.has(tanggal)) return;
+        slots.push({ tanggal, hari: pola.hari, pilar: pola.pilar, tipe_konten: pola.tipe, urutan: pola.urutan, peran: pola.peran });
+    });
+    return slots;
+}
+
+// Daftar pekan (Senin-Minggu) yang menyentuh bulan terpilih: [{ senin, minggu, label }].
+function igDaftarPekanBulan(year, month) {
+    const awalBulan = new Date(year, month, 1);
+    const akhirBulan = new Date(year, month + 1, 0);
+    const mundur = (awalBulan.getDay() + 6) % 7; // jarak ke Senin sebelumnya (Senin = 0)
+    const bln = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const out = [];
+    for (let sen = new Date(year, month, 1 - mundur); sen <= akhirBulan; sen = new Date(sen.getFullYear(), sen.getMonth(), sen.getDate() + 7)) {
+        const min = new Date(sen.getFullYear(), sen.getMonth(), sen.getDate() + 6);
+        out.push({
+            senin: igLocalDateKey(sen), minggu: igLocalDateKey(min),
+            label: `${sen.getDate()} ${bln[sen.getMonth()]} – ${min.getDate()} ${bln[min.getMonth()]} ${min.getFullYear()}`
+        });
+    }
+    return out;
+}
+
 // Ambil n slot dari arr (dipakai kalau user membatasi jumlah ide), tersebar merata sepanjang bulan
 // DAN menjaga keseimbangan Pola Amiru: tiap pick dekat posisi idealnya, tapi hari yang sudah sering terpilih
 // dikenai penalti sehingga Sen..Min bergantian rata (carousel Rab/Kam & Info Program Min ikut terpilih).
@@ -15583,7 +15646,8 @@ function igPickEvenly(arr, n) {
     return out.sort((x, y) => x.tanggal.localeCompare(y.tanggal));
 }
 
-const IG_PLAN_BATCH = 6;    // jumlah slot per panggilan AI (batch kecil = tidak timeout, hasil tersimpan bertahap)
+const IG_PLAN_BATCH = 6;    // jumlah slot per panggilan AI mode bulan (batch kecil = tidak timeout, hasil tersimpan bertahap)
+const IG_PLAN_BATCH_PEKAN = 7; // mode pekan: ketujuh hari dalam SATU panggilan supaya konten menyambung
 const IG_PLAN_MAX_PASS = 3; // total putaran (1 putaran awal + 2 percobaan ulang untuk slot yang ditolak karena duplikat)
 
 // Header untuk edge function AI IG. Function memverifikasi token login (bukan anon key), jadi
@@ -15610,28 +15674,52 @@ async function igCallPlanFunction(payload) {
         throw new Error(detail || 'Gagal memanggil API (status ' + response.status + ')');
     }
     const data = await response.json();
-    if (!data || !(data.versi >= 3)) {
+    if (!data || !(data.versi >= 4)) {
         throw new Error('Edge function generate-ig-content-plan belum di-deploy ulang ke versi terbaru.');
     }
     return data;
 }
 
 let igPlanBusy = false; // true selama proses generate (manual atau otomatis) berjalan -> cegah dobel
+let igPlanResultRange = null; // { mulai, akhir } -> daftar hasil menampilkan 1 pekan; null = 1 bulan penuh
 
 // ---- Inti generate: isi daftar slot (semua dalam 1 bulan) lewat AI + anti-duplikat ----
 // Alur: kirim slot ke AI per batch bersama riwayat SEMUA konten lama -> buang hasil yang mirip
 // konten lama -> slot yang ditolak dicoba ulang. Return { berhasil, sisa, errMsg }.
-async function igGeneratePlanForSlots(year, month, slots, arahan, onProgress) {
+async function igGeneratePlanForSlots(year, month, slots, arahan, onProgress, opsi) {
     const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     const bulanLabel = `${monthNames[month]} ${year}`;
-    const bulanCol = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-    const tanggalMulai = bulanCol;
-    const tanggalAkhir = `${year}-${String(month + 1).padStart(2, '0')}-${String(new Date(year, month + 1, 0).getDate()).padStart(2, '0')}`;
+    const bulanDari = tgl => `${String(tgl).slice(0, 7)}-01`; // tiap baris memakai bulan dari tanggalnya (pekan bisa melintasi 2 bulan)
+
+    // Mode pekan (opsi.temaMinggu terisi): satu pekan Senin-Minggu dengan SATU tema, semua hari dikirim dalam
+    // 1 panggilan supaya ketujuh konten menyambung. Tanpa opsi = mode lama (per bulan, dibagi batch kecil).
+    const pekan = !!(opsi && opsi.temaMinggu);
+    const temaMinggu = pekan ? String(opsi.temaMinggu).trim() : '';
+    const tanggalMulai = pekan ? opsi.mulai : `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const tanggalAkhir = pekan ? opsi.akhir : `${year}-${String(month + 1).padStart(2, '0')}-${String(new Date(year, month + 1, 0).getDate()).padStart(2, '0')}`;
+    const batchSize = pekan ? IG_PLAN_BATCH_PEKAN : IG_PLAN_BATCH;
+    const abaikan = pekan ? igTokenSet(temaMinggu) : null;
 
     let berhasil = 0;
     let errMsg = '';
     let sisa = slots.slice();
     if (onProgress) onProgress(0);
+
+    // Hari-hari yang sudah jadi di pekan ini (dari rencana tersimpan + hasil putaran ini): jadi konteks penyambung.
+    const barisPekan = [];
+    const urutHari = tgl => { const [yy, mm, dd] = tgl.split('-').map(Number); return IG_POLA_AMIRU[new Date(yy, mm - 1, dd).getDay()]; };
+    const catatPekan = (tgl, tema, teksGambar, caption) => {
+        const pola = urutHari(tgl);
+        const hook = igFirstLine(teksGambar).slice(0, 90);
+        const buka = igFirstLine(caption).slice(0, 90);
+        barisPekan.push(`${pola ? pola.hari + ' ' : ''}${tgl} | ${pola ? pola.peran + ' | ' : ''}${String(tema).slice(0, 90)}${hook ? ' | hook: ' + hook : ''}${buka ? ' | caption dibuka: ' + buka : ''}`);
+    };
+    if (pekan) {
+        igContentPlan
+            .filter(pl => pl.tanggal && pl.tanggal >= tanggalMulai && pl.tanggal <= tanggalAkhir && pl.status !== 'dilewati' && pl.draft_caption)
+            .sort((x, y) => x.tanggal.localeCompare(y.tanggal))
+            .forEach(pl => catatPekan(pl.tanggal, pl.tema, pl.teks_gambar, pl.draft_caption));
+    }
 
     try {
         const konteksProgram = await buildIgPlanProgramContext(year, month);
@@ -15639,11 +15727,16 @@ async function igGeneratePlanForSlots(year, month, slots, arahan, onProgress) {
 
         for (let pass = 0; pass < IG_PLAN_MAX_PASS && sisa.length; pass++) {
             const gagal = [];
-            for (let i = 0; i < sisa.length; i += IG_PLAN_BATCH) {
-                const batch = sisa.slice(i, i + IG_PLAN_BATCH);
+            for (let i = 0; i < sisa.length; i += batchSize) {
+                const batch = sisa.slice(i, i + batchSize);
                 const data = await igCallPlanFunction({
                     bulanLabel, jumlahPost: batch.length, tanggalMulai, tanggalAkhir,
-                    konteksProgram, arahan: arahan || '', slots: batch, riwayatTema: igRiwayatToText(riwayat)
+                    konteksProgram, arahan: arahan || '', slots: batch, riwayatTema: igRiwayatToText(riwayat),
+                    ...(pekan ? {
+                        temaMinggu,
+                        temaMingguDepan: String(opsi.temaMingguDepan || '').trim(),
+                        konteksPekan: barisPekan.join('\n')
+                    } : {})
                 });
 
                 const slotByDate = new Map(batch.map(s => [s.tanggal, s]));
@@ -15653,20 +15746,24 @@ async function igGeneratePlanForSlots(year, month, slots, arahan, onProgress) {
                     if (!slot || !it.tema || !it.draft_caption) return;
                     if (rows.some(r => r.tanggal === it.tanggal)) return;
                     // Mirip konten lama (atau ide lain di batch ini)? Dibuang; temanya dicatat supaya percobaan ulang menghindarinya.
-                    if (igIsDuplicateIdea(it, riwayat)) {
+                    if (igIsDuplicateIdea(it, riwayat, abaikan)) {
                         igRiwayatAdd(riwayat, it.tema, it.teks_gambar, '');
                         return;
                     }
                     igRiwayatAdd(riwayat, it.tema, it.teks_gambar, it.tanggal);
+                    // Label kecil di pojok gambar (pola-konten.md): "Seri Talbiyah · 3/7". Ditaruh di baris sendiri di akhir teks gambar.
+                    let teksGambar = String(it.teks_gambar || '').trim();
+                    if (pekan && slot.urutan) teksGambar += `${teksGambar ? '\n' : ''}Label gambar: Seri ${temaMinggu} · ${slot.urutan}/7`;
                     rows.push({
-                        bulan: bulanCol,
+                        bulan: bulanDari(it.tanggal),
                         tanggal: it.tanggal,
                         tema: String(it.tema).trim(),
                         tipe_konten: slot.tipe_konten,
                         draft_caption: it.draft_caption,
                         status: 'idea',
                         ...(igPlannerColsReady ? { pilar: slot.pilar, tahap: 'ide' } : {}),
-                        ...(igTeksGambarReady ? { teks_gambar: String(it.teks_gambar || '').trim() || null } : {})
+                        ...(igTeksGambarReady ? { teks_gambar: teksGambar || null } : {}),
+                        ...(pekan && igTemaMingguReady ? { tema_minggu: temaMinggu } : {})
                     });
                 });
 
@@ -15677,6 +15774,7 @@ async function igGeneratePlanForSlots(year, month, slots, arahan, onProgress) {
                     const { error: insErr } = await supabaseClient.from('ig_content_plan').insert(rows);
                     if (insErr) throw insErr;
                     berhasil += rows.length;
+                    rows.forEach(r => catatPekan(r.tanggal, r.tema, r.teks_gambar, r.draft_caption));
                     if (onProgress) onProgress(berhasil);
                 }
             }
@@ -15701,39 +15799,45 @@ function igTanggalTerisiSet() {
     return set;
 }
 
-// ---- Generate manual (tombol "Generate dengan AI"): isi SEMUA tanggal kosong di bulan terpilih ----
+// ---- Generate manual (tombol "Generate dengan AI"): satu pekan Senin-Minggu dengan satu Tema Minggu ----
+// Tujuh hari disusun dalam SATU panggilan AI supaya saling menyambung (pola-konten.md bagian 3 & 9).
 async function generateIgContentPlanAI() {
     if (igPlanBusy) { showToast('Masih ada proses generate yang berjalan, tunggu sebentar', 'info'); return; }
     const btn = document.getElementById('btnIgGeneratePlan');
     const btnText = document.getElementById('btnIgGeneratePlanText');
-    const monthVal = document.getElementById('igPlanMonth')?.value; // "YYYY-MM"
-    if (!monthVal) { showToast('Pilih bulan dulu', 'error'); return; }
-    const [yearStr, monthStr] = monthVal.split('-');
-    const year = parseInt(yearStr, 10);
-    const month = parseInt(monthStr, 10) - 1; // 0-based
-
-    const batasJumlah = parseInt(document.getElementById('igPlanCount')?.value, 10) || 0; // kosong = isi semua tanggal kosong
-    const arahan = (document.getElementById('igPlanArahan')?.value || '').trim();
-
-    const t = new Date();
-    const hariIni = igLocalDateKey(t);
-    let slots = igBuildSlotBulan(year, month, igTanggalTerisiSet(), hariIni);
-    if (!slots.length) {
-        showToast('Tidak ada tanggal kosong yang tersisa di bulan ini (sudah lewat atau sudah terisi semua)', 'info');
+    const senin = document.getElementById('igPlanWeek')?.value; // "YYYY-MM-DD" hari Senin
+    if (!senin) { showToast('Pilih bulan dan pekan dulu', 'error'); return; }
+    const temaEl = document.getElementById('igPlanTema');
+    const temaMinggu = (temaEl?.value || '').trim();
+    if (!temaMinggu) {
+        showToast('Isi Tema Minggu dulu (contoh: Talbiyah) supaya ketujuh konten menyambung', 'error');
+        if (temaEl) temaEl.focus();
         return;
     }
-    if (batasJumlah > 0 && batasJumlah < slots.length) slots = igPickEvenly(slots, batasJumlah);
+    const temaMingguDepan = (document.getElementById('igPlanTemaDepan')?.value || '').trim();
+    const arahan = (document.getElementById('igPlanArahan')?.value || '').trim();
+
+    const hariIni = igLocalDateKey(new Date());
+    const slots = igBuildSlotPekan(senin, igTanggalTerisiSet(), hariIni);
+    if (!slots.length) {
+        showToast('Tidak ada hari kosong yang tersisa di pekan ini (sudah lewat atau sudah terisi semua)', 'info');
+        return;
+    }
+    const [sy, sm, sd] = senin.split('-').map(Number);
+    const minggu = igLocalDateKey(new Date(sy, sm - 1, sd + 6));
 
     igPlanBusy = true;
     if (btn) btn.disabled = true;
-    const { berhasil, sisa, errMsg } = await igGeneratePlanForSlots(year, month, slots, arahan,
-        n => { if (btnText) btnText.textContent = `Menyusun ${n}/${slots.length}...`; });
+    const { berhasil, sisa, errMsg } = await igGeneratePlanForSlots(sy, sm - 1, slots, arahan,
+        n => { if (btnText) btnText.textContent = `Menyusun ${n}/${slots.length}...`; },
+        { temaMinggu, temaMingguDepan, mulai: senin, akhir: minggu });
     igPlanBusy = false;
     if (btn) btn.disabled = false;
     if (btnText) btnText.textContent = 'Generate dengan AI';
 
     if (berhasil > 0) {
-        renderIgPlanResultList(year, month);
+        igPlanResultRange = { mulai: senin, akhir: minggu };
+        renderIgPlanResultList(sy, sm - 1);
         const genWrap = document.getElementById('igPlanGenerateWrap');
         const resultWrap = document.getElementById('igPlanResultWrap');
         if (genWrap) genWrap.style.display = 'none';
@@ -15745,9 +15849,9 @@ async function generateIgContentPlanAI() {
             ? `${berhasil} ide tersimpan, tapi proses berhenti: ${errMsg}. Klik Generate lagi untuk melengkapi sisanya.`
             : 'Gagal generate rencana: ' + errMsg, berhasil > 0 ? 'info' : 'error');
     } else if (sisa.length) {
-        showToast(`${berhasil} ide berhasil dibuat. ${sisa.length} tanggal belum terisi karena hasil AI terus mirip konten lama — klik Generate lagi untuk melengkapi.`, 'info');
+        showToast(`${berhasil} ide berhasil dibuat. ${sisa.length} hari belum terisi karena hasil AI mirip konten lama atau melebihi 5 slide — klik Generate lagi untuk melengkapi (hari yang sudah jadi dipakai sebagai penyambung).`, 'info');
     } else {
-        showToast(`${berhasil} ide rencana konten berhasil dibuat (semua berbeda dari konten sebelumnya)`, 'success');
+        showToast(`${berhasil} ide seri "${temaMinggu}" berhasil dibuat. Cek bagian yang bertanda [cek pembimbing] sebelum diposting.`, 'success');
     }
 }
 
@@ -15848,17 +15952,18 @@ function renderIgPlanResultList(year, month) {
 
     const items = igContentPlan.filter(pl => {
         if (!pl.tanggal) return false;
+        if (igPlanResultRange) return pl.tanggal >= igPlanResultRange.mulai && pl.tanggal <= igPlanResultRange.akhir;
         const [py, pm] = pl.tanggal.split('-').map(Number);
         return py === year && (pm - 1) === month;
     }).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
 
     if (countEl) {
         const ideaCount = items.filter(i => i.status === 'idea').length;
-        countEl.textContent = `${items.length} rencana bulan ini (${ideaCount} belum dijadikan post)`;
+        countEl.textContent = `${items.length} rencana ${igPlanResultRange ? 'pekan ini' : 'bulan ini'} (${ideaCount} belum dijadikan post)`;
     }
 
     if (!items.length) {
-        listEl.innerHTML = `<div class="ig-empty"><i class="bi bi-calendar-x"></i> Belum ada rencana untuk bulan ini.</div>`;
+        listEl.innerHTML = `<div class="ig-empty"><i class="bi bi-calendar-x"></i> Belum ada rencana untuk ${igPlanResultRange ? 'pekan' : 'bulan'} ini.</div>`;
         return;
     }
 
@@ -15869,8 +15974,8 @@ function renderIgPlanResultList(year, month) {
     };
 
     listEl.innerHTML = items.map(pl => {
-        const [, , d] = pl.tanggal.split('-');
-        const tglLabel = `${parseInt(d, 10)} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][month]}`;
+        const [, pm, d] = pl.tanggal.split('-');
+        const tglLabel = `${parseInt(d, 10)} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][parseInt(pm, 10) - 1]}`;
         const isIdea = pl.status === 'idea';
         const actions = isIdea
             ? `<button type="button" class="btn-secondary" onclick="igConvertPlanToPost('${pl.id}')" style="font-size:11px;padding:4px 10px;"><i class="bi bi-arrow-up-right-circle"></i> Jadikan Post</button>
@@ -15895,7 +16000,7 @@ function renderIgPlanResultList(year, month) {
                     </select>
                     <span class="ig-plan-save-indicator" id="igPlanSaved-${pl.id}"></span>
                </div>
-               ${igTeksGambarReady ? `<textarea class="ig-plan-edit-caption ig-plan-edit-imgtext" rows="2" maxlength="300" placeholder="Teks di gambar (2–4 baris pendek)"
+               ${igTeksGambarReady ? `<textarea class="ig-plan-edit-caption ig-plan-edit-imgtext" rows="2" maxlength="700" placeholder="Teks di gambar (single: 2–4 baris; carousel: maks 5 slide)"
                    onblur="igPlanUpdateField('${pl.id}','teks_gambar',this.value)">${escapeHtml(pl.teks_gambar || '')}</textarea>` : ''}
                <textarea class="ig-plan-edit-caption" rows="3"
                    onblur="igPlanUpdateField('${pl.id}','draft_caption',this.value)">${escapeHtml(pl.draft_caption || '')}</textarea>`
@@ -15906,7 +16011,7 @@ function renderIgPlanResultList(year, month) {
                 <p class="ig-plan-caption-preview">${escapeHtml((pl.draft_caption || '').slice(0, 140))}${(pl.draft_caption || '').length > 140 ? '…' : ''}</p>`;
 
         const pilarMeta = pl.pilar && IG_PILLARS[pl.pilar]
-            ? `<div class="ig-plan-result-pilar" style="--pillar:${IG_PILLARS[pl.pilar].color}">${escapeHtml(igPolaPilarLabel(pl.pilar))}</div>`
+            ? `<div class="ig-plan-result-pilar" style="--pillar:${IG_PILLARS[pl.pilar].color}">${escapeHtml(igPolaPilarLabel(pl.pilar))}${pl.tema_minggu ? ' · Seri ' + escapeHtml(pl.tema_minggu) : ''}</div>`
             : '';
         return `<div class="ig-plan-result-item">
             <div class="ig-plan-result-date">${tglLabel}</div>
@@ -16006,6 +16111,9 @@ function igConvertPlanToPost(planId) {
         mediaTypeEl.value = plan.tipe_konten;
         onIgMediaTypeChange();
     }
+    // Tujuan caption AI mengikuti pilar rencana (storytelling/edukasi/manasik/kontemplasi/...), kalau opsinya ada.
+    const goalEl = document.getElementById('ig_caption_goal');
+    if (goalEl && plan.pilar && [...goalEl.options].some(o => o.value === plan.pilar)) goalEl.value = plan.pilar;
     showToast('Draft caption dari rencana sudah diisi — tinggal upload media & simpan', 'info');
 }
 
@@ -16084,60 +16192,61 @@ async function igDeletePlanItem(planId) {
 }
 
 // ============================================================
-// 24d. POLA MINGGUAN AMIRU (7 hari, maksimal 7 ide per pekan)
-// Menerapkan pola konten Amiru ke 1 bulan di Content Planner TANPA AI:
-//   Senin  = Storytelling (rindu & kedekatan)       -> image
-//   Rabu   = Edukasi (manfaat, bisa disimpan)       -> carousel
-//   Jumat  = Bukti Sosial (testimoni / momen jamaah)-> image
-//   Minggu = Info Program (jadwal, seat, ajakan)    -> image
-//   Selasa = Manasik (tata cara, doa, perlengkapan) -> image
-//   Kamis  = Storytelling (cerita bertahap)         -> carousel
-//   Sabtu  = Engagement (pertanyaan / polling)      -> image
-// Rasio sehat: 6 konten non-jualan : 1 Info Program.
-// Tiap ide terdiri dari: teks di gambar (pemancing pendek) + caption
-// (lanjutan dari gambar, bukan pengulangan) + 5 hashtag di akhir caption.
-// Semua slot dibuat sebagai KERANGKA kosong (pilar & tipe sudah terisi) -- draf
-// bawaan sudah dihapus (array `isi` dikosongkan) supaya tinggal diisi manual atau
-// digenerate pakai AI. Isi `isi` lagi kalau mau draf bawaan kembali.
-// Pilar "Bukti Sosial" memakai pilar `testimoni`, "Info Program" memakai `promo`.
+// 24d. POLA 7 HARI AMIRU (satu tema mingguan, tujuh posting yang menyambung)
+// Sumber acuan: pola-konten.md bagian 3. Tema satu pekan dibagi ke 7 sudut berurutan
+// (rasakan > pahami > siapkan > bayangkan > hindari > terinspirasi > renungkan):
+//   Senin  = Storytelling, image                      · RASAKAN
+//   Selasa = Manasik, image (kartu praktis)           · PAHAMI
+//   Rabu   = Edukasi, carousel                        · SIAPKAN
+//   Kamis  = Storytelling bertahap, carousel          · BAYANGKAN
+//   Jumat  = Edukasi, carousel                        · HINDARI (kesalahan umum & FAQ)
+//   Sabtu  = Storytelling, carousel                   · TERINSPIRASI (cerita manusiawi)
+//   Minggu = Kontemplasi ibadah umroh, carousel       · RENUNGKAN (tanpa tokoh)
+// Hanya single post (image) & carousel (MAKSIMAL 5 slide), tanpa video. Bukti sosial,
+// engagement, dan info program sedang DIJEDA (pilar lamanya tetap valid untuk data lama).
+// Tiap ide = teks di gambar (pemancing pendek) + caption (lanjutan, bukan pengulangan)
+// + 5 hashtag di akhir caption. Semua slot "kosong" di bawah adalah kerangka manual;
+// isi lewat AI (tombol Generate) atau ganti bagian [isi ...] dengan data asli.
+// Pilar `kontemplasi` ditambahkan untuk Minggu; `urutan` = posisi hari di label "Seri [Tema] · n/7".
 // ============================================================
 const IG_POLA_AMIRU = {
     1: { // Senin
-        hari: 'Senin', pilar: 'storytelling', tipe: 'image',
-        kosong: { tema: 'Storytelling — isi tema', teks: '[isi 2-4 baris pendek]' },
-        isi: []
-    },
-    3: { // Rabu
-        hari: 'Rabu', pilar: 'edukasi', tipe: 'carousel',
-        kosong: { tema: 'Edukasi (carousel) — isi tema', teks: 'Slide 1: [isi pertanyaan pemancing]\nSlide 2-6: [isi satu poin per slide]\nSlide 7: Simpan, biar nggak panik nanti.' },
-        isi: []
-    },
-    5: { // Jumat
-        hari: 'Jumat', pilar: 'testimoni', tipe: 'image',
-        kosong: { tema: 'Testimoni jamaah — isi kutipan (wajib izin jamaah)', teks: '[isi kutipan asli jamaah]\n[nama jamaah, kota]' },
+        hari: 'Senin', urutan: 1, peran: 'Rasakan', pilar: 'storytelling', tipe: 'image',
+        kosong: { tema: 'Rasakan — isi momen emosional tema minggu ini', teks: '[isi 2-4 baris pendek: momen emosional]\n[tutup dengan pertanyaan yang mengantar ke Selasa]' },
         isi: []
     },
     2: { // Selasa
-        hari: 'Selasa', pilar: 'manasik', tipe: 'image',
-        kosong: { tema: 'Manasik — isi tema (tata cara / doa / perlengkapan)', teks: '[isi 2-4 baris pendek]' },
+        hari: 'Selasa', urutan: 2, peran: 'Pahami', pilar: 'manasik', tipe: 'image',
+        kosong: { tema: 'Pahami — isi tata cara / doa terkait tema (cek pembimbing)', teks: '[isi 2-4 baris pendek: kartu praktis tata cara]\n[lafaz & tata cara: sesuai manasik dari pembimbing]' },
+        isi: []
+    },
+    3: { // Rabu
+        hari: 'Rabu', urutan: 3, peran: 'Siapkan', pilar: 'edukasi', tipe: 'carousel',
+        kosong: { tema: 'Siapkan (carousel) — isi persiapan fisik / perlengkapan terkait tema', teks: 'Slide 1: [isi pertanyaan pemancing]\nSlide 2: [isi satu poin persiapan]\nSlide 3: [isi satu poin persiapan]\nSlide 4: [isi satu poin persiapan]\nSlide 5: Simpan, biar nggak panik nanti.' },
         isi: []
     },
     4: { // Kamis
-        hari: 'Kamis', pilar: 'storytelling', tipe: 'carousel',
-        kosong: { tema: 'Storytelling (carousel) — isi momen ibadah / suasana Tanah Suci', teks: 'Slide 1: [isi kalimat pemancing]\\nSlide 2-5: [isi alur cerita per slide]\\nSlide 6: [isi penutup / ajakan ringan]' },
+        hari: 'Kamis', urutan: 4, peran: 'Bayangkan', pilar: 'storytelling', tipe: 'carousel',
+        kosong: { tema: 'Bayangkan (carousel) — isi alur waktu / perjalanan per slide', teks: 'Slide 1: [isi kalimat pemancing]\nSlide 2: [isi awal alur waktu]\nSlide 3: [isi tengah alur]\nSlide 4: [isi akhir alur]\nSlide 5: [isi penutup / ajakan ringan]' },
+        isi: []
+    },
+    5: { // Jumat
+        hari: 'Jumat', urutan: 5, peran: 'Hindari', pilar: 'edukasi', tipe: 'carousel',
+        kosong: { tema: 'Hindari (carousel) — isi kesalahan umum / FAQ terkait tema', teks: 'Slide 1: [isi kesalahan yang sering terjadi]\nSlide 2: [isi kesalahan 1 + cara menghindarinya]\nSlide 3: [isi kesalahan 2 + cara menghindarinya]\nSlide 4: [isi kesalahan 3 atau FAQ singkat]\nSlide 5: Simpan & kirim ke temanmu yang mau berangkat.' },
         isi: []
     },
     6: { // Sabtu
-        hari: 'Sabtu', pilar: 'engagement', tipe: 'image',
-        kosong: { tema: 'Engagement — isi pertanyaan / polling', teks: '[isi pertanyaan pemancing 2-3 baris]' },
+        hari: 'Sabtu', urutan: 6, peran: 'Terinspirasi', pilar: 'storytelling', tipe: 'carousel',
+        kosong: { tema: 'Terinspirasi (carousel) — isi cerita manusiawi ilustrasi (bukan klaim kejadian nyata)', teks: 'Slide 1: [isi kalimat pemancing]\nSlide 2: [isi awal cerita]\nSlide 3: [isi tengah cerita]\nSlide 4: [isi akhir cerita]\nSlide 5: [isi penutup + doa singkat]' },
         isi: []
     },
     0: { // Minggu
-        hari: 'Minggu', pilar: 'promo', tipe: 'image',
-        kosong: { tema: 'Info program — isi data program', teks: 'Berangkat [bulan].\nHotel [nama].\nSeat tinggal [jumlah].' },
+        hari: 'Minggu', urutan: 7, peran: 'Renungkan', pilar: 'kontemplasi', tipe: 'carousel',
+        kosong: { tema: 'Renungkan (carousel) — isi makna tema, tanpa tokoh', teks: 'Slide 1: [isi pertanyaan renungan]\nSlide 2: [isi makna 1]\nSlide 3: [isi makna 2]\nSlide 4: [isi hikmah]\nSlide 5: [isi doa singkat + teaser tema minggu depan]' },
         isi: []
     }
 };
+const IG_URUTAN_PEKAN = [1, 2, 3, 4, 5, 6, 0]; // Senin..Minggu (nilai getDay())
 
 // Susun baris rencana untuk 1 bulan dari pola (fungsi murni -- mudah dites).
 // existingDates: Set tanggal "YYYY-MM-DD" yang sudah punya ide aktif (dilewati supaya tidak menumpuk).
@@ -16232,6 +16341,7 @@ async function igApplyPolaMingguan() {
         if (!igTeksGambarReady) pesan += ' (jalankan sql/tambah_ig_content_plan_pola_amiru.sql agar teks gambar ikut tersimpan)';
         showToast(pesan, 'success');
         await loadIgContentPlan();
+        igPlanResultRange = null;
         renderIgPlanResultList(year, month);
         const genWrap = document.getElementById('igPlanGenerateWrap');
         const resultWrap = document.getElementById('igPlanResultWrap');
@@ -16284,6 +16394,7 @@ window.igToggleHideComment = igToggleHideComment;
 window.igDeleteComment = igDeleteComment;
 window.openIgContentPlanModal = openIgContentPlanModal;
 window.igRefreshPlanPreview = igRefreshPlanPreview;
+window.igRenderPlanWeekOptions = igRenderPlanWeekOptions;
 window.closeIgContentPlanModal = closeIgContentPlanModal;
 window.showIgPlanGenerateForm = showIgPlanGenerateForm;
 window.generateIgContentPlanAI = generateIgContentPlanAI;

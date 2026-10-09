@@ -74,7 +74,7 @@ const code = fs.readFileSync(APP_PATH, 'utf8');
 const context = vm.createContext(sandbox);
 // Tambahkan penangkap: deklarasikan fungsi sebagai property di sandbox
 // dengan meng-append kode yang menaruh fungsi ke globalThis
-const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah, igIsSimilarText, igIsDuplicateIdea, igRiwayatAdd, igBuildSlotBulan, igPickEvenly, igBuildPolaMingguan };';
+const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah, igIsSimilarText, igIsDuplicateIdea, igRiwayatAdd, igBuildSlotBulan, igPickEvenly, igBuildPolaMingguan, igBuildSlotPekan, igDaftarPekanBulan, igMinusTokens, IG_POLA_AMIRU, IG_PILLARS };';
 vm.runInContext(wrapped, context, { filename: 'app.js' });
 const T = sandbox.__T;
 
@@ -176,23 +176,74 @@ test('igIsDuplicateIdea: teks gambar (hook) yang sama dianggap duplikat walau te
   const r = []; T.igRiwayatAdd(r, 'Tema A', 'Tujuh kali bolak-balik.\nBukan untuk sampai.', '');
   assert.ok(T.igIsDuplicateIdea({ tema: 'Judul lain sama sekali', teks_gambar: 'Tujuh kali bolak-balik.\nLain lagi' }, r));
 });
-test('igBuildSlotBulan: Okt 2026 -> hanya Sen/Rab/Jum/Min, urut & valid', () => {
+test('igBuildSlotBulan: Okt 2026 -> 7 hari penuh (31 slot), urut & valid', () => {
   const slots = T.igBuildSlotBulan(2026, 9, new Set(), null);
-  assert.ok(slots.length >= 16 && slots.length <= 18);
-  assert.ok(slots.every(s => ['Senin', 'Rabu', 'Jumat', 'Minggu'].includes(s.hari)));
-  assert.strictEqual(slots[0].tanggal, '2026-10-02'); // Jumat
+  assert.strictEqual(slots.length, 31);
+  assert.strictEqual(slots[0].tanggal, '2026-10-01');
   assert.deepStrictEqual(slots.map(s => s.tanggal), slots.map(s => s.tanggal).slice().sort());
 });
 test('igBuildSlotBulan: lewati tanggal terisi & tanggal lampau', () => {
   const slots = T.igBuildSlotBulan(2026, 9, new Set(['2026-10-09']), '2026-10-08');
   assert.ok(slots.every(s => s.tanggal >= '2026-10-08' && s.tanggal !== '2026-10-09'));
 });
-test('igPickEvenly: n elemen tersebar tanpa duplikat', () => {
-  const arr = Array.from({ length: 17 }, (_, i) => i);
+test('igPickEvenly: n slot tersebar tanpa duplikat', () => {
+  const arr = T.igBuildSlotBulan(2026, 9, new Set(), null).slice(0, 17);
   const pick = T.igPickEvenly(arr, 5);
   assert.strictEqual(pick.length, 5);
-  assert.strictEqual(new Set(pick).size, 5);
+  assert.strictEqual(new Set(pick.map(x => x.tanggal)).size, 5);
   assert.strictEqual(T.igPickEvenly(arr, 99).length, 17);
+});
+
+// array dari vm beda realm -> bandingkan lewat JSON
+const eqJson = (x, y) => assert.strictEqual(JSON.stringify(x), JSON.stringify(y));
+// ---- Pola 7 hari menyambung (pola-konten.md bagian 3) ----
+test('IG_POLA_AMIRU: 7 hari sesuai pola (pilar, tipe, peran, urutan 1-7)', () => {
+  const P = T.IG_POLA_AMIRU;
+  const urut = [1, 2, 3, 4, 5, 6, 0].map(d => `${P[d].hari}:${P[d].peran}:${P[d].pilar}:${P[d].tipe}`);
+  eqJson(urut, [
+    'Senin:Rasakan:storytelling:image', 'Selasa:Pahami:manasik:image', 'Rabu:Siapkan:edukasi:carousel',
+    'Kamis:Bayangkan:storytelling:carousel', 'Jumat:Hindari:edukasi:carousel',
+    'Sabtu:Terinspirasi:storytelling:carousel', 'Minggu:Renungkan:kontemplasi:carousel'
+  ]);
+  eqJson([1, 2, 3, 4, 5, 6, 0].map(d => P[d].urutan), [1, 2, 3, 4, 5, 6, 7]);
+  assert.ok(T.IG_PILLARS.kontemplasi);
+});
+test('IG_POLA_AMIRU: tanpa video & kerangka carousel maksimal 5 slide', () => {
+  Object.values(T.IG_POLA_AMIRU).forEach(p => {
+    assert.ok(p.tipe === 'image' || p.tipe === 'carousel');
+    if (p.tipe === 'carousel') {
+      const n = (p.kosong.teks.match(/Slide\s*\d+/g) || []).length;
+      assert.ok(n >= 1 && n <= 5, `${p.hari}: ${n} slide`);
+      assert.ok(!/Slide\s*\d+\s*-\s*\d+/.test(p.kosong.teks), `${p.hari}: tanpa rentang slide`);
+    }
+    assert.ok(!/\\n/.test(p.kosong.teks), `${p.hari}: tidak ada \\n literal`);
+  });
+});
+test('igBuildSlotPekan: Senin 12 Okt 2026 -> 7 slot Senin..Minggu berurutan', () => {
+  const s = T.igBuildSlotPekan('2026-10-12', new Set(), null);
+  eqJson(s.map(x => x.tanggal), ['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18']);
+  eqJson(s.map(x => x.hari), ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']);
+  eqJson(s.map(x => x.urutan), [1, 2, 3, 4, 5, 6, 7]);
+  assert.strictEqual(s.filter(x => x.tipe_konten === 'carousel').length, 5);
+});
+test('igBuildSlotPekan: melintasi pergantian bulan, lewati terisi & lampau', () => {
+  const s = T.igBuildSlotPekan('2026-10-26', new Set(['2026-10-28']), '2026-10-27');
+  eqJson(s.map(x => x.tanggal), ['2026-10-27', '2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01']);
+});
+test('igDaftarPekanBulan: Okt 2026 -> pekan Senin-Minggu yang menyentuh bulan itu', () => {
+  const d = T.igDaftarPekanBulan(2026, 9);
+  assert.strictEqual(d[0].senin, '2026-09-28'); // 1 Okt 2026 = Kamis
+  assert.strictEqual(d[d.length - 1].senin, '2026-10-26');
+  assert.ok(d.every(x => new Date(x.senin + 'T00:00:00').getDay() === 1));
+  assert.ok(d.some(x => x.senin === '2026-10-12' && x.minggu === '2026-10-18'));
+});
+test('igIsDuplicateIdea: kata tema minggu diabaikan, ide sepekan tidak saling kembar', () => {
+  const r = []; T.igRiwayatAdd(r, 'Talbiyah di miqat', 'Slide 1: Talbiyah pertama di miqat', '');
+  const item = { tema: 'Talbiyah di miqat', teks_gambar: '' };
+  assert.ok(T.igIsDuplicateIdea(item, r)); // tanpa abaikan: kembar
+  const abaikan = new Set(['talbiyah']);
+  assert.ok(T.igIsDuplicateIdea(item, r, abaikan)); // sisa "miqat" sama persis -> tetap duplikat
+  assert.ok(!T.igIsDuplicateIdea({ tema: 'Talbiyah menghafal 2 minggu', teks_gambar: '' }, r, abaikan));
 });
 test('igBuildPolaMingguan: semua slot berupa kerangka kosong (tanpa draf bawaan)', () => {
   const r = T.igBuildPolaMingguan(2026, 9, new Set(), null);
