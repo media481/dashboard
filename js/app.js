@@ -15412,7 +15412,7 @@ function closeIgContentPlanModal() {
 // Baris "Versi:" dan "Diperbarui:" dibaca otomatis untuk header modal, jadi format dua baris itu jangan diubah.
 // ============================================================
 const ABOUT_PLANNER_MD = `# About Planner: Konsep Perencanaan Konten Instagram Amiru Tour
-Versi: 1
+Versi: 2
 Diperbarui: 9 Oktober 2026
 Status: disepakati Oktober 2026. Uji coba alur mingguan yang menyambung dimulai pekan Senin, 12 Oktober 2026. Ejaan resmi: "Umroh" (bukan "Umrah"), termasuk di hashtag.
 
@@ -15559,7 +15559,8 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 
 - Modal **Perencanaan Konten** memilih satu pekan (Senin-Minggu), mengisi Tema Minggu (wajib), dan Tema pekan depan (opsional).
 - **Generate Konten** menyusun ketujuh hari dalam satu panggilan AI, dengan peran per hari sesuai bagian 3. Hari yang sudah lewat atau sudah terisi dilewati.
-- Hasil AI yang memuat carousel lebih dari 5 slide ditolak dan slotnya dicoba ulang.
+- Setiap hari hasil AI diperiksa otomatis di server. Ditolak bila memuat teks Arab, janji berlebihan, kutipan ayat atau hadis (\"bersabda\", \"berfirman\", \"QS.\", \"HR.\"), placeholder [isi ...], statistik atau klaim jumlah jamaah, kata kaku (silakan, hubungi kami, tersedia), format teks gambar yang tidak cocok dengan tipe (carousel harus Slide 1 sampai n berurutan, 3 sampai 5 slide), caption yang menyalin teks gambar, atau pembuka caption yang sama dengan hari lain.
+- Hari yang ditolak ditulis ulang sendiri (maksimal 2 putaran) dengan alasan penolakan dan hari yang sudah lolos sebagai penyambung; hari yang sudah lolos tidak dibuang.
 - Caption dirapikan di server: ejaan "Umroh", tepat 5 hashtag (#UmrohBersamaAmiru dan #AmiruTour selalu ada), maksimal 2200 karakter.
 - Label seri "Seri [Tema] · n/7" ditambahkan otomatis di akhir teks gambar.
 - **Isi dari Pola** membuat kerangka kosong 7 hari (pilar dan format sudah terisi) tanpa AI; bagian [isi ...] diganti data asli.
@@ -15586,6 +15587,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 | Versi | Tanggal | Perubahan |
 |---|---|---|
 | 1 | 9 Oktober 2026 | Versi awal About Planner, disusun dari pola-konten.md dan perilaku Perencanaan Konten di dashboard |
+| 2 | 9 Oktober 2026 | Mutu generator mingguan: aturan mutu tulisan dan contoh gaya di prompt, pemeriksa otomatis lebih lengkap (ayat/hadis, angka, kata kaku, format carousel), perbaikan terarah hanya untuk hari yang ditolak |
 `;
 
 // Petunjuk yang ikut tersalin di depan dokumen supaya Claude mengembalikan dokumen dalam format yang bisa dipakai lagi.
@@ -16747,10 +16749,11 @@ const IG_PLAN_PROMPT_SISTEM = `Kamu adalah social media strategist & copywriter 
 
 ATURAN FORMAT OUTPUT:
 - Output HARUS berupa JSON array MURNI, tanpa markdown code fence, tanpa teks pembuka/penutup apa pun, cuma JSON.
-- Setiap elemen array berbentuk: { "tanggal": "YYYY-MM-DD", "tema": string, "tipe_konten": "image"|"carousel" (JANGAN pernah video/Reels/live), "pilar": "storytelling"|"edukasi"|"manasik"|"kontemplasi", "teks_gambar": string, "draft_caption": string }.
+- Setiap elemen array berbentuk: { "tanggal": "YYYY-MM-DD", "tema": string, "tipe_konten": "image"|"carousel" (JANGAN pernah video/Reels/live), "pilar": "storytelling"|"edukasi"|"manasik"|"kontemplasi", "sudut": string, "jembatan": string, "teks_gambar": string, "draft_caption": string }.
 - Jumlah elemen HARUS sesuai jumlah yang diminta. Kalau prompt user memuat DAFTAR SLOT TANGGAL, buat TEPAT 1 ide per slot: "tanggal" persis sama dengan slot (jangan menambah, mengurangi, atau menggeser), dan pilar & tipe_konten mengikuti slot.
 - Semua "tanggal" berada di dalam rentang tanggalMulai..tanggalAkhir (inklusif) dan merupakan tanggal kalender valid.
 - "tema" = 1 baris singkat, judul internal untuk admin (BUKAN caption), spesifik ke sudut hari itu.
+- "sudut" = 1 kalimat: apa yang BARU dibahas hari ini terhadap tema minggu (beda dari hari lain). "jembatan" = 1 kalimat: apa yang dijanjikan penutup caption untuk hari berikutnya (Minggu: teaser pekan depan). Isi keduanya DULU sebagai rencana, lalu tulis teks_gambar dan draft_caption yang konsisten dengan rencana itu. Keduanya hanya untuk perencanaan, tidak tampil di postingan.
 
 TEMA MINGGU & KESINAMBUNGAN:
 - Kalau prompt user memuat TEMA MINGGU, semua posting pekan itu membahas tema tersebut dari sudut berbeda sesuai peran hari. Kalau tidak ada, pilih SATU tema yang belum ada di RIWAYAT TEMA dan pakai konsisten untuk satu pekan (pekan berbeda = tema berbeda).
@@ -16787,6 +16790,50 @@ CAPTION ("draft_caption"):
 - Ditutup tepat 5 hashtag di baris terakhir, tanpa label "Hashtag:". #UmrohBersamaAmiru dan #AmiruTour selalu ada, 3 lainnya relevan dengan topik.
 - Ejaan selalu "Umroh" (bukan "Umrah"), termasuk di hashtag.
 
+MUTU TULISAN (periksa diam-diam sebelum menjawab):
+- Hook = baris pertama teks_gambar, maksimal sekitar 9 kata: adegan konkret, pengakuan jujur, kontras, atau pertanyaan yang spesifik. Tiap hari pakai rumus hook yang BERBEDA; rumus "Pernahkah kamu..." atau "Tahukah kamu..." maksimal sekali dalam seminggu.
+- Hindari klise pembuka: "Di tengah hiruk pikuk", "Umroh bukan sekadar", "Ibadah umroh adalah", "Setiap muslim pasti", "Siapa yang tidak ingin".
+- Paragraf pertama caption langsung masuk ke adegan atau masalah nyata, bukan definisi atau pengantar umum. Satu paragraf maksimal 3 kalimat, kalimat rata-rata pendek (sekitar 18 kata) supaya enak dibaca di HP.
+- Satu hari = SATU gagasan utama. Jangan menumpuk beberapa topik dalam satu caption.
+- Hari emosional: minimal satu detail konkret yang bisa dirasakan (suara, hawa, sentuhan, gerakan) dan satu kegelisahan yang jujur. Hari praktis: poin spesifik yang bisa langsung dikerjakan (bukan "persiapkan dirimu dengan baik") beserta alasan singkat kenapa penting.
+- Kata kunci tema minggu jangan diulang-ulang; ganti dengan gambaran atau sinonim. Jangan menaruh label seperti "Hook:" atau "Caption:" di dalam isi.
+- Penutup dan CTA divariasikan antarhari: "chat WA aja ya" hanya di hari praktis, dan redaksinya tidak boleh sama dua kali dalam sepekan.
+- Penutup caption harus selaras dengan "jembatan" hari itu, dan pembuka caption hari berikutnya benar-benar menyambungnya.
+
+CONTOH GAYA (hanya untuk meniru nada, kerapatan detail, dan susunan paragraf; topik contoh JANGAN dipakai sebagai ide dan kalimatnya JANGAN disalin):
+[hari emosional, image, topik contoh "malam sebelum berangkat"]
+teks_gambar:
+Koper sudah tertutup.
+Tapi hatimu belum mau tidur.
+draft_caption:
+Jam sebelas malam, lampu kamar tinggal satu yang menyala. Koper sudah rapi di dekat pintu, tapi kamu malah duduk di tepi kasur, memandanginya lama-lama.
+
+Aneh ya. Berbulan-bulan menunggu hari ini, dan sekarang yang terasa justru campur aduk: senang, gugup, sedikit takut, dan rindu yang belum tahu alamatnya.
+
+Mungkin begitulah rasanya dipanggil. Bukan cuma badan yang bersiap, tapi hati yang pelan-pelan belajar melepas semua yang ia genggam di rumah. Nggak apa-apa kalau malam ini matamu basah tanpa alasan yang jelas.
+
+Kalau boleh menitipkan satu doa malam ini, apa yang ingin kamu titipkan? Semoga langkah pertamamu besok diringankan dan hatimu dilapangkan.
+
+#UmrohBersamaAmiru #AmiruTour #MalamSebelumBerangkat #PersiapanUmroh #CeritaUmroh
+
+[hari praktis, carousel, topik contoh "salinan dokumen"]
+teks_gambar:
+Slide 1: Satu hal kecil yang sering bikin panik di bandara
+Slide 2: Foto paspor dan dokumen perjalananmu sekarang
+Slide 3: Simpan di HP, kirim juga ke satu anggota keluarga
+Slide 4: Catat nomor penting di kertas, jaga-jaga HP mati
+Slide 5: Simpan postingan ini biar nggak lupa
+draft_caption:
+Pernah nggak, tanganmu refleks menepuk saku berkali-kali cuma buat memastikan dokumen masih ada? Di perjalanan sepanjang itu, rasa waswas kecil begini bisa mencuri ketenangan yang seharusnya kamu simpan untuk ibadah.
+
+Kabar baiknya, ketenangan itu bisa dicicil dari rumah. Foto dokumen pentingmu sekarang, simpan di HP, lalu kirim juga ke satu orang yang kamu percaya. Tulis nomor-nomor penting di selembar kertas kecil, karena baterai HP kadang habis di saat yang paling nggak tepat.
+
+Nggak butuh waktu lama, mungkin sepuluh menit sambil menunggu nasi matang. Tapi nanti di sana, kamu bisa melangkah dengan dada yang lebih ringan.
+
+Simpan postingan ini dan kirim ke temanmu yang juga lagi bersiap. Kalau ada yang masih bikin ragu, chat WA aja ya.
+
+#UmrohBersamaAmiru #AmiruTour #PersiapanUmroh #TipsUmroh #SiapBerangkat
+
 ANTI-PENGULANGAN (PENTING):
 - Satu topik hanya sekali dalam 6 bulan terakhir; sudut baru atas topik lama baru boleh muncul setelah jeda minimal 6 bulan (RIWAYAT TEMA hanya memuat 6 bulan terakhir). Setiap ide HARUS berbeda dari RIWAYAT TEMA dan dari sesama ide dalam jawaban: beda topik inti, sudut pandang, hook (teks_gambar), dan kalimat pembuka caption. Mengganti beberapa kata TIDAK dianggap berbeda. Kalau ragu sebuah ide mirip riwayat, ganti.
 - Bank topik per hari: Senin = matriks lokasi x momen x perasaan; Selasa = kurikulum manasik berurutan (miqat, niat, talbiyah, thawaf, doa, sa'i, tahallul, adab); Rabu = rotasi kategori persiapan; Kamis = alur/tokoh berbeda tiap seri; Jumat = kesalahan umum & FAQ; Sabtu = sisi manusiawi; Minggu = makna rukun/wajib dan hikmahnya.
@@ -16796,6 +16843,8 @@ ANTI-PENGULANGAN (PENTING):
 
 KEJUJURAN & KEHATI-HATIAN:
 - JANGAN mengarang ayat, hadis, atau lafaz/doa berbahasa Arab. Untuk lafaz dan tata cara tulis "sesuai manasik dari pembimbing". Soal agama dan hukum ibadah tulis secara umum, tanpa fatwa; tandai di akhir kolom "tema" dengan "[cek pembimbing]" kalau memuat tata cara/hukum/doa.
+- JANGAN menulis kalimat bertanda "Rasulullah bersabda", "Allah berfirman", "QS.", "HR." ataupun terjemahan ayat/hadis. Cukup sampaikan makna secara umum dan arahkan ke pembimbing.
+- JANGAN menulis statistik, persentase, atau klaim jumlah jamaah ("ribuan jamaah", "98%").
 - JANGAN mengarang testimoni, nama jamaah, angka, harga, tanggal, hotel, atau fasilitas. Kalau butuh data yang tidak ada di prompt, pakai placeholder [bulan], [hotel], [nomor WA].
 - Cerita Sabtu dan renungan Minggu bersifat ilustrasi/umum, bukan klaim kejadian nyata.
 - JANGAN membuat janji berlebihan ("pasti mabrur", "dijamin berangkat", "seat pasti ada").
@@ -16815,7 +16864,7 @@ function igSusunPromptEksternal(f) {
     ];
     if (slots.length) {
         bagian.push('DAFTAR SLOT TANGGAL (isi TEPAT 1 ide per slot, tanggal persis sama, ikuti pilar & tipe_konten-nya):\n'
-            + slots.map(s => `- ${s.tanggal}${s.hari ? ` (${s.hari})` : ''} | pilar: ${s.pilar} | tipe_konten: ${s.tipe_konten}`).join('\n'));
+            + slots.map(s => `- ${s.tanggal}${s.hari ? ` (${s.hari})` : ''}${s.peran ? ` | peran: ${s.peran}` : ''} | pilar: ${s.pilar} | tipe_konten: ${s.tipe_konten}`).join('\n'));
     }
     if (f.konteksPekan && String(f.konteksPekan).trim()) {
         bagian.push('KONTEKS PEKAN (hari lain di pekan ini yang sudah jadi; sambungkan, jangan ulangi sudutnya):\n' + String(f.konteksPekan).trim().slice(0, 3000));

@@ -28,16 +28,30 @@
 //     temaMingguDepan?: string,  // BARU: tema pekan depan, hanya untuk teaser penutup Minggu (opsional)
 //     konteksPekan?: string,     // BARU: hari lain di pekan yang SUDAH jadi ("Senin 2026-10-12 | tema | hook"),
 //                                //       supaya hari yang dibuat/diulang tetap menyambung
-//     slots?: [{ tanggal, hari, pilar, tipe_konten }]
+//     slots?: [{ tanggal, hari, peran?, pilar, tipe_konten }]
 //                                // slot yang HARUS diisi (1 ide per slot). Tanggal/pilar/tipe_konten dipaksa mengikuti slot.
+//                                // peran (Rasakan..Renungkan) opsional, hanya diteruskan ke AI sebagai konteks.
 //   }
 //   Header: Authorization: Bearer <access_token sesi login dashboard> (admin/user). Anon key saja DITOLAK (401).
-//   Response: { items: [{ tanggal, tema, tipe_konten, pilar, teks_gambar, draft_caption }, ...], versi: 4 }
-//   (versi: 4 = pola 7 hari menyambung + pilar kontemplasi + carousel maks 5 slide; frontend memakainya
-//    untuk mendeteksi function lama yang belum di-deploy ulang)
+//   Response: { items: [{ tanggal, tema, tipe_konten, pilar, teks_gambar, draft_caption }, ...], ditolak?: ["tgl: alasan"], perbaikan: number, versi: 5 }
+//   (versi >= 4 = pola 7 hari menyambung + pilar kontemplasi + carousel maks 5 slide; frontend memakainya untuk mendeteksi
+//    function lama yang belum di-deploy ulang. versi 5 = mutu tulisan + perbaikan terarah; frontend tetap menerima >= 4,
+//    jadi urutan deploy function/frontend bebas. ditolak = hari yang masih gagal validator setelah perbaikan; perbaikan =
+//    jumlah putaran perbaikan yang dipakai)
 //   Jaminan: tanggal valid & di dalam rentang, jumlah item <= jumlah diminta, pilar salah satu dari
 //   storytelling|edukasi|manasik|kontemplasi|promo|testimoni|engagement|behind, carousel <= 5 slide,
 //   caption sudah dirapikan (ejaan "Umroh", tepat 5 hashtag, <= 2200 karakter).
+//
+// Mutu (versi 5):
+//   - Prompt memuat aturan mutu tulisan + dua contoh gaya; skema meminta rencana "sudut" & "jembatan" SEBELUM teks gambar
+//     dan caption (field ini hanya untuk perencanaan & konteks perbaikan, tidak dikirim ke frontend).
+//   - Validator server (selain hashtag/ejaan/panjang): tolak teks Arab, janji berlebihan, kutipan/atribusi ayat atau hadis,
+//     placeholder [isi ...], statistik/klaim jumlah jamaah, kata kaku (silakan/hubungi kami/tersedia), format teks gambar yang
+//     tidak cocok dengan tipe (carousel = "Slide n:" berurutan 3-5; single post = tanpa "Slide"), caption yang menyalin teks
+//     gambar, dan rumus pembuka caption kembar antarhari. Angka & kata "tersedia" boleh kalau ARAHAN meminta info program.
+//   - Perbaikan terarah (maks. 2 putaran, dibatasi anggaran waktu): hari yang ditolak ditulis ulang SENDIRI dengan alasan
+//     penolakan + hari yang sudah lolos sebagai penyambung; hari yang sudah lolos tidak disentuh.
+//   - Opsional: secret IG_PLAN_THINKING_LEVEL=low|medium|high menyalakan tingkat berpikir model (default mati).
 //
 // Deploy:
 //   supabase functions deploy generate-ig-content-plan --no-verify-jwt
@@ -168,10 +182,11 @@ const CONTENT_PLAN_SYSTEM_PROMPT = `Kamu adalah social media strategist & copywr
 
 ATURAN FORMAT OUTPUT:
 - Output HARUS berupa JSON array MURNI, tanpa markdown code fence, tanpa teks pembuka/penutup apa pun, cuma JSON.
-- Setiap elemen array berbentuk: { "tanggal": "YYYY-MM-DD", "tema": string, "tipe_konten": "image"|"carousel" (JANGAN pernah video/Reels/live), "pilar": "storytelling"|"edukasi"|"manasik"|"kontemplasi", "teks_gambar": string, "draft_caption": string }.
+- Setiap elemen array berbentuk: { "tanggal": "YYYY-MM-DD", "tema": string, "tipe_konten": "image"|"carousel" (JANGAN pernah video/Reels/live), "pilar": "storytelling"|"edukasi"|"manasik"|"kontemplasi", "sudut": string, "jembatan": string, "teks_gambar": string, "draft_caption": string }.
 - Jumlah elemen HARUS sesuai jumlah yang diminta. Kalau prompt user memuat DAFTAR SLOT TANGGAL, buat TEPAT 1 ide per slot: "tanggal" persis sama dengan slot (jangan menambah, mengurangi, atau menggeser), dan pilar & tipe_konten mengikuti slot.
 - Semua "tanggal" berada di dalam rentang tanggalMulai..tanggalAkhir (inklusif) dan merupakan tanggal kalender valid.
 - "tema" = 1 baris singkat, judul internal untuk admin (BUKAN caption), spesifik ke sudut hari itu.
+- "sudut" = 1 kalimat: apa yang BARU dibahas hari ini terhadap tema minggu (beda dari hari lain). "jembatan" = 1 kalimat: apa yang dijanjikan penutup caption untuk hari berikutnya (Minggu: teaser pekan depan). Isi keduanya DULU sebagai rencana, lalu tulis teks_gambar dan draft_caption yang konsisten dengan rencana itu. Keduanya hanya untuk perencanaan, tidak tampil di postingan.
 
 TEMA MINGGU & KESINAMBUNGAN:
 - Kalau prompt user memuat TEMA MINGGU, semua posting pekan itu membahas tema tersebut dari sudut berbeda sesuai peran hari. Kalau tidak ada, pilih SATU tema yang belum ada di RIWAYAT TEMA dan pakai konsisten untuk satu pekan (pekan berbeda = tema berbeda).
@@ -208,6 +223,50 @@ CAPTION ("draft_caption"):
 - Ditutup tepat 5 hashtag di baris terakhir, tanpa label "Hashtag:". #UmrohBersamaAmiru dan #AmiruTour selalu ada, 3 lainnya relevan dengan topik.
 - Ejaan selalu "Umroh" (bukan "Umrah"), termasuk di hashtag.
 
+MUTU TULISAN (periksa diam-diam sebelum menjawab):
+- Hook = baris pertama teks_gambar, maksimal sekitar 9 kata: adegan konkret, pengakuan jujur, kontras, atau pertanyaan yang spesifik. Tiap hari pakai rumus hook yang BERBEDA; rumus "Pernahkah kamu..." atau "Tahukah kamu..." maksimal sekali dalam seminggu.
+- Hindari klise pembuka: "Di tengah hiruk pikuk", "Umroh bukan sekadar", "Ibadah umroh adalah", "Setiap muslim pasti", "Siapa yang tidak ingin".
+- Paragraf pertama caption langsung masuk ke adegan atau masalah nyata, bukan definisi atau pengantar umum. Satu paragraf maksimal 3 kalimat, kalimat rata-rata pendek (sekitar 18 kata) supaya enak dibaca di HP.
+- Satu hari = SATU gagasan utama. Jangan menumpuk beberapa topik dalam satu caption.
+- Hari emosional: minimal satu detail konkret yang bisa dirasakan (suara, hawa, sentuhan, gerakan) dan satu kegelisahan yang jujur. Hari praktis: poin spesifik yang bisa langsung dikerjakan (bukan "persiapkan dirimu dengan baik") beserta alasan singkat kenapa penting.
+- Kata kunci tema minggu jangan diulang-ulang; ganti dengan gambaran atau sinonim. Jangan menaruh label seperti "Hook:" atau "Caption:" di dalam isi.
+- Penutup dan CTA divariasikan antarhari: "chat WA aja ya" hanya di hari praktis, dan redaksinya tidak boleh sama dua kali dalam sepekan.
+- Penutup caption harus selaras dengan "jembatan" hari itu, dan pembuka caption hari berikutnya benar-benar menyambungnya.
+
+CONTOH GAYA (hanya untuk meniru nada, kerapatan detail, dan susunan paragraf; topik contoh JANGAN dipakai sebagai ide dan kalimatnya JANGAN disalin):
+[hari emosional, image, topik contoh "malam sebelum berangkat"]
+teks_gambar:
+Koper sudah tertutup.
+Tapi hatimu belum mau tidur.
+draft_caption:
+Jam sebelas malam, lampu kamar tinggal satu yang menyala. Koper sudah rapi di dekat pintu, tapi kamu malah duduk di tepi kasur, memandanginya lama-lama.
+
+Aneh ya. Berbulan-bulan menunggu hari ini, dan sekarang yang terasa justru campur aduk: senang, gugup, sedikit takut, dan rindu yang belum tahu alamatnya.
+
+Mungkin begitulah rasanya dipanggil. Bukan cuma badan yang bersiap, tapi hati yang pelan-pelan belajar melepas semua yang ia genggam di rumah. Nggak apa-apa kalau malam ini matamu basah tanpa alasan yang jelas.
+
+Kalau boleh menitipkan satu doa malam ini, apa yang ingin kamu titipkan? Semoga langkah pertamamu besok diringankan dan hatimu dilapangkan.
+
+#UmrohBersamaAmiru #AmiruTour #MalamSebelumBerangkat #PersiapanUmroh #CeritaUmroh
+
+[hari praktis, carousel, topik contoh "salinan dokumen"]
+teks_gambar:
+Slide 1: Satu hal kecil yang sering bikin panik di bandara
+Slide 2: Foto paspor dan dokumen perjalananmu sekarang
+Slide 3: Simpan di HP, kirim juga ke satu anggota keluarga
+Slide 4: Catat nomor penting di kertas, jaga-jaga HP mati
+Slide 5: Simpan postingan ini biar nggak lupa
+draft_caption:
+Pernah nggak, tanganmu refleks menepuk saku berkali-kali cuma buat memastikan dokumen masih ada? Di perjalanan sepanjang itu, rasa waswas kecil begini bisa mencuri ketenangan yang seharusnya kamu simpan untuk ibadah.
+
+Kabar baiknya, ketenangan itu bisa dicicil dari rumah. Foto dokumen pentingmu sekarang, simpan di HP, lalu kirim juga ke satu orang yang kamu percaya. Tulis nomor-nomor penting di selembar kertas kecil, karena baterai HP kadang habis di saat yang paling nggak tepat.
+
+Nggak butuh waktu lama, mungkin sepuluh menit sambil menunggu nasi matang. Tapi nanti di sana, kamu bisa melangkah dengan dada yang lebih ringan.
+
+Simpan postingan ini dan kirim ke temanmu yang juga lagi bersiap. Kalau ada yang masih bikin ragu, chat WA aja ya.
+
+#UmrohBersamaAmiru #AmiruTour #PersiapanUmroh #TipsUmroh #SiapBerangkat
+
 ANTI-PENGULANGAN (PENTING):
 - Satu topik hanya sekali dalam 6 bulan terakhir; sudut baru atas topik lama baru boleh muncul setelah jeda minimal 6 bulan (RIWAYAT TEMA hanya memuat 6 bulan terakhir). Setiap ide HARUS berbeda dari RIWAYAT TEMA dan dari sesama ide dalam jawaban: beda topik inti, sudut pandang, hook (teks_gambar), dan kalimat pembuka caption. Mengganti beberapa kata TIDAK dianggap berbeda. Kalau ragu sebuah ide mirip riwayat, ganti.
 - Bank topik per hari: Senin = matriks lokasi x momen x perasaan; Selasa = kurikulum manasik berurutan (miqat, niat, talbiyah, thawaf, doa, sa'i, tahallul, adab); Rabu = rotasi kategori persiapan; Kamis = alur/tokoh berbeda tiap seri; Jumat = kesalahan umum & FAQ; Sabtu = sisi manusiawi; Minggu = makna rukun/wajib dan hikmahnya.
@@ -217,6 +276,8 @@ ANTI-PENGULANGAN (PENTING):
 
 KEJUJURAN & KEHATI-HATIAN:
 - JANGAN mengarang ayat, hadis, atau lafaz/doa berbahasa Arab. Untuk lafaz dan tata cara tulis "sesuai manasik dari pembimbing". Soal agama dan hukum ibadah tulis secara umum, tanpa fatwa; tandai di akhir kolom "tema" dengan "[cek pembimbing]" kalau memuat tata cara/hukum/doa.
+- JANGAN menulis kalimat bertanda "Rasulullah bersabda", "Allah berfirman", "QS.", "HR." ataupun terjemahan ayat/hadis. Cukup sampaikan makna secara umum dan arahkan ke pembimbing.
+- JANGAN menulis statistik, persentase, atau klaim jumlah jamaah ("ribuan jamaah", "98%").
 - JANGAN mengarang testimoni, nama jamaah, angka, harga, tanggal, hotel, atau fasilitas. Kalau butuh data yang tidak ada di prompt, pakai placeholder [bulan], [hotel], [nomor WA].
 - Cerita Sabtu dan renungan Minggu bersifat ilustrasi/umum, bukan klaim kejadian nyata.
 - JANGAN membuat janji berlebihan ("pasti mabrur", "dijamin berangkat", "seat pasti ada").
@@ -227,6 +288,8 @@ interface PlanItem {
   tema: string;
   tipe_konten: string;
   pilar?: string;
+  sudut?: string;
+  jembatan?: string;
   teks_gambar?: string;
   draft_caption: string;
 }
@@ -239,7 +302,7 @@ const MAX_CAROUSEL_SLIDES = 5;
 const VALID_TYPES = new Set(["image", "carousel"]);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-// Skema respons Gemini (structured output): memaksa bentuk JSON array berisi 6 field bertipe string dengan nilai
+// Skema respons Gemini (structured output): memaksa bentuk JSON array berisi 8 field bertipe string dengan nilai
 // pilar/tipe_konten dari daftar yang dikenal, jadi hampir tidak ada lagi item cacat atau teks pembuka/penutup nyasar.
 // Validasi & pembersihan di bawah tetap jalan (skema tidak menjamin tanggal valid, panjang caption, dst).
 // Kill switch tanpa deploy ulang kode: set secret IG_PLAN_RESPONSE_SCHEMA=off kalau model/API menolak skema ini.
@@ -253,11 +316,14 @@ function buildPlanResponseSchema() {
         tema: { type: "STRING", description: "Judul internal 1 baris untuk admin" },
         tipe_konten: { type: "STRING", enum: Array.from(VALID_TYPES) },
         pilar: { type: "STRING", enum: Array.from(VALID_PILARS) },
+        sudut: { type: "STRING", description: "1 kalimat: sudut baru hari ini terhadap tema minggu (rencana, tidak tampil)" },
+        jembatan: { type: "STRING", description: "1 kalimat: janji penutup caption untuk hari berikutnya (rencana, tidak tampil)" },
         teks_gambar: { type: "STRING", description: "Teks di gambar; carousel: satu baris per slide, maksimal 5 slide" },
         draft_caption: { type: "STRING", description: "Caption 3-5 paragraf pendek, ditutup 5 hashtag" },
       },
-      required: ["tanggal", "tema", "tipe_konten", "pilar", "teks_gambar", "draft_caption"],
-      propertyOrdering: ["tanggal", "tema", "tipe_konten", "pilar", "teks_gambar", "draft_caption"],
+      required: ["tanggal", "tema", "tipe_konten", "pilar", "sudut", "jembatan", "teks_gambar", "draft_caption"],
+      // Urutan penulisan = urutan di sini: rencana (sudut, jembatan) ditulis SEBELUM teks gambar & caption.
+      propertyOrdering: ["tanggal", "tema", "tipe_konten", "pilar", "sudut", "jembatan", "teks_gambar", "draft_caption"],
     },
   };
 }
@@ -347,22 +413,88 @@ function maxSlideNumber(teks: string): number {
 }
 
 
-// ===== Validator kejujuran (aturan pola-konten.md bagian 7, ditegakkan di server) =====
+// ===== Validator kejujuran & mutu (aturan pola-konten.md bagian 4, 5, 7, ditegakkan di server) =====
 const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/;
 const PROMISE_RE = /pasti\s+(mabrur|berangkat|diterima|dikabulkan|ada)|dijamin|jaminan\s+(berangkat|mabrur)|100\s*%\s*(mabrur|berangkat)/i;
+// Kutipan ayat/hadis (termasuk terjemahan) dilarang: model tidak boleh mengarang atribusi. Lafaz Arab sudah ditolak ARABIC_RE.
+const SCRIPTURE_RE = /(bersabda|berfirman|firman\s+allah|sabda\s+(?:rasul|nabi)|hadis\s+riwayat|riwayat\s+(?:bukhari|muslim|tirmidzi|abu\s+dawud|ahmad)|\b(?:QS|HR)\.\s?[A-Za-z]|\bsurah?\s+[A-Za-z'\u2019-]+\s*(?:ayat|:)\s*\d)/i;
+const PLACEHOLDER_RE = /\[(?:isi|diisi|tulis|contoh)\b[^\]]*\]|lorem ipsum|\bTODO\b/i;
+const KAKU_RE = /\b(silakan|silahkan|hubungi\s+kami|tersedia)\b/i; // kata kaku ala brosur (pola-konten.md bagian 4)
+const KLAIM_ANGKA_RE = /\b\d[\d.,]*\s*%|\b\d{2,}[\d.,]*\s+(?:jamaah|jemaah|peserta)\b|\b(?:ribuan|ratusan|jutaan)\s+(?:jamaah|jemaah|peserta)\b/i;
 const IBADAH_RE = /\b(doa|tata\s*cara|niat|lafaz|talbiyah|hukum|wajib|rukun|sunnah|sunah|haram|ihram|thawaf|tawaf|sa'?i|tahallul|miqat)\b/i;
 const CAPTION_MIN = 500; // pola: sekitar 600-1200 karakter; toleransi sedikit
 const CAPTION_MAX = 1500;
+const MIN_CAROUSEL_SLIDES = 3; // pemancing + minimal 1 isi + penutup
+const MAX_TEKS_GAMBAR_BARIS = 6; // single post: 2-4 baris pendek, toleransi sedikit
 const CEK_PEMBIMBING = "[cek pembimbing]";
 
-// Return alasan penolakan (string) atau "" kalau lolos. Item yang ditolak dibuang; slotnya dicoba ulang frontend.
-function tolakAlasan(it: { tema: string; teks_gambar: string; draft_caption: string }): string {
+const NAMA_HARI = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+function namaHari(tgl: string): string {
+  const [y, m, d] = tgl.split("-").map(Number);
+  return NAMA_HARI[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+}
+
+// Teks bandingkan: huruf kecil, tanpa apostrof & tanda baca (sama dengan igRumusPembuka di js/app.js).
+function norm(t: string): string {
+  return String(t || "").toLowerCase().replace(/[\u2019'`\u02bc]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+function rumusPembuka(teks: string): string {
+  const w = norm(teks).split(" ").filter(Boolean);
+  return w.length >= 3 ? w.slice(0, 3).join(" ") : "";
+}
+function captionTanpaTag(caption: string): string {
+  return caption.replace(TAG_RE, "").replace(/[ \t]+$/gm, "").trim();
+}
+function barisPertamaCaption(caption: string): string {
+  return captionTanpaTag(caption).split("\n").map((x) => x.trim()).find(Boolean) || "";
+}
+// Penutup caption (sebelum hashtag): paragraf terakhir, diambil ujungnya saja.
+function penutupCaption(caption: string): string {
+  const paras = captionTanpaTag(caption).split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
+  const last = paras[paras.length - 1] || "";
+  return last.length > 140 ? last.slice(last.length - 140).replace(/^\S*\s/, "") : last;
+}
+// Hook = baris pertama teks gambar (carousel: isi Slide 1 tanpa awalan "Slide 1:").
+function hookDari(teksGambar: string): string {
+  const baris = String(teksGambar || "").split("\n").map((x) => x.trim()).find(Boolean) || "";
+  return baris.replace(/^slide\s*\d+\s*[:.)\-\u2013]\s*/i, "").trim();
+}
+
+// Format teks gambar harus cocok dengan tipe slot: carousel = "Slide 1..n:" berurutan (3-5), single post = 2-4 baris tanpa "Slide".
+function periksaFormatGambar(tipe: string, teks: string): string {
+  const t = String(teks || "").trim();
+  if (!t) return "teks gambar kosong (wajib diisi)";
+  const nomor = Array.from(t.matchAll(/^\s*slide\s*(\d+)\s*[:.)\-\u2013]/gim)).map((m) => Number(m[1]));
+  if (tipe === "carousel") {
+    if (/slide\s*\d+\s*[-\u2013]\s*\d+/i.test(t)) return 'teks gambar memakai rentang "Slide 2-4" (tulis satu baris per slide)';
+    if (Math.max(0, ...nomor, maxSlideNumber(t)) > MAX_CAROUSEL_SLIDES) return `carousel melebihi ${MAX_CAROUSEL_SLIDES} slide`;
+    if (nomor.length < MIN_CAROUSEL_SLIDES) return `format carousel tidak sesuai (butuh minimal ${MIN_CAROUSEL_SLIDES} baris "Slide n: ...")`;
+    if (!nomor.every((n, i) => n === i + 1)) return "nomor slide tidak berurutan dari 1";
+    return "";
+  }
+  if (nomor.length) return 'single post tidak boleh memakai format "Slide n:" (tulis 2-4 baris pendek)';
+  if (t.split("\n").map((x) => x.trim()).filter(Boolean).length > MAX_TEKS_GAMBAR_BARIS) return "teks gambar single post terlalu panjang (maksimal 4 baris pendek)";
+  return "";
+}
+
+interface CekOpsi { bolehProgram: boolean }
+
+// Return alasan penolakan (string, berisi petunjuk perbaikan) atau "" kalau lolos. Item yang ditolak dibuang & dicoba ulang.
+function tolakAlasan(it: { tipe_konten: string; tema: string; teks_gambar: string; draft_caption: string }, opsi: CekOpsi): string {
   const all = `${it.tema}\n${it.teks_gambar}\n${it.draft_caption}`;
-  if (ARABIC_RE.test(all)) return "memuat teks Arab (dilarang mengarang lafaz/ayat/doa)";
-  if (PROMISE_RE.test(all)) return "memuat janji berlebihan";
-  const bodyLen = it.draft_caption.replace(TAG_RE, "").trim().length;
-  if (bodyLen < CAPTION_MIN) return `caption terlalu pendek (${bodyLen} karakter)`;
-  if (bodyLen > CAPTION_MAX) return `caption terlalu panjang (${bodyLen} karakter)`;
+  if (ARABIC_RE.test(all)) return "memuat teks Arab (dilarang mengarang lafaz/ayat/doa; tulis \"sesuai manasik dari pembimbing\")";
+  if (PROMISE_RE.test(all)) return "memuat janji berlebihan (buang \"pasti/dijamin\")";
+  if (SCRIPTURE_RE.test(all)) return "memuat kutipan/atribusi ayat atau hadis (\"bersabda\", \"berfirman\", \"QS.\", \"HR.\"); sampaikan makna secara umum tanpa kutipan";
+  if (PLACEHOLDER_RE.test(all)) return "masih memuat placeholder [isi ...]; tulis isinya sungguhan";
+  if (KLAIM_ANGKA_RE.test(`${it.teks_gambar}\n${it.draft_caption}`) && !opsi.bolehProgram) return "memuat statistik/persentase/klaim jumlah jamaah yang tidak ada datanya; hapus angkanya";
+  if (KAKU_RE.test(it.draft_caption) && !opsi.bolehProgram) return "memakai kata kaku ala brosur (silakan/hubungi kami/tersedia); ganti dengan bahasa ngobrol";
+  const fmt = periksaFormatGambar(it.tipe_konten, it.teks_gambar);
+  if (fmt) return fmt;
+  const bodyLen = captionTanpaTag(it.draft_caption).length;
+  if (bodyLen < CAPTION_MIN) return `caption terlalu pendek (${bodyLen} karakter; tulis 600-1200 karakter, 3-5 paragraf)`;
+  if (bodyLen > CAPTION_MAX) return `caption terlalu panjang (${bodyLen} karakter; ringkas ke 600-1200 karakter)`;
+  const hook = norm(hookDari(it.teks_gambar));
+  if (hook.length >= 15 && norm(captionTanpaTag(it.draft_caption)).includes(hook)) return "caption mengulang teks gambar persis (caption harus lanjutannya, bukan salinan)";
   return "";
 }
 
@@ -386,6 +518,158 @@ function stripJsonFence(text: string): string {
   return text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
 }
 
+// ===== Pipeline: susun pesan -> panggil Gemini -> olah & validasi -> perbaikan terarah =====
+interface Slot { tanggal: string; hari: string; peran: string; pilar: string; tipe_konten: string }
+interface Diterima {
+  tanggal: string; tema: string; tipe_konten: string; pilar: string | null;
+  teks_gambar: string; draft_caption: string; sudut: string; jembatan: string;
+}
+interface Konteks {
+  bulanLabel: string; tanggalMulai: string; tanggalAkhir: string; tema: string; temaDepan: string;
+  programCtx: string; arahan: unknown; ideSudahAda: unknown; riwayatTema: unknown; riwayatGaya: unknown;
+}
+
+// Putaran perbaikan terarah: hari yang ditolak validator ditulis ulang SENDIRI (dengan alasan penolakan + hari lain yang
+// sudah jadi sebagai penyambung), tanpa membuang hari-hari yang sudah lolos. Anggaran waktu dijaga supaya tidak melewati
+// batas waktu Edge Function.
+const MAKS_PERBAIKAN = 2;
+const BATAS_WAKTU_PERBAIKAN_MS = 75_000;
+
+function susunPesan(c: Konteks, slots: Slot[], jumlah: number, konteksPekan: string, catatan: string): string {
+  return `Susun paket konten Instagram yang saling menyambung untuk ${c.bulanLabel} (rentang tanggal ${c.tanggalMulai} s/d ${c.tanggalAkhir}), sebanyak TEPAT ${jumlah} ide post.
+
+${c.tema ? `TEMA MINGGU: ${c.tema}` : "TEMA MINGGU: (tidak diisi, pilih sendiri satu tema yang belum ada di riwayat)"}
+${c.temaDepan ? `TEMA PEKAN DEPAN (untuk teaser penutup Minggu): ${c.temaDepan}` : ""}
+${slots.length ? `\nDAFTAR SLOT TANGGAL (isi TEPAT 1 ide per slot, tanggal persis sama, ikuti pilar & tipe_konten-nya):\n${slots.map((s) => `- ${s.tanggal}${s.hari ? ` (${s.hari})` : ""}${s.peran ? ` | peran: ${s.peran}` : ""} | pilar: ${s.pilar} | tipe_konten: ${s.tipe_konten}`).join("\n")}` : ""}
+${konteksPekan ? `\nKONTEKS PEKAN (hari lain di pekan ini yang sudah jadi; sambungkan, jangan ulangi sudutnya):\n${konteksPekan}` : ""}
+${c.arahan && String(c.arahan).trim() ? `\nARAHAN TAMBAHAN DARI ADMIN:\n${String(c.arahan).slice(0, 1500)}` : ""}
+
+KONTEKS PROGRAM (hanya dipakai kalau ARAHAN TAMBAHAN meminta info program):
+${c.programCtx}
+${c.ideSudahAda && String(c.ideSudahAda).trim() ? `\nIDE YANG SUDAH ADA (jangan diulang):\n${String(c.ideSudahAda).slice(0, 4000)}` : ""}
+${c.riwayatTema && String(c.riwayatTema).trim() ? `\nRIWAYAT TEMA, SUDAH PERNAH DIBUAT (jangan diulang & jangan dibuat mirip):\n${String(c.riwayatTema).slice(0, 20000)}` : ""}
+${c.riwayatGaya && String(c.riwayatGaya).trim() ? `\nHOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR (hook dan 3 kata pertama pembuka caption TIDAK boleh sama atau mirip dengan ini):\n${String(c.riwayatGaya).slice(0, 6000)}` : ""}${catatan ? `\n\n${catatan}` : ""}
+
+Ingat: balas HANYA dengan JSON array sesuai format yang sudah dijelaskan, tidak ada teks lain.`;
+}
+
+// Satu baris konteks untuk hari yang sudah lolos: hook, pembuka, penutup, dan janji ke hari berikutnya.
+function barisKonteks(it: Diterima): string {
+  const hook = hookDari(it.teks_gambar).slice(0, 90);
+  const buka = barisPertamaCaption(it.draft_caption).slice(0, 90);
+  const tutup = penutupCaption(it.draft_caption).slice(0, 140);
+  return `${namaHari(it.tanggal)} ${it.tanggal} | ${it.tema.slice(0, 90)}${hook ? ` | hook: ${hook}` : ""}${buka ? ` | caption dibuka: ${buka}` : ""}${tutup ? ` | caption ditutup: ${tutup}` : ""}${it.jembatan ? ` | janji ke hari berikutnya: ${it.jembatan.slice(0, 120)}` : ""}`;
+}
+
+// deno-lint-ignore no-explicit-any
+function ambilTeks(geminiData: any): string {
+  const parts = geminiData?.candidates?.[0]?.content?.parts || [];
+  return parts.map((p: { text?: string }) => p?.text || "").join("").trim();
+}
+
+function bangunKonfigGenerasi() {
+  // Opsional (default mati, perilaku lama): IG_PLAN_THINKING_LEVEL=low|medium|high menyalakan tingkat berpikir model
+  // untuk hasil yang lebih rapi, dengan biaya waktu & token lebih besar. Hanya nilai yang dikenal yang diteruskan.
+  const think = String(Deno.env.get("IG_PLAN_THINKING_LEVEL") || "").toLowerCase();
+  return {
+    responseMimeType: "application/json",
+    ...(Deno.env.get("IG_PLAN_RESPONSE_SCHEMA") === "off" ? {} : { responseSchema: buildPlanResponseSchema() }),
+    // Seri Gemini 3: Google menyarankan temperature tetap 1.0 (menurunkannya berisiko perulangan/hasil menurun).
+    temperature: 1,
+    ...(["low", "medium", "high"].includes(think) ? { thinkingConfig: { thinkingLevel: think } } : {}),
+  };
+}
+
+async function panggilItems(userMsg: string): Promise<unknown[]> {
+  const geminiData = await callGeminiWithFallback(GEMINI_MODEL, {
+    system_instruction: { parts: [{ text: CONTENT_PLAN_SYSTEM_PROMPT }] },
+    contents: [{ role: "user", parts: [{ text: userMsg }] }],
+    generationConfig: bangunKonfigGenerasi(),
+  });
+  const rawText = ambilTeks(geminiData);
+  if (!rawText) {
+    const finishReason = geminiData?.candidates?.[0]?.finishReason;
+    throw new Error(`Gemini tidak mengembalikan hasil.${finishReason ? ` (finishReason: ${finishReason})` : ""}`);
+  }
+  let items: unknown;
+  try {
+    items = JSON.parse(stripJsonFence(rawText));
+  } catch (parseErr) {
+    throw new Error(`Gagal parse JSON dari Gemini: ${String((parseErr as Error)?.message || parseErr)}`);
+  }
+  if (!Array.isArray(items) || !items.length) {
+    throw new Error("Gemini tidak menghasilkan daftar rencana yang valid (array kosong).");
+  }
+  return items;
+}
+
+// Olah satu putaran hasil AI: bersihkan, paksa mengikuti slot, validasi. Return yang lolos + alasan penolakan per tanggal.
+function olahHasil(
+  items: unknown[],
+  o: { tanggalMulai: string; tanggalAkhir: string; slotByDate: Map<string, Slot> | null; sudahLolos: Diterima[]; opsi: CekOpsi },
+): { lolos: Diterima[]; alasan: Map<string, string> } {
+  const rangeOk = (t: string) => isRealDate(t) && t >= o.tanggalMulai && t <= o.tanggalAkhir;
+  const str = (v: unknown, n: number) => (typeof v === "string" ? fixSpelling(v.trim().slice(0, n)) : "");
+  let cleaned: Diterima[] = (items as PlanItem[])
+    .filter((it) => it && typeof it === "object" && it.tanggal && it.tema && it.draft_caption)
+    .map((it) => ({
+      tanggal: String(it.tanggal).slice(0, 10),
+      tema: fixSpelling(String(it.tema).trim().slice(0, 200)),
+      tipe_konten: VALID_TYPES.has(String(it.tipe_konten)) ? String(it.tipe_konten) : "image",
+      pilar: VALID_PILARS.has(String(it.pilar)) ? String(it.pilar) : null,
+      teks_gambar: it.teks_gambar ? fixSpelling(String(it.teks_gambar).trim().slice(0, 700)) : "",
+      draft_caption: normalizeCaption(String(it.draft_caption)),
+      sudut: str(it.sudut, 300),
+      jembatan: str(it.jembatan, 300),
+    }))
+    // Buang tanggal cacat / di luar rentang, lalu batasi sesuai jumlah yang diminta
+    .filter((it) => rangeOk(it.tanggal));
+
+  if (o.slotByDate) {
+    // Mode slot: hanya tanggal yang diminta, maksimal 1 ide per tanggal; pilar & tipe dipaksa mengikuti slot.
+    const slotByDate = o.slotByDate;
+    const sudah = new Set<string>();
+    cleaned = cleaned
+      .filter((it) => {
+        if (!slotByDate.has(it.tanggal) || sudah.has(it.tanggal)) return false;
+        sudah.add(it.tanggal);
+        return true;
+      })
+      .map((it) => {
+        const slot = slotByDate.get(it.tanggal)!;
+        return { ...it, pilar: slot.pilar, tipe_konten: slot.tipe_konten };
+      });
+  }
+  cleaned.sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+
+  const lolos: Diterima[] = [];
+  const alasan = new Map<string, string>();
+  // Rumus pembuka ("kemarin kita bahas") yang sudah dipakai hari lain di pekan ini: tidak boleh sama.
+  const rumusTerpakai = new Map<string, string>();
+  for (const x of o.sudahLolos) {
+    const r = rumusPembuka(barisPertamaCaption(x.draft_caption));
+    if (r) rumusTerpakai.set(r, x.tanggal);
+  }
+  for (const it of cleaned) {
+    let why = tolakAlasan(it, o.opsi);
+    if (!why) {
+      const r = rumusPembuka(barisPertamaCaption(it.draft_caption));
+      const pemakai = r ? rumusTerpakai.get(r) : undefined;
+      if (r && pemakai && pemakai !== it.tanggal) {
+        why = `pembuka caption memakai rumus yang sama dengan ${pemakai} ("${r} ..."); ganti dengan rumus pembuka lain`;
+      }
+    }
+    if (why) {
+      alasan.set(it.tanggal, why);
+      continue;
+    }
+    const r = rumusPembuka(barisPertamaCaption(it.draft_caption));
+    if (r) rumusTerpakai.set(r, it.tanggal);
+    lolos.push({ ...it, tema: tandaiCekPembimbing(it.tema, it.teks_gambar, it.draft_caption) });
+  }
+  return { lolos, alasan };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: CORS_HEADERS });
@@ -402,6 +686,7 @@ Deno.serve(async (req: Request) => {
   if (authFail) return authFail;
 
   try {
+    const mulai = Date.now();
     const body = await req.json();
     const { bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir, konteksProgram, arahan, ideSudahAda, riwayatTema, riwayatGaya, slots, temaMinggu, temaMingguDepan, konteksPekan } = body || {};
 
@@ -413,128 +698,92 @@ Deno.serve(async (req: Request) => {
     }
 
     // Slot tanggal (opsional): hanya slot yang valid (tanggal nyata di dalam rentang, pilar & tipe dikenal) yang dipakai.
-    const slotList: { tanggal: string; hari: string; pilar: string; tipe_konten: string }[] = Array.isArray(slots)
+    const slotList: Slot[] = Array.isArray(slots)
       ? slots
           .filter((s: { tanggal?: string; pilar?: string; tipe_konten?: string }) =>
             s && isRealDate(String(s.tanggal)) && String(s.tanggal) >= String(tanggalMulai) && String(s.tanggal) <= String(tanggalAkhir) &&
             VALID_PILARS.has(String(s.pilar)) && VALID_TYPES.has(String(s.tipe_konten)))
           .slice(0, 60)
-          .map((s: { tanggal: string; hari?: string; pilar: string; tipe_konten: string }) => ({
-            tanggal: String(s.tanggal), hari: String(s.hari || ""), pilar: String(s.pilar), tipe_konten: String(s.tipe_konten),
+          .map((s: { tanggal: string; hari?: string; peran?: string; pilar: string; tipe_konten: string }) => ({
+            tanggal: String(s.tanggal), hari: String(s.hari || ""), peran: String(s.peran || "").slice(0, 30),
+            pilar: String(s.pilar), tipe_konten: String(s.tipe_konten),
           }))
       : [];
 
     const jumlah = slotList.length ? slotList.length : Math.max(1, Math.min(60, Number(jumlahPost) || 12));
 
     const clip = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : "");
-    const tema = clip(temaMinggu, 120);
-    const temaDepan = clip(temaMingguDepan, 120);
+    const konteks: Konteks = {
+      bulanLabel, tanggalMulai, tanggalAkhir,
+      tema: clip(temaMinggu, 120),
+      temaDepan: clip(temaMingguDepan, 120),
+      programCtx: konteksProgram && String(konteksProgram).trim() ? String(konteksProgram) : "(tidak ada data program spesifik untuk periode ini)",
+      arahan, ideSudahAda, riwayatTema, riwayatGaya,
+    };
     const pekanCtx = clip(konteksPekan, 3000);
-    const programCtx = konteksProgram && String(konteksProgram).trim() ? String(konteksProgram) : "(tidak ada data program spesifik untuk periode ini)";
+    // Angka/kata "tersedia" wajar kalau admin memang meminta info program lewat arahan.
+    const opsi: CekOpsi = { bolehProgram: /program|seat|harga|keberangkatan|promo/i.test(String(arahan || "")) };
 
-    const userMsg = `Susun paket konten Instagram yang saling menyambung untuk ${bulanLabel} (rentang tanggal ${tanggalMulai} s/d ${tanggalAkhir}), sebanyak TEPAT ${jumlah} ide post.
+    // ---- Putaran 0: generate semua slot ----
+    const items0 = await panggilItems(susunPesan(konteks, slotList, jumlah, pekanCtx, ""));
+    const slotByDate0 = slotList.length ? new Map(slotList.map((s) => [s.tanggal, s])) : null;
+    const r0 = olahHasil(items0, { tanggalMulai, tanggalAkhir, slotByDate: slotByDate0, sudahLolos: [], opsi });
 
-${tema ? `TEMA MINGGU: ${tema}` : "TEMA MINGGU: (tidak diisi, pilih sendiri satu tema yang belum ada di riwayat)"}
-${temaDepan ? `TEMA PEKAN DEPAN (untuk teaser penutup Minggu): ${temaDepan}` : ""}
-${slotList.length ? `\nDAFTAR SLOT TANGGAL (isi TEPAT 1 ide per slot, tanggal persis sama, ikuti pilar & tipe_konten-nya):\n${slotList.map((s) => `- ${s.tanggal}${s.hari ? ` (${s.hari})` : ""} | pilar: ${s.pilar} | tipe_konten: ${s.tipe_konten}`).join("\n")}` : ""}
-${pekanCtx ? `\nKONTEKS PEKAN (hari lain di pekan ini yang sudah jadi; sambungkan, jangan ulangi sudutnya):\n${pekanCtx}` : ""}
-${arahan && String(arahan).trim() ? `\nARAHAN TAMBAHAN DARI ADMIN:\n${String(arahan).slice(0, 1500)}` : ""}
+    let lolos: Diterima[] = r0.lolos;
+    const alasanAkhir = new Map<string, string>(r0.alasan);
+    let putaranPerbaikan = 0;
 
-KONTEKS PROGRAM (hanya dipakai kalau ARAHAN TAMBAHAN meminta info program):
-${programCtx}
-${ideSudahAda && String(ideSudahAda).trim() ? `\nIDE YANG SUDAH ADA (jangan diulang):\n${String(ideSudahAda).slice(0, 4000)}` : ""}
-${riwayatTema && String(riwayatTema).trim() ? `\nRIWAYAT TEMA, SUDAH PERNAH DIBUAT (jangan diulang & jangan dibuat mirip):\n${String(riwayatTema).slice(0, 20000)}` : ""}
-${riwayatGaya && String(riwayatGaya).trim() ? `\nHOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR (hook dan 3 kata pertama pembuka caption TIDAK boleh sama atau mirip dengan ini):\n${String(riwayatGaya).slice(0, 6000)}` : ""}
-
-Ingat: balas HANYA dengan JSON array sesuai format yang sudah dijelaskan, tidak ada teks lain.`;
-
-    const geminiData = await callGeminiWithFallback(GEMINI_MODEL, {
-      system_instruction: { parts: [{ text: CONTENT_PLAN_SYSTEM_PROMPT }] },
-      contents: [{ role: "user", parts: [{ text: userMsg }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        ...(Deno.env.get("IG_PLAN_RESPONSE_SCHEMA") === "off" ? {} : { responseSchema: buildPlanResponseSchema() }),
-        // Seri Gemini 3: Google menyarankan temperature tetap 1.0 (menurunkannya berisiko perulangan/hasil menurun).
-        temperature: 1,
-      },
-    });
-
-    const parts = geminiData?.candidates?.[0]?.content?.parts || [];
-    const rawText = parts.map((p: { text?: string }) => p?.text || "").join("").trim();
-
-    if (!rawText) {
-      const finishReason = geminiData?.candidates?.[0]?.finishReason;
-      throw new Error(`Gemini tidak mengembalikan hasil.${finishReason ? ` (finishReason: ${finishReason})` : ""}`);
-    }
-
-    let items: PlanItem[];
-    try {
-      items = JSON.parse(stripJsonFence(rawText));
-    } catch (parseErr) {
-      throw new Error(`Gagal parse JSON dari Gemini: ${String((parseErr as Error)?.message || parseErr)}`);
-    }
-
-    if (!Array.isArray(items) || !items.length) {
-      throw new Error("Gemini tidak menghasilkan daftar rencana yang valid (array kosong).");
-    }
-
-    // Validasi & bersihkan tiap item — buang yang cacat, jangan sampai 1 item
-    // rusak menggagalkan seluruh batch.
-    const rangeOk = (t: string) => isRealDate(t) && t >= String(tanggalMulai) && t <= String(tanggalAkhir);
-    let cleaned = items
-      .filter((it) => it && typeof it === "object" && it.tanggal && it.tema && it.draft_caption)
-      .map((it) => ({
-        tanggal: String(it.tanggal).slice(0, 10),
-        tema: fixSpelling(String(it.tema).trim().slice(0, 200)),
-        tipe_konten: VALID_TYPES.has(String(it.tipe_konten)) ? String(it.tipe_konten) : "image",
-        pilar: VALID_PILARS.has(String(it.pilar)) ? String(it.pilar) : null,
-        teks_gambar: it.teks_gambar ? fixSpelling(String(it.teks_gambar).trim().slice(0, 700)) : "",
-        draft_caption: normalizeCaption(String(it.draft_caption)),
-      }))
-      // Buang tanggal cacat / di luar rentang bulan, lalu batasi sesuai jumlah yang diminta
-      .filter((it) => rangeOk(it.tanggal));
-
+    // ---- Putaran perbaikan terarah: hanya slot yang ditolak validator (mode slot) ----
     if (slotList.length) {
-      // Mode slot: hanya tanggal yang diminta, maksimal 1 ide per tanggal; pilar & tipe dipaksa mengikuti slot.
-      const slotByDate = new Map(slotList.map((s) => [s.tanggal, s]));
-      const sudah = new Set<string>();
-      cleaned = cleaned
-        .filter((it) => {
-          if (!slotByDate.has(it.tanggal) || sudah.has(it.tanggal)) return false;
-          sudah.add(it.tanggal);
-          return true;
-        })
-        .map((it) => {
-          const slot = slotByDate.get(it.tanggal)!;
-          return { ...it, pilar: slot.pilar, tipe_konten: slot.tipe_konten };
-        });
-    }
-    // Validator kejujuran & panjang caption; tandai [cek pembimbing] otomatis.
-    const ditolak: string[] = [];
-    cleaned = cleaned
-      .filter((it) => {
-        const alasan = tolakAlasan(it);
-        if (alasan) ditolak.push(`${it.tanggal}: ${alasan}`);
-        return !alasan;
-      })
-      .map((it) => ({ ...it, tema: tandaiCekPembimbing(it.tema, it.teks_gambar, it.draft_caption) }));
-    if (ditolak.length) console.warn("generate-ig-content-plan: item ditolak validator ->", ditolak.join(" | "));
-    // Carousel maksimal 5 slide (dicek SETELAH tipe dipaksa mengikuti slot): ide yang melebihi dibuang,
-    // slotnya dicoba ulang oleh frontend.
-    cleaned = cleaned.filter((it) => it.tipe_konten !== "carousel" || maxSlideNumber(it.teks_gambar) <= MAX_CAROUSEL_SLIDES);
-    cleaned = cleaned.slice(0, jumlah);
+      for (let k = 1; k <= MAKS_PERBAIKAN; k++) {
+        const sudahAda = new Set(lolos.map((x) => x.tanggal));
+        // Hanya slot yang BENAR-BENAR ditolak validator yang diperbaiki; slot yang hilang dari jawaban dibiarkan ke percobaan ulang frontend.
+        const perlu = slotList.filter((s) => !sudahAda.has(s.tanggal) && alasanAkhir.has(s.tanggal));
+        if (!perlu.length || Date.now() - mulai > BATAS_WAKTU_PERBAIKAN_MS) break;
 
-    if (!cleaned.length && ditolak.length) {
+        const catatan = `CATATAN PERBAIKAN (putaran ${k}): slot di bawah ini DITOLAK pemeriksa otomatis pada percobaan sebelumnya. Tulis ulang HANYA slot yang ada di DAFTAR SLOT TANGGAL, dan perbaiki sebab penolakannya:\n`
+          + perlu.map((s) => `- ${s.tanggal} (${s.hari || namaHari(s.tanggal)}): ${alasanAkhir.get(s.tanggal)}`).join("\n")
+          + "\nHari lain di pekan ini yang sudah lolos ada di KONTEKS PEKAN: sambungkan dengan penutup hari sebelumnya, siapkan jalan untuk pembuka hari sesudahnya, dan jangan mengulang sudut maupun rumus pembuka mereka.";
+        const baris = [
+          ...(pekanCtx ? [pekanCtx] : []),
+          ...lolos.slice().sort((a, b) => a.tanggal.localeCompare(b.tanggal)).map(barisKonteks),
+        ].join("\n");
+
+        try {
+          const itemsK = await panggilItems(susunPesan(konteks, perlu, perlu.length, baris.slice(0, 6000), catatan));
+          putaranPerbaikan = k;
+          const rk = olahHasil(itemsK, {
+            tanggalMulai, tanggalAkhir, slotByDate: new Map(perlu.map((s) => [s.tanggal, s])), sudahLolos: lolos, opsi,
+          });
+          lolos = [...lolos, ...rk.lolos].sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+          rk.lolos.forEach((x) => alasanAkhir.delete(x.tanggal));
+          rk.alasan.forEach((v, tgl) => alasanAkhir.set(tgl, v));
+        } catch (e) {
+          // Perbaikan hanya bonus: kalau gagal, hasil putaran sebelumnya tetap dipakai.
+          console.warn("generate-ig-content-plan: putaran perbaikan gagal ->", String((e as Error)?.message || e));
+          break;
+        }
+      }
+    }
+
+    const ditolak: string[] = [];
+    alasanAkhir.forEach((v, tgl) => { if (!lolos.some((x) => x.tanggal === tgl)) ditolak.push(`${tgl}: ${v}`); });
+    if (ditolak.length) console.warn("generate-ig-content-plan: item ditolak validator ->", ditolak.join(" | "));
+
+    // sudut/jembatan hanya untuk perencanaan & konteks perbaikan; tidak dikirim ke frontend.
+    const keluar = lolos.slice(0, jumlah).map(({ sudut: _s, jembatan: _j, ...selebihnya }) => selebihnya);
+
+    if (!keluar.length && ditolak.length) {
       // Semua ditolak validator (bukan error): kembalikan kosong supaya frontend mencoba ulang slotnya.
-      return new Response(JSON.stringify({ items: [], ditolak, versi: 4 }), {
+      return new Response(JSON.stringify({ items: [], ditolak, perbaikan: putaranPerbaikan, versi: 5 }), {
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
       });
     }
-    if (!cleaned.length) {
+    if (!keluar.length) {
       throw new Error("Semua item hasil AI tidak valid (tanggal di luar rentang bulan atau data kurang lengkap). Coba generate ulang.");
     }
 
-    return new Response(JSON.stringify({ items: cleaned, versi: 4 }), {
+    return new Response(JSON.stringify({ items: keluar, ...(ditolak.length ? { ditolak } : {}), perbaikan: putaranPerbaikan, versi: 5 }), {
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   } catch (err) {

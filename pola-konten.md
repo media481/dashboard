@@ -245,4 +245,11 @@ Yang berubah:
 
 Deploy ulang (urutan bebas): `supabase functions deploy generate-ig-content-plan --no-verify-jwt` dan `supabase functions deploy generate-ig-caption --no-verify-jwt`. Frontend menolak function lama (butuh `versi >= 4`), jadi lupa deploy akan muncul sebagai pesan error yang jelas.
 
+**Mutu tulisan & perbaikan otomatis (Oktober 2026, function versi 5):**
+- Prompt memuat aturan mutu (hook maks. sekitar 9 kata dengan rumus berbeda tiap hari, tanpa klise pembuka, satu gagasan per hari, detail konkret, CTA divariasikan) dan **dua contoh gaya** (satu hari emosional, satu hari praktis).
+- AI diminta menulis rencana singkat per hari (**sudut** dan **jembatan**) sebelum teks gambar dan caption, supaya penutup hari ini benar-benar dijawab pembuka hari berikutnya. Kedua field ini tidak tampil di postingan.
+- Pemeriksa di server menolak: teks Arab, janji berlebihan, **kutipan atau atribusi ayat/hadis** ("bersabda", "berfirman", "QS.", "HR."), placeholder `[isi ...]`, statistik atau klaim jumlah jamaah, kata kaku (silakan/hubungi kami/tersedia), format teks gambar yang tidak cocok dengan tipe (carousel harus `Slide 1..n:` berurutan, 3 sampai 5; single post tanpa "Slide"), caption yang menyalin teks gambar, dan rumus pembuka kembar antarhari. Angka dan kata "tersedia" tetap boleh bila **Arahan tambahan** meminta info program.
+- Hari yang ditolak **ditulis ulang sendiri** (maksimal 2 putaran) dengan alasan penolakan dan hari yang sudah lolos sebagai penyambung; hari yang sudah lolos tidak dibuang. Dulu satu hari ditolak berarti hari-hari sesudahnya ikut dibuang dan dibuat ulang.
+- Opsional: secret `IG_PLAN_THINKING_LEVEL` (`low`, `medium`, atau `high`) menyalakan tingkat berpikir model untuk hasil lebih rapi, dengan waktu dan biaya lebih besar. Default mati.
+
 Yang belum otomatis: tabel **Riwayat topik** (bagian 6) masih disalin manual dari "TOPIK MINGGU INI"; dashboard sudah membaca riwayat dari rencana & post tersimpan sehingga AI tetap menghindari topik lama.
