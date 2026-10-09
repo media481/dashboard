@@ -15442,7 +15442,8 @@ function igRefreshPlanPreview() {
 // TEMA MINGGU OTOMATIS (saran tema supaya setahun penuh relevan & harmonis)
 // Tiga sumber, dalam urutan prioritas:
 //  1. Pekan itu sudah punya tema (generate sebagian) -> tema itu dipertahankan.
-//  2. TEMA MUSIMAN menurut bulan Hijriah pekan itu (Maulid, Isra Miraj, Ramadhan, musim haji, dst).
+//  2. TEMA MUSIMAN menurut bulan Hijriah/Masehi pekan itu (Maulid, Isra Miraj, Ramadhan, musim haji, libur sekolah, dst).
+//     Tema musiman yang mengarah ke penjualan sengaja tayang 2-3 bulan SEBELUM musimnya (lihat IG_TEMA_MUSIM).
 //  3. ALUR PERJALANAN JAMAAH (niat > persiapan > ihram > thawaf > sa'i > Madinah > pulang) yang dilanjutkan
 //     dari tema alur terakhir yang dipakai, jadi pekan ke pekan terasa satu cerita.
 // Tema yang sudah dipakai dalam +-365 hari (semua status) dilewati, jadi tidak ada pengulangan dalam setahun.
@@ -15460,17 +15461,24 @@ const IG_TEMA_ALUR = [
     'Umroh Bersama Pasangan', 'Umroh Bersama Keluarga', 'Umroh untuk Lansia', 'Thawaf Wada', 'Hari Terakhir di Makkah',
     'Pulang dan Oleh-oleh Hati', 'Menjaga Kemabruran', 'Rindu Tanah Suci', 'Berbagi Cerita Setelah Pulang'
 ];
-// Kunci = nomor bulan Hijriah (1 Muharram ... 12 Dzulhijjah). Bulan tanpa tema musiman langsung mengikuti alur.
-const IG_TEMA_MUSIM = {
-    1: ['Hijrah dan Awal Tahun Baru'],
-    3: ['Cinta Rasulullah dan Rindu Madinah'],
-    7: ['Isra Miraj dan Makna Shalat'],
-    8: ['Menyambut Ramadhan'],
-    9: ['Ramadhan dan Rindu Tanah Suci', 'Sepuluh Malam Terakhir Ramadhan'],
-    10: ['Menjaga Semangat Setelah Ramadhan'],
-    11: ['Bersiap Menyambut Musim Haji'],
-    12: ['Rindu Berhaji dan Makna Kurban']
-};
+// Tema musiman. Tiap entri: tema, hijri (nomor bulan Hijriah 1 Muharram ... 12 Dzulhijjah) dan/atau masehi (nomor bulan
+// Masehi) = bulan TAYANG-nya. jual:true = tema yang mengarah ke penjualan: sengaja ditayangkan 2-3 bulan SEBELUM
+// musimnya karena calon jamaah memesan jauh hari, dan didahulukan atas tema musiman biasa. Tanpa `alasan` -> "Musim <bulan>".
+// Mau menambah/mengubah musim? Cukup edit daftar ini (tidak ada logika lain yang perlu disentuh).
+const IG_TEMA_MUSIM = [
+    { tema: 'Rencanakan Umroh di Bulan Ramadhan', hijri: [6, 7], jual: true, alasan: 'Jelang Ramadhan: calon jamaah memesan 2-3 bulan sebelumnya' },
+    { tema: 'Umroh di Libur Sekolah', masehi: [4, 5], jual: true, alasan: 'Jelang libur sekolah (Juni-Juli): keluarga memesan 2-3 bulan sebelumnya' },
+    { tema: 'Umroh di Libur Akhir Tahun', masehi: [9, 10], jual: true, alasan: 'Jelang libur akhir tahun: keluarga memesan 2-3 bulan sebelumnya' },
+    { tema: 'Bersiap Menyambut Musim Haji', hijri: [10, 11], jual: true, alasan: 'Jelang musim haji: dibahas lebih awal supaya calon jamaah sempat bersiap' },
+    { tema: 'Hijrah dan Awal Tahun Baru', hijri: [1] },
+    { tema: 'Cinta Rasulullah dan Rindu Madinah', hijri: [3] },
+    { tema: 'Isra Miraj dan Makna Shalat', hijri: [7] },
+    { tema: 'Menyambut Ramadhan', hijri: [8] },
+    { tema: 'Ramadhan dan Rindu Tanah Suci', hijri: [9] },
+    { tema: 'Sepuluh Malam Terakhir Ramadhan', hijri: [9] },
+    { tema: 'Menjaga Semangat Setelah Ramadhan', hijri: [10] },
+    { tema: 'Rindu Berhaji dan Makna Kurban', hijri: [12] }
+];
 const IG_NAMA_HIJRI = ['Muharram', 'Safar', 'Rabiul Awal', 'Rabiul Akhir', 'Jumadil Awal', 'Jumadil Akhir', 'Rajab', 'Sya\'ban', 'Ramadhan', 'Syawal', 'Dzulqa\'dah', 'Dzulhijjah'];
 
 // Nomor bulan Hijriah (1-12) dari sebuah tanggal; 0 kalau browser tidak mendukung kalender Hijriah.
@@ -15501,10 +15509,17 @@ function igKandidatTemaMinggu(seninKey, plans, maks) {
     const batas = Math.max(1, maks || 6);
     const hasil = [];
 
-    const bulanH = igHijriMonth(new Date(y, m - 1, d + 3)); // Kamis = tengah pekan
-    (IG_TEMA_MUSIM[bulanH] || []).forEach(t => {
-        if (hasil.length < batas && !sudah(t)) hasil.push({ tema: t, alasan: `Musim ${IG_NAMA_HIJRI[bulanH - 1]}` });
-    });
+    const kamis = new Date(y, m - 1, d + 3); // Kamis = tengah pekan
+    const bulanH = igHijriMonth(kamis);
+    const bulanM = kamis.getMonth() + 1;
+    IG_TEMA_MUSIM
+        .filter(e => (bulanH && (e.hijri || []).includes(bulanH)) || (e.masehi || []).includes(bulanM))
+        .sort((a, b) => (b.jual ? 1 : 0) - (a.jual ? 1 : 0)) // tema penjualan didahulukan
+        .forEach(e => {
+            if (hasil.length < batas && !sudah(e.tema)) {
+                hasil.push({ tema: e.tema, alasan: e.alasan || `Musim ${IG_NAMA_HIJRI[bulanH - 1]}`, jual: !!e.jual });
+            }
+        });
 
     // Lanjutkan alur dari tema alur terakhir yang dipakai sebelum pekan ini.
     let idx = -1;

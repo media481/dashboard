@@ -197,12 +197,12 @@ test('bulan Hijriah: 22 Feb 2027 = Ramadhan (9), 15 Okt 2026 = Jumadil Awal (5)'
   assert.strictEqual(T.igHijriMonth(new Date(2026, 9, 15)), 5);
 });
 test('tanpa riwayat & bukan musim tema: mulai dari awal alur perjalanan', () => {
-  const k = T.igKandidatTemaMinggu('2026-10-12', [], 3);
+  const k = T.igKandidatTemaMinggu('2026-11-02', [], 3);
   assert.strictEqual(k[0].tema, T.IG_TEMA_ALUR[0]); assert.ok(/Awal alur/.test(k[0].alasan));
   assert.strictEqual(k.length, 3);
 });
 test('melanjutkan alur dari tema alur terakhir yang dipakai', () => {
-  const k = T.igKandidatTemaMinggu('2026-10-19', [tp('2026-10-12', T.IG_TEMA_ALUR[0])], 1);
+  const k = T.igKandidatTemaMinggu('2026-11-02', [tp('2026-10-26', T.IG_TEMA_ALUR[0])], 1);
   assert.strictEqual(k[0].tema, T.IG_TEMA_ALUR[1]);
 });
 test('pekan yang sudah punya tema -> tema itu saja (generate sebagian tidak ganti tema)', () => {
@@ -214,17 +214,32 @@ test('pekan di bulan Ramadhan: tema musiman didahulukan', () => {
   assert.ok(/Ramadhan/.test(k[0].tema), k[0].tema); assert.ok(/Musim Ramadhan/.test(k[0].alasan));
 });
 test('tema yang sudah dipakai (bahkan di pekan depan) dilewati', () => {
-  const k = T.igKandidatTemaMinggu('2026-10-12', [tp('2026-10-26', T.IG_TEMA_ALUR[0])], 1);
+  const k = T.igKandidatTemaMinggu('2026-11-02', [tp('2026-11-16', T.IG_TEMA_ALUR[0])], 1);
   assert.strictEqual(k[0].tema, T.IG_TEMA_ALUR[1]);
 });
 test('tema lebih dari setahun lalu tidak lagi memblokir (alur melingkar kembali ke tema lama)', () => {
   const A = T.IG_TEMA_ALUR;
   const plans = [tp('2025-05-26', A[0]), tp('2025-06-02', A[A.length - 1])]; // keduanya di luar jendela 365 hari
-  assert.strictEqual(T.igKandidatTemaMinggu('2026-10-12', plans, 1)[0].tema, A[0]);
+  assert.strictEqual(T.igKandidatTemaMinggu('2026-11-02', plans, 1)[0].tema, A[0]);
 });
 test('semua tema alur sudah terpakai -> tetap ada saran (tidak kosong)', () => {
   const semua = T.IG_TEMA_ALUR.map((tema, i) => tp(`2026-${String(1 + Math.floor(i / 4)).padStart(2, '0')}-${String(1 + (i % 4) * 7).padStart(2, '0')}`, tema));
   assert.ok(T.igKandidatTemaMinggu('2026-10-12', semua, 1)[0].tema);
+});
+test('tema penjualan tayang lebih awal: Rajab (2,5 bulan sebelum Ramadhan) memuat "Rencanakan Umroh di Bulan Ramadhan" paling atas', () => {
+  const k = T.igKandidatTemaMinggu('2026-12-07', [], 3);
+  assert.strictEqual(k[0].tema, 'Rencanakan Umroh di Bulan Ramadhan'); assert.ok(/memesan/.test(k[0].alasan)); assert.strictEqual(k[0].jual, true);
+});
+test('tema libur sekolah muncul April-Mei, libur akhir tahun September-Oktober', () => {
+  assert.ok(T.igKandidatTemaMinggu('2027-04-12', [], 6).some(x => x.tema === 'Umroh di Libur Sekolah'));
+  assert.ok(T.igKandidatTemaMinggu('2026-10-12', [], 6).some(x => x.tema === 'Umroh di Libur Akhir Tahun'));
+});
+test('peta setahun: tema jelang Ramadhan tayang jauh (>= 4 pekan) sebelum tema Ramadhan itu sendiri, dan tiap tema penjualan sekali saja', () => {
+  const peta = T.igPetaTemaSetahun('2026-10-12', [], 52);
+  const i = peta.findIndex(r => r.tema === 'Rencanakan Umroh di Bulan Ramadhan');
+  const j = peta.findIndex(r => r.tema === 'Ramadhan dan Rindu Tanah Suci');
+  assert.ok(i >= 0 && j >= 0 && j - i >= 4, `lead=${i} musim=${j}`);
+  ['Umroh di Libur Sekolah', 'Umroh di Libur Akhir Tahun', 'Bersiap Menyambut Musim Haji'].forEach(n => assert.strictEqual(peta.filter(r => r.tema === n).length, 1, n));
 });
 test('peta 52 pekan: berurutan, tidak ada tema kembar, pekan pertama bisa dikunci pilihan admin', () => {
   const peta = T.igPetaTemaSetahun('2026-10-12', [], 52, 'Talbiyah');
