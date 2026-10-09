@@ -5,7 +5,9 @@
   "private": true,
   "scripts": {
     "test": "node tests/test-core.js",
-    "test:ci": "node tests/test-core.js"
+    "test:ci": "node tests/test-core.js",
+    "test:ig": "node test-core.js",
+    "test:edge": "node --experimental-strip-types supabase/functions/generate-ig-content-plan/test-core.mjs"
   },
   "engines": {
     "node": ">=18"

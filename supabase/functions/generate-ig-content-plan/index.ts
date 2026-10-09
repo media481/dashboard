@@ -9,7 +9,7 @@
 // ini yang MENGARANG ide + teks gambar + caption per hari, memakai konteks program
 // yang dikirim frontend (hasil query tabel `programs`).
 //
-// Pakai Gemini API dengan response_mime_type=application/json supaya hasilnya
+// Pakai Gemini API dengan responseMimeType=application/json + responseSchema (structured output) supaya hasilnya
 // langsung JSON terstruktur. Secret GEMINI_API_KEY sama dengan fungsi AI lain
 // (fallback multi-key, logikanya digabung inline di file ini).
 //
@@ -85,9 +85,10 @@ async function callGeminiWithFallback(model: string, body: Record<string, unknow
     let retryable = false;
     for (let i = 0; i < keys.length; i++) {
       try {
-        const res = await fetch(`${url}?key=${keys[i]}`, {
+        // Key lewat header (bukan ?key=) supaya tidak ikut tercetak di log/URL error (sama seperti _shared/gemini.ts).
+        const res = await fetch(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-goog-api-key": keys[i] },
           body: JSON.stringify(body),
         });
         if (res.ok) return { data: await res.json(), retryable: false };
@@ -237,6 +238,29 @@ const MAX_CAROUSEL_SLIDES = 5;
 // Konten video/Reels sengaja tidak dibuat dulu: hanya single post (image) & carousel.
 const VALID_TYPES = new Set(["image", "carousel"]);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Skema respons Gemini (structured output): memaksa bentuk JSON array berisi 6 field bertipe string dengan nilai
+// pilar/tipe_konten dari daftar yang dikenal, jadi hampir tidak ada lagi item cacat atau teks pembuka/penutup nyasar.
+// Validasi & pembersihan di bawah tetap jalan (skema tidak menjamin tanggal valid, panjang caption, dst).
+// Kill switch tanpa deploy ulang kode: set secret IG_PLAN_RESPONSE_SCHEMA=off kalau model/API menolak skema ini.
+function buildPlanResponseSchema() {
+  return {
+    type: "ARRAY",
+    items: {
+      type: "OBJECT",
+      properties: {
+        tanggal: { type: "STRING", description: "YYYY-MM-DD, persis sama dengan slot" },
+        tema: { type: "STRING", description: "Judul internal 1 baris untuk admin" },
+        tipe_konten: { type: "STRING", enum: Array.from(VALID_TYPES) },
+        pilar: { type: "STRING", enum: Array.from(VALID_PILARS) },
+        teks_gambar: { type: "STRING", description: "Teks di gambar; carousel: satu baris per slide, maksimal 5 slide" },
+        draft_caption: { type: "STRING", description: "Caption 3-5 paragraf pendek, ditutup 5 hashtag" },
+      },
+      required: ["tanggal", "tema", "tipe_konten", "pilar", "teks_gambar", "draft_caption"],
+      propertyOrdering: ["tanggal", "tema", "tipe_konten", "pilar", "teks_gambar", "draft_caption"],
+    },
+  };
+}
 
 // ===== Pasca-proses (fungsi murni; logika sama dengan generate-ig-caption, digabung supaya file berdiri sendiri) =====
 const IG_MAX_CHARS = 2200;
@@ -428,7 +452,9 @@ Ingat: balas HANYA dengan JSON array sesuai format yang sudah dijelaskan, tidak 
       system_instruction: { parts: [{ text: CONTENT_PLAN_SYSTEM_PROMPT }] },
       contents: [{ role: "user", parts: [{ text: userMsg }] }],
       generationConfig: {
-        response_mime_type: "application/json",
+        responseMimeType: "application/json",
+        ...(Deno.env.get("IG_PLAN_RESPONSE_SCHEMA") === "off" ? {} : { responseSchema: buildPlanResponseSchema() }),
+        // Seri Gemini 3: Google menyarankan temperature tetap 1.0 (menurunkannya berisiko perulangan/hasil menurun).
         temperature: 1,
       },
     });
