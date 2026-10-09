@@ -3591,7 +3591,7 @@
     .ig-day-post-meta { display: flex; align-items: center; gap: 8px; }
     .ig-day-post-time { font-size: 11px; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 3px; }
 
-    /* Item rencana (ide AI) di modal harian & list hasil generate */
+    /* Item rencana (ide) di modal harian & list hasil generate */
     .ig-day-plan-item { border-style: dashed; border-color: var(--brand); background: var(--brand-tint); }
     .ig-plan-thumb {
         display: flex; align-items: center; justify-content: center;
@@ -3644,15 +3644,8 @@
     .ig-plan-result-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
     .ig-plan-result-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 
-    /* Form Rencana AI: ringkas; pola 7 hari, tema pekan depan & arahan disimpan di "Opsi tambahan" */
-    .ig-plan-intro { font-size: 12.5px; color: var(--ink-soft); margin: 0 0 14px; }
+    /* Form Perencanaan Konten (gaya lengkap ada di blok ".ig-plan-modal" paling bawah file) */
     .ig-plan-hint { font-weight: 400; color: var(--ink-soft); }
-    .ig-plan-more { margin: 0 0 14px; }
-    .ig-plan-more summary { font-size: 12px; color: var(--ink-soft); cursor: pointer; margin-bottom: 10px; }
-    .ig-plan-more textarea {
-        width: 100%; font-family: 'Inter', sans-serif; padding: 10px;
-        border: 1.5px solid var(--line); border-radius: 10px; resize: vertical;
-    }
     .ig-plan-saran { font-size: 11.5px; color: var(--ink-soft); margin-top: 6px; }
     .ig-plan-saran:empty { display: none; }
     .ig-plan-link { background: none; border: none; padding: 0; font: inherit; color: var(--brand); cursor: pointer; text-decoration: underline; }
@@ -4928,3 +4921,108 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .ig-cal-type-swatch.ig-type-image { border: 1.5px solid var(--ig-type-image); }
 .ig-cal-type-swatch.ig-type-carousel { border: 1.5px solid var(--ig-type-carousel); }
 .ig-cal-type-swatch.ig-type-video { border: 1.5px solid var(--ig-type-video); }
+
+
+/* =====================================================================
+   Modal Perencanaan Konten (#igContentPlanModal)
+   Layar lebar: modal dilebarkan, form dua kolom (pengaturan | isi pekan),
+   tombol aksi menempel di bawah, hasil generate tampil dua kolom.
+   Semua selektor di-scope ke .ig-plan-modal supaya modal lain tidak ikut berubah.
+   ===================================================================== */
+.ig-plan-modal {
+    max-width: min(1160px, 100%);
+    max-height: min(90vh, 900px);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+}
+.ig-plan-modal .modal-header { flex: 0 0 auto; align-items: flex-start; padding: 20px 24px 16px; }
+.ig-plan-head-text { min-width: 0; }
+.ig-plan-head-text h2 { font-size: 21px; letter-spacing: -.01em; line-height: 1.2; }
+.ig-plan-head-text p { margin: 5px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--ink-soft); max-width: 72ch; }
+.ig-plan-modal .modal-close { flex-shrink: 0; margin: -4px -8px 0 16px; }
+.ig-plan-modal .modal-body { flex: 1 1 auto; min-height: 0; padding: 0; overflow-y: auto; }
+
+/* --- Form: dua kolom --- */
+.ig-plan-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); }
+.ig-plan-col { min-width: 0; padding: 22px 24px 24px; }
+.ig-plan-col-info { background: var(--bg); border-left: 1px solid var(--line); }
+.ig-plan-col-title { font-family: 'Space Grotesk', 'Inter', sans-serif; font-size: 14.5px; font-weight: 700; color: var(--ink); margin: 0 0 16px; }
+.ig-plan-modal .ig-plan-saran { margin-top: 7px; line-height: 1.5; }
+.ig-plan-modal .ig-plan-saran i { color: var(--brand); }
+.ig-plan-modal .form-group textarea { min-height: 84px; line-height: 1.5; }
+
+.ig-plan-modal .ig-plan-preview {
+    margin: 0 0 20px; padding: 11px 14px; border-radius: 10px;
+    background: var(--surface); border: 1px solid var(--line);
+    font-size: 12.5px; line-height: 1.55; color: var(--ink);
+}
+.ig-plan-modal .ig-plan-preview i { color: var(--brand); margin-right: 4px; }
+.ig-plan-modal .ig-plan-pola-label { font-size: 12.5px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
+.ig-plan-modal .ig-plan-pola { gap: 8px; }
+.ig-plan-modal .ig-plan-pola-chip {
+    padding: 10px 4px 9px; border-radius: 10px; background: var(--surface);
+    border-top: 3px solid var(--pillar, var(--brand));
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+.ig-plan-modal .ig-plan-pola-chip b { font-size: 12.5px; }
+.ig-plan-modal .ig-plan-pola-chip span { font-size: 11px; line-height: 1.3; color: var(--ink); font-weight: 600; }
+.ig-plan-modal .ig-plan-pola-chip small { font-size: 10px; line-height: 1.25; color: var(--pillar, var(--ink-soft)); font-weight: 600; overflow-wrap: anywhere; }
+.ig-plan-modal .ig-plan-pola-chip i { font-size: 12px; margin-top: 2px; }
+
+.ig-plan-modal .ig-plan-peta { margin: 20px 0 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.ig-plan-modal .ig-plan-peta summary { padding: 11px 14px; font-size: 12.5px; font-weight: 600; color: var(--ink); cursor: pointer; }
+.ig-plan-modal .ig-plan-peta[open] summary { border-bottom: 1px solid var(--line); }
+.ig-plan-modal #igPlanPeta { border: 0; border-radius: 0; max-height: 240px; }
+.ig-plan-modal .ig-plan-peta-row { grid-template-columns: 128px 1fr; padding: 8px 14px; }
+
+/* --- Footer aksi: menempel di bawah, tombol utama di kanan --- */
+.ig-plan-footer {
+    position: sticky; bottom: 0; z-index: 2;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+    padding: 14px 24px; background: var(--surface); border-top: 1px solid var(--line);
+}
+.ig-plan-footer-spacer { flex: 1 1 auto; }
+.ig-plan-footer .btn-secondary { padding: 9px 16px; font-size: 12.5px; font-weight: 600; font-family: 'Inter', sans-serif; }
+.ig-plan-footer .btn-primary { padding: 10px 24px; font-size: 13.5px; }
+.ig-plan-footer .btn-primary:disabled { opacity: .7; cursor: progress; transform: none; box-shadow: none; }
+
+/* --- Hasil generate --- */
+.ig-plan-modal #igPlanResultWrap { padding: 0 24px 24px; }
+.ig-plan-modal .ig-plan-result-header {
+    position: sticky; top: 0; z-index: 2; background: var(--surface);
+    margin: 0 0 14px; padding: 14px 0; border-bottom: 1px solid var(--line);
+    font-size: 13px; color: var(--ink);
+}
+.ig-plan-modal .ig-plan-result-list {
+    max-height: none; overflow: visible;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr)); gap: 12px;
+}
+.ig-plan-modal .ig-plan-result-list > .ig-empty { grid-column: 1 / -1; }
+.ig-plan-modal .ig-plan-result-item { padding: 12px; border-radius: 12px; gap: 14px; align-items: flex-start; }
+.ig-plan-modal .ig-plan-result-date {
+    width: 56px; padding: 8px 4px 9px; border-radius: 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 1px; line-height: 1.15;
+}
+.ig-plan-modal .ig-plan-result-date small { font-size: 10.5px; font-weight: 600; opacity: .8; }
+.ig-plan-modal .ig-plan-result-date b { font-family: 'Space Grotesk', 'Inter', sans-serif; font-size: 21px; font-weight: 700; }
+.ig-plan-modal .ig-plan-result-date span { font-size: 11px; font-weight: 600; }
+.ig-plan-modal .ig-plan-edit-caption { min-height: 104px; line-height: 1.5; font-size: 12.5px; }
+.ig-plan-modal .ig-plan-edit-imgtext { min-height: 64px; }
+
+.ig-plan-modal button:focus-visible,
+.ig-plan-modal summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* --- Layar sempit: satu kolom --- */
+@media (max-width: 900px) {
+    .ig-plan-grid { grid-template-columns: 1fr; }
+    .ig-plan-col { padding: 18px 18px 20px; }
+    .ig-plan-col-info { border-left: 0; border-top: 1px solid var(--line); }
+    .ig-plan-modal .modal-header { padding: 16px 18px 14px; }
+    .ig-plan-footer { padding: 12px 18px; }
+    .ig-plan-modal #igPlanResultWrap { padding: 0 18px 18px; }
+}
+@media (max-width: 560px) {
+    .ig-plan-footer .btn-primary { order: -1; flex: 1 1 100%; justify-content: center; }
+    .ig-plan-footer .btn-secondary { flex: 1 1 auto; justify-content: center; }
+    .ig-plan-footer-spacer { display: none; }
+}

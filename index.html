@@ -445,8 +445,8 @@
                 <button class="btn-secondary" id="btnIgSyncComments" onclick="syncIgCommentsNow()" style="font-size:12px;padding:6px 14px;" title="Tarik komentar terbaru dari Instagram">
                     Sync Komentar
                 </button>
-                <button class="btn-secondary" id="btnIgContentPlan" onclick="openIgContentPlanModal()" style="font-size:12px;padding:6px 14px;" title="Buat rencana konten 1 bulan otomatis pakai AI">
-                    Rencana Bulanan AI
+                <button class="btn-secondary" id="btnIgContentPlan" onclick="openIgContentPlanModal()" style="font-size:12px;padding:6px 14px;" title="Susun rencana konten per pekan: tema, teks gambar, dan caption">
+                    Perencanaan Konten
                 </button>
                 <span class="ig-scheduler-count" id="igSchedulerCount">0 post</span>
             </div>
@@ -1435,60 +1435,70 @@
     </div>
 </div>
 
-<!-- Modal: Content Planner Bulanan (AI) -->
+<!-- Modal: Perencanaan Konten (satu pekan, satu tema) -->
 <div class="modal-overlay" id="igContentPlanModal">
-    <div class="modal-content" style="max-width:520px;">
+    <div class="modal-content ig-plan-modal">
         <div class="modal-header">
-            <h2>Rencana Konten AI</h2>
-            <button class="modal-close" onclick="closeIgContentPlanModal()">&times;</button>
+            <div class="ig-plan-head-text">
+                <h2>Perencanaan Konten</h2>
+                <p>Satu pekan (Senin–Minggu), satu tema, tujuh sudut yang saling menyambung, tanpa mengulang konten lama.</p>
+            </div>
+            <button class="modal-close" onclick="closeIgContentPlanModal()" aria-label="Tutup">&times;</button>
         </div>
         <div class="modal-body">
             <div id="igPlanGenerateWrap">
-                <p class="ig-plan-intro">Satu pekan (Senin–Minggu), satu tema, tujuh sudut yang saling menyambung, tanpa mengulang konten lama.</p>
-                <div class="form-row" style="gap:10px;">
-                    <div class="form-group">
-                        <label>Bulan</label>
-                        <input type="month" id="igPlanMonth" onchange="igRenderPlanWeekOptions()">
-                    </div>
-                    <div class="form-group">
-                        <label>Pekan</label>
-                        <select id="igPlanWeek" onchange="igRefreshPlanPreview()"></select>
-                    </div>
+                <div class="ig-plan-grid">
+                    <section class="ig-plan-col ig-plan-col-form">
+                        <h3 class="ig-plan-col-title">Pekan yang disusun</h3>
+                        <div class="form-row" style="gap:12px;">
+                            <div class="form-group">
+                                <label for="igPlanMonth">Bulan</label>
+                                <input type="month" id="igPlanMonth" onchange="igRenderPlanWeekOptions()">
+                            </div>
+                            <div class="form-group">
+                                <label for="igPlanWeek">Pekan</label>
+                                <select id="igPlanWeek" onchange="igRefreshPlanPreview()"></select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="igPlanTema">Tema Minggu</label>
+                            <input type="text" id="igPlanTema" maxlength="80" placeholder="Contoh: Talbiyah" oninput="igOnTemaMingguInput()">
+                            <div class="ig-plan-saran" id="igPlanTemaSaran"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="igPlanTemaDepan">Tema pekan depan <span class="ig-plan-hint">(untuk teaser penutup Minggu)</span></label>
+                            <input type="text" id="igPlanTemaDepan" maxlength="80" placeholder="Kosongkan kalau belum ditentukan" oninput="this.dataset.auto='0'">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="igPlanArahan">Arahan tambahan</label>
+                            <textarea id="igPlanArahan" rows="3" placeholder="Contoh: fokus promo Umroh Desember, atau selipkan tema Maulid Nabi"></textarea>
+                        </div>
+                    </section>
+
+                    <section class="ig-plan-col ig-plan-col-info">
+                        <h3 class="ig-plan-col-title">Isi pekan ini</h3>
+                        <div class="ig-plan-preview" id="igPlanPreview"></div>
+                        <div class="ig-plan-pola-label">Pola 7 hari</div>
+                        <div class="ig-plan-pola" id="igPlanPolaStrip"></div>
+                        <details class="ig-plan-peta" id="igPlanPetaWrap" ontoggle="igRenderPetaTema()">
+                            <summary>Peta tema 12 bulan</summary>
+                            <div id="igPlanPeta"></div>
+                        </details>
+                    </section>
                 </div>
-                <div class="form-group">
-                    <label>Tema Minggu</label>
-                    <input type="text" id="igPlanTema" maxlength="80" placeholder="Contoh: Talbiyah" oninput="igOnTemaMingguInput()">
-                    <div class="ig-plan-saran" id="igPlanTemaSaran"></div>
-                </div>
-                <div class="ig-plan-preview" id="igPlanPreview"></div>
-                <details class="ig-plan-more">
-                    <summary>Opsi tambahan</summary>
-                    <div class="form-group">
-                        <label>Tema pekan depan <span class="ig-plan-hint">(untuk teaser penutup Minggu)</span></label>
-                        <input type="text" id="igPlanTemaDepan" maxlength="80" placeholder="Kosongkan kalau belum ditentukan" oninput="this.dataset.auto='0'">
-                    </div>
-                    <div class="form-group">
-                        <label>Arahan tambahan</label>
-                        <textarea id="igPlanArahan" rows="2" placeholder="Contoh: fokus promo Umroh Desember, atau selipkan tema Maulid Nabi"></textarea>
-                    </div>
-                    <details class="ig-plan-peta" id="igPlanPetaWrap" ontoggle="igRenderPetaTema()">
-                        <summary>Peta tema 12 bulan</summary>
-                        <div id="igPlanPeta"></div>
-                    </details>
-                    <div class="ig-plan-pola-label">Pola 7 hari</div>
-                    <div class="ig-plan-pola" id="igPlanPolaStrip"></div>
-                </details>
-                <div class="form-actions" style="border-top:none;padding-top:0;">
-                    <button class="btn-primary" id="btnIgGeneratePlan" onclick="generateIgContentPlanAI()" style="font-size:12px;padding:8px 16px;">
-                        <span id="btnIgGeneratePlanText">Generate dengan AI</span>
+
+                <div class="ig-plan-footer">
+                    <button class="btn-secondary" id="btnIgApplyPola" onclick="igApplyPolaMingguan()"
+                        title="Isi tanggal kosong dengan draf contoh Pola Amiru (teks gambar + caption), tanpa menyusun otomatis. Draf yang topiknya sudah pernah dipakai jadi kerangka kosong. Ganti bagian [isi ...] dengan data asli.">
+                        Isi dari Pola
                     </button>
-                    <button class="btn-secondary" id="btnIgCopyPlanPrompt" onclick="igSalinPromptPlan()" style="font-size:12px;padding:8px 16px;"
-                        title="Cadangan kalau token AI habis: salin prompt lengkap (pola 7 hari, konteks, riwayat konten lama) untuk ditempel ke ChatGPT, Claude, atau AI lain.">
+                    <button class="btn-secondary" id="btnIgCopyPlanPrompt" onclick="igSalinPromptPlan()"
+                        title="Cadangan kalau server penyusun konten bermasalah: salin prompt lengkap (pola 7 hari, konteks, riwayat konten lama) untuk ditempel ke ChatGPT, Claude, atau asisten lain.">
                         <i class="bi bi-clipboard"></i> Salin Prompt
                     </button>
-                    <button class="btn-secondary" id="btnIgApplyPola" onclick="igApplyPolaMingguan()" style="font-size:12px;padding:8px 16px;"
-                        title="Tanpa AI: isi tanggal kosong dengan draf contoh Pola Amiru (teks gambar + caption). Draf yang topiknya sudah pernah dipakai jadi kerangka kosong. Ganti bagian [isi ...] dengan data asli.">
-                        Isi dari Pola (tanpa AI)
+                    <span class="ig-plan-footer-spacer"></span>
+                    <button class="btn-primary" id="btnIgGeneratePlan" onclick="generateIgContentPlanAI()">
+                        <span id="btnIgGeneratePlanText">Generate Konten</span>
                     </button>
                 </div>
             </div>
@@ -1496,7 +1506,7 @@
             <div id="igPlanResultWrap" style="display:none;">
                 <div class="ig-plan-result-header">
                     <span id="igPlanResultCount"></span>
-                    <button class="btn-secondary" onclick="showIgPlanGenerateForm()" style="font-size:11.5px;padding:5px 12px;">
+                    <button class="btn-secondary" onclick="showIgPlanGenerateForm()" style="font-size:12px;padding:6px 14px;">
                         Generate Ulang
                     </button>
                 </div>

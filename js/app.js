@@ -13259,7 +13259,7 @@ let igCommentsCurrentPostId = null;      // post_id yang sedang dibuka di modal 
 const IG_COMMENT_ACTION_URL = `${SUPABASE_URL}/functions/v1/ig-comment-action`;
 const IG_SYNC_COMMENTS_URL = `${SUPABASE_URL}/functions/v1/ig-sync-comments`;
 
-// ---- Content Planner Bulanan (AI) ----
+// ---- Content Planner Bulanan ----
 const IG_CONTENT_PLAN_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/generate-ig-content-plan`;
 let igContentPlan = [];        // cache semua baris ig_content_plan (status idea/dijadikan_post/dilewati)
 let igActivePlanId = null;     // diisi saat modal upload dibuka dari tombol "Jadikan Post" -- dipakai saveIgPost untuk update status rencana setelah post tersimpan
@@ -13519,11 +13519,11 @@ function igApplyPlannerMode() {
     if (sub) sub.textContent = 'Rencanakan ide, caption, dan jadwal konten Instagram';
     const up = document.getElementById('btnIgUpload');
     if (up) { up.className = 'btn-secondary'; up.textContent = 'Draft Post'; up.title = 'Buat draft post dengan media'; }
-    // Toolbar bersih tanpa ikon: label teks saja, "Rencana Bulanan AI" dipendekkan
+    // Toolbar bersih tanpa ikon: label teks saja
     const rf = document.getElementById('btnIgRefresh');
     if (rf) { rf.textContent = 'Refresh'; rf.title = 'Refresh data'; }
     const ai = document.getElementById('btnIgContentPlan');
-    if (ai) ai.textContent = 'Rencana AI';
+    if (ai) ai.textContent = 'Perencanaan Konten';
     const submit = document.getElementById('igSubmitBtn');
     if (submit) submit.innerHTML = '<i class="bi bi-save"></i> Simpan Draft';
 }
@@ -14893,7 +14893,7 @@ async function saveIgPost(e) {
             await supabaseClient.from('ig_post_media').delete().eq('post_id', postId);
         }
 
-        // Kalau modal ini dibuka dari tombol "Jadikan Post" di rencana konten AI,
+        // Kalau modal ini dibuka dari tombol "Jadikan Post" di rencana konten,
         // tandai rencana tsb sebagai sudah dikonversi & link ke post yang baru dibuat.
         if (igActivePlanId && savedPostId) {
             const { error: planErr } = await supabaseClient.from('ig_content_plan')
@@ -15379,7 +15379,7 @@ function showIgPlanGenerateForm() {
     igRefreshPlanPreview();
 }
 
-// Label pilar untuk tampilan modal Rencana AI (mengikuti istilah Pola Amiru; warna dari IG_PILLARS)
+// Label pilar untuk tampilan modal Perencanaan Konten (mengikuti istilah Pola Amiru; warna dari IG_PILLARS)
 const IG_POLA_LABEL = { testimoni: 'Bukti Sosial', promo: 'Info Program' };
 function igPolaPilarLabel(pilar) {
     return IG_POLA_LABEL[pilar] || (IG_PILLARS[pilar] && IG_PILLARS[pilar].label) || pilar;
@@ -15397,6 +15397,7 @@ function renderIgPlanPolaStrip() {
         return `<div class="ig-plan-pola-chip" style="--pillar:${color}" title="${escapeHtmlAttr(tip)}">
             <b>${p.hari.slice(0, 3)}</b>
             <span>${escapeHtml(p.peran)}</span>
+            <small>${escapeHtml(igPolaPilarLabel(p.pilar))}</small>
             <i class="bi ${ikon}"></i>
         </div>`;
     }).join('');
@@ -15557,7 +15558,7 @@ function igPetaTemaSetahun(seninKey, plans, jumlah, temaAwal) {
     return out;
 }
 
-// ---- Sambungan ke form Rencana AI ----
+// ---- Sambungan ke form Perencanaan Konten ----
 let igSaranKandidat = [];
 let igSaranIdx = 0;
 const igTglPendek = key => { const [, mm, dd] = key.split('-').map(Number); return `${dd} ${['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][mm - 1]}`; };
@@ -16192,7 +16193,7 @@ async function generateIgContentPlanAI() {
         { temaMinggu, temaMingguDepan, mulai: senin, akhir: minggu });
     igPlanBusy = false;
     if (btn) btn.disabled = false;
-    if (btnText) btnText.textContent = 'Generate dengan AI';
+    if (btnText) btnText.textContent = 'Generate Konten';
 
     if (berhasil > 0) {
         igPlanResultRange = { mulai: senin, akhir: minggu };
@@ -16208,7 +16209,7 @@ async function generateIgContentPlanAI() {
             ? `${berhasil} ide tersimpan, tapi proses berhenti: ${errMsg}. Klik Generate lagi untuk melengkapi sisanya.`
             : 'Gagal generate rencana: ' + errMsg, berhasil > 0 ? 'info' : 'error');
     } else if (sisa.length) {
-        showToast(`${berhasil} ide berhasil dibuat. ${sisa.length} hari belum terisi karena hasil AI mirip konten lama atau melebihi 5 slide — klik Generate lagi untuk melengkapi (hari yang sudah jadi dipakai sebagai penyambung).`, 'info');
+        showToast(`${berhasil} ide berhasil dibuat. ${sisa.length} hari belum terisi karena hasilnya mirip konten lama atau melebihi 5 slide — klik Generate lagi untuk melengkapi (hari yang sudah jadi dipakai sebagai penyambung).`, 'info');
     } else {
         showToast(`${berhasil} ide seri "${temaMinggu}" berhasil dibuat. Cek bagian yang bertanda [cek pembimbing] sebelum diposting.`, 'success');
     }
@@ -16362,7 +16363,7 @@ async function igRegenerasiHariPlan(planId) {
             .update(patch).eq('id', planId).eq('status', 'idea').select('id');
         if (error) throw error;
         if (!terubah || !terubah.length) {
-            showToast('Ide ini sudah berubah status selama AI bekerja, jadi hasil baru tidak disimpan.', 'info');
+            showToast('Ide ini sudah berubah status selama proses berjalan, jadi hasil baru tidak disimpan.', 'info');
             return;
         }
         await loadIgContentPlan();
@@ -16538,7 +16539,7 @@ async function igSalinPromptPlan() {
             riwayatGaya: igRiwayatGayaToText(igBuildRiwayat())
         });
         if (await igSalinTeks(prompt)) {
-            showToast(`Prompt disalin (${prompt.length.toLocaleString('id-ID')} karakter, ${slots.length} hari). Tempel ke AI lain, minta balasan JSON.`, 'success');
+            showToast(`Prompt disalin (${prompt.length.toLocaleString('id-ID')} karakter, ${slots.length} hari). Tempel ke ChatGPT, Claude, atau asisten lain, lalu minta balasan JSON.`, 'success');
         } else {
             showToast('Browser menolak akses clipboard. Coba lagi lewat klik langsung atau izinkan akses clipboard.', 'error');
         }
@@ -16559,7 +16560,7 @@ window.igSalinPromptPlan = igSalinPromptPlan;
 // penuh/terlewat, giliran pekan berikutnya -- jadi yang diisi selalu SATU pekan saja, bukan sebulan penuh
 // (hemat token; ide jauh ke depan juga sering basi karena program berubah). Pekan yang menyentuh 2 bulan
 // (mis. Minggu 25 Okt - Sabtu 31 Okt, atau 29 Nov - 5 Des) ditangani otomatis.
-// Hanya admin/user yang boleh mengelola; bisa dimatikan lewat checkbox di modal Rencana AI.
+// Hanya admin/user yang boleh mengelola; bisa dimatikan lewat checkbox di modal Perencanaan Konten.
 // ============================================================
 const IG_AUTO_PLAN_KEY = 'igAutoPlanEnabled';   // '0' = dimatikan (default aktif)
 const IG_AUTO_PLAN_FAIL_KEY = 'igAutoPlanFailAt'; // waktu gagal terakhir -> jeda 1 jam sebelum coba lagi
@@ -16636,7 +16637,7 @@ async function igAutoPlanCheck() {
         try { localStorage.setItem(IG_AUTO_PLAN_FAIL_KEY, String(Date.now() - 30 * 60 * 1000)); } catch (e) {}
     }
 
-    if (errMsg && sibuk) showToast(`Server AI sedang sibuk${berhasil ? ` (${berhasil} ide sudah tersimpan)` : ''}. Akan dicoba lagi otomatis nanti.`, 'info');
+    if (errMsg && sibuk) showToast(`Server penyusun konten sedang sibuk${berhasil ? ` (${berhasil} ide sudah tersimpan)` : ''}. Akan dicoba lagi otomatis nanti.`, 'info');
     else if (errMsg) showToast(`Generate otomatis berhenti (${berhasil} ide tersimpan): ${errMsg}`, 'error');
     else if (berhasil > 0) showToast(`${berhasil} ide konten otomatis ditambahkan ke kalender${sisa ? ` (${sisa} tanggal belum terisi, akan dicoba lagi nanti)` : ''}`, 'success');
 }
@@ -16672,11 +16673,13 @@ function renderIgPlanResultList(year, month) {
 
     listEl.innerHTML = items.map(pl => {
         const [, pm, d] = pl.tanggal.split('-');
-        const tglLabel = `${parseInt(d, 10)} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][parseInt(pm, 10) - 1]}`;
+        const bulanPendek = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][parseInt(pm, 10) - 1];
+        const hariPendek = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'][new Date(parseInt(pl.tanggal.slice(0, 4), 10), parseInt(pm, 10) - 1, parseInt(d, 10)).getDay()];
+        const tglLabel = `<small>${hariPendek}</small><b>${parseInt(d, 10)}</b><span>${bulanPendek}</span>`;
         const isIdea = pl.status === 'idea';
         const actions = isIdea
             ? `<button type="button" class="btn-secondary" onclick="igConvertPlanToPost('${pl.id}')" style="font-size:11px;padding:4px 10px;"><i class="bi bi-arrow-up-right-circle"></i> Jadikan Post</button>
-               <button type="button" class="btn-secondary" id="igPlanRegen-${pl.id}" onclick="igRegenerasiHariPlan('${pl.id}')" style="font-size:11px;padding:4px 10px;" title="Ganti ide hari ini dengan AI, tetap menyambung dengan hari lain di pekan ini"><i class="bi bi-arrow-repeat"></i> Generate Ulang</button>
+               <button type="button" class="btn-secondary" id="igPlanRegen-${pl.id}" onclick="igRegenerasiHariPlan('${pl.id}')" style="font-size:11px;padding:4px 10px;" title="Ganti ide hari ini, tetap menyambung dengan hari lain di pekan ini"><i class="bi bi-arrow-repeat"></i> Generate Ulang</button>
                <button type="button" class="btn-secondary" onclick="igSkipPlanItem('${pl.id}')" style="font-size:11px;padding:4px 10px;" title="Lewati (sembunyikan dari kalender)"><i class="bi bi-eye-slash"></i></button>
                <button type="button" class="btn-secondary ig-btn-danger" onclick="igDeletePlanItem('${pl.id}')" style="font-size:11px;padding:4px 10px;" title="Hapus"><i class="bi bi-trash"></i></button>`
             : (pl.status === 'dilewati'
@@ -16685,7 +16688,7 @@ function renderIgPlanResultList(year, month) {
 
         // Item 'idea' bisa diedit langsung di sini (tema, tipe konten, draft caption) --
         // auto-save saat blur/change (tanpa perlu tombol Simpan terpisah), supaya admin
-        // bisa poles hasil AI sebelum "Jadikan Post" tanpa keluar-masuk modal.
+        // bisa poles hasil generate sebelum "Jadikan Post" tanpa keluar-masuk modal.
         const topAndCaption = isIdea
             ? `<div class="ig-plan-result-top">
                     <input type="text" class="ig-plan-edit-tema" value="${escapeHtmlAttr(pl.tema)}" maxlength="120"
@@ -16837,7 +16840,7 @@ async function igSkipPlanItem(planId) {
     }
 }
 
-// ---- Refresh daftar hasil di modal "Rencana AI" kalau sedang terbuka ----
+// ---- Refresh daftar hasil di modal "Perencanaan Konten" kalau sedang terbuka ----
 function igRefreshPlanResultListIfOpen() {
     const resultWrap = document.getElementById('igPlanResultWrap');
     if (resultWrap && resultWrap.style.display !== 'none') {
@@ -16990,7 +16993,7 @@ function igBuildPolaMingguan(year, month, existingDates, mulaiDari, riwayat) {
     return { rows, dilewati, lampau, sudahPernah };
 }
 
-// ---- Terapkan pola mingguan ke bulan yang dipilih di modal Rencana AI ----
+// ---- Terapkan pola mingguan ke bulan yang dipilih di modal Perencanaan Konten ----
 async function igApplyPolaMingguan() {
     if (!canManageProgramData()) {
         showToast('Akun Anda tidak punya izin untuk membuat rencana konten', 'error');
