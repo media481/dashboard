@@ -15803,8 +15803,8 @@ function igTaskCardHtml() {
             + (sisa.length > 3 ? `<div class="ig-task-lagi">+${sisa.length - 3} kerjaan lagi</div>` : '');
     return `<div class="ig-stat ig-stat-task ${state}" style="--p:${pct}%" role="button" tabindex="0" onclick="openIgTaskModal()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openIgTaskModal();}" title="Klik untuk melihat dan mengatur tasklist seminggu">`
         + `<div class="ig-task-head"><i class="bi ${ikon} ig-task-bell" aria-hidden="true"></i>`
-        + `<span class="ig-task-label">Tasklist ${IG_TASK_HARI[igTaskHariIni() - 1]}</span>`
-        + (total ? `<span class="ig-task-count">${selesai}/${total} selesai</span>` : '') + '</div>'
+        + `<div class="ig-task-meta"><span class="ig-task-label">Tasklist ${IG_TASK_HARI[igTaskHariIni() - 1]}</span>`
+        + (total ? `<span class="ig-task-count">${selesai}/${total} selesai</span>` : '') + '</div></div>'
         + `<div class="ig-task-main">${utama}</div>`
         + (total ? `<div class="ig-task-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><div></div></div>` : '')
         + '</div>';
