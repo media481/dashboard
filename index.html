@@ -1447,15 +1447,15 @@
         <div class="modal-header">
             <div class="ig-plan-head-text">
                 <h2>Perencanaan Konten</h2>
-                <p>Satu pekan (Senin–Minggu), satu tema, tujuh sudut yang saling menyambung, tanpa mengulang konten lama.</p>
+                <p>Pilih pekan dan tema, lalu AI menyusun konten yang saling menyambung.</p>
             </div>
             <button class="modal-close" onclick="closeIgContentPlanModal()" aria-label="Tutup">&times;</button>
         </div>
         <div class="modal-body">
             <div id="igPlanGenerateWrap">
-                <div class="ig-plan-grid">
-                    <section class="ig-plan-col ig-plan-col-form">
-                        <h3 class="ig-plan-col-title">Pekan yang disusun</h3>
+                <div class="ig-plan-form">
+                    <section class="ig-plan-step">
+                        <h3 class="ig-plan-step-title"><span class="ig-plan-step-no">1</span> Pilih pekan</h3>
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="igPlanMonth">Bulan</label>
@@ -1466,45 +1466,68 @@
                                 <select id="igPlanWeek" onchange="igRefreshPlanPreview()"></select>
                             </div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="igPlanTema">Tema Minggu</label>
-                                <input type="text" id="igPlanTema" maxlength="80" placeholder="Contoh: Talbiyah" oninput="igOnTemaMingguInput()">
-                            </div>
+                    </section>
+
+                    <section class="ig-plan-step">
+                        <h3 class="ig-plan-step-title"><span class="ig-plan-step-no">2</span> Tentukan tema</h3>
+                        <div class="form-group">
+                            <label for="igPlanTema">Tema pekan ini</label>
+                            <input type="text" id="igPlanTema" maxlength="80" placeholder="Contoh: Talbiyah" oninput="igOnTemaMingguInput()">
+                        </div>
+                        <div class="ig-plan-saran" id="igPlanTemaSaran"></div>
+                    </section>
+
+                    <div class="ig-plan-preview" id="igPlanPreview"></div>
+
+                    <details class="ig-plan-more">
+                        <summary>Pengaturan lanjutan <small>opsional</small></summary>
+                        <div class="ig-plan-more-body">
                             <div class="form-group">
                                 <label for="igPlanTemaDepan">Tema pekan depan</label>
                                 <input type="text" id="igPlanTemaDepan" maxlength="80" placeholder="Kosongkan kalau belum ada" title="Dipakai untuk teaser penutup Minggu" oninput="this.dataset.auto='0'">
+                                <p class="ig-plan-hint-text">Dipakai untuk teaser penutup pekan. Terisi otomatis, boleh diubah.</p>
+                            </div>
+                            <div class="form-group">
+                                <label for="igPlanArahan">Arahan tambahan</label>
+                                <textarea id="igPlanArahan" rows="2" placeholder="Contoh: fokus promo Umroh Desember, atau selipkan tema Maulid Nabi"></textarea>
                             </div>
                         </div>
-                        <div class="ig-plan-saran" id="igPlanTemaSaran"></div>
-                        <div class="form-group">
-                            <label for="igPlanArahan">Arahan tambahan</label>
-                            <textarea id="igPlanArahan" rows="2" placeholder="Contoh: fokus promo Umroh Desember, atau selipkan tema Maulid Nabi"></textarea>
-                        </div>
-                    </section>
+                    </details>
 
-                    <section class="ig-plan-col ig-plan-col-info">
-                        <h3 class="ig-plan-col-title">Isi pekan ini</h3>
-                        <div class="ig-plan-preview" id="igPlanPreview"></div>
-                        <div class="ig-plan-pola-label">Pola 7 hari</div>
-                        <div class="ig-plan-pola" id="igPlanPolaStrip"></div>
-                        <details class="ig-plan-peta" id="igPlanPetaWrap" ontoggle="igRenderPetaTema()">
-                            <summary>Peta tema 12 bulan</summary>
-                            <div id="igPlanPeta"></div>
-                        </details>
-                    </section>
+                    <details class="ig-plan-more">
+                        <summary>Pola 7 hari</summary>
+                        <div class="ig-plan-more-body">
+                            <div class="ig-plan-pola" id="igPlanPolaStrip"></div>
+                        </div>
+                    </details>
+
+                    <details class="ig-plan-more ig-plan-peta" id="igPlanPetaWrap" ontoggle="igRenderPetaTema()">
+                        <summary>Peta tema 12 bulan</summary>
+                        <div id="igPlanPeta"></div>
+                    </details>
+
+                    <details class="ig-plan-more">
+                        <summary>Cara lain <small>tanpa AI / cadangan</small></summary>
+                        <div class="ig-plan-more-body ig-plan-alt">
+                            <div class="ig-plan-alt-row">
+                                <button class="btn-secondary" id="btnIgApplyPola" onclick="igApplyPolaMingguan()"
+                                    title="Isi tanggal kosong dengan draf contoh Pola Amiru (teks gambar + caption), tanpa menyusun otomatis. Draf yang topiknya sudah pernah dipakai jadi kerangka kosong. Ganti bagian [isi ...] dengan data asli.">
+                                    Isi dari Pola
+                                </button>
+                                <span>Isi hari kosong dengan draf contoh. Ganti bagian <b>[isi ...]</b> dengan data asli.</span>
+                            </div>
+                            <div class="ig-plan-alt-row">
+                                <button class="btn-secondary" id="btnIgCopyPlanPrompt" onclick="igSalinPromptPlan()"
+                                    title="Cadangan kalau server penyusun konten bermasalah: salin prompt lengkap (pola 7 hari, konteks, riwayat konten lama) untuk ditempel ke ChatGPT, Claude, atau asisten lain.">
+                                    <i class="bi bi-clipboard"></i> Salin Prompt
+                                </button>
+                                <span>Kalau server bermasalah, tempel prompt ke ChatGPT atau Claude.</span>
+                            </div>
+                        </div>
+                    </details>
                 </div>
 
                 <div class="ig-plan-footer">
-                    <button class="btn-secondary" id="btnIgApplyPola" onclick="igApplyPolaMingguan()"
-                        title="Isi tanggal kosong dengan draf contoh Pola Amiru (teks gambar + caption), tanpa menyusun otomatis. Draf yang topiknya sudah pernah dipakai jadi kerangka kosong. Ganti bagian [isi ...] dengan data asli.">
-                        Isi dari Pola
-                    </button>
-                    <button class="btn-secondary" id="btnIgCopyPlanPrompt" onclick="igSalinPromptPlan()"
-                        title="Cadangan kalau server penyusun konten bermasalah: salin prompt lengkap (pola 7 hari, konteks, riwayat konten lama) untuk ditempel ke ChatGPT, Claude, atau asisten lain.">
-                        <i class="bi bi-clipboard"></i> Salin Prompt
-                    </button>
-                    <span class="ig-plan-footer-spacer"></span>
                     <button class="btn-primary" id="btnIgGeneratePlan" onclick="generateIgContentPlanAI()">
                         <span id="btnIgGeneratePlanText">Generate Konten</span>
                     </button>
@@ -1514,8 +1537,8 @@
             <div id="igPlanResultWrap" style="display:none;">
                 <div class="ig-plan-result-header">
                     <span id="igPlanResultCount"></span>
-                    <button class="btn-secondary" onclick="showIgPlanGenerateForm()" style="font-size:12px;padding:6px 14px;">
-                        Generate Ulang
+                    <button class="btn-secondary" onclick="showIgPlanGenerateForm()" style="font-size:12px;padding:6px 14px;" title="Kembali ke form untuk mengganti pekan atau tema">
+                        <i class="bi bi-arrow-left"></i> Atur Ulang
                     </button>
                 </div>
                 <div class="ig-plan-result-list" id="igPlanResultList">
