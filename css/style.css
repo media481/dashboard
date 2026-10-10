@@ -5217,3 +5217,10 @@ details.ig-rk-minggu > summary.ig-rk-row::-webkit-details-marker { display: none
 .ig-task-add .btn-secondary { padding: 5px 10px !important; }
 @media (max-width: 900px) { .ig-planner-mode .ig-stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .ig-planner-mode .ig-stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Kartu Tasklist: nama kerjaan jadi teks utama */
+.ig-planner-mode .ig-stat.ig-stat-task { flex-direction: column; align-items: stretch; gap: 6px; }
+.ig-stat-task .ig-task-label { font-size: 11.5px; font-weight: 600; color: var(--lbl, var(--ink-soft)); }
+.ig-stat-task .ig-task-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ig-stat-task .ig-task-item { font-size: 15px; font-weight: 700; line-height: 1.25; color: var(--num, var(--ink)); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ig-stat-task .ig-task-item:nth-child(n+2) { font-size: 12.5px; font-weight: 600; }
+.ig-stat-task .ig-task-lagi, .ig-stat-task .ig-task-kosong { font-size: 12px; font-weight: 500; color: var(--ink-soft); }
