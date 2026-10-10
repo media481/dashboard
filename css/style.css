@@ -3926,6 +3926,11 @@
 .ig-stat-ready > i { color: var(--success); }
 .ig-stat-gap > i { color: var(--warn); }
 .ig-stat-post > i { color: var(--ink-soft); }
+/* Kartu yang bisa diklik (Hari kosong -> Perencanaan Konten) */
+.ig-stat-link { cursor: pointer; transition: border-color .15s, background .15s; }
+.ig-stat-link span::after { content: ' \2192'; }
+.ig-stat-link:hover { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 8%, var(--surface)); }
+.ig-stat-link:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .ig-pillar-bar { display: flex; height: 7px; border-radius: 6px; overflow: hidden; margin-top: 10px; gap: 2px; }
 .ig-pillar-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0 2px; font-size: 11px; color: var(--ink-soft); font-weight: 600; }
 .ig-pillar-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
@@ -4137,8 +4142,24 @@
 .ig-planner-mode .ig-scheduler-toolbar .btn-secondary:hover { background: var(--brand-tint); color: var(--brand); }
 .ig-planner-mode .ig-scheduler-toolbar .btn-secondary:focus-visible,
 .ig-planner-mode .ig-scheduler-toolbar .btn-primary:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-.ig-planner-mode #btnIgRefresh { order: 5; margin-left: auto; }
-.ig-planner-mode #igSchedulerCount { order: 6; font-size: 11.5px; margin-left: 8px; }
+/* Urutan toolbar: aksi harian di kiri (Ide Baru, Perencanaan Konten), rekap & draft di tengah,
+   hal pendukung (About Planner, Refresh, jumlah) di kanan */
+.ig-planner-mode #btnIgNewIdea { order: 1; }
+.ig-planner-mode #btnIgContentPlan { order: 2; }
+.ig-planner-mode #btnIgRencanaKonten { order: 3; }
+.ig-planner-mode #btnIgUpload { order: 4; }
+.ig-planner-mode #btnIgAboutPlanner { order: 5; margin-left: auto; font-size: 12px !important; }
+.ig-planner-mode #btnIgRefresh { order: 6; margin-left: 0; }
+.ig-planner-mode #igSchedulerCount { order: 7; font-size: 11.5px; margin-left: 8px; }
+/* Perencanaan Konten = aksi AI utama: diberi penekanan lembut supaya mudah ditemukan */
+.ig-planner-mode .ig-scheduler-toolbar #btnIgContentPlan {
+    background: var(--brand-tint); color: var(--brand); font-weight: 600;
+}
+.ig-planner-mode .ig-scheduler-toolbar #btnIgContentPlan:hover { background: color-mix(in srgb, var(--brand) 18%, var(--surface)); }
+@media (max-width: 700px) {
+    .ig-planner-mode .ig-scheduler-toolbar { flex-wrap: wrap; }
+    .ig-planner-mode #btnIgAboutPlanner { margin-left: 0; }
+}
 
 .ig-planner-mode .ig-cal-summary-wrap { margin-bottom: 10px; }
 .ig-planner-mode .ig-stat-row { gap: 8px; }

@@ -13829,15 +13829,20 @@ function renderIgCalSummary(monthPosts, monthPlans, emptyFutureDays, pillarPlans
     const el = document.getElementById('igCalSummary');
     if (!el) return;
     const st = t => monthPlans.filter(p => (p.tahap || 'ide') === t).length;
-    const card = (n, label, cls) =>
-        `<div class="ig-stat ${cls}"><b>${n}</b><span>${label}</span></div>`;
+    const card = (n, label, cls, attrs = '') =>
+        `<div class="ig-stat ${cls}"${attrs}><b>${n}</b><span>${label}</span></div>`;
+    // Kartu "Hari kosong" jadi pintasan ke Perencanaan Konten (modal otomatis memilih pekan pertama yang masih punya hari kosong)
+    const gapBisaDiklik = emptyFutureDays > 0 && canManageProgramData();
+    const gapAttrs = gapBisaDiklik
+        ? ' role="button" tabindex="0" title="Isi hari kosong lewat Perencanaan Konten" onclick="openIgContentPlanModal()" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openIgContentPlanModal();}"'
+        : '';
     let html = '<div class="ig-stat-row">' +
         igTaskCardHtml() +
         card(st('ide'), 'Ide', 'ig-stat-ide') +
         card(st('dikerjakan'), 'Dikerjakan', 'ig-stat-wip') +
         card(st('siap'), 'Siap posting', 'ig-stat-ready') +
         card(monthPosts.length, 'Draft & post', 'ig-stat-post') +
-        card(emptyFutureDays, 'Hari kosong', 'ig-stat-gap') + '</div>';
+        card(emptyFutureDays, 'Hari kosong', 'ig-stat-gap' + (gapBisaDiklik ? ' ig-stat-link' : ''), gapAttrs) + '</div>';
 
     if (igPlannerColsReady && pillarPlans.length) {
         const counts = {};
