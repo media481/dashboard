@@ -15807,6 +15807,7 @@ function igTaskCardHtml() {
 function openIgTaskModal() {
     const modal = document.getElementById('igTaskModal');
     if (!modal) return;
+    igTaskSelHari = igTaskHariIni();
     igTaskRender();
     modal.classList.add('open');
 }
@@ -15815,48 +15816,54 @@ function closeIgTaskModal() {
     if (modal) modal.classList.remove('open');
 }
 
+const IG_TASK_HARI_PENDEK = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+let igTaskSelHari = 0; // hari yang sedang dibuka di modal (1..7); 0 = ikut hari ini
+
+function igTaskPilihHari(h) { igTaskSelHari = h; igTaskRender(); }
+
 function igTaskRender() {
     const body = document.getElementById('igTaskBody');
     if (!body) return;
     const edit = canManageProgramData();
     const hariIni = igTaskHariIni();
+    const sel = igTaskSelHari >= 1 && igTaskSelHari <= 7 ? igTaskSelHari : hariIni;
+    const isToday = sel === hariIni;
     const done = igTaskDoneToday();
     const note = document.getElementById('igTaskNote');
     if (note) note.textContent = igTaskDb ? '' : 'Tabel ig_tasklist belum dibuat, tasklist sementara hanya tersimpan di browser ini (jalankan sql/49_tambah_ig_tasklist.sql).';
 
-    const delBtn = id => edit ? `<button type="button" class="ig-tm-del" onclick="igTaskHapus('${id}')" aria-label="Hapus" title="Hapus">&times;</button>` : '';
-    const addForm = (h, nama) => edit
-        ? `<form class="ig-tm-add" onsubmit="return igTaskTambah(event, ${h})"><input type="text" maxlength="120" placeholder="Tambah kerjaan..." aria-label="Tambah kerjaan ${nama}"><button type="submit" aria-label="Tambah" title="Tambah"><i class="bi bi-plus-lg"></i></button></form>` : '';
-
-    // ---- Hero: kerjaan HARI INI (bisa dicentang) ----
-    const listIni = igTasks.filter(t => t.hari === hariIni);
-    const selesai = listIni.filter(t => done.has(String(t.id))).length;
-    const pct = listIni.length ? Math.round(selesai / listIni.length * 100) : 0;
-    const semua = listIni.length > 0 && selesai === listIni.length;
-    const rowsIni = listIni.map(t => {
-        const id = String(t.id), cek = done.has(id);
-        return `<li class="ig-tm-row${cek ? ' done' : ''}"><label><input type="checkbox" ${cek ? 'checked' : ''} onchange="igTaskToggle('${id}')">`
-            + `<span class="ig-tm-box"><i class="bi bi-check-lg"></i></span><span class="ig-tm-nama">${escapeHtml(t.nama)}</span></label>${delBtn(id)}</li>`;
-    }).join('') || '<li class="ig-tm-empty">Belum ada kerjaan hari ini</li>';
-    const hero = `<section class="ig-tm-hero${semua ? ' is-done' : ''}">`
-        + `<div class="ig-tm-hero-top"><div><small>Hari ini</small><h3>${IG_TASK_HARI[hariIni - 1]}</h3></div>`
-        + (listIni.length ? `<div class="ig-tm-prog"><b>${selesai}/${listIni.length}</b><span>${semua ? 'semua selesai' : 'selesai'}</span></div>` : '') + '</div>'
-        + (listIni.length ? `<div class="ig-tm-bar"><div style="width:${pct}%"></div></div>` : '')
-        + `<ul class="ig-tm-list">${rowsIni}</ul>${addForm(hariIni, IG_TASK_HARI[hariIni - 1])}</section>`;
-
-    // ---- Hari lain: urut mulai besok, melingkar sampai kemarin ----
-    const lain = [];
-    for (let k = 1; k <= 6; k++) lain.push(((hariIni - 1 + k) % 7) + 1);
-    const week = lain.map((h, idx) => {
-        const nama = IG_TASK_HARI[h - 1];
-        const list = igTasks.filter(t => t.hari === h);
-        const rows = list.map(t => `<li><span class="ig-tm-dot"></span><span class="ig-tm-nama">${escapeHtml(t.nama)}</span>${delBtn(String(t.id))}</li>`).join('')
-            || '<li class="ig-tm-empty">Belum ada kerjaan</li>';
-        return `<section class="ig-tm-day"><header><h4>${nama}</h4>${idx === 0 ? '<em>Besok</em>' : ''}<span class="ig-tm-count">${list.length || ''}</span></header>`
-            + `<ul>${rows}</ul>${addForm(h, nama)}</section>`;
+    // ---- Tab 7 hari ----
+    const tabs = IG_TASK_HARI.map((nama, i) => {
+        const h = i + 1, list = igTasks.filter(t => t.hari === h);
+        const ket = h === hariIni ? `${list.filter(t => done.has(String(t.id))).length}/${list.length}` : (list.length || '–');
+        return `<button type="button" role="tab" aria-selected="${h === sel}" class="ig-tm-tab${h === sel ? ' on' : ''}${h === hariIni ? ' today' : ''}" onclick="igTaskPilihHari(${h})">`
+            + `<span class="ig-tm-tab-n">${IG_TASK_HARI_PENDEK[i]}</span><span class="ig-tm-tab-c">${ket}</span></button>`;
     }).join('');
 
-    body.innerHTML = hero + '<h4 class="ig-tm-sub">Jadwal hari lain</h4><div class="ig-tm-week">' + week + '</div>';
+    // ---- Panel hari terpilih ----
+    const nama = IG_TASK_HARI[sel - 1];
+    const list = igTasks.filter(t => t.hari === sel);
+    const selesai = isToday ? list.filter(t => done.has(String(t.id))).length : 0;
+    const semua = isToday && list.length > 0 && selesai === list.length;
+    const pct = list.length ? Math.round(selesai / list.length * 100) : 0;
+    const sub = isToday ? 'Hari ini' : sel === (hariIni % 7) + 1 ? 'Besok' : `Berulang tiap ${nama}`;
+    const rows = list.map((t, i) => {
+        const id = String(t.id), cek = isToday && done.has(id);
+        const del = edit ? `<button type="button" class="ig-tm-del" onclick="igTaskHapus('${id}')" aria-label="Hapus" title="Hapus">&times;</button>` : '';
+        const nm = `<span class="ig-tm-nama">${escapeHtml(t.nama)}</span>`;
+        return isToday
+            ? `<li class="ig-tm-item${cek ? ' done' : ''}"><label><input type="checkbox" ${cek ? 'checked' : ''} onchange="igTaskToggle('${id}')"><span class="ig-tm-box"><i class="bi bi-check-lg"></i></span>${nm}</label>${del}</li>`
+            : `<li class="ig-tm-item"><span class="ig-tm-num">${i + 1}</span>${nm}${del}</li>`;
+    }).join('') || `<li class="ig-tm-empty"><i class="bi bi-inbox"></i><span>Belum ada kerjaan di hari ${nama}</span></li>`;
+    const form = edit
+        ? `<form class="ig-tm-add" onsubmit="return igTaskTambah(event, ${sel})"><input type="text" maxlength="120" placeholder="Tambah kerjaan hari ${nama}..." aria-label="Tambah kerjaan hari ${nama}"><button type="submit">Tambah</button></form>` : '';
+
+    body.innerHTML = `<div class="ig-tm-tabs" role="tablist">${tabs}</div>`
+        + `<section class="ig-tm-panel${isToday ? ' is-today' : ''}${semua ? ' is-done' : ''}">`
+        + `<div class="ig-tm-head"><div><h3>${nama}</h3><p>${sub}</p></div>`
+        + `<div class="ig-tm-stat">${isToday ? `<b>${selesai}/${list.length}</b><span>${semua ? 'semua selesai' : 'selesai'}</span>` : `<b>${list.length}</b><span>kerjaan</span>`}</div></div>`
+        + (isToday && list.length ? `<div class="ig-tm-bar"><div style="width:${pct}%"></div></div>` : '')
+        + `<ul class="ig-tm-list">${rows}</ul>${form}</section>`;
 }
 
 async function igTaskTambah(ev, hari) {
@@ -15875,6 +15882,7 @@ async function igTaskTambah(ev, hari) {
         igTaskLsSet(IG_TASK_LS, igTasks);
     }
     igTaskRender(); renderIgCalendar();
+    document.querySelector('#igTaskBody .ig-tm-add input')?.focus();
     return false;
 }
 
@@ -15902,6 +15910,7 @@ window.closeIgTaskModal = closeIgTaskModal;
 window.igTaskTambah = igTaskTambah;
 window.igTaskHapus = igTaskHapus;
 window.igTaskToggle = igTaskToggle;
+window.igTaskPilihHari = igTaskPilihHari;
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeIgTaskModal(); });
 
 // ============================================================
