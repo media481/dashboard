@@ -1579,7 +1579,20 @@
             <label for="igRkMulai">Mulai dari</label>
             <input type="month" id="igRkMulai" onchange="igRkRender()">
             <button class="btn-secondary" onclick="igRkIniHari()">Bulan ini</button>
-            <span class="ig-rk-legend"><span class="ig-rk-badge ig-rk-b-disusun">Disusun</span> sudah ada di rencana &middot; <span class="ig-rk-badge ig-rk-b-saran">Saran</span> proyeksi otomatis &middot; <span class="ig-rk-badge ig-rk-b-kosong">Kosong</span> pekan lewat tanpa isi</span>
+            <button class="btn-primary" id="igRtToggle" onclick="igRtTogglePanel()" title="Susun tema 12 bulan dengan AI, disimpan, lalu bisa Anda edit" style="display:none;"><i class="bi bi-stars"></i> Rencana Setahun AI</button>
+            <span class="ig-rk-legend"><span class="ig-rk-badge ig-rk-b-disusun">Disusun</span> isi harian sudah ada &middot; <span class="ig-rk-badge ig-rk-b-rencana">Rencana AI</span> tema tersimpan &middot; <span class="ig-rk-badge ig-rk-b-saran">Saran</span> proyeksi otomatis (tidak tersimpan) &middot; <span class="ig-rk-badge ig-rk-b-kosong">Kosong</span> pekan lewat tanpa isi</span>
+        </div>
+        <div class="ig-rt-panel" id="igRtPanel" style="display:none;">
+            <p class="ig-rt-intro">AI menyusun <strong>tema tiap pekan</strong> untuk rentang yang tampil di bawah, dengan menimbang program keberangkatan, musim (Ramadhan, libur sekolah, haji), dan alur perjalanan jamaah. Hasilnya <strong>disimpan</strong> dan menjadi saran utama saat Anda menyusun isi pekan lewat Perencanaan Konten. Tema yang Anda edit otomatis terkunci dan tidak ditimpa saat disusun ulang.</p>
+            <div class="ig-rt-form">
+                <textarea id="igRtArahan" rows="2" maxlength="800" placeholder="Arahan tambahan (opsional), mis. fokus ke keluarga dan lansia, perbanyak tema persiapan sebelum musim libur"></textarea>
+                <label class="ig-rt-cek"><input type="checkbox" id="igRtTimpa" checked onchange="igRtRenderPanel()"> Timpa rencana AI lama yang belum dikunci</label>
+                <div class="ig-rt-baris">
+                    <button class="btn-primary" id="igRtBtn" onclick="igRtSusunAI()"><i class="bi bi-stars"></i> Susun dengan AI</button>
+                    <span class="ig-rt-info" id="igRtInfo"></span>
+                </div>
+                <div class="ig-rt-status" id="igRtStatus" role="status"></div>
+            </div>
         </div>
         <div class="modal-body ig-about-body ig-rk-body" id="igRkBody"></div>
         <div class="ig-about-footer">

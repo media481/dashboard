@@ -621,6 +621,142 @@ testAsync('generate pekan: tema serupa dari >6 bulan lalu tidak menolak Senin (1
 });
 
 // ============================================================
+// TES RENCANA SETAHUN (AI): saran utama dari rencana tersimpan, status "Rencana AI", alur susun lewat AI
+// ============================================================
+console.log('\n=== TEST: Rencana Setahun (tersimpan, disusun AI) ===');
+const rn = (senin, tema, extra) => ({ id: 'r-' + senin, senin, tema, alasan: 'alasan uji', fokus_program: '', sumber: 'ai', terkunci: false, ...(extra || {}) });
+test('pekan yang punya rencana setahun: tema rencana jadi saran UTAMA, saran otomatis jadi cadangan', () => {
+  const k = T.igKandidatTemaMinggu('2026-11-02', [], 3, [rn('2026-11-02', 'Umroh Bersama Orang Tua')]);
+  assert.strictEqual(k[0].tema, 'Umroh Bersama Orang Tua'); assert.strictEqual(k[0].rencana, true);
+  assert.ok(/Rencana setahun: alasan uji/.test(k[0].alasan)); assert.strictEqual(k.length, 3);
+  assert.ok(k.slice(1).every(x => !x.rencana));
+});
+test('tanpa rencana (default kosong): perilaku lama tidak berubah', () => {
+  const k = T.igKandidatTemaMinggu('2026-11-02', [], 1, []);
+  assert.strictEqual(k[0].tema, T.IG_TEMA_ALUR[0]); assert.ok(!k[0].rencana);
+});
+test('tema rencana di pekan LAIN dianggap terpakai (saran otomatis tidak mengulangnya)', () => {
+  const k = T.igKandidatTemaMinggu('2026-11-02', [], 1, [rn('2026-11-23', T.IG_TEMA_ALUR[0])]);
+  assert.strictEqual(k[0].tema, T.IG_TEMA_ALUR[1]);
+});
+test('pekan yang sudah punya isi harian nyata: tema nyata menang atas rencana setahun', () => {
+  const k = T.igKandidatTemaMinggu('2026-10-12', [tp('2026-10-14', 'Talbiyah')], 5, [rn('2026-10-12', 'Thawaf')]);
+  assert.strictEqual(k.length, 1); assert.strictEqual(k[0].tema, 'Talbiyah');
+});
+test('kandidat cadangan yang kembar dengan tema rencana dibuang', () => {
+  const k = T.igKandidatTemaMinggu('2026-11-02', [], 6, [rn('2026-11-02', T.IG_TEMA_ALUR[0])]);
+  assert.strictEqual(k.filter(x => x.tema === T.IG_TEMA_ALUR[0]).length, 1);
+  assert.strictEqual(k[0].rencana, true);
+});
+test('peta setahun memakai rencana tersimpan pada pekannya dan menandainya', () => {
+  const peta = T.igPetaTemaSetahun('2026-10-12', [], 6, '', [rn('2026-10-26', 'Menabung Niat Bersama Keluarga', { terkunci: true })]);
+  assert.strictEqual(peta[2].senin, '2026-10-26'); assert.strictEqual(peta[2].tema, 'Menabung Niat Bersama Keluarga');
+  assert.strictEqual(peta[2].rencana, true); assert.strictEqual(peta[2].terkunci, true);
+  assert.ok(!peta[1].rencana);
+  assert.strictEqual(new Set(peta.map(r => r.tema.toLowerCase())).size, 6);
+});
+test('rekap: pekan mendatang dengan rencana -> status "rencana" (bukan "saran"), terkunci terbawa; tanpa rencana tetap "saran"', () => {
+  const now = new Date();
+  const depan = run('igSeninDari')(run('igLocalDateKey')(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 14)));
+  const rekap = (rencana) => run('igRkSusun')(now.getFullYear(), now.getMonth(), [], [], rencana);
+  const cari = (d) => d.bulan.flatMap(b => b.minggu).find(x => x.senin === depan);
+  const dengan = rekap([rn(depan, 'Tema Rencana Uji', { terkunci: true })]);
+  const w = cari(dengan);
+  assert.ok(w, 'pekan uji ada di rentang 12 bulan');
+  assert.strictEqual(w.status, 'rencana'); assert.strictEqual(w.terkunci, true); assert.strictEqual(w.tema, 'Tema Rencana Uji');
+  assert.strictEqual(dengan.ringkas.rencana, 1);
+  const tanpa = cari(rekap([]));
+  assert.strictEqual(tanpa.status, 'saran'); assert.strictEqual(tanpa.terkunci, false);
+});
+
+// ---- Alur susun lewat AI (igRtSusunAI) dengan function & Supabase tiruan ----
+let rtCounter = 0;
+const temaUnik = () => { rtCounter++; return `xa${rtCounter}k xb${rtCounter}k`; };
+function siapkanRt(opsi) {
+  opsi = opsi || {};
+  const log = { panggilan: [], upsert: [], toast: [] };
+  sandbox.__g = log; sandbox.__plans = opsi.plans || []; sandbox.__ren = opsi.rencana || [];
+  sandbox.__ai = opsi.ai || ((payload) => payload.pekan.map(w => ({ senin: w.senin, tema: temaUnik(), alasan: 'alasan', fokus_program: '' })));
+  sandbox.__ready = opsi.ready !== false;
+  run(`
+    adminLoggedIn = true; currentRole = 'admin'; igRtBusy = false;
+    canManageProgramData = () => adminLoggedIn && (currentRole === 'admin' || currentRole === 'user'); // pulihkan guard asli (tes lain men-stub-nya)
+    igContentPlan = __plans; igRencanaTahun = __ren.slice(); igRencanaReady = __ready;
+    { const n = new Date(); igRkData = igRkSusun(n.getFullYear(), n.getMonth(), igContentPlan, []); }
+    igRkRender = () => {}; igRtRenderPanel = () => {}; igRtStatus = () => {}; loadIgRencanaTahun = async () => {};
+    buildIgPlanProgramContext = async () => 'PROGRAM CONTOH';
+    igRtPanggilAI = async (payload) => { __g.panggilan.push(payload); return { items: __ai(payload, __g.panggilan.length), versi: 1 }; };
+    supabaseClient = { from: () => ({ upsert: async (rows) => { __g.upsert.push(...[].concat(rows)); return { error: null }; } }) };
+    showToast = (msg, type) => { __g.toast.push({ msg, type }); };
+  `);
+  return log;
+}
+testAsync('rencana setahun: semua pekan target disimpan (sumber ai, tidak terkunci), dikirim per batch 26 pekan', async () => {
+  const log = siapkanRt();
+  const target = run('igRtHitungTarget()');
+  assert.ok(target.length > 26, 'rentang 12 bulan harus > 26 pekan target');
+  await run('igRtSusunAI()');
+  assert.strictEqual(log.panggilan.length, Math.ceil(target.length / 26));
+  assert.ok(log.panggilan.every(c => c.pekan.length <= 26));
+  assert.strictEqual(log.upsert.length, target.length);
+  assert.ok(log.upsert.every(r => r.sumber === 'ai' && r.terkunci === false && /^\d{4}-\d{2}-\d{2}$/.test(r.senin) && r.tema));
+  assert.strictEqual(JSON.stringify(log.upsert.map(r => r.senin).sort()), JSON.stringify(target.map(w => w.senin).sort()));
+  const c0 = log.panggilan[0];
+  assert.strictEqual(c0.konteksProgram, 'PROGRAM CONTOH'); assert.ok(c0.bankAlur.length > 20); assert.ok(/Ramadhan/.test(c0.bankMusim));
+  assert.ok(c0.pekan[0].masehi && 'hijri' in c0.pekan[0] && 'program' in c0.pekan[0]);
+});
+testAsync('rencana setahun: pekan terkunci tidak ikut dikirim/ditimpa, tapi temanya jadi riwayat & konteks sekitar', async () => {
+  const hariIni = run("igLocalDateKey(new Date())");
+  const awal = siapkanRt();
+  const kunciSenin = run('igRtHitungTarget()')[3].senin;
+  const log = siapkanRt({ rencana: [rn(kunciSenin, 'Tema Terkunci Uji', { terkunci: true })] });
+  const sebelum = run('igRtHitungTarget()').length;
+  await run('igRtSusunAI()');
+  assert.ok(!log.upsert.some(r => r.senin === kunciSenin), 'pekan terkunci tidak boleh ditimpa');
+  assert.ok(!log.panggilan.some(c => c.pekan.some(w => w.senin === kunciSenin)));
+  assert.ok(log.panggilan[0].riwayatTema.includes('Tema Terkunci Uji')); assert.ok(log.panggilan[0].konteksSekitar.includes(kunciSenin + ' | Tema Terkunci Uji'));
+  assert.strictEqual(log.upsert.length, sebelum); assert.ok(hariIni && awal);
+});
+testAsync('rencana setahun: tema AI yang mirip riwayat ditolak lalu HANYA pekan itu diulang', async () => {
+  let ronde = 0;
+  const log = siapkanRt({
+    plans: [{ id: 'x', tanggal: '2026-01-05', tema: 'a', status: 'idea', tema_minggu: 'Persiapan Fisik' }],
+    ai: (payload) => payload.pekan.map((w, i) => {
+      ronde++;
+      const mirip = payload.pekan.length > 5 && i === 0 && ronde <= payload.pekan.length;
+      return { senin: w.senin, tema: mirip ? 'Persiapan Fisik Jamaah' : temaUnik(), alasan: 'a', fokus_program: '' };
+    })
+  });
+  await run('igRtSusunAI()');
+  const target = log.panggilan[0].pekan[0].senin;
+  assert.ok(log.panggilan.length >= 2);
+  const ulang = log.panggilan.find((c, i) => i > 0 && c.pekan.length === 1 && c.pekan[0].senin === target);
+  assert.ok(ulang, 'pekan yang ditolak diulang sendirian');
+  assert.ok(ulang.riwayatTema.includes('Persiapan Fisik Jamaah'), 'tema yang ditolak ikut riwayat supaya tidak diajukan lagi');
+  assert.ok(log.upsert.some(r => r.senin === target) && !log.upsert.some(r => r.tema === 'Persiapan Fisik Jamaah'));
+});
+testAsync('rencana setahun: tabel belum ada (migrasi belum jalan) -> tidak memanggil AI sama sekali', async () => {
+  const log = siapkanRt({ ready: false });
+  await run('igRtSusunAI()');
+  assert.strictEqual(log.panggilan.length, 0); assert.strictEqual(log.upsert.length, 0);
+  assert.ok(log.toast.some(t => t.type === 'error' && /tambah_ig_rencana_tahunan/.test(t.msg)));
+});
+testAsync('rencana setahun: AI gagal di batch kedua -> batch pertama tetap tersimpan, pesan error muncul', async () => {
+  const log = siapkanRt({ ai: (payload, n) => { if (n >= 2) throw new Error('Gemini overload'); return payload.pekan.map(w => ({ senin: w.senin, tema: temaUnik(), alasan: 'a', fokus_program: '' })); } });
+  await run('igRtSusunAI()');
+  assert.strictEqual(log.upsert.length, 26);
+  assert.ok(log.toast.some(t => t.type === 'error' && /Gemini overload/.test(t.msg)));
+  assert.strictEqual(run('igRtBusy'), false);
+});
+testAsync('rencana setahun: tanpa izin (guest) -> tidak ada panggilan', async () => {
+  const log = siapkanRt();
+  run("currentRole = 'guest'");
+  await run('igRtSusunAI()');
+  assert.strictEqual(log.panggilan.length, 0);
+  run("currentRole = 'admin'");
+});
+
+// ============================================================
 (async () => {
   for (const t of asyncTests) {
     try { await t.fn(); passed++; console.log('  ✓ ' + t.name); }

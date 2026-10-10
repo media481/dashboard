@@ -389,3 +389,20 @@ gaya bahasa, format posting, aturan anti-pengulangan, Tema Minggu otomatis, keju
 **Salin untuk Claude** menyalin dokumen beserta petunjuk revisi; **Unduh .md** menyimpannya sebagai file. Hasil revisi dari
 Claude diunggah ke sesi pengembangan untuk memperbarui isi modal (lihat bagian "About Planner" di `CLAUDE.md`). Tidak butuh migrasi SQL maupun deploy edge function.
 
+
+## Rencana Setahun (AI, tersimpan)
+
+Di modal **Rencana Konten**, tombol **Rencana Setahun AI** menyusun TEMA tiap pekan untuk rentang 12 bulan yang tampil, lalu menyimpannya.
+
+- **Beda dengan "Saran":** Saran = hitungan lokal di browser (tanpa AI, tidak tersimpan, bergeser tiap modal dibuka). Rencana AI = hasil AI yang disimpan di tabel `ig_rencana_tahunan` (1 baris per pekan) dan tetap sama sampai Anda ubah.
+- **Yang dipertimbangkan AI:** semua program aktif yang belum berangkat (tanggal, harga, sisa seat) dan fase promosinya per pekan, bulan Hijriah/Masehi tiap pekan (Ramadhan, libur sekolah, haji), alur perjalanan jamaah, tema yang sudah dipakai setahun terakhir, plus arahan tambahan dari Anda.
+- **Bisa dievaluasi dan diedit:** tiap pekan berlabel **Rencana AI** punya tombol edit (pensil), kunci, dan hapus. Mengedit tema otomatis mengunci pekan itu. Pekan terkunci tidak ditimpa saat **Susun dengan AI** dijalankan lagi (centang "Timpa rencana AI lama yang belum dikunci" untuk menyusun ulang sisanya). Tombol **Salin untuk Claude** memuat label Rencana AI untuk evaluasi di luar dashboard.
+- **Terhubung ke penyusunan harian:** di Perencanaan Konten, tema rencana pekan itu jadi **saran utama** Tema Minggu, dan tema pekan depan untuk teaser Minggu mengikuti rencana. Tema harian yang sudah ada isinya tetap menang atas rencana.
+- **Cara kerja teknis:** 26 pekan per panggilan AI (hasil tersimpan bertahap), tema yang mirip tema lain ditolak lalu hanya pekan itu diulang (maks. 2 kali), pekan yang tetap gagal dibiarkan kosong dan bisa dicoba lagi. Hanya tema yang dibuat; isi harian tetap dari Generate per pekan.
+
+**Pasang (urutan bebas, tapi function dulu baru frontend):**
+1. Jalankan `sql/tambah_ig_rencana_tahunan.sql` di Supabase SQL Editor (idempotent).
+2. `supabase functions deploy generate-ig-year-plan --no-verify-jwt` (memakai secret Gemini yang sama dengan function AI lain).
+3. Frontend: unggah `index.html`, `js/app.js`, `css/style.css` yang baru.
+
+Tanpa langkah 1, dashboard tetap jalan normal; panel Rencana Setahun hanya menampilkan petunjuk menjalankan SQL.
