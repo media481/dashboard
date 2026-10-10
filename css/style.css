@@ -5190,3 +5190,30 @@ details.ig-rk-minggu > summary.ig-rk-row::-webkit-details-marker { display: none
     .ig-rk-items li { grid-template-columns: 70px 1fr; }
     .ig-rk-items li small { grid-column: 2; }
 }
+
+/* Kartu Tasklist (di baris ringkasan) + modal Tasklist Mingguan */
+.ig-stat-task { cursor: pointer; }
+.ig-stat-task:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.ig-stat .ig-stat-sub { display: block; max-width: 100%; font-size: 11px; font-weight: 500; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; order: -1; }
+.ig-planner-mode .ig-stat-row { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.ig-planner-mode .ig-stat.ig-stat-task { --tile-bg: #E6F1F4; --tone: #16899A; --num: #0F5F6B; --lbl: #2F6E78; --edge: rgba(22, 137, 154, .22); background: var(--tile-bg); }
+.ig-planner-mode .ig-stat-task b { color: var(--num); }
+.ig-planner-mode .ig-stat-task:hover { box-shadow: 0 0 0 1px var(--edge); }
+.ig-task-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; align-content: start; }
+.ig-task-hari { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bg); }
+.ig-task-hari.now { border-color: var(--brand); background: var(--brand-tint); }
+.ig-about-body .ig-task-hari h3 { margin: 0 0 6px; font-size: 13.5px; }
+.ig-task-hari h3 em { font-style: normal; font-size: 10.5px; font-weight: 600; color: var(--brand); margin-left: 4px; }
+.ig-about-body .ig-task-hari ul { list-style: none; padding: 0; margin: 0 0 8px; }
+.ig-task-hari li { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12.5px; }
+.ig-task-hari li.empty { color: var(--ink-soft); font-size: 12px; }
+.ig-task-hari li.done .ig-task-nama { text-decoration: line-through; color: var(--ink-soft); }
+.ig-task-nama { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ig-task-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--line); flex: none; margin: 0 4px; }
+.ig-task-del { border: 0; background: transparent; color: var(--ink-soft); font-size: 16px; line-height: 1; cursor: pointer; padding: 0 4px; border-radius: 4px; }
+.ig-task-del:hover { color: var(--danger); background: var(--bg); }
+.ig-task-add { display: flex; gap: 6px; }
+.ig-task-add input { flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12.5px; }
+.ig-task-add .btn-secondary { padding: 5px 10px !important; }
+@media (max-width: 900px) { .ig-planner-mode .ig-stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .ig-planner-mode .ig-stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

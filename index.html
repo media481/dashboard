@@ -1550,6 +1550,21 @@
     </div>
 </div>
 
+<!-- Modal: Tasklist mingguan (kartu "Tasklist"; logika di js/app.js section 24g) -->
+<div class="modal-overlay" id="igTaskModal">
+    <div class="modal-content ig-plan-modal ig-about-modal ig-task-modal">
+        <div class="modal-header">
+            <div class="ig-plan-head-text">
+                <h2>Tasklist Mingguan</h2>
+                <p>Kerjaan rutin per hari, berulang tiap pekan. Kartu di ringkasan menampilkan kerjaan hari ini.</p>
+            </div>
+            <button class="modal-close" onclick="closeIgTaskModal()" aria-label="Tutup">&times;</button>
+        </div>
+        <div class="modal-body ig-about-body ig-task-body" id="igTaskBody"></div>
+        <div class="ig-about-footer"><span class="ig-about-hint" id="igTaskNote"></span></div>
+    </div>
+</div>
+
 <!-- Modal: Rencana Konten (rekap 12 bulan untuk evaluasi; dirender dari ig_content_plan + saran tema di js/app.js section 24f) -->
 <div class="modal-overlay" id="igRencanaKontenModal">
     <div class="modal-content ig-plan-modal ig-about-modal ig-rk-modal">

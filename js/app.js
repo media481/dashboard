@@ -13125,6 +13125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderFeaturedSection();
     loadIgPosts();  // IG Scheduler — fire & forget di init
     loadIgContentPlan();  // Content Planner Bulanan — fire & forget di init
+    loadIgTasks();  // Tasklist mingguan — fire & forget di init
     loadIgAccounts();
     renderIgCalendar();
 
@@ -13302,7 +13303,7 @@ async function loadIgPosts(forceRefresh = false) {
 // Tombol Refresh: muat ulang post DAN rencana konten (sebelumnya hanya post, jadi
 // ide yang ditambah/diubah orang lain di sesi lain tidak ikut muncul).
 async function igRefreshAll() {
-    await Promise.all([loadIgPosts(true), loadIgContentPlan()]);
+    await Promise.all([loadIgPosts(true), loadIgContentPlan(), loadIgTasks()]);
     showToast('Data diperbarui', 'success');
 }
 window.igRefreshAll = igRefreshAll;
@@ -13831,6 +13832,7 @@ function renderIgCalSummary(monthPosts, monthPlans, emptyFutureDays, pillarPlans
     const card = (n, label, cls) =>
         `<div class="ig-stat ${cls}"><b>${n}</b><span>${label}</span></div>`;
     let html = '<div class="ig-stat-row">' +
+        igTaskCardHtml() +
         card(st('ide'), 'Ide', 'ig-stat-ide') +
         card(st('dikerjakan'), 'Dikerjakan', 'ig-stat-wip') +
         card(st('siap'), 'Siap posting', 'ig-stat-ready') +
@@ -15729,6 +15731,140 @@ function igUnduhAboutPlanner() {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeIgAboutPlannerModal();
 });
+
+// ============================================================
+// 24g. TASKLIST MINGGUAN (kartu "Tasklist" di ringkasan Content Planner)
+// Template kerjaan rutin per hari (Senin..Minggu) yang berulang tiap pekan. Kartu menampilkan kerjaan HARI INI
+// (selesai/total); klik kartu -> modal berisi daftar kerjaan seminggu yang bisa ditambah/dihapus.
+// Penyimpanan: tabel ig_tasklist (sql/tambah_ig_tasklist.sql). Kalau tabel belum ada, otomatis jatuh ke
+// localStorage (hanya di browser ini). Centang "selesai" hanya untuk HARI INI dan disimpan di browser ini.
+// ============================================================
+const IG_TASK_HARI = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']; // hari 1..7 (ISO)
+const IG_TASK_LS = 'igTasklistLocal';
+const IG_TASK_DONE_LS = 'igTasklistDone';
+let igTasks = [];           // [{id, hari, nama, urut}]
+let igTaskDb = true;        // false = tabel belum ada, pakai localStorage
+const igTaskHariIni = () => ((new Date().getDay() + 6) % 7) + 1;
+
+function igTaskLsGet(k, def) { try { return JSON.parse(localStorage.getItem(k)) || def; } catch (e) { return def; } }
+function igTaskLsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* abaikan */ } }
+function igTaskDoneToday() {
+    const all = igTaskLsGet(IG_TASK_DONE_LS, {});
+    return new Set(all[igLocalDateKey(new Date())] || []);
+}
+function igTaskDoneSave(set) {
+    const key = igLocalDateKey(new Date());
+    igTaskLsSet(IG_TASK_DONE_LS, { [key]: [...set] }); // hanya simpan hari ini, yang lama otomatis hilang
+}
+
+async function loadIgTasks() {
+    try {
+        const { data, error } = await supabaseClient.from('ig_tasklist').select('*').order('hari').order('urut').order('created_at');
+        if (error) throw error;
+        igTaskDb = true;
+        igTasks = data || [];
+    } catch (err) {
+        igTaskDb = false;
+        igTasks = igTaskLsGet(IG_TASK_LS, []);
+    }
+    renderIgCalendar();
+    if (document.getElementById('igTaskModal')?.classList.contains('open')) igTaskRender();
+}
+
+function igTaskCardHtml() {
+    const hariIni = igTasks.filter(t => t.hari === igTaskHariIni());
+    const done = igTaskDoneToday();
+    const selesai = hariIni.filter(t => done.has(String(t.id))).length;
+    const sisa = hariIni.filter(t => !done.has(String(t.id))).map(t => t.nama);
+    const sub = !hariIni.length ? 'Belum ada kerjaan hari ini'
+        : sisa.length ? sisa.slice(0, 2).join(', ') + (sisa.length > 2 ? ` +${sisa.length - 2}` : '')
+        : 'Semua selesai';
+    return `<div class="ig-stat ig-stat-task" role="button" tabindex="0" onclick="openIgTaskModal()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openIgTaskModal();}" title="Klik untuk melihat dan mengatur tasklist seminggu">`
+        + `<b>${hariIni.length ? selesai + '/' + hariIni.length : '0'}</b>`
+        + `<span>Tasklist ${IG_TASK_HARI[igTaskHariIni() - 1]}</span>`
+        + `<small class="ig-stat-sub">${escapeHtml(sub)}</small></div>`;
+}
+
+function openIgTaskModal() {
+    const modal = document.getElementById('igTaskModal');
+    if (!modal) return;
+    igTaskRender();
+    modal.classList.add('open');
+}
+function closeIgTaskModal() {
+    const modal = document.getElementById('igTaskModal');
+    if (modal) modal.classList.remove('open');
+}
+
+function igTaskRender() {
+    const body = document.getElementById('igTaskBody');
+    if (!body) return;
+    const edit = canManageProgramData();
+    const hariIni = igTaskHariIni();
+    const done = igTaskDoneToday();
+    const note = document.getElementById('igTaskNote');
+    if (note) note.textContent = igTaskDb ? '' : 'Tabel ig_tasklist belum dibuat, tasklist sementara hanya tersimpan di browser ini (jalankan sql/tambah_ig_tasklist.sql).';
+    body.innerHTML = IG_TASK_HARI.map((nama, i) => {
+        const h = i + 1, ini = h === hariIni;
+        const list = igTasks.filter(t => t.hari === h);
+        const items = list.map(t => {
+            const id = String(t.id), cek = done.has(id);
+            return `<li class="${cek ? 'done' : ''}">`
+                + (ini ? `<input type="checkbox" ${cek ? 'checked' : ''} onchange="igTaskToggle('${id}')" aria-label="Selesai">` : '<span class="ig-task-dot"></span>')
+                + `<span class="ig-task-nama">${escapeHtml(t.nama)}</span>`
+                + (edit ? `<button type="button" class="ig-task-del" onclick="igTaskHapus('${id}')" aria-label="Hapus" title="Hapus">&times;</button>` : '')
+                + '</li>';
+        }).join('') || '<li class="empty">Belum ada kerjaan</li>';
+        return `<section class="ig-task-hari${ini ? ' now' : ''}"><h3>${nama}${ini ? ' <em>hari ini</em>' : ''}</h3><ul>${items}</ul>`
+            + (edit ? `<form class="ig-task-add" onsubmit="return igTaskTambah(event, ${h})"><input type="text" maxlength="120" placeholder="Tambah kerjaan ${nama}..." aria-label="Nama kerjaan ${nama}"><button type="submit" class="btn-secondary">Tambah</button></form>` : '')
+            + '</section>';
+    }).join('');
+}
+
+async function igTaskTambah(ev, hari) {
+    ev.preventDefault();
+    const input = ev.target.querySelector('input');
+    const nama = (input.value || '').trim();
+    if (!nama) return false;
+    const urut = igTasks.filter(t => t.hari === hari).length;
+    input.value = '';
+    if (igTaskDb) {
+        const { data, error } = await supabaseClient.from('ig_tasklist').insert({ hari, nama, urut }).select().single();
+        if (error) { showToast('Gagal menambah kerjaan: ' + error.message, 'error'); input.value = nama; return false; }
+        igTasks.push(data);
+    } else {
+        igTasks.push({ id: 'l' + Date.now() + Math.random().toString(36).slice(2, 6), hari, nama, urut });
+        igTaskLsSet(IG_TASK_LS, igTasks);
+    }
+    igTaskRender(); renderIgCalendar();
+    return false;
+}
+
+async function igTaskHapus(id) {
+    const t = igTasks.find(x => String(x.id) === String(id));
+    if (!t) return;
+    if (igTaskDb) {
+        const { error } = await supabaseClient.from('ig_tasklist').delete().eq('id', t.id);
+        if (error) { showToast('Gagal menghapus kerjaan: ' + error.message, 'error'); return; }
+    }
+    igTasks = igTasks.filter(x => String(x.id) !== String(id));
+    if (!igTaskDb) igTaskLsSet(IG_TASK_LS, igTasks);
+    igTaskRender(); renderIgCalendar();
+}
+
+function igTaskToggle(id) {
+    const done = igTaskDoneToday();
+    if (done.has(id)) done.delete(id); else done.add(id);
+    igTaskDoneSave(done);
+    igTaskRender(); renderIgCalendar();
+}
+
+window.openIgTaskModal = openIgTaskModal;
+window.closeIgTaskModal = closeIgTaskModal;
+window.igTaskTambah = igTaskTambah;
+window.igTaskHapus = igTaskHapus;
+window.igTaskToggle = igTaskToggle;
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeIgTaskModal(); });
 
 // ============================================================
 // 24f. RENCANA KONTEN (rekap 12 bulan untuk evaluasi, cara kerja mirip About Planner)
