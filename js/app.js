@@ -15791,14 +15791,23 @@ function igTaskCardHtml() {
     const done = igTaskDoneToday();
     const selesai = hariIni.filter(t => done.has(String(t.id))).length;
     const sisa = hariIni.filter(t => !done.has(String(t.id))).map(t => t.nama);
+    const total = hariIni.length;
+    const pct = total ? Math.round(selesai / total * 100) : 0;
+    // Status kartu: kosong (belum ada kerjaan) / pending (ada yang belum selesai, mencolok sebagai pengingat) / done (semua beres)
+    const state = !total ? 'is-empty' : sisa.length ? 'is-pending' : 'is-done';
+    const ikon = state === 'is-done' ? 'bi-check-circle-fill' : state === 'is-empty' ? 'bi-bell' : 'bi-bell-fill';
     // Yang ditonjolkan = NAMA kerjaan (semua yang belum selesai), angka selesai/total hanya keterangan kecil
-    const utama = !hariIni.length ? '<span class="ig-task-kosong">Belum ada kerjaan hari ini</span>'
-        : !sisa.length ? '<span class="ig-task-kosong">Semua kerjaan selesai</span>'
-        : sisa.slice(0, 3).map(n => `<span class="ig-task-item">${escapeHtml(n)}</span>`).join('')
-            + (sisa.length > 3 ? `<span class="ig-task-lagi">+${sisa.length - 3} lagi</span>` : '');
-    return `<div class="ig-stat ig-stat-task" role="button" tabindex="0" onclick="openIgTaskModal()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openIgTaskModal();}" title="Klik untuk melihat dan mengatur tasklist seminggu">`
-        + `<span class="ig-task-label">Tasklist ${IG_TASK_HARI[igTaskHariIni() - 1]}${hariIni.length ? ` · ${selesai}/${hariIni.length} selesai` : ''}</span>`
-        + `<div class="ig-task-main">${utama}</div></div>`;
+    const utama = state === 'is-empty' ? '<div class="ig-task-kosong">Belum ada kerjaan hari ini</div>'
+        : state === 'is-done' ? '<div class="ig-task-kosong">Semua kerjaan hari ini selesai. Mantap!</div>'
+        : sisa.slice(0, 3).map(n => `<div class="ig-task-item"><i class="bi bi-circle" aria-hidden="true"></i><div class="ig-task-txt">${escapeHtml(n)}</div></div>`).join('')
+            + (sisa.length > 3 ? `<div class="ig-task-lagi">+${sisa.length - 3} kerjaan lagi</div>` : '');
+    return `<div class="ig-stat ig-stat-task ${state}" style="--p:${pct}%" role="button" tabindex="0" onclick="openIgTaskModal()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openIgTaskModal();}" title="Klik untuk melihat dan mengatur tasklist seminggu">`
+        + `<div class="ig-task-head"><i class="bi ${ikon} ig-task-bell" aria-hidden="true"></i>`
+        + `<span class="ig-task-label">Tasklist ${IG_TASK_HARI[igTaskHariIni() - 1]}</span>`
+        + (total ? `<span class="ig-task-count">${selesai}/${total} selesai</span>` : '') + '</div>'
+        + `<div class="ig-task-main">${utama}</div>`
+        + (total ? `<div class="ig-task-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><div></div></div>` : '')
+        + '</div>';
 }
 
 function openIgTaskModal() {
