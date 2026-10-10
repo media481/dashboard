@@ -15880,13 +15880,14 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeIgTas
 const IG_NAMA_BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 const IG_RK_STATUS = { idea: 'Ide', dijadikan_post: 'Jadi post', dilewati: 'Dilewati' };
 const IG_RK_HARI = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+let igRkProgram = []; // program aktif belum berangkat (untuk fase promosi)
 let igRkData = null; // hasil igRkSusun terakhir (dipakai render, salin, dan unduh)
 
 function igRkParseKey(key) { const [y, m, d] = key.split('-').map(Number); return new Date(y, m - 1, d); }
 function igRkTglHari(key) { const d = igRkParseKey(key); return `${IG_RK_HARI[d.getDay()]} ${igTglPendek(key)}`; }
 
 // Susun data 12 bulan mulai bulan (y, m0). Fungsi murni terhadap plans (default igContentPlan).
-function igRkSusun(y, m0, plans) {
+function igRkSusun(y, m0, plans, programs) {
     plans = (plans || []).filter(pl => pl.tanggal);
     const first = new Date(y, m0, 1);
     const awal = new Date(y, m0, 1 - ((first.getDay() + 6) % 7)); // Senin pada/sebelum tanggal 1
@@ -15906,8 +15907,10 @@ function igRkSusun(y, m0, plans) {
         if (temaNyata) status = 'disusun';
         else if (isi.length) status = 'tanpa-tema';
         else status = r.minggu < hariIni ? 'kosong' : 'saran';
+        const program = (programs || []).map(pr => ({ nama: pr.nama, tgl: pr.tgl, f: igFaseProgram(r.senin, pr.d) }))
+            .filter(x => x.f);
         bulan[idx].minggu.push({
-            senin: r.senin, minggu: r.minggu, status, isi,
+            senin: r.senin, minggu: r.minggu, status, isi, program,
             tema: temaNyata || r.tema, alasan: temaNyata ? '' : r.alasan,
             berjalan: r.senin <= hariIni && hariIni <= r.minggu
         });
@@ -15946,7 +15949,7 @@ function igRkRender() {
     if (!input || !body) return;
     const [y, mm] = (input.value || '').split('-').map(Number);
     if (!y || !mm) return;
-    igRkData = igRkSusun(y, mm - 1, igContentPlan);
+    igRkData = igRkSusun(y, mm - 1, igContentPlan, igRkProgram);
     const d = igRkData, r = d.ringkas;
     const meta = document.getElementById('igRkMeta');
     if (meta) meta.textContent = `${d.dari} – ${d.sampai} · ${r.disusun} dari ${r.minggu} pekan sudah disusun`;
@@ -15964,7 +15967,9 @@ function igRkRender() {
             const nPost = w.isi.filter(p => p.status === 'dijadikan_post').length;
             const hitung = w.isi.length ? `${w.isi.length} ide${nPost ? ' · ' + nPost + ' post' : ''}` : '';
             const head = `<span class="ig-rk-tgl">${igTglPendek(w.senin)} – ${igTglPendek(w.minggu)}</span>`
-                + `<span class="ig-rk-tema">${escapeHtml(w.tema)}${w.alasan ? `<small>${escapeHtml(w.alasan)}</small>` : ''}</span>`
+                + `<span class="ig-rk-tema">${escapeHtml(w.tema)}${w.alasan ? `<small>${escapeHtml(w.alasan)}</small>` : ''}`
+                + w.program.map(x => `<span class="ig-rk-prog ig-rk-f-${x.f.kode}" title="${escapeHtml(x.f.arahan)}">${escapeHtml(x.nama)} · ${x.f.label}</span>`).join('')
+                + `</span>`
                 + `<span class="ig-rk-meta">${badge}<small>${hitung}</small></span>`;
             if (!w.isi.length) return `<div class="ig-rk-minggu${w.berjalan ? ' now' : ''}"><div class="ig-rk-row">${head}</div></div>`;
             const items = w.isi.map(p => {
@@ -16003,7 +16008,10 @@ function openIgRencanaKontenModal() {
     const body = document.getElementById('igRkBody');
     if (body) body.scrollTop = 0;
     // muat ulang rencana terbaru (bisa ada perubahan dari sesi lain), lalu render ulang tanpa menutup bagian yang dibuka
-    Promise.resolve(loadIgContentPlan()).then(() => { if (modal.classList.contains('open')) igRkRender(); });
+    Promise.all([loadIgContentPlan(), igProgramAktifRingan()]).then(([, prog]) => {
+        igRkProgram = prog || [];
+        if (modal.classList.contains('open')) igRkRender();
+    });
 }
 
 function closeIgRencanaKontenModal() {
@@ -16035,11 +16043,11 @@ function igRkMarkdown() {
         L.push(`## ${IG_NAMA_BULAN[b.m]} ${b.y}`);
         L.push(`Ide: ${b.total} | Jadi post: ${b.post} | Dilewati: ${b.lewat}` + (Object.keys(b.pilar).length
             ? ' | Pilar: ' + Object.entries(b.pilar).map(([k, n]) => `${igRkLabelPilar(k)} ${n}`).join(', ') : ''), '');
-        L.push('| Pekan | Tema | Status | Ide | Jadi post |', '|---|---|---|---|---|');
+        L.push('| Pekan | Tema | Status | Ide | Jadi post | Fase program |', '|---|---|---|---|---|---|');
         b.minggu.forEach(w => {
             const nPost = w.isi.filter(p => p.status === 'dijadikan_post').length;
             const tema = String(w.tema).replace(/\|/g, '/');
-            L.push(`| ${igTglPendek(w.senin)} – ${igTglPendek(w.minggu)} | ${tema} | ${IG_RK_LABEL_STATUS[w.status]} | ${w.isi.length} | ${nPost} |`);
+            L.push(`| ${igTglPendek(w.senin)} – ${igTglPendek(w.minggu)} | ${tema} | ${IG_RK_LABEL_STATUS[w.status]} | ${w.isi.length} | ${nPost} | ${w.program.map(x => String(x.nama).replace(/\|/g, '/') + ' (' + x.f.label + ')').join('; ')} |`);
         });
         const rinci = b.minggu.filter(w => w.isi.length);
         if (rinci.length) {
@@ -16058,7 +16066,8 @@ Di bawah garis adalah rekap Rencana Konten Instagram Amiru Tour untuk 12 bulan (
 1. Apakah tema antarpekan dan antarbulan menyambung, seimbang (hati dan akal), dan tidak berulang?
 2. Apakah tema musiman (Ramadhan, libur sekolah, musim haji, akhir tahun) tayang cukup awal untuk mengarah ke penjualan?
 3. Apakah sebaran pilar konten per bulan seimbang? Mana bulan atau pekan yang lemah, kosong, atau menumpuk?
-4. Beri rekomendasi perubahan yang konkret (maksimal 10 poin, urut prioritas). Jangan menambah fakta atau angka yang tidak ada di rekap.
+4. Kolom/label "Fase program" menunjukkan fase promosi tiap keberangkatan (Kenalkan > Isi paket > Seat menipis > Penutupan). Apakah tiap keberangkatan terdekat sudah punya alur promosi yang cukup, dan tidak ada pekan yang menumpuk atau terlewat?
+5. Beri rekomendasi perubahan yang konkret (maksimal 10 poin, urut prioritas). Jangan menambah fakta atau angka yang tidak ada di rekap.
 
 CATATAN TAMBAHAN DARI SAYA:
 [tulis di sini]
@@ -16361,6 +16370,39 @@ window.igSaranTemaLain = igSaranTemaLain;
 window.igOnTemaMingguInput = igOnTemaMingguInput;
 window.igRenderPetaTema = igRenderPetaTema;
 
+// ---- Fase promosi program: tiap keberangkatan dipromosikan bertahap selama ~5 pekan sebelum berangkat ----
+// Dihitung dari jarak (hari) antara Senin pekan itu dan tanggal berangkat. Dipakai konteks AI dan rekap Rencana Konten.
+const IG_FASE_PROGRAM = [
+    { maks: 6,  kode: 'penutupan', label: 'Penutupan', arahan: 'pekan keberangkatan/penutupan: pengingat terakhir, kelengkapan dokumen dan persiapan berangkat; sebut sisa seat HANYA jika memang tinggal sedikit' },
+    { maks: 13, kode: 'seat', label: 'Seat menipis', arahan: 'dorong keputusan mendaftar; sisa seat boleh disebut HANYA jika tinggal 30% kuota atau kurang, selain itu fokus pada alasan berangkat bersama Amiru' },
+    { maks: 20, kode: 'paket', label: 'Isi paket', arahan: 'bahas isi paket secara konkret (hotel dan jaraknya, maskapai, durasi, itinerary, harga per tipe kamar) dengan data asli program' },
+    { maks: 34, kode: 'kenalkan', label: 'Kenalkan', arahan: 'perkenalkan program lewat cerita dan manfaat, tanpa tekanan jual' }
+];
+// seninKey 'YYYY-MM-DD' (Senin pekan), tglBerangkat = Date. Return fase atau null kalau belum/ sudah lewat masa promosi.
+function igFaseProgram(seninKey, tglBerangkat) {
+    const [y, m, d] = seninKey.split('-').map(Number);
+    const selisih = Math.round((new Date(tglBerangkat.getFullYear(), tglBerangkat.getMonth(), tglBerangkat.getDate()) - new Date(y, m - 1, d)) / 86400000);
+    if (selisih < 0) return null;
+    return IG_FASE_PROGRAM.find(f => selisih <= f.maks) || null;
+}
+// Senin pada/sebelum sebuah tanggal ('YYYY-MM-DD').
+function igSeninDari(key) {
+    const [y, m, d] = key.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() - ((dt.getDay() + 6) % 7));
+    return igLocalDateKey(dt);
+}
+// Program aktif yang belum berangkat (ringan, untuk rekap): [{nama, d, tgl}]
+async function igProgramAktifRingan() {
+    try {
+        const { data, error } = await supabaseClient.from('programs').select('nama, tgl').eq('is_active', true);
+        if (error) throw error;
+        const hariIni = new Date(); hariIni.setHours(0, 0, 0, 0);
+        return (data || []).map(p => ({ nama: p.nama, tgl: p.tgl, d: p.tgl ? parseDateFromString(p.tgl) : null }))
+            .filter(p => p.d && !isNaN(p.d) && p.d >= hariIni).sort((a, b) => a.d - b.d);
+    } catch (e) { return []; }
+}
+
 // ---- Susun ringkasan program aktif sebagai konteks AI ----
 // Jendela waktu: dari awal bulan target sampai akhir 2 bulan setelahnya (3 bulan), dan program yang sudah
 // berangkat (sebelum hari ini) dibuang -- konten promo harus menawarkan keberangkatan yang masih bisa didaftar,
@@ -16368,7 +16410,7 @@ window.igRenderPetaTema = igRenderPetaTema;
 // (kuota_pax dikurangi jamaah aktif non-batal) supaya AI tidak lagi menulis placeholder [jumlah].
 // Query langsung ke Supabase (bukan pakai cache dataUmroh/kbJamaahList) supaya tetap akurat walau tab
 // dashboard utama belum pernah dibuka di sesi ini.
-async function buildIgPlanProgramContext(year, month) {
+async function buildIgPlanProgramContext(year, month, tglAcuan) {
     try {
         const { data, error } = await supabaseClient.from('programs')
             .select('id, nama, tgl, durasi, harga_quint, is_active, admin_data_lengkap, kuota_pax')
@@ -16410,7 +16452,7 @@ async function buildIgPlanProgramContext(year, month) {
             console.warn('Hitung sisa seat untuk konteks AI gagal:', seatErr);
         }
 
-        return relevant.map(({ p }) => {
+        const daftar = relevant.map(({ p }) => {
             const hargaParts = [];
             if (p.harga_quint) hargaParts.push(`Quint ${p.harga_quint}`);
             if (p.harga_quad) hargaParts.push(`Quad ${p.harga_quad}`);
@@ -16423,6 +16465,18 @@ async function buildIgPlanProgramContext(year, month) {
                 : '';
             return `- ${p.nama} | Berangkat: ${p.tgl}${p.durasi ? ` | Durasi: ${p.durasi}` : ''}${hargaParts.length ? ` | Harga: ${hargaParts.join(', ')}` : ''}${seatInfo}`;
         }).join('\n');
+
+        // Fase promosi untuk pekan yang sedang disusun (hanya kalau pekannya diketahui)
+        let fase = '';
+        if (tglAcuan) {
+            const senin = igSeninDari(tglAcuan);
+            const baris = relevant.map(({ p, d }) => ({ p, f: igFaseProgram(senin, d) })).filter(x => x.f)
+                .map(({ p, f }) => `- ${p.nama} (berangkat ${p.tgl}): fase "${f.label}" -> ${f.arahan}`);
+            if (baris.length) {
+                fase = '\n\nFASE PROMOSI PROGRAM PEKAN INI (jadikan jangkar: sisipkan 1-2 hari yang mengarah ke program ini sesuai fasenya, sisanya tetap mengikuti tema pekan; jangan memaksa jualan di semua hari, jangan mengarang data di luar daftar program):\n' + baris.join('\n');
+            }
+        }
+        return daftar + fase;
     } catch (err) {
         console.error('buildIgPlanProgramContext error:', err);
         return '';
@@ -16783,7 +16837,7 @@ async function igGeneratePlanForSlots(year, month, slots, arahan, onProgress, op
     }
 
     try {
-        const konteksProgram = await buildIgPlanProgramContext(year, month);
+        const konteksProgram = await buildIgPlanProgramContext(year, month, pekan ? tanggalMulai : null);
         const riwayat = igBuildRiwayat();
 
         const maxPass = pekan ? IG_PLAN_MAX_PASS_PEKAN : IG_PLAN_MAX_PASS;
@@ -17046,7 +17100,7 @@ async function igRegenerasiHariPlan(planId) {
 
     try {
         const bulanLabel = `${['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][tm - 1]} ${ty}`;
-        const konteksProgram = await buildIgPlanProgramContext(ty, tm - 1);
+        const konteksProgram = await buildIgPlanProgramContext(ty, tm - 1, ctx.tanggal);
         // Riwayat memuat ide hari ini yang lama juga -> AI diminta menghindarinya, dan hasil yang mirip ditolak.
         const riwayat = igBuildRiwayat();
         const abaikan = ctx.temaMinggu ? igTokenSet(ctx.temaMinggu) : null;
@@ -17296,7 +17350,7 @@ async function igSalinPromptPlan() {
     const btn = document.getElementById('btnIgCopyPlanPrompt');
     if (btn) btn.disabled = true;
     try {
-        const konteksProgram = await buildIgPlanProgramContext(sy, sm - 1);
+        const konteksProgram = await buildIgPlanProgramContext(sy, sm - 1, senin);
         const konteksPekan = igContentPlan
             .filter(pl => pl.tanggal && pl.tanggal >= senin && pl.tanggal <= minggu && pl.status !== 'dilewati' && pl.draft_caption)
             .sort((a, b) => a.tanggal.localeCompare(b.tanggal))

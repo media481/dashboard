@@ -5224,3 +5224,10 @@ details.ig-rk-minggu > summary.ig-rk-row::-webkit-details-marker { display: none
 .ig-stat-task .ig-task-item { font-size: 15px; font-weight: 700; line-height: 1.25; color: var(--num, var(--ink)); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .ig-stat-task .ig-task-item:nth-child(n+2) { font-size: 12.5px; font-weight: 600; }
 .ig-stat-task .ig-task-lagi, .ig-stat-task .ig-task-kosong { font-size: 12px; font-weight: 500; color: var(--ink-soft); }
+/* Fase promosi program di rekap Rencana Konten */
+.ig-rk-prog { display: inline-block; margin: 3px 4px 0 0; padding: 1px 8px; border-radius: 99px; font-size: 10.5px; font-weight: 600; border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); }
+.ig-rk-tema small + .ig-rk-prog, .ig-rk-tema > .ig-rk-prog:first-of-type { margin-top: 4px; }
+.ig-rk-f-kenalkan { color: #2b7de9; border-color: #2b7de9; }
+.ig-rk-f-paket { color: #8e44ad; border-color: #8e44ad; }
+.ig-rk-f-seat { color: var(--warn); border-color: var(--warn); }
+.ig-rk-f-penutupan { color: var(--danger); border-color: var(--danger); }
