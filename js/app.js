@@ -15363,6 +15363,7 @@ async function loadIgContentPlan() {
             const probeTema = await supabaseClient.from('ig_content_plan').select('tema_minggu').limit(1);
             igTemaMingguReady = !probeTema.error;
         }
+        await loadIgRencanaTahun(); // rencana tema setahun (opsional, gagal diam-diam kalau tabel belum ada)
         renderIgCalendar();
     } catch (err) {
         console.error('loadIgContentPlan error:', err);
@@ -15414,7 +15415,7 @@ function closeIgContentPlanModal() {
 // Baris "Versi:" dan "Diperbarui:" dibaca otomatis untuk header modal, jadi format dua baris itu jangan diubah.
 // ============================================================
 const ABOUT_PLANNER_MD = `# About Planner: Konsep Perencanaan Konten Instagram Amiru Tour
-Versi: 3
+Versi: 4
 Diperbarui: 10 Oktober 2026
 Status: disepakati Oktober 2026. Uji coba alur mingguan yang menyambung dimulai pekan Senin, 12 Oktober 2026. Ejaan resmi: "Umroh" (bukan "Umrah"), termasuk di hashtag.
 
@@ -15572,6 +15573,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 - **Salin Prompt** menyalin prompt lengkap (pola 7 hari, konteks, riwayat konten lama) untuk ditempel ke asisten AI lain bila server penyusun konten bermasalah.
 - Tombol **Jadikan Post** memilih tujuan caption sesuai pilar rencana (termasuk Manasik dan Kontemplasi) dan mengirim konteks seri (hari/peran, Tema Minggu, teks di gambar, tema kemarin dan besok) supaya caption yang digenerate ulang tetap menyambung.
 - **Peta tema 12 bulan** di modal menampilkan tema pekan-pekan setahun supaya tidak ada tema kembar.
+- **Rencana Setahun AI** (di Rencana Konten) menyusun tema 12 bulan lewat AI dengan menimbang program keberangkatan, musim, dan alur jamaah, lalu menyimpannya per pekan. Tema yang disimpan menjadi saran utama Tema Minggu; tema yang diedit admin terkunci dan tidak ditimpa saat disusun ulang.
 - Riwayat konten dibaca dari rencana dan post tersimpan, jadi AI menghindari topik lama otomatis.
 
 ## 10. Alur Kerja Mingguan
@@ -15594,6 +15596,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 | 1 | 9 Oktober 2026 | Versi awal About Planner, disusun dari pola-konten.md dan perilaku Perencanaan Konten di dashboard |
 | 2 | 9 Oktober 2026 | Mutu generator mingguan: aturan mutu tulisan dan contoh gaya di prompt, pemeriksa otomatis lebih lengkap (ayat/hadis, angka, kata kaku, format carousel), perbaikan terarah hanya untuk hari yang ditolak |
 | 3 | 10 Oktober 2026 | Suara manusia: larangan pola dan frasa yang terasa buatan AI, bentuk caption bervariasi antarhari, doa penutup tidak wajib tiap hari (maksimal 3 dalam sepekan), pemeriksa server menolak pola tersebut |
+| 4 | 10 Oktober 2026 | Rencana Setahun AI: tema 12 bulan disusun AI, disimpan per pekan, bisa diedit dan dikunci, dan menjadi saran utama Tema Minggu |
 `;
 
 // Petunjuk yang ikut tersalin di depan dokumen supaya Claude mengembalikan dokumen dalam format yang bisa dipakai lagi.
@@ -15886,16 +15889,21 @@ const IG_RK_STATUS = { idea: 'Ide', dijadikan_post: 'Jadi post', dilewati: 'Dile
 const IG_RK_HARI = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 let igRkProgram = []; // program aktif belum berangkat (untuk fase promosi)
 let igRkData = null; // hasil igRkSusun terakhir (dipakai render, salin, dan unduh)
+let igRkSudahRender = false; // false = render pertama sejak modal dibuka (bulan dibuka sesuai default); true = pertahankan bulan yang sedang terbuka
+let igRencanaTahun = []; // cache ig_rencana_tahunan (1 baris per pekan: senin, tema, alasan, fokus_program, sumber, terkunci)
+let igRencanaReady = false; // true kalau sql/tambah_ig_rencana_tahunan.sql sudah dijalankan
+let igRtEditSenin = null; // Senin pekan yang temanya sedang diedit inline
+let igRtBusy = false; // true selama AI menyusun rencana setahun
 
 function igRkParseKey(key) { const [y, m, d] = key.split('-').map(Number); return new Date(y, m - 1, d); }
 function igRkTglHari(key) { const d = igRkParseKey(key); return `${IG_RK_HARI[d.getDay()]} ${igTglPendek(key)}`; }
 
 // Susun data 12 bulan mulai bulan (y, m0). Fungsi murni terhadap plans (default igContentPlan).
-function igRkSusun(y, m0, plans, programs) {
+function igRkSusun(y, m0, plans, programs, rencana = igRencanaTahun) {
     plans = (plans || []).filter(pl => pl.tanggal);
     const first = new Date(y, m0, 1);
     const awal = new Date(y, m0, 1 - ((first.getDay() + 6) % 7)); // Senin pada/sebelum tanggal 1
-    const peta = igPetaTemaSetahun(igLocalDateKey(awal), plans, 54);
+    const peta = igPetaTemaSetahun(igLocalDateKey(awal), plans, 54, '', rencana);
     const hariIni = igLocalDateKey(new Date());
     const bulan = Array.from({ length: 12 }, (_, i) => {
         const d = new Date(y, m0 + i, 1);
@@ -15910,12 +15918,14 @@ function igRkSusun(y, m0, plans, programs) {
         let status;
         if (temaNyata) status = 'disusun';
         else if (isi.length) status = 'tanpa-tema';
-        else status = r.minggu < hariIni ? 'kosong' : 'saran';
+        else if (r.minggu < hariIni) status = 'kosong';
+        else status = r.rencana ? 'rencana' : 'saran';
         const program = (programs || []).map(pr => ({ nama: pr.nama, tgl: pr.tgl, f: igFaseProgram(r.senin, pr.d) }))
             .filter(x => x.f);
         bulan[idx].minggu.push({
             senin: r.senin, minggu: r.minggu, status, isi, program,
             tema: temaNyata || r.tema, alasan: temaNyata ? '' : r.alasan,
+            terkunci: status === 'rencana' && r.terkunci, fokus: r.fokus || '',
             berjalan: r.senin <= hariIni && hariIni <= r.minggu
         });
     });
@@ -15935,6 +15945,7 @@ function igRkSusun(y, m0, plans, programs) {
             minggu: semuaMinggu.length,
             disusun: semuaMinggu.filter(w => w.status === 'disusun' || w.status === 'tanpa-tema').length,
             kosong: semuaMinggu.filter(w => w.status === 'kosong').length,
+            rencana: semuaMinggu.filter(w => w.status === 'rencana').length,
             total: bulan.reduce((a, b) => a + b.total, 0),
             post: bulan.reduce((a, b) => a + b.post, 0),
             lewat: bulan.reduce((a, b) => a + b.lewat, 0)
@@ -15945,7 +15956,7 @@ function igRkSusun(y, m0, plans, programs) {
 }
 
 function igRkLabelPilar(k) { return (typeof IG_PILLARS !== 'undefined' && IG_PILLARS[k]) ? IG_PILLARS[k].label : k; }
-const IG_RK_LABEL_STATUS = { disusun: 'Disusun', 'tanpa-tema': 'Tanpa tema', saran: 'Saran', kosong: 'Kosong' };
+const IG_RK_LABEL_STATUS = { disusun: 'Disusun', 'tanpa-tema': 'Tanpa tema', rencana: 'Rencana AI', saran: 'Saran', kosong: 'Kosong' };
 
 function igRkRender() {
     const input = document.getElementById('igRkMulai');
@@ -15953,13 +15964,19 @@ function igRkRender() {
     if (!input || !body) return;
     const [y, mm] = (input.value || '').split('-').map(Number);
     if (!y || !mm) return;
+    const terbuka = igRkSudahRender
+        ? new Set(Array.from(body.querySelectorAll('details.ig-rk-bulan[open]')).map(x => x.dataset.bk)) : null;
+    const scrollAtas = body.scrollTop;
     igRkData = igRkSusun(y, mm - 1, igContentPlan, igRkProgram);
     const d = igRkData, r = d.ringkas;
+    const pakaiTerbuka = !!terbuka && d.bulan.some(b => terbuka.has(`${b.y}-${b.m}`));
     const meta = document.getElementById('igRkMeta');
-    if (meta) meta.textContent = `${d.dari} – ${d.sampai} · ${r.disusun} dari ${r.minggu} pekan sudah disusun`;
+    if (meta) meta.textContent = `${d.dari} – ${d.sampai} · ${r.disusun} dari ${r.minggu} pekan sudah disusun` + (r.rencana ? ` · ${r.rencana} pekan rencana AI` : '');
+    const tombolRt = document.getElementById('igRtToggle');
+    if (tombolRt) tombolRt.style.display = canManageProgramData() ? '' : 'none';
     const pct = r.total ? Math.round(r.post / r.total * 100) : 0;
     const stat = (n, l) => `<div class="ig-rk-stat"><strong>${n}</strong><span>${l}</span></div>`;
-    let html = `<div class="ig-rk-stats">${stat(r.disusun + '/' + r.minggu, 'pekan disusun')}${stat(r.total, 'total ide')}${stat(r.post, 'jadi post (' + pct + '%)')}${stat(r.lewat, 'dilewati')}${stat(r.kosong, 'pekan lewat kosong')}</div>`;
+    let html = `<div class="ig-rk-stats">${stat(r.disusun + '/' + r.minggu, 'pekan disusun')}${r.rencana ? stat(r.rencana, 'pekan rencana AI') : ''}${stat(r.total, 'total ide')}${stat(r.post, 'jadi post (' + pct + '%)')}${stat(r.lewat, 'dilewati')}${stat(r.kosong, 'pekan lewat kosong')}</div>`;
     html += d.bulan.map((b, i) => {
         const pBulan = b.total ? Math.round(b.post / b.total * 100) : 0;
         const pil = Object.entries(b.pilar).sort((a, c) => c[1] - a[1]).map(([k, n]) => {
@@ -15967,14 +15984,16 @@ function igRkRender() {
             return `<span class="ig-rk-pilar" style="--c:${c}">${escapeHtml(igRkLabelPilar(k))} ${n}</span>`;
         }).join('');
         const weeks = b.minggu.map(w => {
-            const badge = `<span class="ig-rk-badge ig-rk-b-${w.status}">${IG_RK_LABEL_STATUS[w.status]}</span>`;
+            const badge = `<span class="ig-rk-badge ig-rk-b-${w.status}">${IG_RK_LABEL_STATUS[w.status]}</span>`
+                + (w.terkunci ? ' <i class="bi bi-lock-fill ig-rt-kunci" title="Terkunci: tidak ditimpa saat rencana disusun ulang"></i>' : '');
+            const sedangEdit = igRtEditSenin === w.senin && igRtBisaKelola(w);
             const nPost = w.isi.filter(p => p.status === 'dijadikan_post').length;
             const hitung = w.isi.length ? `${w.isi.length} ide${nPost ? ' · ' + nPost + ' post' : ''}` : '';
             const head = `<span class="ig-rk-tgl">${igTglPendek(w.senin)} – ${igTglPendek(w.minggu)}</span>`
-                + `<span class="ig-rk-tema">${escapeHtml(w.tema)}${w.alasan ? `<small>${escapeHtml(w.alasan)}</small>` : ''}`
+                + `<span class="ig-rk-tema">${sedangEdit ? igRtEditHtml(w) : `${escapeHtml(w.tema)}${w.alasan ? `<small>${escapeHtml(w.alasan)}</small>` : ''}`}`
                 + w.program.map(x => `<span class="ig-rk-prog ig-rk-f-${x.f.kode}" title="${escapeHtml(x.f.arahan)}">${escapeHtml(x.nama)} · ${x.f.label}</span>`).join('')
                 + `</span>`
-                + `<span class="ig-rk-meta">${badge}<small>${hitung}</small></span>`;
+                + `<span class="ig-rk-meta">${badge}<small>${hitung}</small>${sedangEdit ? '' : igRtAksiHtml(w)}</span>`;
             if (!w.isi.length) return `<div class="ig-rk-minggu${w.berjalan ? ' now' : ''}"><div class="ig-rk-row">${head}</div></div>`;
             const items = w.isi.map(p => {
                 const c = (p.pilar && typeof IG_PILLARS !== 'undefined' && IG_PILLARS[p.pilar]) ? IG_PILLARS[p.pilar].color : 'var(--line)';
@@ -15985,7 +16004,8 @@ function igRkRender() {
             return `<details class="ig-rk-minggu${w.berjalan ? ' now' : ''}"><summary class="ig-rk-row">${head}</summary><ul class="ig-rk-items">${items}</ul></details>`;
         }).join('');
         const berjalan = b.minggu.some(w => w.berjalan);
-        return `<details class="ig-rk-bulan"${berjalan || i === 0 ? ' open' : ''}>`
+        const buka = pakaiTerbuka ? terbuka.has(`${b.y}-${b.m}`) : (berjalan || i === 0);
+        return `<details class="ig-rk-bulan" data-bk="${b.y}-${b.m}"${buka ? ' open' : ''}>`
             + `<summary><span class="ig-rk-bulan-nama">${IG_NAMA_BULAN[b.m]} ${b.y}</span>`
             + `<span class="ig-rk-bulan-info">${b.total ? `${b.total} ide · ${b.post} jadi post${b.lewat ? ' · ' + b.lewat + ' dilewati' : ''}` : 'belum ada ide'}</span>`
             + `<span class="ig-rk-bar" title="${pBulan}% jadi post"><i style="width:${pBulan}%"></i></span></summary>`
@@ -15995,9 +16015,14 @@ function igRkRender() {
             + `</details>`;
     }).join('');
     body.innerHTML = html;
+    body.scrollTop = scrollAtas;
+    igRkSudahRender = true;
+    if (igRtEditSenin) setTimeout(() => { const el = document.getElementById('igRtInput'); if (el) { el.focus(); el.select(); } }, 0);
 }
 
 function igRkIniHari() {
+    igRkSudahRender = false; // buka ulang / "Bulan ini": bulan terbuka kembali ke default
+    igRtEditSenin = null;
     const t = new Date();
     const input = document.getElementById('igRkMulai');
     if (input) input.value = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}`;
@@ -16012,7 +16037,7 @@ function openIgRencanaKontenModal() {
     const body = document.getElementById('igRkBody');
     if (body) body.scrollTop = 0;
     // muat ulang rencana terbaru (bisa ada perubahan dari sesi lain), lalu render ulang tanpa menutup bagian yang dibuka
-    Promise.all([loadIgContentPlan(), igProgramAktifRingan()]).then(([, prog]) => {
+    Promise.all([loadIgContentPlan(), igProgramAktifRingan()]).then(([, prog]) => { // loadIgContentPlan ikut memuat rencana setahun
         igRkProgram = prog || [];
         if (modal.classList.contains('open')) igRkRender();
     });
@@ -16066,7 +16091,7 @@ function igRkMarkdown() {
 }
 
 const IG_RK_PETUNJUK = `PETUNJUK UNTUK CLAUDE
-Di bawah garis adalah rekap Rencana Konten Instagram Amiru Tour untuk 12 bulan (tema per pekan, isi harian, dan progres). Status "Disusun" = sudah ada di rencana, "Saran" = proyeksi tema otomatis (belum jadi rencana), "Kosong" = pekan lewat tanpa isi. Tolong evaluasi:
+Di bawah garis adalah rekap Rencana Konten Instagram Amiru Tour untuk 12 bulan (tema per pekan, isi harian, dan progres). Status "Disusun" = sudah ada isi harian di rencana, "Rencana AI" = tema pekan hasil perencanaan AI yang tersimpan (isi harian belum dibuat), "Saran" = proyeksi tema otomatis (belum disimpan), "Kosong" = pekan lewat tanpa isi. Tolong evaluasi:
 1. Apakah tema antarpekan dan antarbulan menyambung, seimbang (hati dan akal), dan tidak berulang?
 2. Apakah tema musiman (Ramadhan, libur sekolah, musim haji, akhir tahun) tayang cukup awal untuk mengarah ke penjualan?
 3. Apakah sebaran pilar konten per bulan seimbang? Mana bulan atau pekan yang lemah, kosong, atau menumpuk?
@@ -16106,6 +16131,302 @@ function igUnduhRencanaKonten() {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeIgRencanaKontenModal();
 });
+
+// ============================================================
+// 24h. RENCANA SETAHUN (AI) — tema 12 bulan disusun AI, DISIMPAN di ig_rencana_tahunan, bisa diedit/dikunci
+// Beda dengan "Saran" (hitungan lokal tanpa AI, tidak tersimpan): di sini AI menimbang program keberangkatan
+// (fase promosi), musim Hijriah/Masehi, alur perjalanan jamaah, dan tema yang sudah dipakai, lalu hasilnya
+// disimpan per pekan. Yang tersimpan menjadi saran UTAMA di Perencanaan Konten (lihat igKandidatTemaMinggu).
+// Edit manual otomatis mengunci pekan itu (tidak ditimpa saat disusun ulang). Isi harian tetap dibuat per pekan.
+// Butuh sql/tambah_ig_rencana_tahunan.sql + edge function generate-ig-year-plan.
+// ============================================================
+const IG_YEAR_PLAN_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/generate-ig-year-plan`;
+const IG_RT_BATCH = 26; // pekan per panggilan AI (setengah tahun): hasil tersimpan bertahap dan tidak timeout
+const IG_RT_MAX_ULANG = 2; // percobaan ulang untuk pekan yang ditolak (mirip tema lain)
+
+async function loadIgRencanaTahun() {
+    try {
+        const { data, error } = await supabaseClient.from('ig_rencana_tahunan').select('*').order('senin', { ascending: true });
+        if (error) throw error;
+        igRencanaTahun = data || [];
+        igRencanaReady = true;
+    } catch (e) {
+        igRencanaTahun = [];
+        igRencanaReady = false; // tabel belum ada (migrasi belum dijalankan): fitur Rencana Setahun tidak aktif
+    }
+}
+
+// Pekan boleh diedit/dikunci/di-reset hanya untuk admin/user, tabel sudah ada, dan pekan belum punya isi harian.
+function igRtBisaKelola(w) {
+    return canManageProgramData() && igRencanaReady && (w.status === 'saran' || w.status === 'rencana');
+}
+
+function igRtAksiHtml(w) {
+    if (!igRtBisaKelola(w)) return '';
+    const s = escapeHtmlAttr(w.senin);
+    const btn = (ikon, judul, fn) => `<button type="button" class="ig-rt-btn" title="${escapeHtmlAttr(judul)}" aria-label="${escapeHtmlAttr(judul)}" onclick="event.preventDefault();event.stopPropagation();${fn}('${s}')"><i class="bi ${ikon}"></i></button>`;
+    if (w.status === 'saran') return `<span class="ig-rt-aksi">${btn('bi-pencil', 'Tulis tema sendiri untuk pekan ini', 'igRtEdit')}</span>`;
+    return `<span class="ig-rt-aksi">${btn('bi-pencil', 'Edit tema (otomatis mengunci)', 'igRtEdit')}`
+        + btn(w.terkunci ? 'bi-unlock' : 'bi-lock', w.terkunci ? 'Buka kunci: boleh ditimpa saat disusun ulang' : 'Kunci: jangan ditimpa saat disusun ulang', 'igRtKunci')
+        + btn('bi-x-lg', 'Hapus rencana pekan ini (kembali ke Saran)', 'igRtHapus') + `</span>`;
+}
+
+function igRtEditHtml(w) {
+    const s = escapeHtmlAttr(w.senin);
+    return `<span class="ig-rt-edit"><input type="text" id="igRtInput" maxlength="80" value="${escapeHtmlAttr(w.tema)}" onkeydown="igRtKey(event,'${s}')" aria-label="Tema pekan">`
+        + `<button type="button" class="btn-primary ig-rt-simpan" onclick="igRtSimpanEdit('${s}')">Simpan</button>`
+        + `<button type="button" class="btn-secondary ig-rt-simpan" onclick="igRtBatalEdit()">Batal</button></span>`;
+}
+
+function igRtCariPekan(senin) {
+    return igRkData ? igRkData.bulan.flatMap(b => b.minggu).find(w => w.senin === senin) : null;
+}
+
+function igRtEdit(senin) {
+    const w = igRtCariPekan(senin);
+    if (!w || !igRtBisaKelola(w)) return;
+    igRtEditSenin = senin;
+    igRkRender();
+}
+function igRtBatalEdit() { igRtEditSenin = null; igRkRender(); }
+function igRtKey(e, senin) {
+    if (e.key === 'Enter') { e.preventDefault(); igRtSimpanEdit(senin); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); igRtBatalEdit(); }
+}
+
+// Simpan tema yang diketik admin: sumber 'manual' + terkunci (supaya tidak ditimpa AI).
+async function igRtSimpanEdit(senin) {
+    const input = document.getElementById('igRtInput');
+    const tema = String((input && input.value) || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    if (!tema) { showToast('Tema tidak boleh kosong', 'error'); return; }
+    const ada = igRencanaTahun.find(x => x.senin === senin);
+    if (ada && ada.tema === tema) { igRtBatalEdit(); return; }
+    const row = { senin, tema, alasan: ada && ada.alasan && ada.sumber === 'ai' ? 'Diubah manual dari saran AI' : 'Diatur manual', fokus_program: ada ? ada.fokus_program : null, sumber: 'manual', terkunci: true };
+    try {
+        const { error } = await supabaseClient.from('ig_rencana_tahunan').upsert(row, { onConflict: 'senin' });
+        if (error) throw error;
+        // Peringatan lunak: tema mirip pekan lain di rencana (tetap disimpan, keputusan ada di admin)
+        const mirip = igRencanaTahun.find(x => x.senin !== senin && igIsSimilarText(x.tema, tema));
+        igRtEditSenin = null;
+        await loadIgRencanaTahun();
+        igRkRender();
+        if (mirip) showToast(`Tersimpan. Perhatian: mirip dengan tema pekan ${igTglPendek(mirip.senin)} ("${mirip.tema}")`, 'info');
+        else showToast('Tema pekan disimpan dan dikunci');
+    } catch (e) {
+        showToast('Gagal menyimpan tema: ' + (e.message || e), 'error');
+    }
+}
+
+async function igRtKunci(senin) {
+    const ada = igRencanaTahun.find(x => x.senin === senin);
+    if (!ada || !canManageProgramData()) return;
+    try {
+        const { error } = await supabaseClient.from('ig_rencana_tahunan').update({ terkunci: !ada.terkunci }).eq('senin', senin);
+        if (error) throw error;
+        await loadIgRencanaTahun();
+        igRkRender();
+    } catch (e) {
+        showToast('Gagal mengubah kunci: ' + (e.message || e), 'error');
+    }
+}
+
+async function igRtHapus(senin) {
+    const ada = igRencanaTahun.find(x => x.senin === senin);
+    if (!ada || !canManageProgramData()) return;
+    if (ada.terkunci && !confirm('Pekan ini terkunci (sudah Anda edit atau kunci). Hapus rencananya?')) return;
+    try {
+        const { error } = await supabaseClient.from('ig_rencana_tahunan').delete().eq('senin', senin);
+        if (error) throw error;
+        await loadIgRencanaTahun();
+        igRkRender();
+    } catch (e) {
+        showToast('Gagal menghapus rencana: ' + (e.message || e), 'error');
+    }
+}
+
+function igRtTogglePanel() {
+    const panel = document.getElementById('igRtPanel');
+    if (!panel) return;
+    const buka = panel.style.display === 'none' || !panel.style.display;
+    panel.style.display = buka ? 'block' : 'none';
+    if (buka) igRtRenderPanel();
+}
+
+// Ringkasan di panel: berapa pekan yang akan diisi dengan pengaturan sekarang.
+function igRtHitungTarget() {
+    if (!igRkData) return [];
+    const hariIni = igLocalDateKey(new Date());
+    const timpa = !!(document.getElementById('igRtTimpa') || {}).checked;
+    return igRkData.bulan.flatMap(b => b.minggu).filter(w =>
+        w.minggu >= hariIni && !w.isi.length
+        && (w.status === 'saran' || (w.status === 'rencana' && timpa && !w.terkunci)));
+}
+function igRtRenderPanel() {
+    const info = document.getElementById('igRtInfo');
+    if (!info) return;
+    if (!igRencanaReady) {
+        info.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Tabel rencana setahun belum ada. Jalankan <code>sql/tambah_ig_rencana_tahunan.sql</code> di Supabase SQL Editor, lalu buka ulang modal ini.';
+        return;
+    }
+    const n = igRtHitungTarget().length;
+    const dikunci = igRencanaTahun.filter(x => x.terkunci).length;
+    info.innerHTML = n
+        ? `<i class="bi bi-calendar-check"></i> <strong>${n}</strong> pekan akan diisi AI (${igRkData.dari} – ${igRkData.sampai}).${dikunci ? ` ${dikunci} pekan terkunci tidak disentuh.` : ''}`
+        : '<i class="bi bi-info-circle"></i> Tidak ada pekan yang perlu diisi pada rentang ini (semua sudah punya isi, terkunci, atau sudah lewat).';
+}
+
+// Panggil edge function (token login, bukan anon key; pola sama dengan igCallPlanFunction).
+async function igRtPanggilAI(payload) {
+    const response = await fetch(IG_YEAR_PLAN_FUNCTION_URL, {
+        method: 'POST',
+        headers: await igAiAuthHeaders(),
+        body: JSON.stringify(payload)
+    });
+    if (response.status === 404) throw new Error('Edge function generate-ig-year-plan belum di-deploy (supabase functions deploy generate-ig-year-plan --no-verify-jwt).');
+    if (!response.ok) {
+        let detail = '';
+        try { detail = (await response.json()).error || ''; } catch (e) {}
+        throw new Error(detail || 'Gagal memanggil API (status ' + response.status + ')');
+    }
+    const data = await response.json();
+    if (!data || !(data.versi >= 1) || !Array.isArray(data.items)) throw new Error('Respons function rencana setahun tidak dikenali. Deploy ulang generate-ig-year-plan.');
+    return data;
+}
+
+function igRtBahanMusim() {
+    return IG_TEMA_MUSIM.map(e => {
+        const kapan = [
+            ...(e.hijri || []).map(n => 'bulan Hijriah ' + IG_NAMA_HIJRI[n - 1]),
+            ...(e.masehi || []).map(n => 'bulan ' + IG_NAMA_BULAN[n - 1])
+        ].join(', ');
+        return `- ${e.tema} (tayang ${kapan}${e.jual ? '; tema penjualan, sengaja tayang lebih awal dari musimnya' : ''})`;
+    }).join('\n');
+}
+
+function igRtStatus(teks, error) {
+    const el = document.getElementById('igRtStatus');
+    if (!el) return;
+    el.textContent = teks || '';
+    el.classList.toggle('error', !!error);
+}
+
+// Susun rencana: batch per setengah tahun -> cek kemiripan -> ulang pekan yang ditolak -> simpan per batch.
+async function igRtSusunAI() {
+    if (igRtBusy) return;
+    if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menyusun rencana konten', 'error'); return; }
+    if (!igRencanaReady) { igRtRenderPanel(); showToast('Jalankan sql/tambah_ig_rencana_tahunan.sql dulu', 'error'); return; }
+    if (!igRkData) igRkRender();
+    const target = igRtHitungTarget();
+    if (!target.length) { igRtRenderPanel(); showToast('Tidak ada pekan yang perlu diisi', 'info'); return; }
+
+    igRtBusy = true;
+    const btn = document.getElementById('igRtBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Menyusun...'; }
+    let tersimpan = 0, gagal = 0, errMsg = '';
+    try {
+        const arahan = String((document.getElementById('igRtArahan') || {}).value || '').trim().slice(0, 800);
+        igRtStatus('Membaca program dan riwayat tema...');
+        const konteksProgram = await buildIgPlanProgramContext(0, 0, null, true);
+        const targetSet = new Set(target.map(w => w.senin));
+
+        // Tema yang sudah terpakai / dipertahankan (WAJIB dihindari AI): isi harian nyata + rencana yang tidak ditimpa.
+        const dipertahankan = igRkData.bulan.flatMap(b => b.minggu).filter(w =>
+            !targetSet.has(w.senin) && (w.status === 'disusun' || w.status === 'rencana') && w.tema);
+        const riwayatSet = new Map(); // tema -> true (unik, huruf asli)
+        dipertahankan.forEach(w => riwayatSet.set(w.tema, true));
+        igContentPlan.filter(pl => pl.tema_minggu).forEach(pl => riwayatSet.set(pl.tema_minggu, true));
+        const diterima = []; // [{ senin, tema }] hasil yang lolos selama proses ini
+        const semuaTerpakai = () => [...riwayatSet.keys(), ...diterima.map(x => x.tema)];
+        const cekMirip = tema => { const t = igTokenSet(tema); return semuaTerpakai().some(u => igIsSimilarText(t, u)); };
+
+        const infoPekan = w => {
+            const kamis = igRkParseKey(w.senin); kamis.setDate(kamis.getDate() + 3);
+            const hm = igHijriMonth(kamis);
+            return {
+                senin: w.senin, minggu: w.minggu,
+                hijri: hm ? IG_NAMA_HIJRI[hm - 1] : '', masehi: IG_NAMA_BULAN[kamis.getMonth()],
+                program: w.program.map(x => `${x.nama} (berangkat ${x.tgl}, fase ${x.f.label})`).join('; ')
+            };
+        };
+
+        const batches = [];
+        for (let i = 0; i < target.length; i += IG_RT_BATCH) batches.push(target.slice(i, i + IG_RT_BATCH));
+
+        for (let bi = 0; bi < batches.length; bi++) {
+            let sisa = batches[bi];
+            const lolosBatch = [];
+            for (let putaran = 0; putaran <= IG_RT_MAX_ULANG && sisa.length; putaran++) {
+                igRtStatus(`Menyusun tema (${bi + 1}/${batches.length})${putaran ? `, mengulang ${sisa.length} pekan yang mirip` : ''}...`);
+                const sekitar = [...dipertahankan.map(w => ({ senin: w.senin, tema: w.tema })), ...diterima]
+                    .sort((a, b) => a.senin.localeCompare(b.senin)).map(x => `${x.senin} | ${x.tema}`).join('\n');
+                const data = await igRtPanggilAI({
+                    pekan: sisa.map(infoPekan),
+                    konteksProgram,
+                    riwayatTema: semuaTerpakai().join('\n'),
+                    konteksSekitar: sekitar,
+                    bankAlur: IG_TEMA_ALUR,
+                    bankMusim: igRtBahanMusim(),
+                    arahan
+                });
+                const sisaSet = new Set(sisa.map(w => w.senin));
+                (data.items || []).forEach(it => {
+                    if (!sisaSet.has(it.senin) || !it.tema) return;
+                    if (cekMirip(it.tema)) return; // mirip tema lain: pekan ini diulang di putaran berikutnya
+                    diterima.push({ senin: it.senin, tema: it.tema });
+                    lolosBatch.push(it);
+                });
+                const lolosSet = new Set(lolosBatch.map(x => x.senin));
+                sisa = sisa.filter(w => !lolosSet.has(w.senin));
+                // Tema yang ditolak karena mirip ikut masuk riwayat putaran berikutnya supaya tidak diajukan lagi.
+                (data.items || []).filter(it => it.tema && !lolosSet.has(it.senin)).forEach(it => riwayatSet.set(it.tema, true));
+            }
+            gagal += sisa.length;
+
+            if (lolosBatch.length) {
+                igRtStatus(`Menyimpan ${lolosBatch.length} pekan...`);
+                const rows = lolosBatch.map(it => ({
+                    senin: it.senin, tema: it.tema, alasan: it.alasan || null,
+                    fokus_program: it.fokus_program || null, sumber: 'ai', terkunci: false
+                }));
+                const { error } = await supabaseClient.from('ig_rencana_tahunan').upsert(rows, { onConflict: 'senin' });
+                if (error) throw error;
+                tersimpan += rows.length;
+                await loadIgRencanaTahun();
+                igRkRender();
+            }
+        }
+    } catch (e) {
+        console.error('igRtSusunAI error:', e);
+        errMsg = e.message || String(e);
+    } finally {
+        igRtBusy = false;
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-stars"></i> Susun dengan AI'; }
+    }
+
+    await loadIgRencanaTahun();
+    igRkRender();
+    igRtRenderPanel();
+    if (errMsg) {
+        igRtStatus(tersimpan ? `Berhenti di tengah jalan: ${tersimpan} pekan sudah tersimpan. ${errMsg}` : errMsg, true);
+        showToast('Rencana setahun gagal sebagian: ' + errMsg, 'error');
+    } else if (gagal) {
+        igRtStatus(`${tersimpan} pekan tersimpan. ${gagal} pekan belum terisi (tema yang diusulkan AI mirip tema lain); klik Susun dengan AI lagi untuk mencoba pekan itu.`);
+        showToast(`${tersimpan} pekan disimpan, ${gagal} pekan belum terisi`, 'info');
+    } else {
+        igRtStatus(`Selesai: ${tersimpan} pekan tersimpan. Periksa temanya, edit yang kurang pas (otomatis terkunci).`);
+        showToast(`Rencana setahun tersimpan (${tersimpan} pekan)`);
+    }
+}
+
+window.igRtTogglePanel = igRtTogglePanel;
+window.igRtSusunAI = igRtSusunAI;
+window.igRtRenderPanel = igRtRenderPanel;
+window.igRtEdit = igRtEdit;
+window.igRtBatalEdit = igRtBatalEdit;
+window.igRtKey = igRtKey;
+window.igRtSimpanEdit = igRtSimpanEdit;
+window.igRtKunci = igRtKunci;
+window.igRtHapus = igRtHapus;
 
 // ---- Balik ke form generate (dipakai tombol "Generate Ulang") ----
 function showIgPlanGenerateForm() {
@@ -16232,7 +16553,7 @@ function igHijriMonth(date) {
 
 // Daftar tema yang cocok untuk pekan yang dimulai seninKey, urut dari yang paling disarankan (fungsi murni).
 // plans = igContentPlan (butuh kolom tema_minggu). Return [{ tema, alasan, tetap? }], paling banyak `maks`.
-function igKandidatTemaMinggu(seninKey, plans, maks) {
+function igKandidatTemaMinggu(seninKey, plans, maks, rencana = igRencanaTahun) {
     const [y, m, d] = seninKey.split('-').map(Number);
     const kunci = (selisih) => igLocalDateKey(new Date(y, m - 1, d + selisih));
     const mingguKey = kunci(6);
@@ -16243,7 +16564,10 @@ function igKandidatTemaMinggu(seninKey, plans, maks) {
     if (ada) return [{ tema: ada.tema_minggu, alasan: 'Tema yang sudah dipakai di pekan ini', tetap: true }];
 
     const awal = kunci(-365), akhir = kunci(365);
-    const terpakai = berTema.filter(pl => pl.tanggal >= awal && pl.tanggal <= akhir).map(pl => igTokenSet(pl.tema_minggu));
+    // Tema di Rencana Setahun (tersimpan) pada pekan LAIN juga dianggap terpakai, supaya saran tidak mengulangnya.
+    const rencanaIni = (rencana || []).find(x => x.senin === seninKey);
+    const terpakai = berTema.filter(pl => pl.tanggal >= awal && pl.tanggal <= akhir).map(pl => igTokenSet(pl.tema_minggu))
+        .concat((rencana || []).filter(x => x.senin !== seninKey && x.senin >= awal && x.senin <= akhir).map(x => igTokenSet(x.tema)));
     const sudah = tema => { const t = igTokenSet(tema); return terpakai.some(u => igIsSimilarText(t, u)); };
     const batas = Math.max(1, maks || 6);
     const hasil = [];
@@ -16277,20 +16601,31 @@ function igKandidatTemaMinggu(seninKey, plans, maks) {
     }
     // Semua tema alur sudah dipakai dalam setahun: ulang dari lanjutan alur, jangan sampai kosong.
     if (!hasil.length) hasil.push({ tema: IG_TEMA_ALUR[(idx + 1) % n], alasan: 'Semua tema sudah dipakai setahun terakhir, mengulang alur' });
+    // Pekan ini punya tema di Rencana Setahun (disusun AI / diatur admin): itu pilihan utama, saran otomatis jadi cadangan.
+    if (rencanaIni) {
+        const utama = {
+            tema: rencanaIni.tema,
+            alasan: 'Rencana setahun' + (rencanaIni.alasan ? ': ' + rencanaIni.alasan : ''),
+            rencana: true, terkunci: !!rencanaIni.terkunci, fokus: rencanaIni.fokus_program || '', rencanaId: rencanaIni.id
+        };
+        const t0 = igTokenSet(utama.tema);
+        return [utama, ...hasil.filter(h => !igIsSimilarText(igTokenSet(h.tema), t0))].slice(0, batas);
+    }
     return hasil;
 }
 
 // Peta tema untuk `jumlah` pekan ke depan mulai seninKey: tiap pekan memakai saran teratas, dan pilihan itu
 // dianggap terpakai untuk pekan berikutnya. temaAwal (opsional) = tema yang sudah dipilih admin untuk pekan pertama.
-function igPetaTemaSetahun(seninKey, plans, jumlah, temaAwal) {
+function igPetaTemaSetahun(seninKey, plans, jumlah, temaAwal, rencana = igRencanaTahun) {
     const [y, m, d] = seninKey.split('-').map(Number);
     const sim = (plans || []).slice();
     const out = [];
     for (let k = 0; k < (jumlah || 52); k++) {
         const senin = igLocalDateKey(new Date(y, m - 1, d + 7 * k));
         const minggu = igLocalDateKey(new Date(y, m - 1, d + 7 * k + 6));
-        const pilihan = (k === 0 && temaAwal) ? { tema: temaAwal, alasan: 'Tema yang Anda pilih' } : igKandidatTemaMinggu(senin, sim, 1)[0];
-        out.push({ senin, minggu, tema: pilihan.tema, alasan: pilihan.alasan });
+        const pilihan = (k === 0 && temaAwal) ? { tema: temaAwal, alasan: 'Tema yang Anda pilih' } : igKandidatTemaMinggu(senin, sim, 1, rencana)[0];
+        out.push({ senin, minggu, tema: pilihan.tema, alasan: pilihan.alasan,
+            rencana: !!pilihan.rencana, terkunci: !!pilihan.terkunci, fokus: pilihan.fokus || '', rencanaId: pilihan.rencanaId || null });
         sim.push({ tanggal: senin, tema_minggu: pilihan.tema, status: 'idea' });
     }
     return out;
@@ -16414,7 +16749,7 @@ async function igProgramAktifRingan() {
 // (kuota_pax dikurangi jamaah aktif non-batal) supaya AI tidak lagi menulis placeholder [jumlah].
 // Query langsung ke Supabase (bukan pakai cache dataUmroh/kbJamaahList) supaya tetap akurat walau tab
 // dashboard utama belum pernah dibuka di sesi ini.
-async function buildIgPlanProgramContext(year, month, tglAcuan) {
+async function buildIgPlanProgramContext(year, month, tglAcuan, semuaMendatang) {
     try {
         const { data, error } = await supabaseClient.from('programs')
             .select('id, nama, tgl, durasi, harga_quint, is_active, admin_data_lengkap, kuota_pax')
@@ -16427,8 +16762,9 @@ async function buildIgPlanProgramContext(year, month, tglAcuan) {
         // sebelum bisa dipakai, kalau tidak p.harga_quad selalu undefined.
         const unpacked = (data || []).map(p => unpackProgramAdminData(p));
 
-        const awalJendela = new Date(year, month, 1);
-        const akhirJendela = new Date(year, month + 3, 0, 23, 59, 59); // akhir bulan ke-3
+        // semuaMendatang (dipakai Rencana Setahun): tanpa batas 3 bulan, semua program yang belum berangkat.
+        const awalJendela = semuaMendatang ? new Date(1970, 0, 1) : new Date(year, month, 1);
+        const akhirJendela = semuaMendatang ? new Date(9999, 0, 1) : new Date(year, month + 3, 0, 23, 59, 59); // akhir bulan ke-3
         const hariIni = new Date(); hariIni.setHours(0, 0, 0, 0);
 
         const relevant = unpacked
