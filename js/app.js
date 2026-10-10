@@ -15823,21 +15823,40 @@ function igTaskRender() {
     const done = igTaskDoneToday();
     const note = document.getElementById('igTaskNote');
     if (note) note.textContent = igTaskDb ? '' : 'Tabel ig_tasklist belum dibuat, tasklist sementara hanya tersimpan di browser ini (jalankan sql/49_tambah_ig_tasklist.sql).';
-    body.innerHTML = IG_TASK_HARI.map((nama, i) => {
-        const h = i + 1, ini = h === hariIni;
+
+    const delBtn = id => edit ? `<button type="button" class="ig-tm-del" onclick="igTaskHapus('${id}')" aria-label="Hapus" title="Hapus">&times;</button>` : '';
+    const addForm = (h, nama) => edit
+        ? `<form class="ig-tm-add" onsubmit="return igTaskTambah(event, ${h})"><input type="text" maxlength="120" placeholder="Tambah kerjaan..." aria-label="Tambah kerjaan ${nama}"><button type="submit" aria-label="Tambah" title="Tambah"><i class="bi bi-plus-lg"></i></button></form>` : '';
+
+    // ---- Hero: kerjaan HARI INI (bisa dicentang) ----
+    const listIni = igTasks.filter(t => t.hari === hariIni);
+    const selesai = listIni.filter(t => done.has(String(t.id))).length;
+    const pct = listIni.length ? Math.round(selesai / listIni.length * 100) : 0;
+    const semua = listIni.length > 0 && selesai === listIni.length;
+    const rowsIni = listIni.map(t => {
+        const id = String(t.id), cek = done.has(id);
+        return `<li class="ig-tm-row${cek ? ' done' : ''}"><label><input type="checkbox" ${cek ? 'checked' : ''} onchange="igTaskToggle('${id}')">`
+            + `<span class="ig-tm-box"><i class="bi bi-check-lg"></i></span><span class="ig-tm-nama">${escapeHtml(t.nama)}</span></label>${delBtn(id)}</li>`;
+    }).join('') || '<li class="ig-tm-empty">Belum ada kerjaan hari ini</li>';
+    const hero = `<section class="ig-tm-hero${semua ? ' is-done' : ''}">`
+        + `<div class="ig-tm-hero-top"><div><small>Hari ini</small><h3>${IG_TASK_HARI[hariIni - 1]}</h3></div>`
+        + (listIni.length ? `<div class="ig-tm-prog"><b>${selesai}/${listIni.length}</b><span>${semua ? 'semua selesai' : 'selesai'}</span></div>` : '') + '</div>'
+        + (listIni.length ? `<div class="ig-tm-bar"><div style="width:${pct}%"></div></div>` : '')
+        + `<ul class="ig-tm-list">${rowsIni}</ul>${addForm(hariIni, IG_TASK_HARI[hariIni - 1])}</section>`;
+
+    // ---- Hari lain: urut mulai besok, melingkar sampai kemarin ----
+    const lain = [];
+    for (let k = 1; k <= 6; k++) lain.push(((hariIni - 1 + k) % 7) + 1);
+    const week = lain.map((h, idx) => {
+        const nama = IG_TASK_HARI[h - 1];
         const list = igTasks.filter(t => t.hari === h);
-        const items = list.map(t => {
-            const id = String(t.id), cek = done.has(id);
-            return `<li class="${cek ? 'done' : ''}">`
-                + (ini ? `<input type="checkbox" ${cek ? 'checked' : ''} onchange="igTaskToggle('${id}')" aria-label="Selesai">` : '<span class="ig-task-dot"></span>')
-                + `<span class="ig-task-nama">${escapeHtml(t.nama)}</span>`
-                + (edit ? `<button type="button" class="ig-task-del" onclick="igTaskHapus('${id}')" aria-label="Hapus" title="Hapus">&times;</button>` : '')
-                + '</li>';
-        }).join('') || '<li class="empty">Belum ada kerjaan</li>';
-        return `<section class="ig-task-hari${ini ? ' now' : ''}"><h3>${nama}${ini ? ' <em>hari ini</em>' : ''}</h3><ul>${items}</ul>`
-            + (edit ? `<form class="ig-task-add" onsubmit="return igTaskTambah(event, ${h})"><input type="text" maxlength="120" placeholder="Tambah kerjaan ${nama}..." aria-label="Nama kerjaan ${nama}"><button type="submit" class="btn-secondary">Tambah</button></form>` : '')
-            + '</section>';
+        const rows = list.map(t => `<li><span class="ig-tm-dot"></span><span class="ig-tm-nama">${escapeHtml(t.nama)}</span>${delBtn(String(t.id))}</li>`).join('')
+            || '<li class="ig-tm-empty">Belum ada kerjaan</li>';
+        return `<section class="ig-tm-day"><header><h4>${nama}</h4>${idx === 0 ? '<em>Besok</em>' : ''}<span class="ig-tm-count">${list.length || ''}</span></header>`
+            + `<ul>${rows}</ul>${addForm(h, nama)}</section>`;
     }).join('');
+
+    body.innerHTML = hero + '<h4 class="ig-tm-sub">Jadwal hari lain</h4><div class="ig-tm-week">' + week + '</div>';
 }
 
 async function igTaskTambah(ev, hari) {
