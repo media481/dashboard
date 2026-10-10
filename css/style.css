@@ -5328,18 +5328,18 @@ details.ig-rk-minggu > summary.ig-rk-row::-webkit-details-marker { display: none
 
 /* ---- Kartu Tasklist v2: 2 baris, nama kerjaan ditonjolkan (js/app.js igTaskCardHtml) ---- */
 .ig-planner-mode .ig-stat-row { grid-template-columns: minmax(0, 1.5fr) repeat(5, minmax(0, 1fr)); }
-.ig-planner-mode .ig-stat.ig-stat-task { gap: 3px; justify-content: center; }
+.ig-planner-mode .ig-stat.ig-stat-task { gap: 2px; justify-content: center; }
 
 .ig-stat-task .ig-task-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.ig-stat-task .ig-task-bell { flex: none; font-size: 10px; color: var(--tone, #16899A); }
+.ig-stat-task .ig-task-bell { flex: none; font-size: 8.5px; opacity: .7; color: var(--tone, #16899A); }
 .ig-planner-mode .ig-stat.ig-stat-task .ig-task-label {
-    font-size: 11px; font-weight: 600; line-height: 1.2; color: var(--lbl, var(--ink-soft));
+    font-size: 9.5px; font-weight: 500; line-height: 1.2; letter-spacing: .01em; color: var(--lbl, var(--ink-soft)); opacity: .8;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .ig-stat-task .ig-task-main { min-width: 0; }
 .ig-planner-mode .ig-stat.ig-stat-task .ig-task-item {
-    display: flex; align-items: baseline; gap: 8px; font-size: 18px; font-weight: 800; line-height: 1.25;
-    letter-spacing: -.015em; color: var(--num, var(--ink)); overflow: hidden;
+    display: flex; align-items: baseline; gap: 8px; font-size: 21px; font-weight: 800; line-height: 1.2;
+    letter-spacing: -.02em; color: var(--num, var(--ink)); overflow: hidden;
 }
 .ig-stat-task .ig-task-txt { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ig-stat-task .ig-task-lagi { flex: none; font-size: 11px; font-weight: 600; color: var(--lbl, var(--ink-soft)); }
