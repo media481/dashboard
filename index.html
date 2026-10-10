@@ -445,6 +445,9 @@
                 <button class="btn-secondary" id="btnIgSyncComments" onclick="syncIgCommentsNow()" style="font-size:12px;padding:6px 14px;" title="Tarik komentar terbaru dari Instagram">
                     Sync Komentar
                 </button>
+                <button class="btn-secondary" id="btnIgRencanaKonten" onclick="openIgRencanaKontenModal()" style="font-size:12px;padding:6px 14px;" title="Rekap rencana konten 12 bulan (tema per pekan, isi, dan progres) untuk evaluasi">
+                    Rencana Konten
+                </button>
                 <button class="btn-secondary" id="btnIgContentPlan" onclick="openIgContentPlanModal()" style="font-size:12px;padding:6px 14px;" title="Susun rencana konten per pekan: tema, teks gambar, dan caption">
                     Perencanaan Konten
                 </button>
@@ -1541,6 +1544,36 @@
                 <i class="bi bi-download"></i> Unduh .md
             </button>
             <button class="btn-primary" onclick="igSalinAboutPlanner()" title="Salin konsep lengkap beserta petunjuk untuk Claude">
+                <i class="bi bi-clipboard"></i> Salin untuk Claude
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Rencana Konten (rekap 12 bulan untuk evaluasi; dirender dari ig_content_plan + saran tema di js/app.js section 24f) -->
+<div class="modal-overlay" id="igRencanaKontenModal">
+    <div class="modal-content ig-plan-modal ig-about-modal ig-rk-modal">
+        <div class="modal-header">
+            <div class="ig-plan-head-text">
+                <h2>Rencana Konten</h2>
+                <p id="igRkMeta"></p>
+            </div>
+            <button class="modal-close" onclick="closeIgRencanaKontenModal()" aria-label="Tutup">&times;</button>
+        </div>
+        <div class="ig-rk-controls">
+            <label for="igRkMulai">Mulai dari</label>
+            <input type="month" id="igRkMulai" onchange="igRkRender()">
+            <button class="btn-secondary" onclick="igRkIniHari()">Bulan ini</button>
+            <span class="ig-rk-legend"><span class="ig-rk-badge ig-rk-b-disusun">Disusun</span> sudah ada di rencana &middot; <span class="ig-rk-badge ig-rk-b-saran">Saran</span> proyeksi otomatis &middot; <span class="ig-rk-badge ig-rk-b-kosong">Kosong</span> pekan lewat tanpa isi</span>
+        </div>
+        <div class="modal-body ig-about-body ig-rk-body" id="igRkBody"></div>
+        <div class="ig-about-footer">
+            <span class="ig-about-hint">Salin atau unduh &rarr; tempel ke Claude &rarr; minta evaluasi atau perubahan arah konten.</span>
+            <span class="ig-plan-footer-spacer"></span>
+            <button class="btn-secondary" onclick="igUnduhRencanaKonten()" title="Unduh rekap sebagai file .md">
+                <i class="bi bi-download"></i> Unduh .md
+            </button>
+            <button class="btn-primary" onclick="igSalinRencanaKonten()" title="Salin rekap beserta petunjuk evaluasi untuk Claude">
                 <i class="bi bi-clipboard"></i> Salin untuk Claude
             </button>
         </div>
