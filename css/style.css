@@ -5231,3 +5231,9 @@ details.ig-rk-minggu > summary.ig-rk-row::-webkit-details-marker { display: none
 .ig-rk-f-paket { color: #8e44ad; border-color: #8e44ad; }
 .ig-rk-f-seat { color: var(--warn); border-color: var(--warn); }
 .ig-rk-f-penutupan { color: var(--danger); border-color: var(--danger); }
+/* Perkuat spesifisitas: aturan ".ig-planner-mode .ig-stat span" (12px/500) tadi menimpa nama kerjaan */
+.ig-planner-mode .ig-stat.ig-stat-task .ig-task-label { font-size: 11.5px; font-weight: 600; color: var(--lbl, var(--ink-soft)); }
+.ig-planner-mode .ig-stat.ig-stat-task .ig-task-item { font-size: 17px; font-weight: 800; line-height: 1.25; letter-spacing: -.01em; color: var(--num, var(--ink)); }
+.ig-planner-mode .ig-stat.ig-stat-task .ig-task-item:nth-child(n+2) { font-size: 13px; font-weight: 700; }
+.ig-planner-mode .ig-stat.ig-stat-task .ig-task-lagi,
+.ig-planner-mode .ig-stat.ig-stat-task .ig-task-kosong { font-size: 12px; font-weight: 500; color: var(--ink-soft); }
