@@ -5420,3 +5420,7 @@ details.ig-rk-minggu > summary.ig-rk-row::-webkit-details-marker { display: none
     .ig-planner-mode .ig-stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (prefers-reduced-motion: reduce) { .ig-stat-task .ig-task-bar > div { transition: none; } }
+
+/* Sidebar "Ide Bulan Ini": tetap bisa di-scroll, indikator scroll disembunyikan */
+#igPlanSide, #igPlanSideBody { scrollbar-width: none; -ms-overflow-style: none; }
+#igPlanSide::-webkit-scrollbar, #igPlanSideBody::-webkit-scrollbar { display: none; width: 0; height: 0; }
