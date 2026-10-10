@@ -257,6 +257,7 @@ FORMAT MEDIA: ${MEDIA_GUIDE[mediaType]}
 GAYA BAHASA:
 - Sastrawi tapi membumi: puitis, hangat, santai. Sapa pembaca dengan "kamu". Kata sehari-hari secukupnya (nggak, aja, banget) tapi tetap sopan.
 - Utamakan momen konkret yang bisa dibayangkan (gerakan, suasana, ekspresi jamaah, kekhawatiran nyata), bukan klaim umum ala brosur. Fokus ke perasaan: rindu, ketenangan, proses transisi jiwa, makna di balik ibadah.
+- Terdengar manusia, bukan AI: detail spesifik (benda, bau, suara, kejadian kecil), ritme kalimat dicampur panjang dan sangat pendek, maksimal 2 tanda tanya dan 1 emoji. DILARANG pola "bukan sekadar X, tapi Y", kata "relung hati/hiruk pikuk/perjalanan spiritual/senantiasa/tentunya/sejatinya/mari kita", tanda pisah panjang, dan titik koma. Doa penutup tidak wajib; boleh berhenti dengan kalimat pendek yang menggantung. Jangan mengaku pengalaman pribadi yang dikarang.
 - Hindari kata kaku: "tersedia", "silakan", "hubungi kami". Jangan membuka dengan sapaan generik ("Halo sahabat", "Assalamualaikum") atau "Siapa yang ingin...".
 
 STRUKTUR:

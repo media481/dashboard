@@ -183,6 +183,23 @@ await test('kata kaku ala brosur ("silakan", "tersedia") ditolak', async () => {
   const { json } = await panggil([item({ draft_caption: captionOk(' Silakan daftar via WA.') })], body());
   assert.strictEqual(json.items.length, 0); assert.ok(json.ditolak[0].includes('kata kaku'));
 });
+await test('terasa buatan AI: pola "bukan sekadar X, tapi Y", frasa klise, >2 tanda tanya, >1 emoji ditolak', async () => {
+  const kasus = [
+    [' Umroh bukan sekadar perjalanan, tapi panggilan jiwa.', 'bukan sekadar'],
+    [' Hatimu mencari ketenangan di relung hati.', 'relung hati'],
+    [' Siap? Yakin? Beneran?', 'tanda tanya'],
+    [' \u{1F54B}\u{1F64F}', 'emoji'],
+  ];
+  for (const [akhir, kata] of kasus) {
+    const { json } = await panggil([item({ draft_caption: captionOk(akhir) })], body());
+    assert.strictEqual(json.items.length, 0, akhir); assert.ok(json.ditolak[0].includes(kata), json.ditolak[0]);
+  }
+});
+await test('tanda pisah panjang dan titik koma dibersihkan otomatis dari caption (bukan ditolak)', async () => {
+  const { json } = await panggil([item({ draft_caption: captionOk(' Pelan \u2014 pelan saja; nggak usah buru-buru.') })], body());
+  assert.strictEqual(json.items.length, 1);
+  assert.ok(!/[\u2014\u2013;]/.test(json.items[0].draft_caption));
+});
 await test('format gambar: single post tanpa "Slide n:", carousel 3-5 slide berurutan, teks gambar tidak kosong', async () => {
   const s = { ...slot, tipe_konten: 'carousel', pilar: 'edukasi' };
   const kasus = [

@@ -217,7 +217,7 @@ TEKS DI GAMBAR ("teks_gambar"):
 CAPTION ("draft_caption"):
 - Gaya: sastrawi tapi membumi, puitis, hangat, seperti ngobrol dengan teman. Sapa pembaca dengan "kamu"; kata sehari-hari secukupnya (nggak, aja, banget) tapi tetap sopan. Hindari kata kaku: "tersedia", "silakan", "hubungi kami". Bukan bahasa brosur, bukan hard-selling.
 - Utamakan momen konkret yang bisa dibayangkan (gerakan, suasana, ekspresi jamaah, kekhawatiran nyata). Fokus ke perasaan: rindu, ketenangan, proses transisi jiwa, makna di balik ibadah.
-- Konten emosional (Senin, Kamis, Sabtu, Minggu): pembukaan = suasana/refleksi; isi = hubungkan dengan pengalaman batin jamaah seolah kita melihat momennya; penutup = pertanyaan hangat (rindu/doa) + satu kalimat doa penutup sederhana dalam Bahasa Indonesia.
+- Konten emosional (Senin, Kamis, Sabtu, Minggu): pembukaan = suasana/refleksi; isi = hubungkan dengan pengalaman batin jamaah seolah kita melihat momennya; penutup = pertanyaan hangat (rindu/doa), dan doa singkat HANYA di sebagian hari (lihat SUARA MANUSIA); hari lain boleh berhenti dengan satu kalimat pendek yang menggantung.
 - Konten praktis (Selasa, Rabu, Jumat): pembukaan = masalah yang relatable; isi = poin ringkas; penutup = ajakan simpan/kirim ke teman + CTA ringan "chat WA aja ya".
 - Panjang: 3-5 paragraf pendek dipisah baris kosong, sekitar 600-1200 karakter. JANGAN terlalu singkat.
 - Ditutup tepat 5 hashtag di baris terakhir, tanpa label "Hashtag:". #UmrohBersamaAmiru dan #AmiruTour selalu ada, 3 lainnya relevan dengan topik.
@@ -266,6 +266,15 @@ Nggak butuh waktu lama, mungkin sepuluh menit sambil menunggu nasi matang. Tapi 
 Simpan postingan ini dan kirim ke temanmu yang juga lagi bersiap. Kalau ada yang masih bikin ragu, chat WA aja ya.
 
 #UmrohBersamaAmiru #AmiruTour #PersiapanUmroh #TipsUmroh #SiapBerangkat
+
+SUARA MANUSIA (supaya tidak terasa buatan AI):
+- Tulis seperti teman yang bercerita lewat chat, bukan pidato atau brosur. Detail harus spesifik dan agak tak terduga: benda, bau, suara, kejadian kecil (sandal tertukar di depan pintu masjid, antre wudhu, kaki pegal, air zamzam yang dingin, tas kecil yang dipeluk terus). Hindari kata abstrak berlapis ("keindahan spiritual", "kedamaian jiwa").
+- Ritme kalimat jangan seragam: campur kalimat agak panjang dengan yang sangat pendek, sesekali kalimat tanpa subjek ("Pelan-pelan aja."). Paragraf boleh hanya satu kalimat. Boleh ada sikap atau pendapat kecil yang lembut, tidak semuanya netral dan manis.
+- DILARANG: pola kontras "bukan sekadar X, tapi Y" / "bukan hanya X melainkan Y"; daftar tiga kata berirama ("rindu, tenang, dan syukur") lebih dari sekali dalam satu caption; kalimat penutup ala kata mutiara; "Mari kita"; kata/frasa "relung hati", "hiruk pikuk", "perjalanan spiritual", "tak terhingga", "senantiasa", "tentunya", "sejatinya", "di sanalah", "di situlah"; tanda pisah panjang (em dash dan en dash) dan titik koma (pakai titik atau koma); tanda seru beruntun; huruf kapital semua.
+- Maksimal 2 tanda tanya dalam satu caption. Emoji maksimal 1, boleh nol.
+- Jangan satu cetakan tiap hari (adegan > refleksi > pertanyaan > doa). Ganti bentuknya antarhari: ada yang dibuka dialog singkat, ada pengakuan jujur, ada daftar pendek, ada yang berhenti menggantung tanpa doa. Doa penutup TIDAK wajib tiap hari: pakai hanya di sebagian hari emosional (maksimal 3 dari 7 hari dalam sepekan).
+- Jangan mengaku pengalaman pribadi atau kejadian nyata yang dikarang ("dulu aku...", "seorang jamaah kami bilang..."). Pakai "kamu" dan "kita".
+- Uji akhir: bacakan dalam hati. Kalau terdengar seperti pidato atau iklan, tulis ulang lebih pendek dan lebih spesifik.
 
 ANTI-PENGULANGAN (PENTING):
 - Satu topik hanya sekali dalam 6 bulan terakhir; sudut baru atas topik lama baru boleh muncul setelah jeda minimal 6 bulan (RIWAYAT TEMA hanya memuat 6 bulan terakhir). Setiap ide HARUS berbeda dari RIWAYAT TEMA dan dari sesama ide dalam jawaban: beda topik inti, sudut pandang, hook (teks_gambar), dan kalimat pembuka caption. Mengganti beberapa kata TIDAK dianggap berbeda. Kalau ragu sebuah ide mirip riwayat, ganti.
@@ -396,7 +405,7 @@ function fitBody(body: string, budget: number): string {
 
 // Caption final: ejaan "Umroh", hashtag wajib + tepat <= 5 di baris terakhir, <= 2200 karakter.
 function normalizeCaption(raw: string): string {
-  const cleaned = fixSpelling(String(raw || "").replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n").trim());
+  const cleaned = fixSpelling(String(raw || "").replace(/\s*[\u2014\u2013]\s*/g, ", ").replace(/;\s*/g, ", ").replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n").trim());
   const { body, tags } = splitTrailingHashtags(cleaned);
   const tagLine = buildTagLine(tags);
   const fitted = fitBody(body, IG_MAX_CHARS - tagLine.length - 2);
@@ -422,6 +431,14 @@ const PLACEHOLDER_RE = /\[(?:isi|diisi|tulis|contoh)\b[^\]]*\]|lorem ipsum|\bTOD
 const KAKU_RE = /\b(silakan|silahkan|hubungi\s+kami|tersedia)\b/i; // kata kaku ala brosur (pola-konten.md bagian 4)
 const KLAIM_ANGKA_RE = /\b\d[\d.,]*\s*%|\b\d{2,}[\d.,]*\s+(?:jamaah|jemaah|peserta)\b|\b(?:ribuan|ratusan|jutaan)\s+(?:jamaah|jemaah|peserta)\b/i;
 const IBADAH_RE = /\b(doa|tata\s*cara|niat|lafaz|talbiyah|hukum|wajib|rukun|sunnah|sunah|haram|ihram|thawaf|tawaf|sa'?i|tahallul|miqat)\b/i;
+// Penanda "terasa buatan AI" (ditegakkan di server; item yang kena ditulis ulang SENDIRI lewat putaran perbaikan terarah).
+const POLA_KONTRAS_RE = /\bbukan\s+(?:sekadar|sekedar|hanya|cuma)\b[^.!?\n]{0,90}?\b(?:tapi|tetapi|melainkan|namun)\b/i;
+const KLISE_AI_RE = /\b(?:relung\s+hati|hiruk\s*pikuk|perjalanan\s+spiritual|tak\s+terhingga|senantiasa|tentunya|sejatinya|mari\s+kita|di\s+sanalah|di\s+situlah|sejuta\s+rasa|samudra\s+(?:rindu|cinta|kasih))\b/i;
+const EMOJI_RE = /\p{Extended_Pictographic}/gu;
+const DOA_PENUTUP_RE = /\b(?:semoga|ya\s+allah|ya\s+rabb|aamiin|amin)\b/i;
+const MAKS_DOA_PEKAN = 3;
+const MAKS_TANDA_TANYA = 2;
+const MAKS_EMOJI = 1;
 const CAPTION_MIN = 500; // pola: sekitar 600-1200 karakter; toleransi sedikit
 const CAPTION_MAX = 1500;
 const MIN_CAROUSEL_SLIDES = 3; // pemancing + minimal 1 isi + penutup
@@ -490,6 +507,14 @@ function tolakAlasan(it: { tipe_konten: string; tema: string; teks_gambar: strin
   if (KAKU_RE.test(it.draft_caption) && !opsi.bolehProgram) return "memakai kata kaku ala brosur (silakan/hubungi kami/tersedia); ganti dengan bahasa ngobrol";
   const fmt = periksaFormatGambar(it.tipe_konten, it.teks_gambar);
   if (fmt) return fmt;
+  const tulisan = `${it.teks_gambar}\n${captionTanpaTag(it.draft_caption)}`;
+  if (POLA_KONTRAS_RE.test(tulisan)) return 'memakai pola "bukan sekadar X, tapi Y" yang terasa buatan AI; tulis langsung apa adanya';
+  const klise = tulisan.match(KLISE_AI_RE);
+  if (klise) return `memakai frasa klise "${klise[0]}" yang terasa buatan AI; ganti dengan detail konkret`;
+  const nTanya = (captionTanpaTag(it.draft_caption).match(/\?/g) || []).length;
+  if (nTanya > MAKS_TANDA_TANYA) return `terlalu banyak tanda tanya (${nTanya}; maksimal ${MAKS_TANDA_TANYA}); ubah sebagian jadi pernyataan`;
+  const nEmoji = (tulisan.match(EMOJI_RE) || []).length;
+  if (nEmoji > MAKS_EMOJI) return `terlalu banyak emoji (${nEmoji}; maksimal ${MAKS_EMOJI})`;
   const bodyLen = captionTanpaTag(it.draft_caption).length;
   if (bodyLen < CAPTION_MIN) return `caption terlalu pendek (${bodyLen} karakter; tulis 600-1200 karakter, 3-5 paragraf)`;
   if (bodyLen > CAPTION_MAX) return `caption terlalu panjang (${bodyLen} karakter; ringkas ke 600-1200 karakter)`;
@@ -650,8 +675,13 @@ function olahHasil(
     const r = rumusPembuka(barisPertamaCaption(x.draft_caption));
     if (r) rumusTerpakai.set(r, x.tanggal);
   }
+  const doaPekan = (o.sudahLolos as { draft_caption: string }[]).filter((x) => DOA_PENUTUP_RE.test(penutupCaption(x.draft_caption))).length;
+  let jumlahDoa = doaPekan;
   for (const it of cleaned) {
     let why = tolakAlasan(it, o.opsi);
+    if (!why && DOA_PENUTUP_RE.test(penutupCaption(it.draft_caption)) && jumlahDoa >= MAKS_DOA_PEKAN) {
+      why = `penutup berupa doa sudah dipakai ${jumlahDoa} hari di pekan ini (maksimal ${MAKS_DOA_PEKAN}); ganti penutup dengan kalimat pendek yang menggantung atau pertanyaan`;
+    }
     if (!why) {
       const r = rumusPembuka(barisPertamaCaption(it.draft_caption));
       const pemakai = r ? rumusTerpakai.get(r) : undefined;
@@ -665,6 +695,7 @@ function olahHasil(
     }
     const r = rumusPembuka(barisPertamaCaption(it.draft_caption));
     if (r) rumusTerpakai.set(r, it.tanggal);
+    if (DOA_PENUTUP_RE.test(penutupCaption(it.draft_caption))) jumlahDoa++;
     lolos.push({ ...it, tema: tandaiCekPembimbing(it.tema, it.teks_gambar, it.draft_caption) });
   }
   return { lolos, alasan };

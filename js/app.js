@@ -15414,8 +15414,8 @@ function closeIgContentPlanModal() {
 // Baris "Versi:" dan "Diperbarui:" dibaca otomatis untuk header modal, jadi format dua baris itu jangan diubah.
 // ============================================================
 const ABOUT_PLANNER_MD = `# About Planner: Konsep Perencanaan Konten Instagram Amiru Tour
-Versi: 2
-Diperbarui: 9 Oktober 2026
+Versi: 3
+Diperbarui: 10 Oktober 2026
 Status: disepakati Oktober 2026. Uji coba alur mingguan yang menyambung dimulai pekan Senin, 12 Oktober 2026. Ejaan resmi: "Umroh" (bukan "Umrah"), termasuk di hashtag.
 
 ## 1. Tujuan dan Prinsip
@@ -15486,6 +15486,9 @@ Keseimbangan: 4 hari menyentuh hati (Senin, Kamis, Sabtu, Minggu) dan 3 hari pra
 - Utamakan momen konkret yang bisa dibayangkan (gerakan, suasana, ekspresi jamaah, kekhawatiran nyata), bukan klaim umum atau bahasa brosur.
 - Fokus ke perasaan: rindu, ketenangan, proses transisi jiwa, makna di balik ibadah.
 - Hindari kata kaku: "tersedia", "silakan", "hubungi kami".
+- Terdengar manusia, bukan AI: detail spesifik dan tak terduga (benda, bau, suara, kejadian kecil), ritme kalimat dicampur panjang dan sangat pendek, satu hari tidak harus berbentuk adegan-refleksi-pertanyaan-doa.
+- Dilarang: pola "bukan sekadar X, tapi Y", daftar tiga kata berirama berulang, kalimat penutup ala kata mutiara, frasa klise (relung hati, hiruk pikuk, perjalanan spiritual, senantiasa, tentunya, sejatinya, mari kita), tanda pisah panjang, titik koma. Maksimal 2 tanda tanya dan 1 emoji per caption.
+- Doa penutup tidak wajib tiap hari: maksimal 3 hari dalam sepekan. Jangan mengaku pengalaman pribadi atau kejadian nyata yang dikarang.
 
 | JANGAN | TULIS |
 |---|---|
@@ -15495,7 +15498,7 @@ Keseimbangan: 4 hari menyentuh hati (Senin, Kamis, Sabtu, Minggu) dan 3 hari pra
 
 1. **Teks di gambar:** 2-4 baris pendek, jadi pemancing. Untuk carousel tulis per slide: Slide 1 pemancing, Slide 2-4 isi, Slide 5 penutup (ajakan simpan/kirim atau doa singkat). Tidak diulang di caption.
 2. **Caption:** lanjutan dari teks gambar, tidak terlalu singkat (3-5 paragraf pendek, sekitar 600-1200 karakter, dipisah baris kosong), maksimal 2200 karakter.
-   - Konten emosional: pembukaan = suasana/refleksi; isi = hubungkan dengan pengalaman batin jamaah; penutup = pertanyaan hangat (rindu/doa) + satu kalimat doa penutup sederhana dalam Bahasa Indonesia.
+   - Konten emosional: pembukaan = suasana/refleksi; isi = hubungkan dengan pengalaman batin jamaah; penutup = pertanyaan hangat (rindu/doa), dan doa singkat HANYA di sebagian hari (lihat SUARA MANUSIA); hari lain boleh berhenti dengan satu kalimat pendek yang menggantung.
    - Konten praktis: pembukaan = masalah yang relatable; isi = poin ringkas; penutup = ajakan simpan/kirim + CTA ringan.
 3. **Hashtag:** tepat 5, langsung di baris terakhir caption, tanpa label "Hashtag:" (supaya mudah disalin). #UmrohBersamaAmiru dan #AmiruTour selalu ada, 3 lainnya relevan dengan topik.
 
@@ -15561,7 +15564,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 
 - Modal **Perencanaan Konten** memilih satu pekan (Senin-Minggu), mengisi Tema Minggu (wajib), dan Tema pekan depan (opsional).
 - **Generate Konten** menyusun ketujuh hari dalam satu panggilan AI, dengan peran per hari sesuai bagian 3. Hari yang sudah lewat atau sudah terisi dilewati.
-- Setiap hari hasil AI diperiksa otomatis di server. Ditolak bila memuat teks Arab, janji berlebihan, kutipan ayat atau hadis (\"bersabda\", \"berfirman\", \"QS.\", \"HR.\"), placeholder [isi ...], statistik atau klaim jumlah jamaah, kata kaku (silakan, hubungi kami, tersedia), format teks gambar yang tidak cocok dengan tipe (carousel harus Slide 1 sampai n berurutan, 3 sampai 5 slide), caption yang menyalin teks gambar, atau pembuka caption yang sama dengan hari lain.
+- Setiap hari hasil AI diperiksa otomatis di server. Ditolak bila memuat teks Arab, janji berlebihan, kutipan ayat atau hadis (\"bersabda\", \"berfirman\", \"QS.\", \"HR.\"), placeholder [isi ...], statistik atau klaim jumlah jamaah, kata kaku (silakan, hubungi kami, tersedia), pola atau frasa yang terasa buatan AI ("bukan sekadar X, tapi Y", frasa klise, lebih dari 2 tanda tanya, lebih dari 1 emoji, doa penutup lebih dari 3 hari sepekan), format teks gambar yang tidak cocok dengan tipe (carousel harus Slide 1 sampai n berurutan, 3 sampai 5 slide), caption yang menyalin teks gambar, atau pembuka caption yang sama dengan hari lain.
 - Hari yang ditolak ditulis ulang sendiri (maksimal 2 putaran) dengan alasan penolakan dan hari yang sudah lolos sebagai penyambung; hari yang sudah lolos tidak dibuang.
 - Caption dirapikan di server: ejaan "Umroh", tepat 5 hashtag (#UmrohBersamaAmiru dan #AmiruTour selalu ada), maksimal 2200 karakter.
 - Label seri "Seri [Tema] · n/7" ditambahkan otomatis di akhir teks gambar.
@@ -15590,6 +15593,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 |---|---|---|
 | 1 | 9 Oktober 2026 | Versi awal About Planner, disusun dari pola-konten.md dan perilaku Perencanaan Konten di dashboard |
 | 2 | 9 Oktober 2026 | Mutu generator mingguan: aturan mutu tulisan dan contoh gaya di prompt, pemeriksa otomatis lebih lengkap (ayat/hadis, angka, kata kaku, format carousel), perbaikan terarah hanya untuk hari yang ditolak |
+| 3 | 10 Oktober 2026 | Suara manusia: larangan pola dan frasa yang terasa buatan AI, bentuk caption bervariasi antarhari, doa penutup tidak wajib tiap hari (maksimal 3 dalam sepekan), pemeriksa server menolak pola tersebut |
 `;
 
 // Petunjuk yang ikut tersalin di depan dokumen supaya Claude mengembalikan dokumen dalam format yang bisa dipakai lagi.
@@ -17202,7 +17206,7 @@ TEKS DI GAMBAR ("teks_gambar"):
 CAPTION ("draft_caption"):
 - Gaya: sastrawi tapi membumi, puitis, hangat, seperti ngobrol dengan teman. Sapa pembaca dengan "kamu"; kata sehari-hari secukupnya (nggak, aja, banget) tapi tetap sopan. Hindari kata kaku: "tersedia", "silakan", "hubungi kami". Bukan bahasa brosur, bukan hard-selling.
 - Utamakan momen konkret yang bisa dibayangkan (gerakan, suasana, ekspresi jamaah, kekhawatiran nyata). Fokus ke perasaan: rindu, ketenangan, proses transisi jiwa, makna di balik ibadah.
-- Konten emosional (Senin, Kamis, Sabtu, Minggu): pembukaan = suasana/refleksi; isi = hubungkan dengan pengalaman batin jamaah seolah kita melihat momennya; penutup = pertanyaan hangat (rindu/doa) + satu kalimat doa penutup sederhana dalam Bahasa Indonesia.
+- Konten emosional (Senin, Kamis, Sabtu, Minggu): pembukaan = suasana/refleksi; isi = hubungkan dengan pengalaman batin jamaah seolah kita melihat momennya; penutup = pertanyaan hangat (rindu/doa), dan doa singkat HANYA di sebagian hari (lihat SUARA MANUSIA); hari lain boleh berhenti dengan satu kalimat pendek yang menggantung.
 - Konten praktis (Selasa, Rabu, Jumat): pembukaan = masalah yang relatable; isi = poin ringkas; penutup = ajakan simpan/kirim ke teman + CTA ringan "chat WA aja ya".
 - Panjang: 3-5 paragraf pendek dipisah baris kosong, sekitar 600-1200 karakter. JANGAN terlalu singkat.
 - Ditutup tepat 5 hashtag di baris terakhir, tanpa label "Hashtag:". #UmrohBersamaAmiru dan #AmiruTour selalu ada, 3 lainnya relevan dengan topik.
@@ -17251,6 +17255,15 @@ Nggak butuh waktu lama, mungkin sepuluh menit sambil menunggu nasi matang. Tapi 
 Simpan postingan ini dan kirim ke temanmu yang juga lagi bersiap. Kalau ada yang masih bikin ragu, chat WA aja ya.
 
 #UmrohBersamaAmiru #AmiruTour #PersiapanUmroh #TipsUmroh #SiapBerangkat
+
+SUARA MANUSIA (supaya tidak terasa buatan AI):
+- Tulis seperti teman yang bercerita lewat chat, bukan pidato atau brosur. Detail harus spesifik dan agak tak terduga: benda, bau, suara, kejadian kecil (sandal tertukar di depan pintu masjid, antre wudhu, kaki pegal, air zamzam yang dingin, tas kecil yang dipeluk terus). Hindari kata abstrak berlapis ("keindahan spiritual", "kedamaian jiwa").
+- Ritme kalimat jangan seragam: campur kalimat agak panjang dengan yang sangat pendek, sesekali kalimat tanpa subjek ("Pelan-pelan aja."). Paragraf boleh hanya satu kalimat. Boleh ada sikap atau pendapat kecil yang lembut, tidak semuanya netral dan manis.
+- DILARANG: pola kontras "bukan sekadar X, tapi Y" / "bukan hanya X melainkan Y"; daftar tiga kata berirama ("rindu, tenang, dan syukur") lebih dari sekali dalam satu caption; kalimat penutup ala kata mutiara; "Mari kita"; kata/frasa "relung hati", "hiruk pikuk", "perjalanan spiritual", "tak terhingga", "senantiasa", "tentunya", "sejatinya", "di sanalah", "di situlah"; tanda pisah panjang (em dash dan en dash) dan titik koma (pakai titik atau koma); tanda seru beruntun; huruf kapital semua.
+- Maksimal 2 tanda tanya dalam satu caption. Emoji maksimal 1, boleh nol.
+- Jangan satu cetakan tiap hari (adegan > refleksi > pertanyaan > doa). Ganti bentuknya antarhari: ada yang dibuka dialog singkat, ada pengakuan jujur, ada daftar pendek, ada yang berhenti menggantung tanpa doa. Doa penutup TIDAK wajib tiap hari: pakai hanya di sebagian hari emosional (maksimal 3 dari 7 hari dalam sepekan).
+- Jangan mengaku pengalaman pribadi atau kejadian nyata yang dikarang ("dulu aku...", "seorang jamaah kami bilang..."). Pakai "kamu" dan "kita".
+- Uji akhir: bacakan dalam hati. Kalau terdengar seperti pidato atau iklan, tulis ulang lebih pendek dan lebih spesifik.
 
 ANTI-PENGULANGAN (PENTING):
 - Satu topik hanya sekali dalam 6 bulan terakhir; sudut baru atas topik lama baru boleh muncul setelah jeda minimal 6 bulan (RIWAYAT TEMA hanya memuat 6 bulan terakhir). Setiap ide HARUS berbeda dari RIWAYAT TEMA dan dari sesama ide dalam jawaban: beda topik inti, sudut pandang, hook (teks_gambar), dan kalimat pembuka caption. Mengganti beberapa kata TIDAK dianggap berbeda. Kalau ragu sebuah ide mirip riwayat, ganti.

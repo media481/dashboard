@@ -81,6 +81,9 @@ Urutan perjalanan hati calon jamaah: **rasakan → pahami → siapkan → bayang
 - Utamakan **momen konkret yang bisa dibayangkan** (gerakan, suasana, ekspresi jamaah, kekhawatiran nyata), bukan klaim umum atau bahasa brosur.
 - Fokus ke perasaan: rindu, ketenangan, proses transisi jiwa, makna di balik ibadah.
 - Hindari kata kaku: "tersedia", "silakan", "hubungi kami".
+- Terdengar manusia, bukan AI: detail spesifik dan tak terduga, ritme kalimat dicampur panjang dan sangat pendek, bentuk caption bervariasi antarhari.
+- Dilarang: pola "bukan sekadar X, tapi Y", frasa klise (relung hati, hiruk pikuk, perjalanan spiritual, senantiasa, tentunya, sejatinya, mari kita), tanda pisah panjang, titik koma; maksimal 2 tanda tanya dan 1 emoji per caption.
+- Doa penutup tidak wajib tiap hari (maksimal 3 hari dalam sepekan). Jangan mengaku pengalaman pribadi yang dikarang.
 
 Acuan (JANGAN vs TULIS):
 
