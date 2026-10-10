@@ -34,10 +34,10 @@ Stack: Supabase (Postgres + Storage + Edge Functions) + Vanilla JS (di `js/app.j
 Di Supabase Dashboard → SQL Editor → paste & run (urut):
 
 ```
-sql/tambah_ig_scheduler.sql
-sql/tambah_ig_carousel.sql
-sql/tambah_ig_comments.sql
-sql/tambah_ig_content_plan.sql
+sql/41_tambah_ig_scheduler.sql
+sql/42_tambah_ig_carousel.sql
+sql/43_tambah_ig_comments.sql
+sql/44_tambah_ig_content_plan.sql
 ```
 
 Yang pertama membuat 3 tabel inti (`ig_accounts`, `ig_posts`, `ig_publish_logs`) + RLS policies.
@@ -158,7 +158,7 @@ Memaksimalkan izin **`instagram_manage_comments`** — bagian dari Instagram Gra
 ### Setup tambahan
 1. Jalankan migration baru di SQL Editor:
    ```
-   sql/tambah_ig_comments.sql
+   sql/43_tambah_ig_comments.sql
    ```
 2. Deploy 2 edge function baru:
    ```bash
@@ -175,7 +175,7 @@ Memaksimalkan izin **`instagram_manage_comments`** — bagian dari Instagram Gra
 ### Catatan
 - Sync dibatasi ke post yang published dalam 30 hari terakhir, biar tidak boros API call ke post lawas.
 - Balasan yang muncul di kolom komentar Instagram (dari siapa pun) otomatis ditandai membuat status komentar induk jadi "sudah dibalas" — bukan cuma balasan yang dikirim lewat dashboard ini.
-- RLS tabel `ig_comments` pakai `current_dashboard_role()` (bukan `auth.role()='authenticated'` seperti migrasi awal IG Scheduler) — guest tidak bisa lihat/balas komentar sama sekali, konsisten dengan hardening yang sudah diterapkan di tabel lain (lihat `sql/tambah_role_guest_readonly.sql`).
+- RLS tabel `ig_comments` pakai `current_dashboard_role()` (bukan `auth.role()='authenticated'` seperti migrasi awal IG Scheduler) — guest tidak bisa lihat/balas komentar sama sekali, konsisten dengan hardening yang sudah diterapkan di tabel lain (lihat `sql/29_tambah_role_guest_readonly.sql`).
 
 ## Content Planner Bulanan (AI)
 
@@ -194,7 +194,7 @@ upload media & simpan (rencana otomatis ditandai `dijadikan_post` setelah post t
 ### Setup tambahan
 1. Jalankan migration baru di SQL Editor:
    ```
-   sql/tambah_ig_content_plan.sql
+   sql/44_tambah_ig_content_plan.sql
    ```
 2. Deploy edge function baru:
    ```bash
@@ -267,7 +267,7 @@ Flag `IG_AUTOPUBLISH_ENABLED` di `js/app.js` (default `false`):
 - Disembunyikan: tombol Sync Komentar, panel komentar, status akun/token IG, tombol Retry & badge komentar. Kodenya, edge function, dan cron tidak dihapus — ubah flag jadi `true` untuk mengaktifkan lagi.
 - Post disimpan sebagai **draft** (bukan `scheduled`), sehingga `ig-publish` tidak menerbitkan apa pun. Post lama yang sudah berstatus `scheduled` tetap akan diterbitkan cron kecuali dijadikan draft atau cron dimatikan.
 - Layout: kartu statistik bulan ini, kalender lebar, dan sidebar **Ide Bulan Ini** (dikelompokkan per tahap, bisa diseret ke kalender).
-- Opsional: jalankan `sql/tambah_ig_content_plan_planner.sql` untuk kolom `pilar` & `tahap` (warna pilar di chip, keseimbangan pilar, alur Ide → Dikerjakan → Siap). Tanpa migrasi ini fitur tersebut otomatis tersembunyi.
+- Opsional: jalankan `sql/45_tambah_ig_content_plan_planner.sql` untuk kolom `pilar` & `tahap` (warna pilar di chip, keseimbangan pilar, alur Ide → Dikerjakan → Siap). Tanpa migrasi ini fitur tersebut otomatis tersembunyi.
 
 ---
 
@@ -279,7 +279,7 @@ Flag `IG_AUTOPUBLISH_ENABLED` di `js/app.js` (default `false`):
 - **Nama file upload** dibersihkan (`igSafeFileName`): hanya huruf/angka/`_`/`-`, aksen dibuang, ekstensi dari MIME bila tidak ada.
 - **Kalender**: semua chip dirender, lalu `igFitCalendarChips()` menghitung jumlah yang muat dari layout asli (setelah render & tiap ukuran grid berubah lewat `ResizeObserver`), sehingga "+N lagi" tidak terpotong. Di luar mode pas-layar tetap maks. `IG_CAL_MAX_CHIPS` (3).
 - **Rencana dimuat saat halaman dibuka** (`openIgSchedulerPage` memanggil `loadIgContentPlan()`).
-- **Pembersihan bucket `ig-media`**: upload yang dibatalkan/diganti, item carousel yang dibuang, dan media post yang dihapus ikut dihapus dari bucket (best effort). Butuh policy DELETE: jalankan `sql/tambah_ig_media_storage_policy.sql`.
+- **Pembersihan bucket `ig-media`**: upload yang dibatalkan/diganti, item carousel yang dibuang, dan media post yang dihapus ikut dihapus dari bucket (best effort). Butuh policy DELETE: jalankan `sql/50_tambah_ig_media_storage_policy.sql`.
 - Minor: toast sukses carousel hanya muncul bila ada file yang berhasil; judul modal di mode planner "Draft Post Baru"/"Edit Draft Post"; URL media di pratinjau di-escape; pilar form ide cepat di-reset; klik di luar modal Upload kini membersihkan state; tanggal default memakai tanggal lokal.
 
 ## Pola Mingguan Amiru (teks di gambar + caption)
@@ -303,7 +303,7 @@ Menerapkan pola konten Amiru ke Content Planner (tombol **Rencana AI** → **Pol
 - Bagian `[isi ...]` di draf (program, hotel, nomor WA, **kutipan asli jamaah**) harus diganti data asli sebelum diposting. Testimoni wajib dari jamaah asli dan seizin mereka.
 - Tombol **Rencana AI → Generate dengan AI** sekarang juga mengikuti pola & gaya ini (edge function `generate-ig-content-plan` perlu di-deploy ulang).
 
-Migrasi (opsional tapi disarankan): `sql/tambah_ig_content_plan_pola_amiru.sql` menambah kolom `ig_content_plan.teks_gambar`. Tanpa migrasi ini, kolom teks gambar otomatis tersembunyi dan teksnya tidak tersimpan.
+Migrasi (opsional tapi disarankan): `sql/46_tambah_ig_content_plan_pola_amiru.sql` menambah kolom `ig_content_plan.teks_gambar`. Tanpa migrasi ini, kolom teks gambar otomatis tersembunyi dan teksnya tidak tersimpan.
 
 Deploy: `supabase functions deploy generate-ig-content-plan --no-verify-jwt`
 
@@ -325,7 +325,7 @@ Acuan: `pola-konten.md`. Bagian "Pola Mingguan Amiru" dan "Generate Rencana 1 Bu
 - **Carousel maksimal 5 slide**, tanpa video. Format teks gambar carousel: `Slide 1: ...` sampai `Slide 5: ...`.
 - **Kejujuran:** AI tidak mengarang lafaz/doa Arab, testimoni, angka, atau harga. Bagian tata cara/doa ditandai `[cek pembimbing]` di judul ide; cek ke pembimbing/ustaz sebelum posting.
 - **Isi dari Pola (tanpa AI)** kini membuat kerangka kosong 7 hari sesuai tabel di atas.
-- **Migrasi (opsional):** `sql/tambah_ig_content_plan_tema_minggu.sql` (kolom `tema_minggu`).
+- **Migrasi (opsional):** `sql/47_tambah_ig_content_plan_tema_minggu.sql` (kolom `tema_minggu`).
 - **Deploy ulang wajib:** `generate-ig-content-plan` (kontrak `versi: 4`) dan `generate-ig-caption`.
 
 ## Generate Rencana 1 Bulan: isi penuh & anti-duplikat
@@ -401,7 +401,7 @@ Di modal **Rencana Konten**, tombol **Rencana Setahun AI** menyusun TEMA tiap pe
 - **Cara kerja teknis:** 26 pekan per panggilan AI (hasil tersimpan bertahap), tema yang mirip tema lain ditolak lalu hanya pekan itu diulang (maks. 2 kali), pekan yang tetap gagal dibiarkan kosong dan bisa dicoba lagi. Hanya tema yang dibuat; isi harian tetap dari Generate per pekan.
 
 **Pasang (urutan bebas, tapi function dulu baru frontend):**
-1. Jalankan `sql/tambah_ig_rencana_tahunan.sql` di Supabase SQL Editor (idempotent).
+1. Jalankan `sql/48_tambah_ig_rencana_tahunan.sql` di Supabase SQL Editor (idempotent).
 2. `supabase functions deploy generate-ig-year-plan --no-verify-jwt` (memakai secret Gemini yang sama dengan function AI lain).
 3. Frontend: unggah `index.html`, `js/app.js`, `css/style.css` yang baru.
 

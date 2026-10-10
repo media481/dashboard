@@ -7,7 +7,7 @@
 // Tugas:
 //   1. Ambil komentar terbaru untuk tiap post yang sudah published (30 hari
 //      terakhir) via GET /{ig-media-id}/comments.
-//   2. Simpan/refresh ke tabel ig_comments (lihat sql/tambah_ig_comments.sql).
+//   2. Simpan/refresh ke tabel ig_comments (lihat sql/43_tambah_ig_comments.sql).
 //   3. Kirim notifikasi Telegram untuk komentar BARU (reuse tabel tg_config
 //      yang sudah dipakai fitur notifikasi program/jadwal — tinggal tambah
 //      tipe 'ig_comment' di checkbox recipient).

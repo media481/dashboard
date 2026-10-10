@@ -36,24 +36,24 @@ manifest.json         ← config PWA (name, theme_color, icons)
 service-worker.js     ← precache list, HARUS disinkronkan manual kalau nama file berubah
 icons/                ← 9 file ikon PWA sesuai daftar di manifest.json
 sql/
-  00_setup_semua_tabel.sql     ← CREATE TABLE + RLS untuk semua tabel (dari nol)
-  create_kwt_kuitansi.sql      ← SQL khusus tabel kwt_kuitansi
-  tambah_pembayaran_jamaah.sql ← migrasi tambahan: tabel pembayaran_jamaah
+  01_setup_semua_tabel.sql     ← CREATE TABLE + RLS untuk semua tabel (dari nol)
+  02_create_kwt_kuitansi.sql      ← SQL khusus tabel kwt_kuitansi
+  03_tambah_pembayaran_jamaah.sql ← migrasi tambahan: tabel pembayaran_jamaah
                                   (jalankan ini di project yang SUDAH jalan)
-  tambah_dokumen_jamaah.sql    ← migrasi tambahan: kolom kb_jamaah.dokumen jsonb
+  06_tambah_dokumen_jamaah.sql    ← migrasi tambahan: kolom kb_jamaah.dokumen jsonb
                                   (jalankan ini di project yang SUDAH jalan)
-  tambah_pendaftaran.sql       ← migrasi tambahan: tabel pendaftaran (calon jamaah)
+  04_tambah_pendaftaran.sql       ← migrasi tambahan: tabel pendaftaran (calon jamaah)
                                   (jalankan ini di project yang SUDAH jalan)
-  tambah_nota_audit.sql        ← migrasi tambahan: nomor nota resmi dari DB (trigger +
+  19_tambah_nota_audit.sql        ← migrasi tambahan: nomor nota resmi dari DB (trigger +
                                   sequence, kolom pembayaran_jamaah.nomor_nota) + tabel
                                   nota_audit_log (ledger append-only, UPDATE/DELETE
                                   diblokir trigger) — lihat panel Admin > Audit Nota
                                   (jalankan ini di project yang SUDAH jalan)
-  tambah_role_guest_readonly.sql ← kunci RLS write (insert/update/delete) semua tabel
+  29_tambah_role_guest_readonly.sql ← kunci RLS write (insert/update/delete) semua tabel
                                   inti ke role admin/user saja lewat current_dashboard_role(),
                                   supaya role guest benar-benar read-only di database,
                                   bukan cuma disembunyikan di UI (jalankan setelah
-                                  migrate_supabase_auth.sql & hardening_rls_keamanan.sql)
+                                  28_migrate_supabase_auth.sql & 26_hardening_rls_keamanan.sql)
 .github/workflows/
   keep-supabase-alive.yml      ← ping REST API tiap 3 hari biar project Supabase
                                   free tier tidak auto-pause (butuh secret
@@ -90,7 +90,7 @@ cek dulu apakah direferensikan di `index.html`/`service-worker.js` sebelum diasu
 | `assets` | Link/bookmark ke dokumen penting — tab "Link & Dokumen" di menu Assets |
 | `hotel_saudi_arabia` | Referensi data hotel Arab Saudi, read-only (hasil import CSV) — tab "Hotel Saudi Arabia" di menu Assets |
 
-Setup Supabase baru: jalankan `sql/00_setup_semua_tabel.sql` di SQL Editor, lalu ganti
+Setup Supabase baru: jalankan `sql/01_setup_semua_tabel.sql` di SQL Editor, lalu ganti
 password default di `app_config`, lalu update `SUPABASE_URL` & `SUPABASE_ANON_KEY` di
 `js/app.js` baris 4–5.
 
@@ -119,14 +119,14 @@ Role: `admin`, `user`, `guest`, atau belum login sama sekali (anonim).
 - `guest` (sudah login) → tambahan lihat semua tab `nav-loggedin-only` (Jadwal Tamu,
   Pendaftaran, Keberangkatan, Dokumen) tapi **read-only** — tombol tambah/edit/hapus
   disembunyikan (`canManageProgramData()`) DAN ditolak di level RLS database
-  (lihat `sql/tambah_role_guest_readonly.sql`), jadi tidak bisa ditembus lewat API
+  (lihat `sql/29_tambah_role_guest_readonly.sql`), jadi tidak bisa ditembus lewat API
   langsung meski punya JWT authenticated
 - `user` & `admin` → boleh tambah/edit/hapus data (dicek via `canManageProgramData()`)
 - `admin` saja → akses section "Manajemen": Edit & Tambah Program, Crosscheck,
   Telegram, Pengaturan User
 
 Buat akun guest baru lewat tab Admin > Pengaturan User, pilih role "Guest (lihat
-saja, tanpa akses tulis)". Butuh `sql/tambah_role_guest_readonly.sql` sudah dijalankan
+saja, tanpa akses tulis)". Butuh `sql/29_tambah_role_guest_readonly.sql` sudah dijalankan
 dan Edge Function `admin-create-user` sudah di-deploy ulang (ALLOWED_ROLES kini
 termasuk `guest`).
 
@@ -165,7 +165,7 @@ satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
 - "Arsipkan Semua Jamaah" (tombol di tab Keberangkatan) diblokir kalau ada
   jamaah yang: (1) belum berstatus `lunas`/`batal` di pembayaran, ATAU
   (2) `status_kepulangan` belum `sudah_pulang`/`batal` (lihat tab "Status
-  Kepulangan", kolom `kb_jamaah.status_kepulangan` — sql/tambah_status_kepulangan_kb_jamaah.sql).
+  Kepulangan", kolom `kb_jamaah.status_kepulangan` — sql/13_tambah_status_kepulangan_kb_jamaah.sql).
   Kedua pengecekan ini sengaja hard block (bukan cuma warning) karena Arsip
   bersifat irreversible dan setelah diarsipkan jamaah hilang dari tab Status
   Kepulangan (tapi tetap terlihat read-only di tab Arsip Jamaah).

@@ -4,7 +4,7 @@
 // password di tabel app_config (pass_admin, pass_cs, pass_user, pass_guest).
 //
 // URUTAN LANGKAH MIGRASI:
-//   1. Jalankan sql/migrate_supabase_auth.sql di SQL Editor Supabase.
+//   1. Jalankan sql/28_migrate_supabase_auth.sql di SQL Editor Supabase.
 //   2. Jalankan script ini (butuh SERVICE ROLE KEY, JANGAN taruh di kode client!).
 //   3. Deploy Edge Function admin-change-password (menggantikan set_admin_password).
 //   4. Ganti kode login di js/app.js (lihat panduan terpisah).

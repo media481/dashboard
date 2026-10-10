@@ -31,9 +31,9 @@ semua ukuran + versi maskable), dan `index.html` hanya pakai `icons/icon-180.png
 dst — 10 file) dipindahkan ke `_legacy_unused/root_duplicate_icons/`.
 
 ## File salah label (Ronde 2)
-`create_kwt_kuitansi.sql` di root ternyata ISINYA KODE JS (fitur KB Jamaah),
+`02_create_kwt_kuitansi.sql` di root ternyata ISINYA KODE JS (fitur KB Jamaah),
 bukan SQL — nama filenya menyesatkan. SQL yang benar untuk tabel `kwt_kuitansi`
-ada di `sql/create_kwt_kuitansi.sql` dan itu yang dipertahankan. File yang salah
+ada di `sql/02_create_kwt_kuitansi.sql` dan itu yang dipertahankan. File yang salah
 label dipindah ke `_legacy_unused/create_kwt_kuitansi_MISLABELED_actually_js.sql`.
 
 ## Ronde 3: Pecah index.html jadi 3 file
@@ -56,7 +56,7 @@ js/app.js            ← logic + koneksi Supabase
 manifest.json         ← config PWA
 service-worker.js     ← precache list sinkron dengan struktur di atas
 icons/                ← 9 ikon sesuai manifest.json
-sql/create_kwt_kuitansi.sql
+sql/02_create_kwt_kuitansi.sql
 ```
 
 ## Ronde 4: Tambah modul Poster Hover Popup
@@ -88,7 +88,7 @@ Saya belum tahu persis di elemen/tabel mana kamu mau preview ini muncul
 belum saya pasang ke elemen manapun. Kabari saja di elemen mana, nanti saya pasangkan.
 
 ## Ronde 5: SQL setup untuk Supabase project baru
-File baru: `sql/00_setup_semua_tabel.sql` — berisi CREATE TABLE + RLS policy
+File baru: `sql/01_setup_semua_tabel.sql` — berisi CREATE TABLE + RLS policy
 untuk SEMUA tabel yang dipakai project ini (dikumpulkan dari seluruh
 `.from('...')` call di `js/app.js`):
 
@@ -103,7 +103,7 @@ untuk SEMUA tabel yang dipakai project ini (dikumpulkan dari seluruh
 | `kwt_kuitansi` | Kuitansi (tabel disiapkan, belum otomatis dipakai app.js saat ini) |
 
 Cara pakai: buka Supabase Dashboard project baru -> SQL Editor -> New query ->
-paste seluruh isi `sql/00_setup_semua_tabel.sql` -> Run.
+paste seluruh isi `sql/01_setup_semua_tabel.sql` -> Run.
 
 **Yang TIDAK dibuat oleh SQL ini** (harus di-setup manual terpisah):
 - Edge Function `scan-poster-ocr` (dipakai fitur Crosscheck OCR)

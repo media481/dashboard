@@ -107,16 +107,16 @@ jalan, idempotent — aman diulang):
 
 ```sql
 -- 1) tabel inti: ig_accounts, ig_posts, ig_publish_logs
---    isi dari sql/tambah_ig_scheduler.sql
+--    isi dari sql/41_tambah_ig_scheduler.sql
 
 -- 2) dukungan carousel: ig_post_media
---    isi dari sql/tambah_ig_carousel.sql (jalankan SETELAH file di atas)
+--    isi dari sql/42_tambah_ig_carousel.sql (jalankan SETELAH file di atas)
 ```
 
-Kalau kamu jalankan `sql/SETUP_LENGKAP_SATU_FILE.sql` (lihat
+Kalau kamu jalankan `sql/00_SETUP_LENGKAP_SATU_FILE.sql` (lihat
 `CHECKLIST_DEPLOY.md`), cek dulu apakah kedua migrasi ini sudah
 tergabung di sana — kalau belum, jalankan manual dari file aslinya:
-`sql/tambah_ig_scheduler.sql` lalu `sql/tambah_ig_carousel.sql`.
+`sql/41_tambah_ig_scheduler.sql` lalu `sql/42_tambah_ig_carousel.sql`.
 
 ### Masukkan akun IG (ganti isi tanda kurung sudut)
 

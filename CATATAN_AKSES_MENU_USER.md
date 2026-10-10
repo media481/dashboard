@@ -5,11 +5,11 @@ Status per sesi ini: **SELESAI secara kode, BELUM diverifikasi jalan di Supabase
 
 ## Yang sudah selesai
 
-- **Tahap 1 — Database**: `sql/tambah_akses_menu_user.sql` — tabel
+- **Tahap 1 — Database**: `sql/34_tambah_akses_menu_user.sql` — tabel
   `user_menu_access(user_id, menu_key, allowed)`. File ini sempat "hilang" dari
   paket sebelumnya (kode di `js/app.js` sudah mereferensikannya di banyak
   tempat, tapi file SQL-nya sendiri belum ada di folder `sql/`) — sudah dibuat
-  ulang di sesi ini mengikuti pola persis `sql/tambah_akses_menu_role.sql`
+  ulang di sesi ini mengikuti pola persis `sql/33_tambah_akses_menu_role.sql`
   (RLS read/insert/update/delete untuk `auth.role() = 'authenticated'`, tanpa
   seed data karena isinya murni pengecualian manual per akun).
 - **Tahap 2 — Logika `renderSidebarNav()`**: sudah ada & lengkap di
@@ -29,9 +29,9 @@ Status per sesi ini: **SELESAI secara kode, BELUM diverifikasi jalan di Supabase
 
 1. **Migrasi belum pernah dijalankan** di Supabase project yang sebenarnya.
    Kalau sesi berikutnya lanjut fitur ini, tanyakan dulu ke user apakah
-   `sql/tambah_akses_menu_user.sql` sudah dijalankan — kalau belum, tab
+   `sql/34_tambah_akses_menu_user.sql` sudah dijalankan — kalau belum, tab
    "Akses Menu per User" di Userman akan tetap menampilkan pesan
-   "Setup belum lengkap: jalankan sql/tambah_akses_menu_user.sql...".
+   "Setup belum lengkap: jalankan sql/34_tambah_akses_menu_user.sql...".
 2. **Belum ada testing end-to-end** (belum ada laporan dari user bahwa
    dropdown pilih akun → set Izinkan/Larang/Ikuti Role → Simpan → sidebar
    akun lain berubah sesuai, benar-benar berhasil dicoba).
@@ -45,9 +45,9 @@ Status per sesi ini: **SELESAI secara kode, BELUM diverifikasi jalan di Supabase
 
 ## Cara lanjut / pasang (ringkas)
 
-1. Jalankan `sql/tambah_akses_menu_role.sql` dulu kalau belum pernah (Tahap
+1. Jalankan `sql/33_tambah_akses_menu_role.sql` dulu kalau belum pernah (Tahap
    akses per role, prasyarat).
-2. Jalankan `sql/tambah_akses_menu_user.sql` (baru dibuat sesi ini).
+2. Jalankan `sql/34_tambah_akses_menu_user.sql` (baru dibuat sesi ini).
 3. Buka Userman → Akses Menu → scroll ke blok "Akses Menu per User
    (Pengecualian)" → pilih akun → atur → Simpan.
 4. Kalau ada bug/perilaku aneh, cek dulu `js/app.js` sekitar baris 2110-2270

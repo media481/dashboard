@@ -13,7 +13,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 // langsung dengan email+password yang diketik user -- Supabase Auth yang membuat &
 // menandatangani JWT-nya sendiri, jadi tidak pernah tersandung isu kid/JWT Signing
 // Key custom lagi. Role ditentukan dari tabel dashboard_profiles setelah login berhasil
-// (lihat checkAdminLogin() dan sql/migrate_supabase_auth.sql).
+// (lihat checkAdminLogin() dan sql/28_migrate_supabase_auth.sql).
 const ADMIN_CREATE_USER_URL = SUPABASE_URL + '/functions/v1/admin-create-user';
 const ADMIN_RESET_USER_PASSWORD_URL = SUPABASE_URL + '/functions/v1/admin-reset-user-password';
 
@@ -455,7 +455,7 @@ function formatRupiahInput(el) {
 // Pilih harga acuan tagihan seorang jamaah: kalau jamaah punya `harga_custom`
 // (nego khusus / diskon / harga custom di luar Quad-Triple-Double program),
 // itu yang dipakai. Kalau kosong, fallback ke harga tipe_kamar-nya (lihat
-// sql/tambah_tipe_kamar_jamaah.sql untuk latar belakang). Fallback lagi ke
+// sql/10_tambah_tipe_kamar_jamaah.sql untuk latar belakang). Fallback lagi ke
 // harga Quad kalau harga tipe yang dipilih belum diisi di programnya (mis.
 // admin belum sempat isi harga_triple) — supaya tagihan tidak tiba-tiba jadi
 // Rp0 / tidak akurat, dan supaya data lama tetap berperilaku persis seperti
@@ -1914,13 +1914,13 @@ window.copyProgramDetailWaText = copyProgramDetailWaText;
 // [FIX bug #6] Password TIDAK lagi di-SELECT ke browser. Role ditentukan oleh
 // KEY-nya (deterministik), bukan nilai password. Verifikasi password dilakukan di
 // server lewat RPC verify_dashboard_password() (SECURITY DEFINER) — lihat
-// sql/fix_bug6_auth_rpc.sql. USER_ROLES hanya menyimpan role/label untuk UI.
+// sql/25_fix_bug6_auth_rpc.sql. USER_ROLES hanya menyimpan role/label untuk UI.
 // ============================================================
 // 12. ADMIN LOGIN  [MIGRASI: Supabase Auth asli, bukan JWT custom]
 // ============================================================
 // [MIGRASI] Login dengan email + password langsung ke supabaseClient.auth.signInWithPassword().
 // Role ditentukan SETELAH login berhasil dengan membaca dashboard_profiles milik user
-// tsb (bukan ditebak dari akun mana yang cocok) -- lihat sql/migrate_supabase_auth.sql.
+// tsb (bukan ditebak dari akun mana yang cocok) -- lihat sql/28_migrate_supabase_auth.sql.
 async function loadUserRoles() {
     // Tidak ada lagi yang perlu dimuat: role dibaca dari dashboard_profiles setelah
     // login (lihat checkAdminLogin()), bukan dari app_config. Fungsi ini dipertahankan
@@ -2018,7 +2018,7 @@ async function checkAdminLogin() {
 
     if (!error && data?.session) {
         // Ambil role dashboard user ini dari dashboard_profiles (diisi lewat
-        // scripts/setup-auth-accounts.mjs atau manual di SQL Editor -- lihat sql/migrate_supabase_auth.sql).
+        // scripts/setup-auth-accounts.mjs atau manual di SQL Editor -- lihat sql/28_migrate_supabase_auth.sql).
         const { data: profile, error: profileErr } = await supabaseClient
             .from('dashboard_profiles')
             .select('dashboard_role, label')
@@ -2118,9 +2118,9 @@ async function loadUserList() {
         const isMissingSetup = /column .*email.* does not exist/i.test(error.message || '');
         const isMissingLastLogin = /column .*last_login.* does not exist/i.test(error.message || '');
         body.innerHTML = isMissingSetup
-            ? `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--danger);">Setup belum lengkap: jalankan <code>sql/tambah_kelola_user.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.</td></tr>`
+            ? `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--danger);">Setup belum lengkap: jalankan <code>sql/30_tambah_kelola_user.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.</td></tr>`
             : isMissingLastLogin
-            ? `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--danger);">Setup belum lengkap: jalankan <code>sql/tambah_last_login_profiles.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.</td></tr>`
+            ? `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--danger);">Setup belum lengkap: jalankan <code>sql/31_tambah_last_login_profiles.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.</td></tr>`
             : `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--danger);">Gagal memuat daftar user: ${escapeHtml(error.message)}</td></tr>`;
         if (countEl) countEl.textContent = '-';
         return;
@@ -2225,7 +2225,7 @@ async function renderRoleMenuAccessMatrix() {
     if (error) {
         const isMissingSetup = /relation .*role_menu_access.* does not exist/i.test(error.message || '');
         wrap.innerHTML = isMissingSetup
-            ? `<div style="padding:14px;color:var(--danger);font-size:12.5px;">Setup belum lengkap: jalankan <code>sql/tambah_akses_menu_role.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.</div>`
+            ? `<div style="padding:14px;color:var(--danger);font-size:12.5px;">Setup belum lengkap: jalankan <code>sql/33_tambah_akses_menu_role.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.</div>`
             : `<div style="padding:14px;color:var(--danger);font-size:12.5px;">Gagal memuat akses menu: ${escapeHtml(error.message)}</div>`;
         return;
     }
@@ -2296,7 +2296,7 @@ async function saveRoleMenuAccessMatrix() {
 // ============================================================
 // 12b-4. AKSES MENU SIDEBAR PER USER (override, admin only) — pengecualian
 // per akun individual di atas default role_menu_access. Simpan ke tabel
-// user_menu_access (sql/tambah_akses_menu_user.sql). Baris yang tidak
+// user_menu_access (sql/34_tambah_akses_menu_user.sql). Baris yang tidak
 // diubah (tetap "Ikuti Role") sengaja TIDAK disimpan sbg baris di tabel --
 // supaya kalau default role-nya diubah nanti lewat matrix per role, akun
 // yang belum pernah dikecualikan otomatis ikut berubah juga.
@@ -2349,7 +2349,7 @@ async function renderUserMenuAccessMatrix() {
         const err = roleErr || userErr;
         const isMissingSetup = /relation .*user_menu_access.* does not exist/i.test(err.message || '');
         wrap.innerHTML = isMissingSetup
-            ? `<div style="padding:14px;color:var(--danger);font-size:12.5px;">Setup belum lengkap: jalankan <code>sql/tambah_akses_menu_user.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.</div>`
+            ? `<div style="padding:14px;color:var(--danger);font-size:12.5px;">Setup belum lengkap: jalankan <code>sql/34_tambah_akses_menu_user.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.</div>`
             : `<div style="padding:14px;color:var(--danger);font-size:12.5px;">Gagal memuat akses menu user: ${escapeHtml(err.message)}</div>`;
         return;
     }
@@ -4072,7 +4072,7 @@ function canQuickAddProgram() {
 // "Assets" boleh diaktifkan untuknya lewat Akses Menu per Role (dia cuma
 // boleh lihat & buka link, bukan mengelola). Hanya 'admin' yang boleh
 // menambah/mengedit/menghapus. Dikunci juga di level RLS (bukan cuma UI
-// ini) -- lihat sql/kunci_assets_admin_saja.sql.
+// ini) -- lihat sql/36_kunci_assets_admin_saja.sql.
 function canManageAssets() {
     return adminLoggedIn && currentRole === 'admin';
 }
@@ -4140,7 +4140,7 @@ async function loadRoleMenuAccess(forceReload = false) {
         });
         roleMenuAccessMap = map;
     } catch (err) {
-        // Tabel belum ada (migrasi sql/tambah_akses_menu_role.sql belum dijalankan)
+        // Tabel belum ada (migrasi sql/33_tambah_akses_menu_role.sql belum dijalankan)
         // atau gagal koneksi -- diamkan saja & pakai fallback lama, jangan sampai
         // memutus render sidebar cuma karena fitur ini belum di-setup.
         console.warn('loadRoleMenuAccess: pakai fallback lama —', err.message);
@@ -4151,7 +4151,7 @@ async function loadRoleMenuAccess(forceReload = false) {
 }
 
 // Cache override akses menu PER AKUN (bukan per role) dari tabel
-// user_menu_access -- lihat sql/tambah_akses_menu_user.sql. Beda dari
+// user_menu_access -- lihat sql/34_tambah_akses_menu_user.sql. Beda dari
 // roleMenuAccessMap (di-cache utk SEMUA role sekaligus), cache ini cuma
 // menyimpan override milik akun yang sedang login saja: { menu_key: true/false }.
 // undefined utk sebuah menu_key = tidak ada override, ikuti role_menu_access.
@@ -4173,7 +4173,7 @@ async function loadUserMenuAccess(forceReload = false) {
         (data || []).forEach(row => { map[row.menu_key] = !!row.allowed; });
         userMenuAccessMap = map;
     } catch (err) {
-        // Tabel belum ada (migrasi sql/tambah_akses_menu_user.sql belum
+        // Tabel belum ada (migrasi sql/34_tambah_akses_menu_user.sql belum
         // dijalankan) atau gagal koneksi -- diamkan saja, anggap tidak ada
         // override individual sama sekali (fallback penuh ke role).
         console.warn('loadUserMenuAccess: pakai fallback role saja —', err.message);
@@ -4956,7 +4956,7 @@ function isValidUUID(str) {
     return typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 }
 
-// Kolom yang benar-benar ada di tabel `programs` (lihat sql/00_setup_semua_tabel.sql).
+// Kolom yang benar-benar ada di tabel `programs` (lihat sql/01_setup_semua_tabel.sql).
 // File backup dari versi/tool lain bisa saja punya field tambahan (mis. field lama
 // yang sudah tidak dipakai seperti "link_form", "link_metaads", "link_dokumentasi",
 // atau "updated_at") -- field begitu HARUS dibuang sebelum upsert, karena
@@ -5030,7 +5030,7 @@ const TABLE_LABEL = {
     pendaftaran: 'pendaftaran',
     featured_programs: 'program unggulan'
 };
-// Kolom asli tiap tabel (lihat sql/00_setup_semua_tabel.sql + migrasi sql/tambah_*.sql) --
+// Kolom asli tiap tabel (lihat sql/01_setup_semua_tabel.sql + migrasi sql/tambah_*.sql) --
 // sama seperti PROGRAM_COLUMNS, dipakai untuk membuang field asing dari file backup
 // supaya upsert tidak ditolak Supabase gara-gara kolom yang tidak dikenal.
 const OPTIONAL_TABLE_COLUMNS = {
@@ -5039,21 +5039,21 @@ const OPTIONAL_TABLE_COLUMNS = {
         'id', 'program_id', 'nama', 'nik', 'paspor', 'wa', 'asal', 'tipe_kamar', 'harga_custom', 'status', 'catatan',
         'dokumen', 'created_at', 'jenis_kelamin', 'tempat_lahir', 'tgl_lahir', 'alamat', 'kode_pos', 'telp_rumah',
         'ahli_waris_nama', 'ahli_waris_hubungan', 'pendaftaran_id', 'paspor_exp', 'visa_status',
-        // Kolom baru: nomor kamar, status kepulangan (sql/tambah_nomor_kamar_kb_jamaah.sql,
-        // sql/tambah_status_kepulangan_kb_jamaah.sql), dan arsip jamaah (sql/tambah_arsip_jamaah.sql)
+        // Kolom baru: nomor kamar, status kepulangan (sql/11_tambah_nomor_kamar_kb_jamaah.sql,
+        // sql/13_tambah_status_kepulangan_kb_jamaah.sql), dan arsip jamaah (sql/17_tambah_arsip_jamaah.sql)
         'nomor_kamar', 'status_kepulangan', 'tgl_berangkat_aktual', 'tgl_pulang_aktual', 'catatan_kepulangan',
         'diarsipkan', 'diarsipkan_at'
     ],
     pembayaran_jamaah: [
         'id', 'jamaah_id', 'tanggal', 'jumlah', 'metode', 'keterangan', 'created_at',
         // nomor_kuitansi & nomor_nota diisi otomatis oleh trigger DB kalau kosong (lihat
-        // sql/tambah_nota_audit.sql) -- disertakan di sini supaya nomor lama yang sudah
+        // sql/19_tambah_nota_audit.sql) -- disertakan di sini supaya nomor lama yang sudah
         // terbit tetap konsisten saat dipulihkan, bukan supaya bisa diubah manual.
         'nomor_kuitansi', 'nomor_nota'
     ],
     pendaftaran: [
         'id', 'program_id', 'nama', 'wa', 'asal', 'status', 'catatan', 'created_at',
-        // Kolom F4 (sql/tambah_field_pendaftaran_f4.sql)
+        // Kolom F4 (sql/07_tambah_field_pendaftaran_f4.sql)
         'tanggal_daftar', 'ktp', 'jenis_kelamin', 'tempat_lahir', 'tgl_lahir', 'alamat', 'kode_pos',
         'telp_rumah', 'ahli_waris_nama', 'ahli_waris_hubungan'
     ],
@@ -6516,7 +6516,7 @@ async function loadKbJamaahForProgram(programId) {
 }
 
 // ============================================================
-// ARSIP JAMAAH — sekali arsip, tidak bisa di-unarsip (lihat sql/tambah_arsip_jamaah.sql)
+// ARSIP JAMAAH — sekali arsip, tidak bisa di-unarsip (lihat sql/17_tambah_arsip_jamaah.sql)
 // ============================================================
 let arsipConfirmTarget = { programId: null, programNama: null, jumlah: 0 };
 
@@ -8052,7 +8052,7 @@ function rupiahTerbilang(n) {
 
 function nomorNota(cicilan) {
     // Nomor resmi dibuat & dikunci oleh database (trigger + sequence, lihat
-    // sql/tambah_nota_audit.sql) supaya sekuensial, permanen, dan tidak
+    // sql/19_tambah_nota_audit.sql) supaya sekuensial, permanen, dan tidak
     // berubah tiap nota dicetak ulang. Fallback di bawah HANYA dipakai kalau
     // migrasi SQL itu belum dijalankan di project Supabase — diberi label
     // "(sementara)" secara eksplisit supaya tidak disalahartikan sebagai nomor resmi.
@@ -8065,7 +8065,7 @@ function nomorNota(cicilan) {
 
 // Nomor yang ditampilkan saat sebuah baris pembayaran berstatus KUITANSI
 // (lihat buildNotaHTML) -- seri nomornya SENGAJA terpisah dari nomorNota()
-// (lihat sql/tambah_nomor_kuitansi_di_pembayaran.sql), diambil & dikunci
+// (lihat sql/23_tambah_nomor_kuitansi_di_pembayaran.sql), diambil & dikunci
 // permanen ke kolom nomor_kuitansi baris itu saat pertama kali diunduh
 // (lihat downloadNotaPembayaran()). Sebelum diunduh (mis. saat preview live
 // atau reprint sebelum kolomnya terisi), tampilkan placeholder yang jelas
@@ -8094,7 +8094,7 @@ async function sha256Hex(text) {
 // lagi) -- lebih akurat untuk audit karena tidak bisa diketik bebas/dipalsukan user.
 // Untuk TAMPILAN di tabel Audit Nota dipakai dicetak_oleh_label (nama, mis. "Ali
 // Santoso") yang disimpan terpisah lewat getPetugasDisplayName() -- lihat
-// logNotaAudit() & sql/tambah_dicetak_oleh_label_audit.sql.
+// logNotaAudit() & sql/21_tambah_dicetak_oleh_label_audit.sql.
 function getPetugasNama() {
     try { return sessionStorage.getItem('admin_login_email') || ''; } catch (_) { return ''; }
 }
@@ -8201,7 +8201,7 @@ async function loadNotaAuditLog(reset) {
         if (loadMoreBtn) loadMoreBtn.style.display = (count != null && auditNotaOffset < count) ? '' : 'none';
     } catch (err) {
         console.error('loadNotaAuditLog error:', err);
-        if (reset) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--danger);">Gagal memuat log audit: ${escapeHtml(err.message)}. Pastikan migrasi sql/tambah_nota_audit.sql sudah dijalankan di Supabase.</td></tr>`;
+        if (reset) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--danger);">Gagal memuat log audit: ${escapeHtml(err.message)}. Pastikan migrasi sql/19_tambah_nota_audit.sql sudah dijalankan di Supabase.</td></tr>`;
         showToast('Gagal memuat log audit nota', 'error');
     }
 }
@@ -8994,7 +8994,7 @@ async function downloadNotaPembayaran(cicilanId, btn, format = 'jpeg') {
                     .update({ nomor_kuitansi: nomorBaru }).eq('id', cicilan.id);
                 if (error) throw error;
             } catch (err) {
-                console.warn('Gagal menyimpan nomor kuitansi ke database (migrasi sql/tambah_nomor_kuitansi_di_pembayaran.sql belum jalan?):', err);
+                console.warn('Gagal menyimpan nomor kuitansi ke database (migrasi sql/23_tambah_nomor_kuitansi_di_pembayaran.sql belum jalan?):', err);
             }
             cicilan.nomor_kuitansi = nomorBaru;
         }
@@ -9836,7 +9836,7 @@ function generateTodoLeadReminderWA(pendaftaranId) {
 // Melacak progres jamaah dari belum berangkat sampai sudah pulang --
 // terpisah dari status pembayaran (lunas/dp/pending). Status ini SELALU
 // PER PROGRAM/ROMBONGAN (kolom programs.status_kepulangan, lihat
-// sql/tambah_status_kepulangan_program.sql): satu status & satu tanggal
+// sql/14_tambah_status_kepulangan_program.sql): satu status & satu tanggal
 // yang berlaku untuk SELURUH jamaah di program itu, karena satu rombongan
 // pasti berangkat & pulang bersama-sama di waktu yang sama -- tidak ada
 // override per jamaah. Guest hanya bisa lihat, user & admin bisa ubah.
@@ -10611,7 +10611,7 @@ async function exportPembayaranExcel(btn) {
 // ============================================================
 // 19F. ROOMING LIST — bagi jamaah 1 program ke kamar hotel per tipe kamar
 // (Quad/Triple/Double), otomatis atau geser manual, lalu simpan ke DB
-// (kolom kb_jamaah.nomor_kamar, lihat sql/tambah_nomor_kamar_kb_jamaah.sql)
+// (kolom kb_jamaah.nomor_kamar, lihat sql/11_tambah_nomor_kamar_kb_jamaah.sql)
 // dan bisa diunduh sebagai dokumen (format grid kamar, bukan tabel per-orang
 // seperti Manifest). Beda dari Manifest: modal ini INTERAKTIF, ada state
 // kerja sementara (roomingWorking) yang baru ditulis ke DB saat "Simpan
@@ -10855,7 +10855,7 @@ async function simpanRoomingList(btn) {
         showToast('Rooming list berhasil disimpan');
     } catch (err) {
         console.error('Simpan rooming list error:', err);
-        showToast('Gagal menyimpan: ' + (err?.message || err) + ' — jalankan sql/tambah_nomor_kamar_kb_jamaah.sql kalau kolom belum ada', 'error');
+        showToast('Gagal menyimpan: ' + (err?.message || err) + ' — jalankan sql/11_tambah_nomor_kamar_kb_jamaah.sql kalau kolom belum ada', 'error');
     } finally {
         if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
     }
@@ -10949,7 +10949,7 @@ async function unduhRoomingList(format, btn) {
 // bawah ini yang masih tersisa:
 //  - fetchNextKuitansiNomorValue(): dipakai downloadNotaPembayaran() untuk
 //    mengambil nomor kuitansi otomatis (RPC next_kuitansi_nomor(), lihat
-//    sql/tambah_nomor_kuitansi_otomatis.sql).
+//    sql/22_tambah_nomor_kuitansi_otomatis.sql).
 //  - buildKuitansiHTML(): DIPERTAHANKAN hanya untuk merekonstruksi preview
 //    baris log Audit Nota lama (jenis 'kuitansi' yang dulu dibuat dari modal
 //    manual, sebelum digabung) — lihat previewNotaFromAudit().
@@ -10962,10 +10962,10 @@ async function fetchNextKuitansiNomorValue() {
     } catch (err) {
         console.warn('Gagal mengambil nomor kuitansi otomatis (migrasi belum dijalankan?):', err);
         // Fallback sementara berbasis waktu supaya nota tetap bisa diunduh
-        // walau migrasi sql/tambah_nomor_kuitansi_otomatis.sql belum jalan —
+        // walau migrasi sql/22_tambah_nomor_kuitansi_otomatis.sql belum jalan —
         // ditandai jelas "(sementara)" supaya tidak disalahartikan sebagai
         // nomor resmi tersistem.
-        showToast('Nomor kuitansi otomatis gagal dibuat dari server, pakai nomor sementara. Jalankan migrasi sql/tambah_nomor_kuitansi_otomatis.sql', 'error');
+        showToast('Nomor kuitansi otomatis gagal dibuat dari server, pakai nomor sementara. Jalankan migrasi sql/22_tambah_nomor_kuitansi_otomatis.sql', 'error');
         return `AHI/KWT/${new Date().getFullYear()}/${Date.now().toString().slice(-6)} (sementara)`;
     }
 }
@@ -11561,7 +11561,7 @@ function cxCountMismatchForProgram(prog) {
     const pd = adl.poster_data || {};
     // [BUGFIX] Data lama menyimpan harga Quad di kolom `harga_quint` (lihat
     // komentar "Data lama: harga_quint sebenarnya dipakai sebagai harga Quad"
-    // di editAdminProgram() & sql/tambah_tipe_kamar_jamaah.sql). Konvensi ini
+    // di editAdminProgram() & sql/10_tambah_tipe_kamar_jamaah.sql). Konvensi ini
     // sudah dipakai konsisten di >8 tempat lain di file ini (mis. baris 461,
     // 1795, 3605 -- semua pakai `harga_quad || harga_quint`), TAPI modul
     // Crosscheck sebelumnya membandingkan `harga_quint` & `harga_quad` sebagai
@@ -12471,8 +12471,8 @@ function escapeHtmlAttr(str) {
 // 21c. HOTEL SAUDI ARABIA (read-only) — sub-tab di dalam menu Assets,
 // referensi data hotel hasil import sekali dari CSV (booking_saudi_arabia.csv).
 // Tidak ada tambah/edit/hapus lewat UI -- kalau perlu diperbarui, import
-// ulang lewat SQL Editor (lihat sql/tambah_hotel_saudi_arabia.sql &
-// sql/import_hotel_saudi_arabia.sql).
+// ulang lewat SQL Editor (lihat sql/37_tambah_hotel_saudi_arabia.sql &
+// sql/39_import_hotel_saudi_arabia.sql).
 //
 // Data yang sama juga dipakai sebagai REFERENSI (bukan cuma ditampilkan di
 // sub-tab-nya sendiri) di dua tempat lain:
@@ -12663,7 +12663,7 @@ function renderHotelSaudiTable() {
     if (!hotelSaudiLoaded) return;
 
     if (!hotelSaudiList.length) {
-        wrap.innerHTML = `<div class="pf-empty"><i class="bi bi-building"></i>Data hotel belum diimport. Jalankan <code>sql/tambah_hotel_saudi_arabia.sql</code> lalu <code>sql/import_hotel_saudi_arabia.sql</code> di Supabase SQL Editor.</div>`;
+        wrap.innerHTML = `<div class="pf-empty"><i class="bi bi-building"></i>Data hotel belum diimport. Jalankan <code>sql/37_tambah_hotel_saudi_arabia.sql</code> lalu <code>sql/39_import_hotel_saudi_arabia.sql</code> di Supabase SQL Editor.</div>`;
         return;
     }
 
@@ -12758,7 +12758,7 @@ window.exportHotelSaudiCsv = exportHotelSaudiCsv;
 // Alur: pilih file -> parse & validasi di browser -> pratinjau (jumlah baris,
 // baris yang dilewati) -> konfirmasi -> RPC replace_hotel_saudi_arabia yang
 // menghapus SEMUA data lama & mengisi data baru dalam satu transaksi.
-// Hanya Admin (dicek juga di database: sql/tambah_import_hotel_saudi_arabia.sql).
+// Hanya Admin (dicek juga di database: sql/38_tambah_import_hotel_saudi_arabia.sql).
 // Kolom CSV: hotel_name, city (wajib) + country, score, review_count,
 // description (opsional). Kolom `id` diabaikan (id dibuat ulang oleh database).
 // ============================================================
@@ -12956,7 +12956,7 @@ async function confirmHotelImport() {
         console.error('Import hotel CSV error:', err);
         const missing = err && (err.code === 'PGRST202' || /Could not find the function|does not exist/i.test(err.message || ''));
         showToast(missing
-            ? 'Fungsi import belum ada di database — jalankan sql/tambah_import_hotel_saudi_arabia.sql dulu'
+            ? 'Fungsi import belum ada di database — jalankan sql/38_tambah_import_hotel_saudi_arabia.sql dulu'
             : `Import gagal, data lama tidak berubah: ${err.message || 'kesalahan tidak diketahui'}`, 'error');
         if (btn) { btn.disabled = false; btn.innerHTML = origHtml; }
         return;
@@ -13505,9 +13505,9 @@ const IG_PILLARS = {
     kontemplasi: { label: 'Kontemplasi',       color: '#5b6abf' }
 };
 const IG_STAGES = { ide: 'Ide', dikerjakan: 'Dikerjakan', siap: 'Siap posting' };
-let igPlannerColsReady = false; // true kalau sql/tambah_ig_content_plan_planner.sql sudah dijalankan (kolom pilar & tahap)
-let igTeksGambarReady = false;  // true kalau sql/tambah_ig_content_plan_pola_amiru.sql sudah dijalankan (kolom teks_gambar)
-let igTemaMingguReady = false;  // true kalau sql/tambah_ig_content_plan_tema_minggu.sql sudah dijalankan (kolom tema_minggu)
+let igPlannerColsReady = false; // true kalau sql/45_tambah_ig_content_plan_planner.sql sudah dijalankan (kolom pilar & tahap)
+let igTeksGambarReady = false;  // true kalau sql/46_tambah_ig_content_plan_pola_amiru.sql sudah dijalankan (kolom teks_gambar)
+let igTemaMingguReady = false;  // true kalau sql/47_tambah_ig_content_plan_tema_minggu.sql sudah dijalankan (kolom tema_minggu)
 
 function igApplyPlannerMode() {
     const root = document.getElementById('igSchedulerPageView');
@@ -14571,7 +14571,7 @@ function igLocalDateKey(d) {
 }
 
 // ---- Helper: hapus file dari bucket ig-media berdasarkan public URL (best effort) ----
-// Butuh policy DELETE di storage.objects (lihat sql/tambah_ig_media_storage_policy.sql). Kalau
+// Butuh policy DELETE di storage.objects (lihat sql/50_tambah_ig_media_storage_policy.sql). Kalau
 // policy belum ada, penghapusan gagal diam-diam (hanya console.warn) dan data tidak terganggu.
 function igStoragePathFromUrl(url) {
     if (!url || typeof url !== 'string') return null;
@@ -15751,7 +15751,7 @@ document.addEventListener('keydown', (e) => {
 // 24g. TASKLIST MINGGUAN (kartu "Tasklist" di ringkasan Content Planner)
 // Template kerjaan rutin per hari (Senin..Minggu) yang berulang tiap pekan. Kartu menampilkan kerjaan HARI INI
 // (selesai/total); klik kartu -> modal berisi daftar kerjaan seminggu yang bisa ditambah/dihapus.
-// Penyimpanan: tabel ig_tasklist (sql/tambah_ig_tasklist.sql). Kalau tabel belum ada, otomatis jatuh ke
+// Penyimpanan: tabel ig_tasklist (sql/49_tambah_ig_tasklist.sql). Kalau tabel belum ada, otomatis jatuh ke
 // localStorage (hanya di browser ini). Centang "selesai" hanya untuk HARI INI dan disimpan di browser ini.
 // ============================================================
 const IG_TASK_HARI = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']; // hari 1..7 (ISO)
@@ -15828,7 +15828,7 @@ function igTaskRender() {
     const hariIni = igTaskHariIni();
     const done = igTaskDoneToday();
     const note = document.getElementById('igTaskNote');
-    if (note) note.textContent = igTaskDb ? '' : 'Tabel ig_tasklist belum dibuat, tasklist sementara hanya tersimpan di browser ini (jalankan sql/tambah_ig_tasklist.sql).';
+    if (note) note.textContent = igTaskDb ? '' : 'Tabel ig_tasklist belum dibuat, tasklist sementara hanya tersimpan di browser ini (jalankan sql/49_tambah_ig_tasklist.sql).';
     body.innerHTML = IG_TASK_HARI.map((nama, i) => {
         const h = i + 1, ini = h === hariIni;
         const list = igTasks.filter(t => t.hari === h);
@@ -15908,7 +15908,7 @@ let igRkProgram = []; // program aktif belum berangkat (untuk fase promosi)
 let igRkData = null; // hasil igRkSusun terakhir (dipakai render, salin, dan unduh)
 let igRkSudahRender = false; // false = render pertama sejak modal dibuka (bulan dibuka sesuai default); true = pertahankan bulan yang sedang terbuka
 let igRencanaTahun = []; // cache ig_rencana_tahunan (1 baris per pekan: senin, tema, alasan, fokus_program, sumber, terkunci)
-let igRencanaReady = false; // true kalau sql/tambah_ig_rencana_tahunan.sql sudah dijalankan
+let igRencanaReady = false; // true kalau sql/48_tambah_ig_rencana_tahunan.sql sudah dijalankan
 let igRtEditSenin = null; // Senin pekan yang temanya sedang diedit inline
 let igRtBusy = false; // true selama AI menyusun rencana setahun
 
@@ -16155,7 +16155,7 @@ document.addEventListener('keydown', (e) => {
 // (fase promosi), musim Hijriah/Masehi, alur perjalanan jamaah, dan tema yang sudah dipakai, lalu hasilnya
 // disimpan per pekan. Yang tersimpan menjadi saran UTAMA di Perencanaan Konten (lihat igKandidatTemaMinggu).
 // Edit manual otomatis mengunci pekan itu (tidak ditimpa saat disusun ulang). Isi harian tetap dibuat per pekan.
-// Butuh sql/tambah_ig_rencana_tahunan.sql + edge function generate-ig-year-plan.
+// Butuh sql/48_tambah_ig_rencana_tahunan.sql + edge function generate-ig-year-plan.
 // ============================================================
 const IG_YEAR_PLAN_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/generate-ig-year-plan`;
 const IG_RT_BATCH = 26; // pekan per panggilan AI (setengah tahun): hasil tersimpan bertahap dan tidak timeout
@@ -16282,7 +16282,7 @@ function igRtRenderPanel() {
     const info = document.getElementById('igRtInfo');
     if (!info) return;
     if (!igRencanaReady) {
-        info.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Tabel rencana setahun belum ada. Jalankan <code>sql/tambah_ig_rencana_tahunan.sql</code> di Supabase SQL Editor, lalu buka ulang modal ini.';
+        info.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Tabel rencana setahun belum ada. Jalankan <code>sql/48_tambah_ig_rencana_tahunan.sql</code> di Supabase SQL Editor, lalu buka ulang modal ini.';
         return;
     }
     const n = igRtHitungTarget().length;
@@ -16331,7 +16331,7 @@ function igRtStatus(teks, error) {
 async function igRtSusunAI() {
     if (igRtBusy) return;
     if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk menyusun rencana konten', 'error'); return; }
-    if (!igRencanaReady) { igRtRenderPanel(); showToast('Jalankan sql/tambah_ig_rencana_tahunan.sql dulu', 'error'); return; }
+    if (!igRencanaReady) { igRtRenderPanel(); showToast('Jalankan sql/48_tambah_ig_rencana_tahunan.sql dulu', 'error'); return; }
     if (!igRkData) igRkRender();
     const target = igRtHitungTarget();
     if (!target.length) { igRtRenderPanel(); showToast('Tidak ada pekan yang perlu diisi', 'info'); return; }
@@ -18231,7 +18231,7 @@ async function igApplyPolaMingguan() {
         if (error) throw error;
 
         let pesan = `${payload.length} ide pola mingguan ditambahkan`;
-        if (!igTeksGambarReady) pesan += ' (jalankan sql/tambah_ig_content_plan_pola_amiru.sql agar teks gambar ikut tersimpan)';
+        if (!igTeksGambarReady) pesan += ' (jalankan sql/46_tambah_ig_content_plan_pola_amiru.sql agar teks gambar ikut tersimpan)';
         showToast(pesan, 'success');
         await loadIgContentPlan();
         igPlanResultRange = null;

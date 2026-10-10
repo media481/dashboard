@@ -31,7 +31,7 @@ Bahkan kalau key diperbaiki, URL salah → tetap gak connect. **Dua-duanya harus
 disamakan dengan nilai di `js/config.js`.**
 
 ## BUG #3 [KRITIS] Login CS (pass_cs) mati total
-**Lokasi:** `js/app.js` `loadUserRoles()` baris 500-503 vs `sql/00_setup_semua_tabel.sql` baris 162-165
+**Lokasi:** `js/app.js` `loadUserRoles()` baris 500-503 vs `sql/01_setup_semua_tabel.sql` baris 162-165
 - SQL seed HANYA membuat `pass_administrator` & `pass_cs`.
 - Tapi `loadUserRoles()` di app.js memetakan:
   - `pass_admin` / `pass_administrator` → `admin` ✓
@@ -77,7 +77,7 @@ langsung via Supabase (RLS terbuka, lihat #6) sehingga tetap berisiko. Perbaikan
 (escape quote) sudah menutup jalur injeksi atribut.
 
 ## BUG #6 [SECURITY] RLS semua tabel PERMISSIF (data & password bisa dibaca publik)
-**Lokasi:** `sql/00_setup_semua_tabel.sql` baris 38-239
+**Lokasi:** `sql/01_setup_semua_tabel.sql` baris 38-239
 Setiap tabel punya policy `for select using (true)` dan `for update/insert/delete
 using (true)`. Artinya SIAPA SAJA dengan anon key (atau tanpa login) bisa:
 - Membaca SELURUH data (program, jamaah + NIK/paspor/WA, pendaftaran, pembayaran).

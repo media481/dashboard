@@ -1,7 +1,7 @@
 # CHECKLIST DEPLOY — Dashboard Amiru
 
 Panduan urutan supaya dashboard jalan (baca data **dan** bisa login/tulis).
-Satu file SQL sudah disiapkan: `sql/SETUP_LENGKAP_SATU_FILE.sql`
+Satu file SQL sudah disiapkan: `sql/00_SETUP_LENGKAP_SATU_FILE.sql`
 (gabungan semua migrasi + hardening, **bebas urutan** — tinggal jalankan sekali).
 
 ---
@@ -31,7 +31,7 @@ pakai nilai dari situ, pastikan itu project yang SAMA dengan `app.js`.
 ## 1. SETUP SUPABASE (SQL)
 
 1. Buka Supabase Dashboard → project yang **sama** dengan `app.js` → **SQL Editor**.
-2. New Query → paste isi `sql/SETUP_LENGKAP_SATU_FILE.sql` → **Run**.
+2. New Query → paste isi `sql/00_SETUP_LENGKAP_SATU_FILE.sql` → **Run**.
 3. Cek tidak ada error merah. (Idempoten — aman dijalankan ulang.)
 4. **Ganti password default** (WAJIB, jangan biarkan `ganti-password-admin`):
    ```sql
@@ -132,7 +132,7 @@ const SUPABASE_ANON_KEY = "<anon_key_dari_project_yang_sama>";
 ## 7. RINGKASAN PERINTAH (copy-paste)
 
 ```bash
-# 1. (di SQL Editor) jalankan: sql/SETUP_LENGKAP_SATU_FILE.sql
+# 1. (di SQL Editor) jalankan: sql/00_SETUP_LENGKAP_SATU_FILE.sql
 
 # 2. (terminal, sudah supabase login & link)
 supabase secrets set DASHBOARD_JWT_SECRET=<secret>

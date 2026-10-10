@@ -2,7 +2,7 @@
 //
 // Dipakai dari tab "Pengaturan User" (khusus admin) untuk membuat akun baru
 // per-orang, dengan role 'admin', 'user', atau 'guest' (lihat saja, tanpa
-// akses tulis -- diblokir juga di level RLS, lihat sql/tambah_role_guest_readonly.sql).
+// akses tulis -- diblokir juga di level RLS, lihat sql/29_tambah_role_guest_readonly.sql).
 // Berbeda dari 3 akun tetap
 // (admin@..., user@..., guest@...) yang dibuat lewat scripts/setup-auth-accounts.mjs
 // -- fungsi ini membuat akun BARU untuk orang lain, dan akun-akun itu berdampingan
@@ -18,7 +18,7 @@
 //      lalu isi dashboard_profiles untuk user baru itu.
 //
 // Deploy: supabase functions deploy admin-create-user
-// Butuh sql/tambah_kelola_user.sql sudah dijalankan (kolom email + policy baca).
+// Butuh sql/30_tambah_kelola_user.sql sudah dijalankan (kolom email + policy baca).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
