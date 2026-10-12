@@ -1518,23 +1518,25 @@ window.loadInfografisGallery = loadInfografisGallery;
 
 // ============================================================
 // 5d. REKAP PROGRAM — kartu di dashboard (menggantikan kartu
-// "Unggulan"). Klik kartu -> viewer poster rekap 1080 x 1920 dari
+// "Unggulan"). Klik kartu -> galeri poster rekap 1080 x 1920 dari
 // folder Google Drive KHUSUS rekap (beda folder dengan Infografis).
 // Metodenya sama dengan Infografis: Apps Script -> Edge Function
 // sync-rekap-program -> tabel rekap_program_items (lihat
 // sql/52_tambah_rekap_program_items.sql) -> dibaca dari Supabase.
-// Urutan: terbaru dulu.
 //
-// Interaksi: tombol panah / tombol keyboard ← → / geser kiri-kanan di
-// HP / klik thumbnail di bawah untuk pindah poster; klik poster =
-// buka ukuran penuh. Tidak ada auto-lanjut maupun auto-tutup.
+// Dua lapis, seperti membuka galeri di HP:
+//   1. Galeri  : grid thumbnail, terbaru dulu (minimal 4 kanvas;
+//                yang belum terisi tampil sebagai kanvas kosong).
+//   2. Pratinjau layar penuh: klik poster -> pindah poster dengan
+//                panah / tombol ← → / geser di HP; Esc atau tombol
+//                kembali -> balik ke galeri.
 // ============================================================
 const SYNC_REKAP_PROGRAM_URL = `${SUPABASE_URL}/functions/v1/sync-rekap-program`;
-const REKAP_EMPTY_SLOTS = 4;      // jumlah kanvas kosong di deretan thumbnail saat folder belum ada gambar
+const REKAP_MIN_TILES = 4;        // grid selalu minimal 4 kanvas (kosong kalau belum ada gambar)
 const REKAP_SWIPE_PX = 50;        // jarak geser minimal agar dihitung pindah poster
 let rekapProgramItems = [];       // semua gambar di folder: { id, name, fullUrl, thumbUrl, updatedAt }
 let rekapProgramLoaded = false;
-let rekapIndex = 0;
+let rekapIndex = 0;               // poster yang sedang dibuka di pratinjau
 
 function openRekapProgramModal() {
     if (!adminLoggedIn) {
@@ -1544,37 +1546,35 @@ function openRekapProgramModal() {
     document.getElementById('rekapProgramModal').classList.add('open');
     const refreshBtn = document.getElementById('btnRekapRefresh');
     if (refreshBtn) refreshBtn.style.display = canManageProgramData() ? '' : 'none';
-    rekapIndex = 0;
     loadRekapProgram();
 }
 
 function closeRekapProgramModal() {
+    closeRekapLightbox();
     document.getElementById('rekapProgramModal').classList.remove('open');
-    // Kosongkan gambar & thumbnail supaya tidak ada sisa tampilan lama saat dibuka lagi
-    const img = document.getElementById('rekapImg');
-    if (img) { img.onload = img.onerror = null; img.removeAttribute('src'); img.classList.remove('loaded'); }
-    const strip = document.getElementById('rekapStrip');
-    if (strip) strip.innerHTML = '';
+    const grid = document.getElementById('rekapGrid');
+    if (grid) grid.innerHTML = '';   // lepas gambar supaya tidak ikut termuat saat modal tertutup
 }
 
+// type: 'loading' | 'empty' | 'error' | null (sembunyikan)
 function setRekapNote(type, text) {
     const note = document.getElementById('rekapNote');
     if (!note) return;
-    if (!type) { note.classList.add('hide'); note.innerHTML = ''; return; }
+    if (!type) { note.style.display = 'none'; note.innerHTML = ''; return; }
     const icon = { loading: 'bi-hourglass-split', empty: 'bi-image', error: 'bi-exclamation-triangle' }[type];
     note.innerHTML = `<i class="bi ${icon}"></i><span>${escapeHtml(text || '')}</span>`;
-    note.classList.remove('hide');
+    note.style.display = 'flex';
 }
 
 // forceSync = true (tombol Refresh) -> minta Edge Function menarik ulang
 // daftar gambar dari Drive dulu, baru baca tabel. Kalau false -> baca cache.
 async function loadRekapProgram(forceSync = false) {
     if (rekapProgramLoaded && !forceSync) {
-        renderRekapProgram();
+        renderRekapGallery();
         return;
     }
 
-    renderRekapStrip(0, -1);
+    renderRekapGallery(true);
     setRekapNote('loading', 'Memuat rekap…');
 
     try {
@@ -1591,7 +1591,7 @@ async function loadRekapProgram(forceSync = false) {
             const syncResult = await syncRes.json().catch(() => ({}));
             if (!syncResult.ok) {
                 showToast('Sync gagal: ' + (syncResult.error || syncRes.statusText), 'error');
-                // tetap lanjut baca cache lama supaya viewer tidak kosong total
+                // tetap lanjut baca cache lama supaya galeri tidak kosong total
             } else {
                 showToast(`Sync selesai — ${syncResult.synced || 0} gambar`, 'success');
             }
@@ -1613,138 +1613,150 @@ async function loadRekapProgram(forceSync = false) {
             }))
             .filter(it => it.fullUrl);
         rekapProgramLoaded = true;
-        rekapIndex = 0;
-        renderRekapProgram();
+        renderRekapGallery();
     } catch (err) {
         setRekapNote('error', 'Gagal memuat rekap: ' + (err.message || String(err)));
     }
 }
 
-// Deretan thumbnail di bawah poster. count = 0 -> kosongkan; folder kosong
-// (lewat renderRekapProgram) -> REKAP_EMPTY_SLOTS kanvas kosong bergaris putus.
-function renderRekapStrip(count, activeIdx) {
-    const strip = document.getElementById('rekapStrip');
-    if (!strip) return;
-    if (!count) { strip.innerHTML = ''; return; }
-    strip.innerHTML = rekapProgramItems.map((it, i) => `
-        <button class="rekap-thumb${i === activeIdx ? ' active' : ''}" onclick="rekapGoTo(${i})" aria-label="Poster ${i + 1}">
-            <img src="${escapeHtmlAttr(it.thumbUrl)}" alt="" referrerpolicy="no-referrer" loading="lazy" draggable="false">
-        </button>`).join('');
-    const active = strip.children[activeIdx];
-    if (active && active.scrollIntoView) active.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-}
-
-function rekapTimeLabel(iso) {
+function rekapDateLabel(iso) {
     const d = iso ? new Date(iso) : null;
     if (!d || isNaN(d)) return '';
-    return 'Diperbarui ' + d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function renderRekapProgram() {
-    const img = document.getElementById('rekapImg');
-    const meta = document.getElementById('rekapMeta');
-    const openFull = document.getElementById('rekapOpenFull');
-    const card = document.getElementById('rekapCard');
-    const prevBtn = document.getElementById('btnRekapPrev');
-    const nextBtn = document.getElementById('btnRekapNext');
-    if (!img) return;
+// onlyEmpty = true -> hanya kanvas kosong (saat loading, sebelum data ada)
+function renderRekapGallery(onlyEmpty = false) {
+    const grid = document.getElementById('rekapGrid');
+    const countEl = document.getElementById('rekapCount');
+    if (!grid) return;
 
+    const items = onlyEmpty ? [] : rekapProgramItems;
+    countEl.textContent = items.length ? `${items.length} poster` : '';
+
+    let html = items.map((it, i) => {
+        const tgl = rekapDateLabel(it.updatedAt);
+        return `
+        <button class="rekap-tile" onclick="openRekapLightbox(${i})" title="${escapeHtmlAttr(it.name || 'Rekap Program')}">
+            <img src="${escapeHtmlAttr(it.thumbUrl)}" alt="${escapeHtmlAttr(it.name || 'Rekap Program')}" referrerpolicy="no-referrer" loading="lazy" draggable="false">
+            ${i === 0 ? '<span class="rekap-tile-badge">Terbaru</span>' : ''}
+            ${tgl ? `<span class="rekap-tile-label">${escapeHtml(tgl)}</span>` : ''}
+        </button>`;
+    }).join('');
+
+    // Lengkapi sampai minimal 4 kanvas kosong
+    for (let i = items.length; i < REKAP_MIN_TILES; i++) {
+        html += '<div class="rekap-tile is-empty"><i class="bi bi-image"></i></div>';
+    }
+    grid.innerHTML = html;
+
+    if (!onlyEmpty) {
+        if (!items.length) setRekapNote('empty', 'Belum ada gambar di folder rekap');
+        else setRekapNote(null);
+    }
+}
+
+// ---------- Pratinjau layar penuh ----------
+function openRekapLightbox(i) {
+    if (i < 0 || i >= rekapProgramItems.length) return;
+    rekapIndex = i;
+    document.getElementById('rekapLightbox').classList.add('open');
+    renderRekapLightbox();
+}
+
+function closeRekapLightbox() {
+    const lb = document.getElementById('rekapLightbox');
+    if (!lb) return;
+    lb.classList.remove('open');
+    const img = document.getElementById('rekapLbImg');
+    if (img) { img.onload = img.onerror = null; img.removeAttribute('src'); img.classList.remove('loaded'); }
+}
+
+function setRekapLbNote(type, text) {
+    const note = document.getElementById('rekapLbNote');
+    if (!note) return;
+    if (!type) { note.classList.add('hide'); note.innerHTML = ''; return; }
+    const icon = { loading: 'bi-hourglass-split', error: 'bi-exclamation-triangle' }[type];
+    note.innerHTML = `<i class="bi ${icon}"></i><span>${escapeHtml(text || '')}</span>`;
+    note.classList.remove('hide');
+}
+
+function renderRekapLightbox() {
     const items = rekapProgramItems;
+    const idx = rekapIndex;
+    const item = items[idx];
+    const img = document.getElementById('rekapLbImg');
+    if (!item || !img) return;
+
+    document.getElementById('rekapLbCount').textContent = `${idx + 1} / ${items.length}`;
+    document.getElementById('rekapLbDate').textContent = rekapDateLabel(item.updatedAt);
+    document.getElementById('rekapLbOpenFull').href = item.fullUrl;
+    document.getElementById('btnRekapLbPrev').classList.toggle('empty', idx === 0);
+    document.getElementById('btnRekapLbNext').classList.toggle('empty', idx >= items.length - 1);
+
     img.classList.remove('loaded');
     img.onload = img.onerror = null;
     img.removeAttribute('src');
-
-    // Folder kosong -> tetap tampilkan kanvas kosong + 4 slot kosong di bawahnya
-    if (!items.length) {
-        card.classList.add('is-empty');
-        setRekapNote('empty', 'Belum ada gambar di folder rekap');
-        meta.textContent = '';
-        openFull.style.display = 'none';
-        prevBtn.classList.add('empty');
-        nextBtn.classList.add('empty');
-        const strip = document.getElementById('rekapStrip');
-        if (strip) strip.innerHTML = '<div class="rekap-thumb is-empty"></div>'.repeat(REKAP_EMPTY_SLOTS);
-        return;
-    }
-
-    card.classList.remove('is-empty');
-    rekapIndex = Math.min(Math.max(rekapIndex, 0), items.length - 1);
-    const idx = rekapIndex;
-    const item = items[idx];
-
-    setRekapNote('loading', 'Memuat…');
-    const tgl = rekapTimeLabel(item.updatedAt);
-    meta.textContent = (tgl ? tgl + ' · ' : '') + `${idx + 1} / ${items.length}`;
-    openFull.href = item.fullUrl;
-    openFull.style.display = '';
-    prevBtn.classList.toggle('empty', idx === 0);
-    nextBtn.classList.toggle('empty', idx >= items.length - 1);
-    renderRekapStrip(items.length, idx);
-
+    setRekapLbNote('loading', 'Memuat…');
     img.onload = () => {
         if (rekapIndex !== idx) return;
-        setRekapNote(null);
+        setRekapLbNote(null);
         img.classList.add('loaded');
     };
     img.onerror = () => {
         if (rekapIndex !== idx) return;
-        setRekapNote('error', 'Gambar gagal dimuat. Cek apakah folder Drive sudah di-share "Anyone with the link".');
+        setRekapLbNote('error', 'Gambar gagal dimuat. Cek apakah folder Drive sudah di-share "Anyone with the link".');
     };
     img.src = item.fullUrl;
 
-    // Muat duluan poster berikutnya supaya perpindahan terasa instan
-    if (items[idx + 1]) { const pre = new Image(); pre.referrerPolicy = 'no-referrer'; pre.src = items[idx + 1].fullUrl; }
+    // Muat duluan poster di kiri/kanan supaya perpindahan terasa instan
+    [items[idx - 1], items[idx + 1]].forEach(n => {
+        if (n) { const pre = new Image(); pre.referrerPolicy = 'no-referrer'; pre.src = n.fullUrl; }
+    });
 }
 
-// delta: -1 = sebelumnya, +1 = berikutnya. Berhenti di ujung (tidak berputar, tidak menutup).
+// delta: -1 = sebelumnya, +1 = berikutnya. Berhenti di ujung (tidak berputar).
 function rekapGo(delta) {
-    const total = rekapProgramItems.length;
-    if (!total) return;
-    const next = Math.min(Math.max(rekapIndex + delta, 0), total - 1);
+    const next = Math.min(Math.max(rekapIndex + delta, 0), rekapProgramItems.length - 1);
     if (next === rekapIndex) return;
     rekapIndex = next;
-    renderRekapProgram();
+    renderRekapLightbox();
 }
 
-function rekapGoTo(i) {
-    if (i === rekapIndex || i < 0 || i >= rekapProgramItems.length) return;
-    rekapIndex = i;
-    renderRekapProgram();
-}
-
-// Geser kiri/kanan di poster = pindah poster; klik/tap tanpa geser = buka ukuran penuh
-(function initRekapCardGestures() {
-    const card = document.getElementById('rekapCard');
-    if (!card) return;
+// Geser kiri/kanan di pratinjau = pindah poster
+(function initRekapLightboxSwipe() {
+    const stage = document.getElementById('rekapLbStage');
+    if (!stage) return;
     let sx = 0, sy = 0, tracking = false;
-    card.addEventListener('pointerdown', (e) => { sx = e.clientX; sy = e.clientY; tracking = true; });
-    card.addEventListener('pointercancel', () => { tracking = false; });
-    card.addEventListener('pointerup', (e) => {
+    stage.addEventListener('pointerdown', (e) => { sx = e.clientX; sy = e.clientY; tracking = true; });
+    stage.addEventListener('pointercancel', () => { tracking = false; });
+    stage.addEventListener('pointerup', (e) => {
         if (!tracking) return;
         tracking = false;
         const dx = e.clientX - sx, dy = e.clientY - sy;
-        if (Math.abs(dx) >= REKAP_SWIPE_PX && Math.abs(dx) > Math.abs(dy)) {
-            rekapGo(dx < 0 ? 1 : -1);
-        } else if (Math.abs(dx) < 8 && Math.abs(dy) < 8) {
-            const it = rekapProgramItems[rekapIndex];
-            if (it && it.fullUrl) window.open(it.fullUrl, '_blank', 'noopener');
-        }
+        if (Math.abs(dx) >= REKAP_SWIPE_PX && Math.abs(dx) > Math.abs(dy)) rekapGo(dx < 0 ? 1 : -1);
     });
 })();
 
+// Esc menutup lapis paling atas dulu (pratinjau, baru galeri)
 document.addEventListener('keydown', (e) => {
-    const m = document.getElementById('rekapProgramModal');
-    if (!m || !m.classList.contains('open')) return;
-    if (e.key === 'Escape') closeRekapProgramModal();
-    else if (e.key === 'ArrowLeft') rekapGo(-1);
-    else if (e.key === 'ArrowRight') rekapGo(1);
+    const lb = document.getElementById('rekapLightbox');
+    const gal = document.getElementById('rekapProgramModal');
+    if (lb && lb.classList.contains('open')) {
+        if (e.key === 'Escape') closeRekapLightbox();
+        else if (e.key === 'ArrowLeft') rekapGo(-1);
+        else if (e.key === 'ArrowRight') rekapGo(1);
+    } else if (gal && gal.classList.contains('open') && e.key === 'Escape') {
+        closeRekapProgramModal();
+    }
 });
 
 window.openRekapProgramModal = openRekapProgramModal;
 window.closeRekapProgramModal = closeRekapProgramModal;
 window.loadRekapProgram = loadRekapProgram;
+window.openRekapLightbox = openRekapLightbox;
+window.closeRekapLightbox = closeRekapLightbox;
 window.rekapGo = rekapGo;
-window.rekapGoTo = rekapGoTo;
 
 // ============================================================
 // 6. MOBILE SIDEBAR
