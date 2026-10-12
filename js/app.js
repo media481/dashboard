@@ -1634,16 +1634,19 @@ async function loadRekapProgram(forceSync = false) {
 // Tabel rekap_program_items hanya bisa dibaca user login (RLS), jadi sebelum login
 // kartu menampilkan "–". Setelah login dihitung ringan lewat count (tanpa ambil baris);
 // begitu galeri dibuka/di-refresh angkanya ikut disamakan dengan isi galeri.
-let rekapMetricFetchedAt = 0;
+// Hemat egress Supabase: query count (head:true, tanpa baris/body) hanya dijalankan
+// SEKALI per sesi login. Tidak di-polling & tidak diulang saat gagal. Setelah itu angka
+// diperbarui dari data galeri yang memang sudah dimuat (tanpa request tambahan).
+let rekapMetricFetched = false;
 function setRekapMetric(n) {
     const el = document.getElementById('totalRekapProgram');
     if (el) el.textContent = (n === null || n === undefined) ? '–' : n;
 }
 async function refreshRekapMetric(force = false) {
-    if (!adminLoggedIn) { rekapMetricFetchedAt = 0; setRekapMetric(null); return; }
+    if (!adminLoggedIn) { rekapMetricFetched = false; setRekapMetric(null); return; }
     if (rekapProgramLoaded) { setRekapMetric(rekapProgramItems.length); return; }
-    if (!force && Date.now() - rekapMetricFetchedAt < 60000) return;
-    rekapMetricFetchedAt = Date.now();
+    if (rekapMetricFetched && !force) return;
+    rekapMetricFetched = true;   // ditandai sebelum request: gagal pun tidak diulang-ulang
     try {
         const { count, error } = await supabaseClient
             .from('rekap_program_items')
@@ -1651,7 +1654,6 @@ async function refreshRekapMetric(force = false) {
         if (error) throw error;
         setRekapMetric(count || 0);
     } catch (err) {
-        rekapMetricFetchedAt = 0;
         console.warn('Hitung rekap program gagal:', err.message || err);
     }
 }
@@ -1709,6 +1711,10 @@ function closeRekapLightbox() {
     lb.classList.remove('open');
     const img = document.getElementById('rekapLbImg');
     if (img) { img.onload = img.onerror = null; img.removeAttribute('src'); img.classList.remove('loaded'); }
+    ['rekapLbSidePrev', 'rekapLbSideNext'].forEach(id => {
+        const s = document.getElementById(id);
+        if (s) s.removeAttribute('src');
+    });
 }
 
 function setRekapLbNote(type, text) {
@@ -1747,6 +1753,14 @@ function renderRekapLightbox() {
         setRekapLbNote('error', 'Gambar gagal dimuat. Cek apakah folder Drive sudah di-share "Anyone with the link".');
     };
     img.src = item.fullUrl;
+
+    // Poster sebelumnya/berikutnya di samping poster utama (kecil & blur, pakai thumbnail).
+    // Tidak ada poster di sisi itu (ujung daftar) -> src dilepas, CSS menyembunyikannya.
+    [['rekapLbSidePrev', items[idx - 1]], ['rekapLbSideNext', items[idx + 1]]].forEach(([id, n]) => {
+        const s = document.getElementById(id);
+        if (!s) return;
+        if (n) s.src = n.thumbUrl || n.fullUrl; else s.removeAttribute('src');
+    });
 
     // Muat duluan poster di kiri/kanan supaya perpindahan terasa instan
     [items[idx - 1], items[idx + 1]].forEach(n => {
@@ -2212,7 +2226,7 @@ function setAdminSession(role) {
     sessionStorage.setItem('admin_logged_in', 'true');
     sessionStorage.setItem('admin_role', role);
     sessionStorage.setItem('admin_login_time', Date.now().toString());
-    refreshRekapMetric(true);
+    refreshRekapMetric();
     if (sessionTimeout) clearTimeout(sessionTimeout);
     sessionTimeout = setTimeout(() => {
         if (adminLoggedIn) {

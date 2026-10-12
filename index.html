@@ -940,6 +940,8 @@
     </div>
     <div class="rekap-lb-stage" id="rekapLbStage">
         <button class="rekap-lb-arrow rekap-lb-prev" id="btnRekapLbPrev" onclick="rekapGo(-1)" aria-label="Sebelumnya"><i class="bi bi-chevron-left"></i></button>
+        <img id="rekapLbSidePrev" class="rekap-lb-side rekap-lb-side-prev" alt="" aria-hidden="true" referrerpolicy="no-referrer" draggable="false" onpointerdown="event.stopPropagation()" onclick="rekapGo(-1)">
+        <img id="rekapLbSideNext" class="rekap-lb-side rekap-lb-side-next" alt="" aria-hidden="true" referrerpolicy="no-referrer" draggable="false" onpointerdown="event.stopPropagation()" onclick="rekapGo(1)">
         <img id="rekapLbImg" class="rekap-lb-img" alt="Rekap Program" referrerpolicy="no-referrer" draggable="false">
         <div class="rekap-lb-note" id="rekapLbNote"></div>
         <button class="rekap-lb-arrow rekap-lb-next" id="btnRekapLbNext" onclick="rekapGo(1)" aria-label="Berikutnya"><i class="bi bi-chevron-right"></i></button>
