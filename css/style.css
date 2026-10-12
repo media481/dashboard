@@ -14,6 +14,7 @@
             --danger: #C0392B;
             --danger-tint: #FBE3E0;
             --line: #E1E8F0;
+            --footer-h: 68px; /* tinggi footer global (dipakai kanvas Content Planner) */
             --radius: 14px;
             --shadow: 0 4px 24px rgba(0,0,0,0.08);
             /* Jarak aman dari notch/status bar & home-indicator (iOS/Android).
@@ -361,8 +362,10 @@
 
         /* ===== MAIN ===== */
         main {
-            padding: 18px 20px 60px; /* kiri-kanan dikurangi separuh dari 40px -> 20px,
-                biar jarak sidebar-ke-tabel lebih efisien (ruang konten lebih lega) */
+            padding: 18px 20px 0; /* kiri-kanan dikurangi separuh dari 40px -> 20px,
+                biar jarak sidebar-ke-tabel lebih efisien (ruang konten lebih lega).
+                Padding bawah 0: jarak bawah kini diatur oleh .app-footer. */
+            display: flex; flex-direction: column; /* footer didorong ke dasar layar (margin-top:auto) */
             overflow-x: hidden;
             grid-column: 2;
             grid-row: 1;
@@ -4857,11 +4860,11 @@
    sempit tetap memakai tata letak lama (scroll normal).
    ============================================================ */
 @media (min-width: 1001px) and (min-height: 600px) {
-    main:has(#igSchedulerPageView.ig-planner-mode[style*="block"]) { padding-bottom: 18px; }
+    /* padding bawah main sudah 0; tinggi footer dikurangkan dari kanvas planner di bawah */
 
     #igSchedulerPageView.ig-planner-mode[style*="block"] {
         display: flex !important; flex-direction: column;
-        height: calc(100vh - 36px); height: calc(100dvh - 36px);
+        height: calc(100vh - 18px - var(--footer-h)); height: calc(100dvh - 18px - var(--footer-h));
     }
     #igSchedulerPageView.ig-planner-mode .admin-page-header { flex: 0 0 auto; margin-bottom: 12px; }
     #igSchedulerPageView.ig-planner-mode .admin-page-body {
@@ -5663,3 +5666,35 @@ details.ig-rk-minggu > summary.ig-rk-row::-webkit-details-marker { display: none
     .ig-tm-panel { padding: 16px 14px 14px; }
 }
 @media (prefers-reduced-motion: reduce) { .ig-tm-bar > div, .ig-tm-box, .ig-tm-box i, .ig-tm-tab { transition: none; } }
+
+
+/* ============================================================
+   FOOTER GLOBAL
+   Ada di dalam <main>, di luar semua view (dashboard, IG scheduler,
+   infografis, admin) -> tampil di setiap halaman menu. <main> berupa
+   flex column setinggi minimal layar, jadi margin-top:auto membuat
+   footer selalu menempel di dasar layar walau konten pendek, dan
+   tetap di bawah konten saat konten panjang.
+   ============================================================ */
+.app-footer {
+    margin-top: auto;
+    flex: 0 0 auto;
+    min-height: var(--footer-h);
+    padding: 18px 0 calc(14px + var(--safe-bottom));
+    border-top: 1px solid var(--line);
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 11.5px;
+    line-height: 1.45;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1px;
+}
+.app-footer-line { font-weight: 500; }
+.app-footer-sub { font-size: 11px; opacity: .85; }
+.app-footer { box-sizing: border-box; }
+/* jarak antara konten terakhir tiap view dan garis footer */
+main > #dashboardView,
+main > .admin-page { margin-bottom: 24px; }
+@media print { .app-footer { display: none; } }
+/* Padding bawah <main> harus 0 di semua ukuran layar (override media query
+   di atas yang memakai padding: 14px) supaya footer benar-benar menempel di dasar. */
+main { padding-bottom: 0; }
