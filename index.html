@@ -168,11 +168,14 @@
                     <div class="m-label">Total Program</div>
                 </div>
             </div>
-            <div class="metric-card">
-                <div class="m-icon icon-success"><i class="bi bi-star-fill"></i></div>
+            <div class="metric-card metric-clickable" id="metricRekapProgram" role="button" tabindex="0"
+                 onclick="openRekapProgramModal()"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openRekapProgramModal();}"
+                 title="Klik untuk melihat rekap program">
+                <div class="m-icon icon-success"><i class="bi bi-card-image"></i></div>
                 <div class="m-info">
-                    <div class="m-value" id="totalFeatured">0</div>
-                    <div class="m-label">Unggulan</div>
+                    <div class="m-value">Lihat</div>
+                    <div class="m-label">Rekap Program</div>
                 </div>
             </div>
             <div class="metric-card">
@@ -901,6 +904,32 @@
                     <button type="button" class="btn-cancel" onclick="closePendaftaranModal()">Batal</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="rekapProgramModal" onclick="if(event.target===this)closeRekapProgramModal()">
+    <div class="modal-content rekap-modal">
+        <div class="modal-header">
+            <h2><i class="bi bi-card-image"></i> Rekap Program</h2>
+            <button class="modal-close" onclick="closeRekapProgramModal()" aria-label="Tutup">&times;</button>
+        </div>
+        <div class="modal-body rekap-body">
+            <div class="rekap-frame">
+                <div class="rekap-state" id="rekapLoading"><i class="bi bi-hourglass-split"></i><span>Memuat rekap…</span></div>
+                <div class="rekap-state" id="rekapEmpty" style="display:none;"><i class="bi bi-image"></i><span>Belum ada gambar di folder rekap.</span></div>
+                <div class="rekap-state" id="rekapError" style="display:none;"><i class="bi bi-exclamation-triangle"></i><span id="rekapErrorText">Gagal memuat rekap.</span></div>
+                <img id="rekapImg" class="rekap-img" alt="Rekap Program" referrerpolicy="no-referrer">
+            </div>
+            <div class="rekap-actions">
+                <span class="rekap-meta" id="rekapMeta"></span>
+                <button class="btn-secondary" id="btnRekapRefresh" onclick="loadRekapProgram(true)" style="display:none;font-size:12px;padding:6px 14px;">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+                <a class="btn-secondary" id="rekapOpenFull" href="#" target="_blank" rel="noopener" style="display:none;font-size:12px;padding:6px 14px;text-decoration:none;">
+                    <i class="bi bi-box-arrow-up-right"></i> Buka ukuran penuh
+                </a>
+            </div>
         </div>
     </div>
 </div>

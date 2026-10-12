@@ -63,3 +63,19 @@ tambahan selain deploy + secret di atas.
 
 `send-telegram` URL-nya perlu ditempel manual di form **Pengaturan Telegram**
 di aplikasi (field "Edge Function URL").
+
+## 4. sync-rekap-program
+Menyinkronkan gambar "Rekap Program" (kartu di dashboard, klik -> modal gambar
+1080 x 1920) dari folder Google Drive khusus rekap ke tabel `rekap_program_items`.
+Polanya sama dengan `sync-infografis`, tapi folder Drive-nya berbeda.
+
+Langkah setup:
+1. Jalankan `sql/52_tambah_rekap_program_items.sql` di SQL Editor.
+2. Deploy `apps-script/rekap-program-drive-listing.gs` sebagai Web App (isi `FOLDER_ID`
+   dengan folder rekap, share folder "Anyone with the link").
+3. Set secret & deploy:
+```bash
+supabase secrets set REKAP_PROGRAM_API_URL=https://script.google.com/macros/s/XXXX/exec
+supabase functions deploy sync-rekap-program
+```
+Hanya role `admin`/`user` yang bisa menekan Refresh (cek role di dalam function).

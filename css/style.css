@@ -572,6 +572,47 @@
             line-height: 1.25;
         }
 
+        /* Kartu metrik yang bisa diklik (Rekap Program) */
+        .metric-card.metric-clickable { cursor: pointer; user-select: none; }
+        .metric-card.metric-clickable:hover { box-shadow: var(--shadow); border-color: var(--brand); }
+        .metric-card.metric-clickable:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+        /* Modal Rekap Program: gambar rasio 9:16 (1080 x 1920) */
+        .modal-content.rekap-modal { max-width: 460px; }
+        .rekap-body { padding: 16px 20px 18px; }
+        .rekap-frame {
+            position: relative;
+            aspect-ratio: 9 / 16;
+            width: min(100%, calc((90vh - 200px) * 9 / 16));
+            margin: 0 auto;
+            background: var(--bg);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        @supports (height: 100dvh) { .rekap-frame { width: min(100%, calc((90dvh - 200px) * 9 / 16)); } }
+        .rekap-img {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            object-fit: contain;
+            opacity: 0;
+            transition: opacity .2s;
+        }
+        .rekap-img.loaded { opacity: 1; }
+        .rekap-state {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 8px; padding: 16px; text-align: center;
+            font-size: 12.5px; color: var(--ink-soft);
+        }
+        .rekap-state i { font-size: 26px; opacity: .5; }
+        .rekap-actions {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 8px; flex-wrap: wrap; margin-top: 12px;
+        }
+        .rekap-meta { font-size: 11.5px; color: var(--ink-soft); margin-right: auto; }
+
         .icon-brand { background: var(--brand-tint); color: var(--brand); }
         .icon-warn { background: var(--warn-tint); color: #9C7A1F; }
         .icon-danger { background: var(--danger-tint); color: var(--danger); }

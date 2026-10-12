@@ -1517,6 +1517,146 @@ window.closeInfografisPage = closeInfografisPage;
 window.loadInfografisGallery = loadInfografisGallery;
 
 // ============================================================
+// 5d. REKAP PROGRAM — kartu di dashboard (menggantikan kartu
+// "Unggulan"). Klik kartu -> modal berisi gambar rekap 1080 x 1920
+// dari folder Google Drive KHUSUS rekap (beda folder dengan
+// Infografis). Metodenya sama dengan Infografis: Apps Script ->
+// Edge Function sync-rekap-program -> tabel rekap_program_items
+// (lihat sql/52_tambah_rekap_program_items.sql) -> dibaca dari
+// Supabase. Yang ditampilkan: gambar TERBARU di folder.
+// ============================================================
+const SYNC_REKAP_PROGRAM_URL = `${SUPABASE_URL}/functions/v1/sync-rekap-program`;
+let rekapProgramItem = null;      // item terbaru { id, name, fullUrl, updatedAt } atau null
+let rekapProgramLoaded = false;
+
+function openRekapProgramModal() {
+    if (!adminLoggedIn) {
+        showToast('Login dulu untuk melihat Rekap Program', 'error');
+        return;
+    }
+    document.getElementById('rekapProgramModal').classList.add('open');
+    const refreshBtn = document.getElementById('btnRekapRefresh');
+    if (refreshBtn) refreshBtn.style.display = canManageProgramData() ? '' : 'none';
+    loadRekapProgram();
+}
+
+function closeRekapProgramModal() {
+    document.getElementById('rekapProgramModal').classList.remove('open');
+    // Kosongkan gambar supaya tidak ada sisa gambar lama yang sempat berkedip
+    const img = document.getElementById('rekapImg');
+    if (img) { img.onload = img.onerror = null; img.removeAttribute('src'); img.classList.remove('loaded'); }
+}
+
+function setRekapState(state, errText) {
+    document.getElementById('rekapLoading').style.display = state === 'loading' ? 'flex' : 'none';
+    document.getElementById('rekapEmpty').style.display = state === 'empty' ? 'flex' : 'none';
+    document.getElementById('rekapError').style.display = state === 'error' ? 'flex' : 'none';
+    if (state === 'error') document.getElementById('rekapErrorText').textContent = errText || 'Gagal memuat rekap.';
+}
+
+// forceSync = true (tombol Refresh) -> minta Edge Function menarik ulang
+// daftar gambar dari Drive dulu, baru baca tabel. Kalau false -> baca cache.
+async function loadRekapProgram(forceSync = false) {
+    const img = document.getElementById('rekapImg');
+    const meta = document.getElementById('rekapMeta');
+    const openFull = document.getElementById('rekapOpenFull');
+    if (!img) return;
+
+    if (rekapProgramLoaded && !forceSync) {
+        renderRekapProgram();
+        return;
+    }
+
+    img.classList.remove('loaded');
+    img.onload = img.onerror = null;
+    img.removeAttribute('src');
+    openFull.style.display = 'none';
+    meta.textContent = '';
+    setRekapState('loading');
+
+    try {
+        if (forceSync) {
+            showToast('Menyinkron rekap dari Google Drive...', 'info');
+            const syncRes = await fetch(SYNC_REKAP_PROGRAM_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${(await supabaseClient.auth.getSession()).data.session?.access_token || ''}`
+                },
+                body: JSON.stringify({})
+            });
+            const syncResult = await syncRes.json().catch(() => ({}));
+            if (!syncResult.ok) {
+                showToast('Sync gagal: ' + (syncResult.error || syncRes.statusText), 'error');
+                // tetap lanjut baca cache lama supaya modal tidak kosong total
+            } else {
+                showToast(`Sync selesai — ${syncResult.synced || 0} gambar`, 'success');
+            }
+        }
+
+        const { data, error } = await supabaseClient
+            .from('rekap_program_items')
+            .select('id, name, full_url, thumb_url, drive_updated_at')
+            .order('drive_updated_at', { ascending: false, nullsFirst: false })
+            .limit(1);
+        if (error) throw error;
+
+        const row = (data || [])[0];
+        rekapProgramItem = row ? {
+            id: row.id,
+            name: row.name,
+            fullUrl: row.full_url || row.thumb_url,
+            updatedAt: row.drive_updated_at
+        } : null;
+        rekapProgramLoaded = true;
+        renderRekapProgram();
+    } catch (err) {
+        setRekapState('error', 'Gagal memuat rekap: ' + (err.message || String(err)));
+    }
+}
+
+function renderRekapProgram() {
+    const img = document.getElementById('rekapImg');
+    const meta = document.getElementById('rekapMeta');
+    const openFull = document.getElementById('rekapOpenFull');
+    if (!img) return;
+
+    img.classList.remove('loaded');
+    img.onload = img.onerror = null;
+    img.removeAttribute('src');
+
+    if (!rekapProgramItem || !rekapProgramItem.fullUrl) {
+        setRekapState('empty');
+        openFull.style.display = 'none';
+        meta.textContent = '';
+        return;
+    }
+
+    setRekapState('loading');
+    img.onload = () => { setRekapState('none'); img.classList.add('loaded'); };
+    img.onerror = () => setRekapState('error', 'Gambar gagal dimuat. Cek apakah folder Drive sudah di-share "Anyone with the link".');
+    img.src = rekapProgramItem.fullUrl;
+
+    openFull.href = rekapProgramItem.fullUrl;
+    openFull.style.display = '';
+    const tgl = rekapProgramItem.updatedAt ? new Date(rekapProgramItem.updatedAt) : null;
+    meta.textContent = tgl && !isNaN(tgl)
+        ? 'Diperbarui ' + tgl.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+        : (rekapProgramItem.name || '');
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const m = document.getElementById('rekapProgramModal');
+        if (m && m.classList.contains('open')) closeRekapProgramModal();
+    }
+});
+
+window.openRekapProgramModal = openRekapProgramModal;
+window.closeRekapProgramModal = closeRekapProgramModal;
+window.loadRekapProgram = loadRekapProgram;
+
+// ============================================================
 // 6. MOBILE SIDEBAR
 // ============================================================
 function toggleMobileSidebar() {
@@ -1753,10 +1893,6 @@ function renderTable(data) {
 
 function updateMetrics() {
     document.getElementById('totalPrograms').textContent = dataUmroh.filter(isProgramVisibleOnDashboard).length;
-    document.getElementById('totalFeatured').textContent = featuredIds.filter(id => {
-        const p = dataUmroh.find(x => String(x.id) === id);
-        return p && p.is_active !== false;
-    }).length;
     document.getElementById('totalJadwal').textContent = jadwalList.length;
     document.getElementById('totalKeberangkatan').textContent = kbJamaahList.length;
 }
