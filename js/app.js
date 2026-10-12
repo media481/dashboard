@@ -1518,20 +1518,27 @@ window.loadInfografisGallery = loadInfografisGallery;
 
 // ============================================================
 // 5d. REKAP PROGRAM — kartu di dashboard (menggantikan kartu
-// "Unggulan"). Klik kartu -> modal berisi 4 poster rekap
-// 1080 x 1920 per halaman (tombol Sebelumnya/Berikutnya untuk
-// geser ke 4 poster berikutnya), diambil dari folder Google Drive
-// KHUSUS rekap (beda folder dengan Infografis). Metodenya sama
-// dengan Infografis: Apps Script -> Edge Function
-// sync-rekap-program -> tabel rekap_program_items (lihat
-// sql/52_tambah_rekap_program_items.sql) -> dibaca dari Supabase.
-// Urutan: terbaru dulu. Klik poster = buka ukuran penuh.
+// "Unggulan"). Klik kartu -> viewer ala Instagram Story berisi
+// poster rekap 1080 x 1920 dari folder Google Drive KHUSUS rekap
+// (beda folder dengan Infografis). Metodenya sama dengan Infografis:
+// Apps Script -> Edge Function sync-rekap-program -> tabel
+// rekap_program_items (lihat sql/52_tambah_rekap_program_items.sql)
+// -> dibaca dari Supabase. Urutan: terbaru dulu.
+//
+// Interaksi: tap sisi kanan/kiri kartu (atau panah keyboard) = poster
+// berikutnya/sebelumnya; tahan = jeda; auto-lanjut tiap 6 detik
+// (timer baru jalan setelah gambar selesai dimuat); tap kanan di
+// poster terakhir = tutup, seperti story.
 // ============================================================
 const SYNC_REKAP_PROGRAM_URL = `${SUPABASE_URL}/functions/v1/sync-rekap-program`;
-const REKAP_PER_PAGE = 4;
-let rekapProgramItems = [];   // semua gambar di folder: { id, name, fullUrl, updatedAt }
+const REKAP_EMPTY_SEGMENTS = 4;   // jumlah segmen/kanvas kosong saat folder belum ada gambar
+const REKAP_HOLD_MS = 200;        // tahan lebih lama dari ini = jeda (bukan tap)
+let rekapProgramItems = [];       // semua gambar di folder: { id, name, fullUrl, updatedAt }
 let rekapProgramLoaded = false;
-let rekapPage = 0;            // indeks halaman (0-based)
+let rekapIndex = 0;
+let rekapManualPaused = false;    // tombol jeda
+let rekapHeld = false;            // sedang ditahan jari/mouse
+let rekapHoldTimer = null;
 
 function openRekapProgramModal() {
     if (!adminLoggedIn) {
@@ -1541,28 +1548,32 @@ function openRekapProgramModal() {
     document.getElementById('rekapProgramModal').classList.add('open');
     const refreshBtn = document.getElementById('btnRekapRefresh');
     if (refreshBtn) refreshBtn.style.display = canManageProgramData() ? '' : 'none';
+    rekapIndex = 0;
+    rekapManualPaused = false;
+    rekapHeld = false;
+    applyRekapPause();
     loadRekapProgram();
 }
 
 function closeRekapProgramModal() {
-    document.getElementById('rekapProgramModal').classList.remove('open');
-    // Kosongkan grid supaya gambar tidak tetap dimuat/berkedip saat dibuka lagi
-    const grid = document.getElementById('rekapGrid');
-    if (grid) grid.innerHTML = '';
+    const modal = document.getElementById('rekapProgramModal');
+    modal.classList.remove('open', 'rekap-paused');
+    clearTimeout(rekapHoldTimer);
+    rekapHeld = false;
+    // Kosongkan gambar & segmen supaya timer berhenti dan tidak ada sisa tampilan lama
+    const img = document.getElementById('rekapImg');
+    if (img) { img.onload = img.onerror = null; img.removeAttribute('src'); img.classList.remove('loaded'); }
+    const segs = document.getElementById('rekapSegs');
+    if (segs) segs.innerHTML = '';
 }
 
-// type: 'loading' | 'empty' | 'error' | null (sembunyikan)
-function setRekapStatus(type, text) {
-    const el = document.getElementById('rekapStatus');
-    const grid = document.getElementById('rekapGrid');
-    if (!el || !grid) return;
-    if (!type) { el.style.display = 'none'; grid.style.display = ''; return; }
+function setRekapNote(type, text) {
+    const note = document.getElementById('rekapNote');
+    if (!note) return;
+    if (!type) { note.classList.add('hide'); note.innerHTML = ''; return; }
     const icon = { loading: 'bi-hourglass-split', empty: 'bi-image', error: 'bi-exclamation-triangle' }[type];
-    el.innerHTML = `<i class="bi ${icon}"></i><span>${escapeHtml(text || '')}</span>`;
-    el.style.display = 'flex';
-    grid.style.display = 'none';
-    grid.innerHTML = '';
-    updateRekapNav();
+    note.innerHTML = `<i class="bi ${icon}"></i><span>${escapeHtml(text || '')}</span>`;
+    note.classList.remove('hide');
 }
 
 // forceSync = true (tombol Refresh) -> minta Edge Function menarik ulang
@@ -1573,7 +1584,8 @@ async function loadRekapProgram(forceSync = false) {
         return;
     }
 
-    setRekapStatus('loading', 'Memuat rekap…');
+    renderRekapSegments(REKAP_EMPTY_SEGMENTS, -1);
+    setRekapNote('loading', 'Memuat rekap…');
 
     try {
         if (forceSync) {
@@ -1589,7 +1601,7 @@ async function loadRekapProgram(forceSync = false) {
             const syncResult = await syncRes.json().catch(() => ({}));
             if (!syncResult.ok) {
                 showToast('Sync gagal: ' + (syncResult.error || syncRes.statusText), 'error');
-                // tetap lanjut baca cache lama supaya modal tidak kosong total
+                // tetap lanjut baca cache lama supaya viewer tidak kosong total
             } else {
                 showToast(`Sync selesai — ${syncResult.synced || 0} gambar`, 'success');
             }
@@ -1610,85 +1622,171 @@ async function loadRekapProgram(forceSync = false) {
             }))
             .filter(it => it.fullUrl);
         rekapProgramLoaded = true;
-        rekapPage = 0;
+        rekapIndex = 0;
         renderRekapProgram();
     } catch (err) {
-        setRekapStatus('error', 'Gagal memuat rekap: ' + (err.message || String(err)));
+        setRekapNote('error', 'Gagal memuat rekap: ' + (err.message || String(err)));
     }
 }
 
-function rekapTotalPages() {
-    return Math.max(1, Math.ceil(rekapProgramItems.length / REKAP_PER_PAGE));
-}
-
-function rekapGoPage(delta) {
-    const next = Math.min(Math.max(rekapPage + delta, 0), rekapTotalPages() - 1);
-    if (next === rekapPage) return;
-    rekapPage = next;
-    renderRekapProgram();
-}
-
-function updateRekapNav() {
-    const total = rekapTotalPages();
-    const hasItems = rekapProgramItems.length > 0;
-    const prev = document.getElementById('btnRekapPrev');
-    const nextBtn = document.getElementById('btnRekapNext');
-    const pageEl = document.getElementById('rekapPage');
-    const meta = document.getElementById('rekapMeta');
-    if (prev) prev.disabled = !hasItems || rekapPage <= 0;
-    if (nextBtn) nextBtn.disabled = !hasItems || rekapPage >= total - 1;
-    if (pageEl) pageEl.textContent = hasItems ? `${rekapPage + 1} / ${total}` : '';
-    if (meta) {
-        if (!hasItems) { meta.textContent = rekapProgramLoaded ? 'Belum ada gambar di folder rekap' : ''; return; }
-        const from = rekapPage * REKAP_PER_PAGE + 1;
-        const to = Math.min(from + REKAP_PER_PAGE - 1, rekapProgramItems.length);
-        meta.textContent = `Poster ${from}–${to} dari ${rekapProgramItems.length}`;
+// Segmen progress di atas kartu: sebelum aktif = penuh, aktif = terisi
+// bertahap (animasi CSS, dimulai setelah gambar termuat), sesudahnya kosong.
+function renderRekapSegments(count, activeIdx, run = false) {
+    const segs = document.getElementById('rekapSegs');
+    if (!segs) return;
+    let html = '';
+    for (let i = 0; i < count; i++) {
+        const cls = i < activeIdx ? 'rekap-seg done' : 'rekap-seg';
+        const fill = (i === activeIdx && run) ? 'rekap-seg-fill run' : 'rekap-seg-fill';
+        html += `<div class="${cls}"><div class="${fill}"></div></div>`;
     }
+    segs.innerHTML = html;
+}
+
+function rekapTimeAgo(iso) {
+    const d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d)) return '';
+    const sec = Math.max(0, (Date.now() - d.getTime()) / 1000);
+    if (sec < 60) return 'baru saja';
+    if (sec < 3600) return Math.floor(sec / 60) + ' menit lalu';
+    if (sec < 86400) return Math.floor(sec / 3600) + ' jam lalu';
+    if (sec < 7 * 86400) return Math.floor(sec / 86400) + ' hari lalu';
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function renderRekapPeek(elId, item) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!item) { el.classList.add('empty'); el.innerHTML = ''; return; }
+    el.classList.remove('empty');
+    el.innerHTML = `<img src="${escapeHtmlAttr(item.fullUrl)}" alt="" referrerpolicy="no-referrer" draggable="false">`;
 }
 
 function renderRekapProgram() {
-    const grid = document.getElementById('rekapGrid');
-    if (!grid) return;
+    const img = document.getElementById('rekapImg');
+    const ago = document.getElementById('rekapAgo');
+    const openFull = document.getElementById('rekapOpenFull');
+    if (!img) return;
 
-    // Folder kosong -> tetap tampilkan 4 kanvas kosong (bukan pesan teks saja)
-    setRekapStatus(null);
-    const start = rekapPage * REKAP_PER_PAGE;
-    const pageItems = rekapProgramItems.slice(start, start + REKAP_PER_PAGE);
+    const items = rekapProgramItems;
+    img.classList.remove('loaded');
+    img.onload = img.onerror = null;
+    img.removeAttribute('src');
 
-    // Selalu 4 slot supaya tata letak tetap; slot sisa di halaman terakhir dikosongkan.
-    let slots = '';
-    for (let i = 0; i < REKAP_PER_PAGE; i++) {
-        const it = pageItems[i];
-        if (!it) {
-            slots += '<div class="rekap-slot rekap-slot-empty"><div class="rekap-slot-note"><i class="bi bi-image"></i></div></div>';
-            continue;
-        }
-        const url = escapeHtmlAttr(it.fullUrl);
-        const nama = escapeHtmlAttr(it.name || 'Rekap Program');
-        slots += `
-            <a class="rekap-slot" href="${url}" target="_blank" rel="noopener" title="${nama} — klik untuk buka ukuran penuh">
-                <div class="rekap-slot-note"><i class="bi bi-hourglass-split"></i><span>Memuat…</span></div>
-                <img src="${url}" alt="${nama}" referrerpolicy="no-referrer"
-                     onload="this.classList.add('loaded');this.previousElementSibling.style.display='none';"
-                     onerror="this.style.display='none';this.previousElementSibling.innerHTML='<i class=&quot;bi bi-exclamation-triangle&quot;></i><span>Gambar gagal dimuat</span>';">
-            </a>`;
+    // Folder kosong -> tetap tampilkan kanvas kosong + segmen kosong
+    if (!items.length) {
+        renderRekapSegments(REKAP_EMPTY_SEGMENTS, -1);
+        setRekapNote('empty', 'Belum ada gambar di folder rekap');
+        ago.textContent = '';
+        openFull.style.display = 'none';
+        renderRekapPeek('rekapPeekPrev', null);
+        renderRekapPeek('rekapPeekNext', null);
+        document.getElementById('btnRekapPrev').classList.add('empty');
+        document.getElementById('btnRekapNext').classList.add('empty');
+        return;
     }
-    grid.innerHTML = slots;
-    updateRekapNav();
+
+    rekapIndex = Math.min(Math.max(rekapIndex, 0), items.length - 1);
+    const idx = rekapIndex;
+    const item = items[idx];
+
+    renderRekapSegments(items.length, idx, false);
+    setRekapNote('loading', 'Memuat…');
+    ago.textContent = rekapTimeAgo(item.updatedAt);
+    openFull.href = item.fullUrl;
+    openFull.style.display = '';
+    renderRekapPeek('rekapPeekPrev', items[idx - 1]);
+    renderRekapPeek('rekapPeekNext', items[idx + 1]);
+    document.getElementById('btnRekapPrev').classList.toggle('empty', idx === 0);
+    document.getElementById('btnRekapNext').classList.toggle('empty', idx >= items.length - 1);
+
+    // Timer segmen baru jalan setelah gambar tampil (seperti story sungguhan)
+    img.onload = () => {
+        if (rekapIndex !== idx) return;
+        setRekapNote(null);
+        img.classList.add('loaded');
+        renderRekapSegments(items.length, idx, true);
+    };
+    img.onerror = () => {
+        if (rekapIndex !== idx) return;
+        setRekapNote('error', 'Gambar gagal dimuat. Cek apakah folder Drive sudah di-share "Anyone with the link".');
+    };
+    img.src = item.fullUrl;
+
+    // Muat duluan poster berikutnya supaya perpindahan terasa instan
+    if (items[idx + 1]) { const pre = new Image(); pre.referrerPolicy = 'no-referrer'; pre.src = items[idx + 1].fullUrl; }
 }
+
+// delta: -1 = sebelumnya, +1 = berikutnya. Di poster pertama, "sebelumnya"
+// mengulang poster itu dari awal; di poster terakhir, "berikutnya" menutup viewer.
+function rekapGo(delta) {
+    const total = rekapProgramItems.length;
+    if (!total) { if (delta > 0) closeRekapProgramModal(); return; }
+    const next = rekapIndex + delta;
+    if (next >= total) { closeRekapProgramModal(); return; }
+    rekapIndex = Math.max(next, 0);
+    renderRekapProgram();
+}
+
+function applyRekapPause() {
+    const paused = rekapManualPaused || rekapHeld;
+    const modal = document.getElementById('rekapProgramModal');
+    if (modal) modal.classList.toggle('rekap-paused', paused);
+    const btn = document.getElementById('btnRekapPause');
+    if (btn) btn.innerHTML = `<i class="bi ${rekapManualPaused ? 'bi-play-fill' : 'bi-pause-fill'}"></i>`;
+}
+
+function rekapTogglePause() {
+    rekapManualPaused = !rekapManualPaused;
+    applyRekapPause();
+}
+
+// Segmen aktif selesai terisi -> lanjut otomatis (poster terakhir berhenti, tidak menutup sendiri)
+document.getElementById('rekapSegs')?.addEventListener('animationend', (e) => {
+    if (e.animationName !== 'rekapFill') return;
+    if (rekapIndex < rekapProgramItems.length - 1) rekapGo(1);
+});
+
+// Tap kiri (1/3 lebar) = sebelumnya, tap kanan = berikutnya, tahan = jeda
+(function initRekapCardGestures() {
+    const card = document.getElementById('rekapCard');
+    if (!card) return;
+    const onHeader = (e) => !!e.target.closest('.rekap-head');
+    let held = false;
+    card.addEventListener('pointerdown', (e) => {
+        if (onHeader(e)) return;
+        held = false;
+        clearTimeout(rekapHoldTimer);
+        rekapHoldTimer = setTimeout(() => { held = true; rekapHeld = true; applyRekapPause(); }, REKAP_HOLD_MS);
+    });
+    const release = (e, allowNav) => {
+        clearTimeout(rekapHoldTimer);
+        const wasHeld = held;
+        held = false;
+        if (rekapHeld) { rekapHeld = false; applyRekapPause(); }
+        if (!allowNav || wasHeld || onHeader(e)) return;
+        const rect = card.getBoundingClientRect();
+        rekapGo((e.clientX - rect.left) < rect.width / 3 ? -1 : 1);
+    };
+    card.addEventListener('pointerup', (e) => release(e, true));
+    card.addEventListener('pointercancel', (e) => release(e, false));
+    card.addEventListener('pointerleave', (e) => release(e, false));
+})();
 
 document.addEventListener('keydown', (e) => {
     const m = document.getElementById('rekapProgramModal');
     if (!m || !m.classList.contains('open')) return;
     if (e.key === 'Escape') closeRekapProgramModal();
-    else if (e.key === 'ArrowLeft') rekapGoPage(-1);
-    else if (e.key === 'ArrowRight') rekapGoPage(1);
+    else if (e.key === 'ArrowLeft') rekapGo(-1);
+    else if (e.key === 'ArrowRight') rekapGo(1);
+    else if (e.key === ' ') { e.preventDefault(); rekapTogglePause(); }
 });
 
 window.openRekapProgramModal = openRekapProgramModal;
 window.closeRekapProgramModal = closeRekapProgramModal;
 window.loadRekapProgram = loadRekapProgram;
-window.rekapGoPage = rekapGoPage;
+window.rekapGo = rekapGo;
+window.rekapTogglePause = rekapTogglePause;
 
 // ============================================================
 // 6. MOBILE SIDEBAR

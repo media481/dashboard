@@ -908,29 +908,34 @@
     </div>
 </div>
 
-<div class="modal-overlay" id="rekapProgramModal" onclick="if(event.target===this)closeRekapProgramModal()">
-    <div class="modal-content rekap-modal">
-        <div class="modal-header">
-            <h2><i class="bi bi-card-image"></i> Rekap Program</h2>
-            <button class="modal-close" onclick="closeRekapProgramModal()" aria-label="Tutup">&times;</button>
-        </div>
-        <div class="modal-body rekap-body">
-            <div class="rekap-status" id="rekapStatus" style="display:none;"></div>
-            <div class="rekap-grid" id="rekapGrid"></div>
-            <div class="rekap-actions">
-                <span class="rekap-meta" id="rekapMeta"></span>
-                <button class="btn-secondary rekap-nav-btn" id="btnRekapPrev" onclick="rekapGoPage(-1)" aria-label="Sebelumnya" disabled>
-                    <i class="bi bi-chevron-left"></i> Sebelumnya
-                </button>
-                <span class="rekap-page" id="rekapPage"></span>
-                <button class="btn-secondary rekap-nav-btn" id="btnRekapNext" onclick="rekapGoPage(1)" aria-label="Berikutnya" disabled>
-                    Berikutnya <i class="bi bi-chevron-right"></i>
-                </button>
-                <button class="btn-secondary rekap-nav-btn" id="btnRekapRefresh" onclick="loadRekapProgram(true)" style="display:none;">
-                    <i class="bi bi-arrow-clockwise"></i> Refresh
-                </button>
+<div class="modal-overlay rekap-story" id="rekapProgramModal" onclick="if(event.target===this||event.target.id==='rekapStage')closeRekapProgramModal()">
+    <button class="rekap-x" onclick="closeRekapProgramModal()" aria-label="Tutup"><i class="bi bi-x-lg"></i></button>
+    <div class="rekap-stage" id="rekapStage">
+        <button class="rekap-arrow" id="btnRekapPrev" onclick="rekapGo(-1)" aria-label="Sebelumnya"><i class="bi bi-chevron-left"></i></button>
+        <div class="rekap-peek" id="rekapPeekPrev" onclick="rekapGo(-1)"></div>
+
+        <div class="rekap-card" id="rekapCard">
+            <div class="rekap-media">
+                <img id="rekapImg" class="rekap-img" alt="Rekap Program" referrerpolicy="no-referrer" draggable="false">
+                <div class="rekap-note" id="rekapNote"></div>
+            </div>
+            <div class="rekap-top">
+                <div class="rekap-segs" id="rekapSegs"></div>
+                <div class="rekap-head">
+                    <div class="rekap-ava"><img src="assets/logo-amirutour.png" alt=""></div>
+                    <div class="rekap-who"><b>Rekap Program</b><span id="rekapAgo"></span></div>
+                    <div class="rekap-tools">
+                        <button id="btnRekapPause" onclick="rekapTogglePause()" aria-label="Jeda"><i class="bi bi-pause-fill"></i></button>
+                        <a id="rekapOpenFull" href="#" target="_blank" rel="noopener" aria-label="Buka ukuran penuh" title="Buka ukuran penuh" style="display:none;"><i class="bi bi-box-arrow-up-right"></i></a>
+                        <button id="btnRekapRefresh" onclick="loadRekapProgram(true)" aria-label="Refresh" title="Sinkron ulang dari Drive" style="display:none;"><i class="bi bi-arrow-clockwise"></i></button>
+                        <button class="rekap-close-m" onclick="closeRekapProgramModal()" aria-label="Tutup"><i class="bi bi-x-lg"></i></button>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <div class="rekap-peek" id="rekapPeekNext" onclick="rekapGo(1)"></div>
+        <button class="rekap-arrow" id="btnRekapNext" onclick="rekapGo(1)" aria-label="Berikutnya"><i class="bi bi-chevron-right"></i></button>
     </div>
 </div>
 

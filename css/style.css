@@ -577,64 +577,114 @@
         .metric-card.metric-clickable:hover { box-shadow: var(--shadow); border-color: var(--brand); }
         .metric-card.metric-clickable:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
-        /* Modal Rekap Program: 4 poster rasio 9:16 (1080 x 1920) per halaman */
-        .modal-content.rekap-modal { max-width: 1080px; }
-        .rekap-body { padding: 16px 20px 18px; }
-        .rekap-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            /* lebar dibatasi supaya 4 poster tetap muat di tinggi layar */
-            width: min(100%, calc(((90vh - 190px) * 9 / 16) * 4 + 36px));
-            margin: 0 auto;
+        /* ===== Rekap Program: tampilan ala Instagram Story ===== */
+        .modal-overlay.rekap-story {
+            padding: 0;
+            background: rgba(10, 10, 12, .94);
+            -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
         }
-        @supports (height: 100dvh) {
-            .rekap-grid { width: min(100%, calc(((90dvh - 190px) * 9 / 16) * 4 + 36px)); }
+        .rekap-story { --rk-h: 92vh; --rk-dur: 6s; }
+        @supports (height: 100dvh) { .rekap-story { --rk-h: 92dvh; } }
+        .rekap-x {
+            position: absolute; top: 14px; right: 18px; z-index: 5;
+            width: 40px; height: 40px; border: none; border-radius: 50%;
+            background: transparent; color: #fff; font-size: 20px; cursor: pointer;
+            opacity: .85; transition: opacity .15s, background .15s;
         }
-        .rekap-slot {
-            position: relative;
-            display: block;
-            aspect-ratio: 9 / 16;
-            background: var(--bg);
-            border: 1px solid var(--line);
-            border-radius: 10px;
+        .rekap-x:hover { opacity: 1; background: rgba(255,255,255,.12); }
+        .rekap-stage { display: flex; align-items: center; justify-content: center; gap: 18px; width: 100%; height: 100%; }
+        .rekap-card {
+            position: relative; flex-shrink: 0;
+            height: var(--rk-h);
+            width: calc(var(--rk-h) * 9 / 16);
+            background: #0b0b0d;
+            border-radius: 14px;
             overflow: hidden;
-            transition: box-shadow .15s, transform .15s;
+            box-shadow: 0 20px 70px rgba(0,0,0,.6);
+            user-select: none; -webkit-user-select: none;
+            touch-action: manipulation;
+            animation: modalFadeIn .18s ease;
         }
-        a.rekap-slot:hover { box-shadow: 0 8px 22px rgba(0,0,0,.18); transform: translateY(-2px); }
-        .rekap-slot.rekap-slot-empty { cursor: default; } /* kanvas kosong: tampilan sama seperti slot berisi */
-        .rekap-slot img {
+        .rekap-media { position: absolute; inset: 0; }
+        .rekap-img {
+            width: 100%; height: 100%; object-fit: contain; display: block;
+            opacity: 0; transition: opacity .25s; pointer-events: none;
+        }
+        .rekap-img.loaded { opacity: 1; }
+        /* Kanvas kosong / loading / error (di atas gambar, di bawah header) */
+        .rekap-note {
             position: absolute; inset: 0;
-            width: 100%; height: 100%;
-            object-fit: contain;
-            opacity: 0;
-            transition: opacity .2s;
-        }
-        .rekap-slot img.loaded { opacity: 1; }
-        .rekap-slot-note {
-            position: absolute; inset: 0;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            gap: 6px; padding: 8px; text-align: center;
-            font-size: 11.5px; color: var(--ink-soft);
-        }
-        .rekap-slot-note i { font-size: 22px; opacity: .5; }
-        .rekap-status {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            gap: 8px; padding: 40px 16px; text-align: center;
-            font-size: 12.5px; color: var(--ink-soft);
+            gap: 10px; padding: 24px; text-align: center;
+            font-size: 13px; color: rgba(255,255,255,.6);
+            background: linear-gradient(160deg, #1d1d22, #121215);
+            pointer-events: none;
         }
-        .rekap-status i { font-size: 26px; opacity: .5; }
-        .rekap-actions {
-            display: flex; align-items: center; justify-content: flex-end;
-            gap: 8px; flex-wrap: wrap; margin-top: 14px;
+        .rekap-note i { font-size: 34px; opacity: .45; }
+        .rekap-note.hide { display: none; }
+
+        /* Header: progress + akun */
+        .rekap-top {
+            position: absolute; top: 0; left: 0; right: 0; z-index: 3;
+            padding: 10px 12px 34px;
+            background: linear-gradient(rgba(0,0,0,.6), rgba(0,0,0,0));
+            pointer-events: none;
         }
-        .rekap-meta { font-size: 11.5px; color: var(--ink-soft); margin-right: auto; }
-        .rekap-page { font-size: 12px; font-weight: 600; min-width: 48px; text-align: center; }
-        .rekap-nav-btn { font-size: 12px; padding: 6px 14px; }
-        .rekap-nav-btn:disabled { opacity: .45; cursor: not-allowed; }
-        @media (max-width: 720px) {
-            .rekap-grid { grid-template-columns: repeat(2, 1fr); width: 100%; }
+        .rekap-top button, .rekap-top a { pointer-events: auto; }
+        .rekap-segs { display: flex; gap: 4px; }
+        .rekap-seg { flex: 1; height: 3px; border-radius: 3px; background: rgba(255,255,255,.35); overflow: hidden; }
+        .rekap-seg-fill { width: 100%; height: 100%; background: #fff; transform: scaleX(0); transform-origin: left; }
+        .rekap-seg.done .rekap-seg-fill { transform: scaleX(1); }
+        .rekap-seg-fill.run { animation: rekapFill var(--rk-dur) linear forwards; }
+        .rekap-paused .rekap-seg-fill.run { animation-play-state: paused; }
+        @keyframes rekapFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+        .rekap-head { display: flex; align-items: center; gap: 10px; margin-top: 12px; color: #fff; }
+        .rekap-ava {
+            width: 34px; height: 34px; border-radius: 50%; padding: 2px; flex-shrink: 0;
+            background: linear-gradient(45deg, #f9ce34, #ee2a7b, #6228d7);
+        }
+        .rekap-ava img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: #fff; border: 2px solid #0b0b0d; display: block; }
+        .rekap-who { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 13px; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
+        .rekap-who b { font-weight: 600; white-space: nowrap; }
+        .rekap-who span { font-size: 12px; opacity: .7; white-space: nowrap; }
+        .rekap-tools { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+        .rekap-tools button, .rekap-tools a {
+            width: 32px; height: 32px; border: none; background: transparent; color: #fff;
+            border-radius: 50%; font-size: 16px; cursor: pointer; text-decoration: none;
+            display: inline-flex; align-items: center; justify-content: center;
+            opacity: .9; transition: background .15s;
+        }
+        .rekap-tools button:hover, .rekap-tools a:hover { background: rgba(255,255,255,.18); }
+        .rekap-close-m { display: none !important; }
+
+        /* Poster tetangga (desktop) + panah */
+        .rekap-peek {
+            height: calc(var(--rk-h) * .6);
+            width: calc(var(--rk-h) * .6 * 9 / 16);
+            border-radius: 12px; overflow: hidden; flex-shrink: 0;
+            background: #1a1a1e; opacity: .45; cursor: pointer;
+            transition: opacity .15s, transform .15s;
+        }
+        .rekap-peek:hover { opacity: .75; transform: scale(1.02); }
+        .rekap-peek img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+        .rekap-peek.empty { visibility: hidden; pointer-events: none; }
+        .rekap-arrow {
+            width: 40px; height: 40px; border: none; border-radius: 50%; flex-shrink: 0;
+            background: rgba(255,255,255,.2); color: #fff; font-size: 18px; cursor: pointer;
+            transition: background .15s;
+        }
+        .rekap-arrow:hover { background: rgba(255,255,255,.34); }
+        .rekap-arrow.empty { visibility: hidden; }
+
+        @media (max-width: 900px) {
+            .rekap-peek, .rekap-arrow, .rekap-x { display: none; }
+            .rekap-close-m { display: inline-flex !important; }
+        }
+        @media (max-width: 600px) {
+            .rekap-story { --rk-h: min(100vh, calc(100vw * 16 / 9)); }
+            @supports (height: 100dvh) { .rekap-story { --rk-h: min(100dvh, calc(100vw * 16 / 9)); } }
+            .rekap-card { border-radius: 0; }
         }
 
         .icon-brand { background: var(--brand-tint); color: var(--brand); }
