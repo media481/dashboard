@@ -915,20 +915,20 @@
             <button class="modal-close" onclick="closeRekapProgramModal()" aria-label="Tutup">&times;</button>
         </div>
         <div class="modal-body rekap-body">
-            <div class="rekap-frame">
-                <div class="rekap-state" id="rekapLoading"><i class="bi bi-hourglass-split"></i><span>Memuat rekap…</span></div>
-                <div class="rekap-state" id="rekapEmpty" style="display:none;"><i class="bi bi-image"></i><span>Belum ada gambar di folder rekap.</span></div>
-                <div class="rekap-state" id="rekapError" style="display:none;"><i class="bi bi-exclamation-triangle"></i><span id="rekapErrorText">Gagal memuat rekap.</span></div>
-                <img id="rekapImg" class="rekap-img" alt="Rekap Program" referrerpolicy="no-referrer">
-            </div>
+            <div class="rekap-status" id="rekapStatus" style="display:none;"></div>
+            <div class="rekap-grid" id="rekapGrid"></div>
             <div class="rekap-actions">
                 <span class="rekap-meta" id="rekapMeta"></span>
-                <button class="btn-secondary" id="btnRekapRefresh" onclick="loadRekapProgram(true)" style="display:none;font-size:12px;padding:6px 14px;">
+                <button class="btn-secondary rekap-nav-btn" id="btnRekapPrev" onclick="rekapGoPage(-1)" aria-label="Sebelumnya" disabled>
+                    <i class="bi bi-chevron-left"></i> Sebelumnya
+                </button>
+                <span class="rekap-page" id="rekapPage"></span>
+                <button class="btn-secondary rekap-nav-btn" id="btnRekapNext" onclick="rekapGoPage(1)" aria-label="Berikutnya" disabled>
+                    Berikutnya <i class="bi bi-chevron-right"></i>
+                </button>
+                <button class="btn-secondary rekap-nav-btn" id="btnRekapRefresh" onclick="loadRekapProgram(true)" style="display:none;">
                     <i class="bi bi-arrow-clockwise"></i> Refresh
                 </button>
-                <a class="btn-secondary" id="rekapOpenFull" href="#" target="_blank" rel="noopener" style="display:none;font-size:12px;padding:6px 14px;text-decoration:none;">
-                    <i class="bi bi-box-arrow-up-right"></i> Buka ukuran penuh
-                </a>
             </div>
         </div>
     </div>
