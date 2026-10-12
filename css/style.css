@@ -602,7 +602,7 @@
             transition: box-shadow .15s, transform .15s;
         }
         a.rekap-slot:hover { box-shadow: 0 8px 22px rgba(0,0,0,.18); transform: translateY(-2px); }
-        .rekap-slot.rekap-slot-empty { border-style: dashed; background: transparent; }
+        .rekap-slot.rekap-slot-empty { cursor: default; } /* kanvas kosong: tampilan sama seperti slot berisi */
         .rekap-slot img {
             position: absolute; inset: 0;
             width: 100%; height: 100%;

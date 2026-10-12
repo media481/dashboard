@@ -1639,7 +1639,7 @@ function updateRekapNav() {
     if (nextBtn) nextBtn.disabled = !hasItems || rekapPage >= total - 1;
     if (pageEl) pageEl.textContent = hasItems ? `${rekapPage + 1} / ${total}` : '';
     if (meta) {
-        if (!hasItems) { meta.textContent = ''; return; }
+        if (!hasItems) { meta.textContent = rekapProgramLoaded ? 'Belum ada gambar di folder rekap' : ''; return; }
         const from = rekapPage * REKAP_PER_PAGE + 1;
         const to = Math.min(from + REKAP_PER_PAGE - 1, rekapProgramItems.length);
         meta.textContent = `Poster ${from}–${to} dari ${rekapProgramItems.length}`;
@@ -1650,11 +1650,7 @@ function renderRekapProgram() {
     const grid = document.getElementById('rekapGrid');
     if (!grid) return;
 
-    if (!rekapProgramItems.length) {
-        setRekapStatus('empty', 'Belum ada gambar di folder rekap.');
-        return;
-    }
-
+    // Folder kosong -> tetap tampilkan 4 kanvas kosong (bukan pesan teks saja)
     setRekapStatus(null);
     const start = rekapPage * REKAP_PER_PAGE;
     const pageItems = rekapProgramItems.slice(start, start + REKAP_PER_PAGE);
@@ -1663,7 +1659,10 @@ function renderRekapProgram() {
     let slots = '';
     for (let i = 0; i < REKAP_PER_PAGE; i++) {
         const it = pageItems[i];
-        if (!it) { slots += '<div class="rekap-slot rekap-slot-empty"></div>'; continue; }
+        if (!it) {
+            slots += '<div class="rekap-slot rekap-slot-empty"><div class="rekap-slot-note"><i class="bi bi-image"></i></div></div>';
+            continue;
+        }
         const url = escapeHtmlAttr(it.fullUrl);
         const nama = escapeHtmlAttr(it.name || 'Rekap Program');
         slots += `
