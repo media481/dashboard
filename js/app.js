@@ -4605,6 +4605,8 @@ async function renderSidebarNav() {
     const loggedIn = !!adminLoggedIn;
     const isAdminRole = loggedIn && currentRole === 'admin';
     const roleLabels = { admin: 'Admin', user: 'User', guest: 'Guest' };
+    // Penanda belum login: dipakai CSS untuk menampilkan nama perusahaan vertikal saat sidebar ciut
+    document.getElementById('sidebar')?.classList.toggle('is-guest', !loggedIn);
 
     // Elemen tanpa data-tab/data-subtab (mis. label section "Navigasi") tidak
     // digating di sini secara individual dulu -- hanya tombol nav yang punya

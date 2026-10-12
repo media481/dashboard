@@ -134,6 +134,23 @@
         .sidebar.collapsed .nav-item i { width: auto; font-size: 15px; }
         .sidebar.collapsed .sidebar-foot { justify-content: center; }
 
+        /* Nama perusahaan vertikal (dibaca dari bawah ke atas) mengisi ruang kosong sidebar
+           saat DICIUTKAN dan belum login. Disembunyikan di mode lebar, saat sudah login
+           (menu penuh), dan saat sidebar melebar sementara karena hover. */
+        .sidebar-vtext { display: none; }
+        @media (min-width: 769px) {
+            .sidebar.collapsed.is-guest .sidebar-vtext {
+                display: block; flex: 1 1 auto; min-height: 0; align-self: center;
+                margin: 10px 0; overflow: hidden;
+                writing-mode: vertical-rl; transform: rotate(180deg);
+                white-space: nowrap; text-overflow: ellipsis; text-align: center;   /* di mode vertikal = rata tengah atas-bawah */
+                font-family: 'Space Grotesk', 'Inter', sans-serif;
+                font-size: 11.5px; font-weight: 600; letter-spacing: .22em; line-height: 1;
+                color: rgba(201, 214, 227, .6);
+                user-select: none; -webkit-user-select: none; pointer-events: none;
+            }
+        }
+
         /* ---- Hover-to-expand: saat sidebar dalam mode ciut (desktop), arahkan
            mouse ke atasnya supaya melebar sementara (overlay, tidak mendorong
            konten/tabel di sebelah kanan) lalu otomatis menciut lagi begitu
@@ -192,6 +209,7 @@
             }
             .sidebar.collapsed:hover .nav-item i { width: 16px; font-size: 13px; }
             .sidebar.collapsed:hover .sidebar-foot { justify-content: flex-start; }
+            .sidebar.collapsed.is-guest:hover .sidebar-vtext { display: none; }
         }
 
         .brand {
