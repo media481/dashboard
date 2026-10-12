@@ -1550,10 +1550,8 @@ let rekapProgramLoaded = false;
 let rekapIndex = 0;               // poster yang sedang dibuka di pratinjau
 
 function openRekapProgramModal() {
-    if (!adminLoggedIn) {
-        showToast('Login dulu untuk melihat Rekap Program', 'error');
-        return;
-    }
+    // Boleh dibuka tanpa login (baca saja; lihat sql/53_rekap_program_akses_publik.sql).
+    // Tombol Refresh (sync Drive) tetap hanya tampil untuk yang boleh kelola program.
     document.getElementById('rekapProgramModal').classList.add('open');
     const refreshBtn = document.getElementById('btnRekapRefresh');
     if (refreshBtn) refreshBtn.style.display = canManageProgramData() ? '' : 'none';
@@ -1635,17 +1633,17 @@ async function loadRekapProgram(forceSync = false) {
 // kartu menampilkan "–". Setelah login dihitung ringan lewat count (tanpa ambil baris);
 // begitu galeri dibuka/di-refresh angkanya ikut disamakan dengan isi galeri.
 // Hemat egress Supabase: query count (head:true, tanpa baris/body) hanya dijalankan
-// SEKALI per sesi login. Tidak di-polling & tidak diulang saat gagal. Setelah itu angka
-// diperbarui dari data galeri yang memang sudah dimuat (tanpa request tambahan).
+// SEKALI per muat halaman (tabel boleh dibaca tanpa login, jadi tidak perlu menunggu login).
+// Tidak di-polling & tidak diulang saat gagal. Setelah galeri dibuka, angka diperbarui dari
+// data galeri yang memang sudah dimuat (tanpa request tambahan).
 let rekapMetricFetched = false;
 function setRekapMetric(n) {
     const el = document.getElementById('totalRekapProgram');
     if (el) el.textContent = (n === null || n === undefined) ? '–' : n;
 }
-async function refreshRekapMetric(force = false) {
-    if (!adminLoggedIn) { rekapMetricFetched = false; setRekapMetric(null); return; }
+async function refreshRekapMetric() {
     if (rekapProgramLoaded) { setRekapMetric(rekapProgramItems.length); return; }
-    if (rekapMetricFetched && !force) return;
+    if (rekapMetricFetched) return;
     rekapMetricFetched = true;   // ditandai sebelum request: gagal pun tidak diulang-ulang
     try {
         const { count, error } = await supabaseClient
@@ -2334,7 +2332,6 @@ function setAdminSession(role) {
     sessionStorage.setItem('admin_logged_in', 'true');
     sessionStorage.setItem('admin_role', role);
     sessionStorage.setItem('admin_login_time', Date.now().toString());
-    refreshRekapMetric();
     if (sessionTimeout) clearTimeout(sessionTimeout);
     sessionTimeout = setTimeout(() => {
         if (adminLoggedIn) {
@@ -2867,7 +2864,6 @@ async function logoutAdmin() {
     sessionStorage.removeItem('admin_login_email');
     sessionStorage.removeItem('admin_login_label');
     if (sessionTimeout) clearTimeout(sessionTimeout);
-    refreshRekapMetric();
     closeAdminPanel();
     renderSidebarNav();
     renderHeaderWelcome();
