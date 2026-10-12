@@ -1705,16 +1705,73 @@ function openRekapLightbox(i) {
     renderRekapLightbox();
 }
 
+// ---------- Cache gambar pratinjau (agar perpindahan poster mulus) ----------
+// Menyimpan referensi Image yang sudah/sedang dimuat supaya (1) hasil decode tidak
+// dibuang browser, (2) perpindahan ke poster yang sudah dimuat duluan instan.
+// Gambar berasal dari Google Drive (bukan Supabase). Dibatasi kecil karena satu poster
+// 1080x1920 yang sudah di-decode memakan ~8 MB memori.
+const rekapImgCache = new Map();   // url -> HTMLImageElement (urutan = LRU)
+const REKAP_IMG_CACHE_MAX = 6;
+let rekapLbTimer = null;           // penunda indikator "Memuat…" (hindari kedip)
+
+function rekapImgOk(im) { return !!im && im.complete && im.naturalWidth > 0; }
+
+function rekapPreload(url) {
+    if (!url) return null;
+    let im = rekapImgCache.get(url);
+    if (im && im.complete && im.naturalWidth === 0) { rekapImgCache.delete(url); im = null; }  // gagal sebelumnya -> coba lagi
+    if (im) { rekapImgCache.delete(url); rekapImgCache.set(url, im); return im; }              // segarkan urutan LRU
+    im = new Image();
+    im.referrerPolicy = 'no-referrer';
+    im.decoding = 'async';
+    im.src = url;
+    rekapImgCache.set(url, im);
+    while (rekapImgCache.size > REKAP_IMG_CACHE_MAX) rekapImgCache.delete(rekapImgCache.keys().next().value);
+    return im;
+}
+
+// Animasi masuk poster utama: dir > 0 dari kanan, dir < 0 dari kiri, 0 = hanya fade.
+function rekapLbAnimate(el, dir) {
+    el.classList.remove('slide-next', 'slide-prev');
+    if (!dir) return;
+    void el.offsetWidth;   // restart animasi
+    el.classList.add(dir > 0 ? 'slide-next' : 'slide-prev');
+}
+
+// Poster samping: ganti gambar HANYA setelah thumbnail baru siap (tidak ada kedip kosong).
+function setRekapSide(id, n) {
+    const s = document.getElementById(id);
+    if (!s) return;
+    const url = n ? (n.thumbUrl || n.fullUrl) : '';
+    if (!url) { s.dataset.want = ''; s.removeAttribute('src'); return; }   // ujung daftar -> disembunyikan CSS
+    if (s.getAttribute('src') === url) return;
+    s.dataset.want = url;
+    const apply = () => {
+        if (s.dataset.want !== url) return;   // sudah ada permintaan yang lebih baru
+        s.src = url;
+        s.classList.remove('swap'); void s.offsetWidth; s.classList.add('swap');
+    };
+    const pre = rekapPreload(url);
+    if (rekapImgOk(pre)) apply();
+    else if (pre) pre.addEventListener('load', apply, { once: true });
+}
+
 function closeRekapLightbox() {
     const lb = document.getElementById('rekapLightbox');
     if (!lb) return;
     lb.classList.remove('open');
+    clearTimeout(rekapLbTimer);
     const img = document.getElementById('rekapLbImg');
-    if (img) { img.onload = img.onerror = null; img.removeAttribute('src'); img.classList.remove('loaded'); }
+    if (img) {
+        img.onload = img.onerror = null;
+        img.removeAttribute('src');
+        img.classList.remove('loaded', 'pending', 'slide-next', 'slide-prev');
+    }
     ['rekapLbSidePrev', 'rekapLbSideNext'].forEach(id => {
         const s = document.getElementById(id);
-        if (s) s.removeAttribute('src');
+        if (s) { s.dataset.want = ''; s.removeAttribute('src'); }
     });
+    rekapImgCache.clear();   // lepas memori gambar yang sudah di-decode
 }
 
 function setRekapLbNote(type, text) {
@@ -1726,7 +1783,8 @@ function setRekapLbNote(type, text) {
     note.classList.remove('hide');
 }
 
-function renderRekapLightbox() {
+// dir: arah perpindahan (-1 / +1) untuk animasi; 0 = pembukaan pertama.
+function renderRekapLightbox(dir = 0) {
     const items = rekapProgramItems;
     const idx = rekapIndex;
     const item = items[idx];
@@ -1739,33 +1797,83 @@ function renderRekapLightbox() {
     document.getElementById('btnRekapLbPrev').classList.toggle('empty', idx === 0);
     document.getElementById('btnRekapLbNext').classList.toggle('empty', idx >= items.length - 1);
 
-    img.classList.remove('loaded');
-    img.onload = img.onerror = null;
-    img.removeAttribute('src');
-    setRekapLbNote('loading', 'Memuat…');
-    img.onload = () => {
+    // Poster samping (kecil & blur)
+    setRekapSide('rekapLbSidePrev', items[idx - 1]);
+    setRekapSide('rekapLbSideNext', items[idx + 1]);
+
+    // Poster utama. Gambar lama TIDAK dikosongkan: tetap tampil sampai yang baru siap,
+    // jadi tidak ada layar kosong/kedip. Urutan: versi full kalau sudah ada di cache ->
+    // kalau belum, thumbnail dulu (sudah termuat di galeri) lalu ditingkatkan ke full.
+    clearTimeout(rekapLbTimer);
+    img.classList.remove('pending');
+    const full = item.fullUrl;
+    const thumb = item.thumbUrl && item.thumbUrl !== full ? item.thumbUrl : '';
+    const fullImg = rekapPreload(full);
+    const thumbImg = thumb ? rekapPreload(thumb) : null;
+    let animated = false;
+
+    const onShown = () => {
         if (rekapIndex !== idx) return;
+        clearTimeout(rekapLbTimer);
         setRekapLbNote(null);
+        img.classList.remove('pending');
         img.classList.add('loaded');
+        if (!animated) { animated = true; rekapLbAnimate(img, dir); }
     };
-    img.onerror = () => {
+    const onFail = () => {
         if (rekapIndex !== idx) return;
+        clearTimeout(rekapLbTimer);
+        img.classList.remove('loaded', 'pending');
         setRekapLbNote('error', 'Gambar gagal dimuat. Cek apakah folder Drive sudah di-share "Anyone with the link".');
     };
-    img.src = item.fullUrl;
+    const showUrl = (url) => {
+        img.onload = onShown;
+        img.onerror = onFail;
+        if (img.getAttribute('src') === url) { if (rekapImgOk(img)) onShown(); return; }
+        img.src = url;
+    };
 
-    // Poster sebelumnya/berikutnya di samping poster utama (kecil & blur, pakai thumbnail).
-    // Tidak ada poster di sisi itu (ujung daftar) -> src dilepas, CSS menyembunyikannya.
-    [['rekapLbSidePrev', items[idx - 1]], ['rekapLbSideNext', items[idx + 1]]].forEach(([id, n]) => {
-        const s = document.getElementById(id);
-        if (!s) return;
-        if (n) s.src = n.thumbUrl || n.fullUrl; else s.removeAttribute('src');
-    });
+    const fullReady = rekapImgOk(fullImg);
+    const thumbReady = rekapImgOk(thumbImg);
 
-    // Muat duluan poster di kiri/kanan supaya perpindahan terasa instan
-    [items[idx - 1], items[idx + 1]].forEach(n => {
-        if (n) { const pre = new Image(); pre.referrerPolicy = 'no-referrer'; pre.src = n.fullUrl; }
-    });
+    // Muat tetangga (kiri/kanan) di belakang layar setelah poster ini siap
+    const preloadNeighbors = () => {
+        if (rekapIndex !== idx) return;
+        [items[idx - 1], items[idx + 1]].forEach(n => { if (n) rekapPreload(n.fullUrl); });
+    };
+
+    if (fullReady) {
+        showUrl(full);
+        preloadNeighbors();
+    } else {
+        if (thumbReady) {
+            showUrl(thumb);
+        } else {
+            // Belum ada yang siap: redupkan gambar lama (atau tampilkan "Memuat…" kalau
+            // belum ada gambar sama sekali) -- baru setelah jeda singkat, supaya tidak kedip.
+            rekapLbTimer = setTimeout(() => {
+                if (rekapIndex !== idx) return;
+                if (img.getAttribute('src')) img.classList.add('pending');
+                else setRekapLbNote('loading', 'Memuat…');
+            }, 180);
+        }
+        if (!thumbReady && thumbImg) {
+            // Thumbnail ikut dimuat: begitu siap langsung tampil (kecuali versi full sudah tampil lebih dulu)
+            thumbImg.addEventListener('load', () => {
+                if (rekapIndex !== idx || img.getAttribute('src') === full) return;
+                showUrl(thumb);
+            }, { once: true });
+        }
+        fullImg.addEventListener('load', () => {
+            if (rekapIndex !== idx) return;
+            showUrl(full);          // naikkan ke resolusi penuh (tanpa animasi ulang)
+            preloadNeighbors();
+        }, { once: true });
+        fullImg.addEventListener('error', () => {
+            if (rekapIndex !== idx) return;
+            if (!thumbReady) onFail(); // thumbnail sudah tampil -> biarkan, tidak perlu error
+        }, { once: true });
+    }
 }
 
 // delta: -1 = sebelumnya, +1 = berikutnya. Berhenti di ujung (tidak berputar).
@@ -1773,7 +1881,7 @@ function rekapGo(delta) {
     const next = Math.min(Math.max(rekapIndex + delta, 0), rekapProgramItems.length - 1);
     if (next === rekapIndex) return;
     rekapIndex = next;
-    renderRekapLightbox();
+    renderRekapLightbox(delta);
 }
 
 // Geser kiri/kanan di pratinjau = pindah poster

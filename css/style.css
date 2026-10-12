@@ -757,6 +757,14 @@
             filter: drop-shadow(0 18px 40px rgba(0,0,0,.55));
         }
         .rekap-lb-img.loaded { opacity: 1; }
+        .rekap-lb-img.pending { opacity: .5; }   /* poster baru belum siap: gambar lama diredupkan */
+        .rekap-lb-img { will-change: opacity, transform; }
+        .rekap-lb-img.slide-next { animation: rekapLbInNext .32s cubic-bezier(.2,.7,.3,1); }
+        .rekap-lb-img.slide-prev { animation: rekapLbInPrev .32s cubic-bezier(.2,.7,.3,1); }
+        @keyframes rekapLbInNext { from { opacity: .15; transform: translateX(44px) scale(.985); } to { opacity: 1; transform: none; } }
+        @keyframes rekapLbInPrev { from { opacity: .15; transform: translateX(-44px) scale(.985); } to { opacity: 1; transform: none; } }
+        .rekap-lb-side.swap { animation: rekapSideIn .3s ease; }
+        @keyframes rekapSideIn { from { opacity: 0; } to { opacity: .85; } }
         .rekap-lb-note {
             position: absolute; inset: 0; display: flex; flex-direction: column;
             align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center;
@@ -801,6 +809,7 @@
         }
         @keyframes rekapSheetUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
         @media (prefers-reduced-motion: reduce) {
+            .rekap-lb-img.slide-next, .rekap-lb-img.slide-prev, .rekap-lb-side.swap { animation: none !important; }
             .rekap-tile, .rekap-tile img, .rekap-gallery-modal .modal-content { animation: none !important; transition: none !important; }
             .modal-content.rekap-gallery-modal { animation: none !important; }
         }
