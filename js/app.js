@@ -1205,6 +1205,17 @@ function getLastView() {
 async function restoreLastView() {
     const last = getLastView();
     if (!last || !last.view) return;
+    // Belum login (atau sesi sudah habis) -> jangan buka halaman terakhir yang
+    // butuh login (IG Scheduler, Infografis, Admin, tab internal) -- kalau tidak,
+    // yang tampil halaman kosong. Kembali ke dashboard utama & reset halaman tersimpan.
+    // checkSession() sudah selesai dipanggil sebelum restoreLastView(), jadi
+    // adminLoggedIn di titik ini sudah final.
+    if (!adminLoggedIn) {
+        if (last.view !== 'dashboard' || (last.tab && last.tab !== 'umroh')) {
+            saveLastView({ view: 'dashboard', tab: 'umroh' });
+        }
+        return;
+    }
     if (last.view === 'admin' && last.subtab) {
         // Kalau sesi admin ternyata sudah habis, openAdminPanel() otomatis
         // nampilin layar login biasa (subtab-nya diabaikan) -- tidak error.
