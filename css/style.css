@@ -14,7 +14,7 @@
             --danger: #C0392B;
             --danger-tint: #FBE3E0;
             --line: #E1E8F0;
-            --footer-h: 46px; /* tinggi footer global (1 baris) (dipakai kanvas Content Planner) */
+            --footer-h: 56px; /* tinggi footer global (1 baris) (dipakai kanvas Content Planner) */
             --radius: 14px;
             --shadow: 0 4px 24px rgba(0,0,0,0.08);
             /* Jarak aman dari notch/status bar & home-indicator (iOS/Android).
@@ -5681,7 +5681,7 @@ details.ig-rk-minggu > summary.ig-rk-row::-webkit-details-marker { display: none
     flex: 0 0 auto;
     min-height: var(--footer-h);
     /* padding atas = bawah (di layar bernotch, bawah ditambah safe-area) */
-    padding: 14px 0 calc(14px + var(--safe-bottom));
+    padding: 20px 0 calc(20px + var(--safe-bottom));
     color: var(--ink-soft);
     font-size: 11.5px;
     line-height: 1.45;
@@ -5692,9 +5692,6 @@ details.ig-rk-minggu > summary.ig-rk-row::-webkit-details-marker { display: none
 }
 .app-footer-line { font-weight: 500; }
 .app-footer { box-sizing: border-box; }
-/* jarak antara konten terakhir tiap view dan garis footer */
-main > #dashboardView,
-main > .admin-page { margin-bottom: 24px; }
 @media print { .app-footer { display: none; } }
 /* Padding bawah <main> harus 0 di semua ukuran layar (override media query
    di atas yang memakai padding: 14px) supaya footer benar-benar menempel di dasar. */
