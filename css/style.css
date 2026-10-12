@@ -577,114 +577,100 @@
         .metric-card.metric-clickable:hover { box-shadow: var(--shadow); border-color: var(--brand); }
         .metric-card.metric-clickable:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
-        /* ===== Rekap Program: tampilan ala Instagram Story ===== */
-        .modal-overlay.rekap-story {
+        /* ===== Rekap Program: viewer poster 9:16 (1080 x 1920) ===== */
+        .modal-overlay.rekap-viewer {
             padding: 0;
-            background: rgba(10, 10, 12, .94);
+            align-items: stretch;
+            background: rgba(11, 18, 32, .93);
             -webkit-backdrop-filter: blur(6px);
             backdrop-filter: blur(6px);
         }
-        .rekap-story { --rk-h: 92vh; --rk-dur: 6s; }
-        @supports (height: 100dvh) { .rekap-story { --rk-h: 92dvh; } }
-        .rekap-x {
-            position: absolute; top: 14px; right: 18px; z-index: 5;
-            width: 40px; height: 40px; border: none; border-radius: 50%;
-            background: transparent; color: #fff; font-size: 20px; cursor: pointer;
-            opacity: .85; transition: opacity .15s, background .15s;
+        .rekap-shell {
+            width: 100%; max-width: 1000px; height: 100%;
+            margin: 0 auto; box-sizing: border-box;
+            display: flex; flex-direction: column; gap: 12px;
+            padding: calc(14px + var(--safe-top)) calc(20px + var(--safe-right)) calc(14px + var(--safe-bottom)) calc(20px + var(--safe-left));
+            color: #fff;
         }
-        .rekap-x:hover { opacity: 1; background: rgba(255,255,255,.12); }
-        .rekap-stage { display: flex; align-items: center; justify-content: center; gap: 18px; width: 100%; height: 100%; }
+        .rekap-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+        .rekap-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .rekap-title-ico {
+            width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--brand); color: #fff; font-size: 17px;
+        }
+        .rekap-title-txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+        .rekap-title-txt b { font-family: 'Space Grotesk'; font-size: 16px; font-weight: 600; }
+        .rekap-title-txt span { font-size: 12px; color: rgba(255,255,255,.62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .rekap-bar-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .rekap-bar-actions button, .rekap-bar-actions a {
+            width: 36px; height: 36px; border: 1px solid rgba(255,255,255,.16); border-radius: 10px;
+            background: rgba(255,255,255,.06); color: #fff; font-size: 15px; cursor: pointer; text-decoration: none;
+            display: inline-flex; align-items: center; justify-content: center;
+            transition: background .15s;
+        }
+        .rekap-bar-actions button:hover, .rekap-bar-actions a:hover { background: rgba(255,255,255,.16); }
+
+        .rekap-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 18px; }
         .rekap-card {
-            position: relative; flex-shrink: 0;
-            height: var(--rk-h);
-            width: calc(var(--rk-h) * 9 / 16);
-            background: #0b0b0d;
-            border-radius: 14px;
-            overflow: hidden;
-            box-shadow: 0 20px 70px rgba(0,0,0,.6);
-            user-select: none; -webkit-user-select: none;
-            touch-action: manipulation;
+            position: relative; flex-shrink: 1;
+            height: 100%; max-height: 880px; max-width: 100%;
+            aspect-ratio: 9 / 16;
+            background: #0b0f17;
+            border: 1px solid rgba(255,255,255,.12);
+            border-radius: 14px; overflow: hidden;
+            box-shadow: 0 24px 70px rgba(0,0,0,.55);
+            touch-action: pan-y; user-select: none; -webkit-user-select: none;
+            cursor: zoom-in;
             animation: modalFadeIn .18s ease;
         }
-        .rekap-media { position: absolute; inset: 0; }
+        .rekap-card.is-empty { cursor: default; }
         .rekap-img {
             width: 100%; height: 100%; object-fit: contain; display: block;
             opacity: 0; transition: opacity .25s; pointer-events: none;
         }
         .rekap-img.loaded { opacity: 1; }
-        /* Kanvas kosong / loading / error (di atas gambar, di bawah header) */
+        /* Kanvas kosong / loading / error */
         .rekap-note {
             position: absolute; inset: 0;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             gap: 10px; padding: 24px; text-align: center;
-            font-size: 13px; color: rgba(255,255,255,.6);
-            background: linear-gradient(160deg, #1d1d22, #121215);
+            font-size: 13px; color: rgba(255,255,255,.55);
+            background: repeating-linear-gradient(135deg, rgba(255,255,255,.025) 0 12px, transparent 12px 24px), #0f1522;
             pointer-events: none;
         }
-        .rekap-note i { font-size: 34px; opacity: .45; }
+        .rekap-note i { font-size: 34px; opacity: .4; }
         .rekap-note.hide { display: none; }
 
-        /* Header: progress + akun */
-        .rekap-top {
-            position: absolute; top: 0; left: 0; right: 0; z-index: 3;
-            padding: 10px 12px 34px;
-            background: linear-gradient(rgba(0,0,0,.6), rgba(0,0,0,0));
-            pointer-events: none;
-        }
-        .rekap-top button, .rekap-top a { pointer-events: auto; }
-        .rekap-segs { display: flex; gap: 4px; }
-        .rekap-seg { flex: 1; height: 3px; border-radius: 3px; background: rgba(255,255,255,.35); overflow: hidden; }
-        .rekap-seg-fill { width: 100%; height: 100%; background: #fff; transform: scaleX(0); transform-origin: left; }
-        .rekap-seg.done .rekap-seg-fill { transform: scaleX(1); }
-        .rekap-seg-fill.run { animation: rekapFill var(--rk-dur) linear forwards; }
-        .rekap-paused .rekap-seg-fill.run { animation-play-state: paused; }
-        @keyframes rekapFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-        .rekap-head { display: flex; align-items: center; gap: 10px; margin-top: 12px; color: #fff; }
-        .rekap-ava {
-            width: 34px; height: 34px; border-radius: 50%; padding: 2px; flex-shrink: 0;
-            background: linear-gradient(45deg, #f9ce34, #ee2a7b, #6228d7);
-        }
-        .rekap-ava img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: #fff; border: 2px solid #0b0b0d; display: block; }
-        .rekap-who { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 13px; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
-        .rekap-who b { font-weight: 600; white-space: nowrap; }
-        .rekap-who span { font-size: 12px; opacity: .7; white-space: nowrap; }
-        .rekap-tools { margin-left: auto; display: flex; align-items: center; gap: 2px; }
-        .rekap-tools button, .rekap-tools a {
-            width: 32px; height: 32px; border: none; background: transparent; color: #fff;
-            border-radius: 50%; font-size: 16px; cursor: pointer; text-decoration: none;
-            display: inline-flex; align-items: center; justify-content: center;
-            opacity: .9; transition: background .15s;
-        }
-        .rekap-tools button:hover, .rekap-tools a:hover { background: rgba(255,255,255,.18); }
-        .rekap-close-m { display: none !important; }
-
-        /* Poster tetangga (desktop) + panah */
-        .rekap-peek {
-            height: calc(var(--rk-h) * .6);
-            width: calc(var(--rk-h) * .6 * 9 / 16);
-            border-radius: 12px; overflow: hidden; flex-shrink: 0;
-            background: #1a1a1e; opacity: .45; cursor: pointer;
-            transition: opacity .15s, transform .15s;
-        }
-        .rekap-peek:hover { opacity: .75; transform: scale(1.02); }
-        .rekap-peek img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
-        .rekap-peek.empty { visibility: hidden; pointer-events: none; }
         .rekap-arrow {
-            width: 40px; height: 40px; border: none; border-radius: 50%; flex-shrink: 0;
-            background: rgba(255,255,255,.2); color: #fff; font-size: 18px; cursor: pointer;
+            width: 44px; height: 44px; border: 1px solid rgba(255,255,255,.16); border-radius: 50%; flex-shrink: 0;
+            background: rgba(255,255,255,.08); color: #fff; font-size: 18px; cursor: pointer;
             transition: background .15s;
         }
-        .rekap-arrow:hover { background: rgba(255,255,255,.34); }
+        .rekap-arrow:hover { background: rgba(255,255,255,.2); }
         .rekap-arrow.empty { visibility: hidden; }
 
-        @media (max-width: 900px) {
-            .rekap-peek, .rekap-arrow, .rekap-x { display: none; }
-            .rekap-close-m { display: inline-flex !important; }
+        /* Deretan thumbnail untuk lompat antar poster */
+        .rekap-strip { display: flex; gap: 8px; overflow-x: auto; flex-shrink: 0; padding: 4px 2px; }
+        .rekap-strip > :first-child { margin-left: auto; }
+        .rekap-strip > :last-child { margin-right: auto; }
+        .rekap-thumb {
+            position: relative; flex-shrink: 0;
+            height: 68px; aspect-ratio: 9 / 16;
+            border: 2px solid transparent; border-radius: 8px; padding: 0; overflow: hidden;
+            background: #0f1522; cursor: pointer; opacity: .55;
+            transition: opacity .15s, border-color .15s, transform .15s;
         }
-        @media (max-width: 600px) {
-            .rekap-story { --rk-h: min(100vh, calc(100vw * 16 / 9)); }
-            @supports (height: 100dvh) { .rekap-story { --rk-h: min(100dvh, calc(100vw * 16 / 9)); } }
-            .rekap-card { border-radius: 0; }
+        .rekap-thumb:hover { opacity: .85; }
+        .rekap-thumb.active { opacity: 1; border-color: #fff; transform: translateY(-2px); }
+        .rekap-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+        .rekap-thumb.is-empty { border: 1.5px dashed rgba(255,255,255,.25); background: transparent; cursor: default; opacity: .7; }
+
+        @media (max-width: 700px) {
+            .rekap-shell { padding: calc(10px + var(--safe-top)) calc(12px + var(--safe-right)) calc(10px + var(--safe-bottom)) calc(12px + var(--safe-left)); gap: 10px; }
+            .rekap-arrow { display: none; }  /* di HP: geser kiri/kanan di poster */
+            .rekap-card { border-radius: 12px; }
+            .rekap-thumb { height: 56px; }
         }
 
         .icon-brand { background: var(--brand-tint); color: var(--brand); }
