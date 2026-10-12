@@ -910,10 +910,16 @@
 
 <div class="modal-overlay" id="rekapProgramModal" onclick="if(event.target===this)closeRekapProgramModal()">
     <div class="modal-content rekap-gallery-modal">
-        <div class="modal-header">
-            <h2><i class="bi bi-images"></i> Rekap Program <span class="rekap-count" id="rekapCount"></span></h2>
+        <div class="modal-header rekap-head">
+            <div class="rekap-head-main">
+                <span class="rekap-head-icon" aria-hidden="true"><i class="bi bi-images"></i></span>
+                <div class="rekap-head-text">
+                    <h2>Rekap Program <span class="rekap-count" id="rekapCount"></span></h2>
+                    <p class="rekap-head-sub">Poster rekap terbaru &middot; ketuk untuk memperbesar</p>
+                </div>
+            </div>
             <div class="rekap-head-actions">
-                <button class="btn-secondary" id="btnRekapRefresh" onclick="loadRekapProgram(true)" style="display:none;font-size:12px;padding:6px 14px;">
+                <button class="btn-secondary rekap-refresh-btn" id="btnRekapRefresh" onclick="loadRekapProgram(true)" style="display:none;">
                     <i class="bi bi-arrow-clockwise"></i> Refresh
                 </button>
                 <button class="modal-close" onclick="closeRekapProgramModal()" aria-label="Tutup">&times;</button>
