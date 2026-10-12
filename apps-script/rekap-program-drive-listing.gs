@@ -17,7 +17,7 @@
  *    supaya URL /exec yang lama ikut ke-update.
  */
 
-var FOLDER_ID = 'GANTI_DENGAN_FOLDER_ID_ANDA';
+var FOLDER_ID = '1FgKDAJgeH2rSfIxQKkd9UT-1vs-kGRh9'; // folder "Rekap Program AMIRU 916"
 
 function doGet(e) {
   var folder = DriveApp.getFolderById(FOLDER_ID);
