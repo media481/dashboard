@@ -5699,3 +5699,27 @@ main > .admin-page { margin-bottom: 24px; }
 /* Padding bawah <main> harus 0 di semua ukuran layar (override media query
    di atas yang memakai padding: 14px) supaya footer benar-benar menempel di dasar. */
 main { padding-bottom: 0; }
+
+/* ===== Tombol Homepage (topbar, hanya saat belum login) ===== */
+.btn-homepage {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 16px;
+    background: var(--surface);
+    color: var(--brand);
+    border: 1px solid var(--brand);
+    border-radius: 10px;
+    font: 600 13px 'Inter', sans-serif;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all .15s;
+}
+.btn-homepage:hover { background: var(--brand); color: #fff; transform: translateY(-1px); box-shadow: var(--shadow); }
+.btn-homepage:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* Ponsel (<=600px): topbar bersusun kolom, jadi flex-basis (220/320/220px dari
+   aturan dasar) terbaca sebagai TINGGI dan topbar membengkak ~790px. Dikembalikan
+   ke ukuran sesuai isi agar tombol Homepage & hamburger tidak terdorong ke bawah. */
+@media (max-width: 600px) {
+    .topbar-left, .topbar-center, .topbar-actions { flex: 0 0 auto; }
+    .topbar-actions { justify-content: flex-end; }
+}

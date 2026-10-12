@@ -4677,6 +4677,8 @@ async function renderSidebarNav() {
     });
 
     document.querySelectorAll('.login-btn').forEach(el => { el.style.display = loggedIn ? 'none' : ''; });
+    // Tombol "Homepage" (ke website utama) hanya untuk halaman utama non-login
+    document.querySelectorAll('.guest-only').forEach(el => { el.style.display = loggedIn ? 'none' : ''; });
     document.querySelectorAll('.logout-btn').forEach(el => { el.style.display = loggedIn ? '' : 'none'; });
 
     const whoEl = document.getElementById('sidebarWho');
