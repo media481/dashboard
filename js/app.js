@@ -1619,6 +1619,33 @@ async function loadRekapProgram(forceSync = false) {
     }
 }
 
+// ---------- Angka jumlah poster di kartu metrik "Rekap Program" ----------
+// Tabel rekap_program_items hanya bisa dibaca user login (RLS), jadi sebelum login
+// kartu menampilkan "–". Setelah login dihitung ringan lewat count (tanpa ambil baris);
+// begitu galeri dibuka/di-refresh angkanya ikut disamakan dengan isi galeri.
+let rekapMetricFetchedAt = 0;
+function setRekapMetric(n) {
+    const el = document.getElementById('totalRekapProgram');
+    if (el) el.textContent = (n === null || n === undefined) ? '–' : n;
+}
+async function refreshRekapMetric(force = false) {
+    if (!adminLoggedIn) { rekapMetricFetchedAt = 0; setRekapMetric(null); return; }
+    if (rekapProgramLoaded) { setRekapMetric(rekapProgramItems.length); return; }
+    if (!force && Date.now() - rekapMetricFetchedAt < 60000) return;
+    rekapMetricFetchedAt = Date.now();
+    try {
+        const { count, error } = await supabaseClient
+            .from('rekap_program_items')
+            .select('id', { count: 'exact', head: true });
+        if (error) throw error;
+        setRekapMetric(count || 0);
+    } catch (err) {
+        rekapMetricFetchedAt = 0;
+        console.warn('Hitung rekap program gagal:', err.message || err);
+    }
+}
+window.refreshRekapMetric = refreshRekapMetric;
+
 function rekapDateLabel(iso) {
     const d = iso ? new Date(iso) : null;
     if (!d || isNaN(d)) return '';
@@ -1633,6 +1660,7 @@ function renderRekapGallery(onlyEmpty = false) {
 
     const items = onlyEmpty ? [] : rekapProgramItems;
     countEl.textContent = items.length ? `${items.length} poster` : '';
+    if (!onlyEmpty) setRekapMetric(items.length);
 
     let html = items.map((it, i) => {
         const tgl = rekapDateLabel(it.updatedAt);
@@ -1997,6 +2025,7 @@ function updateMetrics() {
     document.getElementById('totalPrograms').textContent = dataUmroh.filter(isProgramVisibleOnDashboard).length;
     document.getElementById('totalJadwal').textContent = jadwalList.length;
     document.getElementById('totalKeberangkatan').textContent = kbJamaahList.length;
+    refreshRekapMetric();
 }
 
 // ============================================================
@@ -2172,6 +2201,7 @@ function setAdminSession(role) {
     sessionStorage.setItem('admin_logged_in', 'true');
     sessionStorage.setItem('admin_role', role);
     sessionStorage.setItem('admin_login_time', Date.now().toString());
+    refreshRekapMetric(true);
     if (sessionTimeout) clearTimeout(sessionTimeout);
     sessionTimeout = setTimeout(() => {
         if (adminLoggedIn) {
@@ -2704,6 +2734,7 @@ async function logoutAdmin() {
     sessionStorage.removeItem('admin_login_email');
     sessionStorage.removeItem('admin_login_label');
     if (sessionTimeout) clearTimeout(sessionTimeout);
+    refreshRekapMetric();
     closeAdminPanel();
     renderSidebarNav();
     renderHeaderWelcome();
