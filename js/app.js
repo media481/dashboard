@@ -3008,9 +3008,6 @@ function getAdminLoginBoxHtml() {
     return `
     <div class="admin-login-wrap">
     <div class="admin-login-box">
-        <h3>Masuk ke Dashboard</h3>
-        <p class="admin-login-sub">Gunakan email &amp; password akun Anda</p>
-
         <div class="admin-login-body">
             <div class="form-group">
                 <label for="adminEmailInput">Email</label>
