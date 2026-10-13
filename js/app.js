@@ -3039,7 +3039,7 @@ function switchAdminSubTab(name) {
         // Muat data referensi Hotel Saudi Arabia di background lalu render ulang
         // panel supaya badge "dikenali/tidak dikenali" di baris Hotel Makkah/
         // Madinah (lihat buildCompareRows -> cxHotelRefLine) langsung muncul.
-        if (!hotelSaudiLoaded) {
+        if (CX_HOTEL_REF_HINT_ENABLED && !hotelSaudiLoaded) {
             ensureHotelReferenceLoaded().then(() => { if (cxSelectedProgram) renderCxPanel(cxSelectedProgram); });
         }
     }
@@ -12083,6 +12083,10 @@ function cxCompareTgl(a, b) {
     // (mis. beda format penulisan) -> tetap dianggap cocok penuh.
     if (setA.type === 'single' && setB.type === 'single' && cxSameDay(setA.date, setB.date)) return 'match';
 
+// Saklar baris hint "Referensi Hotel Saudi Arabia — Teks: mirip ... / Poster: mirip ..."
+// di panel Crosscheck. Dinonaktifkan (false). Ubah ke true untuk menyalakan lagi.
+const CX_HOTEL_REF_HINT_ENABLED = false;
+
     return 'mismatch';
 }
 function cxNormalizeMaskapai(str) {
@@ -12416,6 +12420,7 @@ function renderCxPanel(progId) {
     // yang "Beda" (mismatch): kalau salah satu sisi TIDAK dikenali sama sekali,
     // itu petunjuk kuat sisi itu salah baca OCR / typo, bukan cuma beda versi.
     const cxHotelRefLine = (field, plainVal, posterVal) => {
+        if (!CX_HOTEL_REF_HINT_ENABLED) return '';
         if (field !== 'hotel_makkah' && field !== 'hotel_madinah' && field !== 'hotel_3' && field !== 'hotel_4') return '';
         if (!hotelSaudiLoaded || !hotelSaudiList.length) return '';
         // Hotel 3/4: referensi hanya ada untuk Makkah & Madinah, ikut kota yang dipilih di form.
