@@ -2314,6 +2314,13 @@ function openDetailModal(programId) {
 
     document.getElementById('pdModalTitle').textContent = program.nama || 'Detail Program';
     document.getElementById('pd_tgl').textContent = program.tgl || '-';
+    // Tanggal program ditambahkan ke sistem (created_at), tampil mepet kanan di header modal
+    const addedWrap = document.getElementById('pd_added_date');
+    if (addedWrap) {
+        const addedTxt = program.created_at ? formatDateToIndonesian(new Date(program.created_at)) : '';
+        document.getElementById('pd_added_text').textContent = addedTxt;
+        addedWrap.style.display = addedTxt ? '' : 'none';
+    }
     document.getElementById('pd_durasi').textContent = program.durasi || '-';
     document.getElementById('pd_maskapai').textContent = program.maskapai || '-';
     // Tanda "Sesuai poster": tampil kalau program sudah di-crosscheck (OCR poster) dan semua datanya
