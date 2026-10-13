@@ -4380,6 +4380,9 @@
 .ig-dm-danger:hover, .ig-dm-danger.is-armed { color: var(--danger); }
 /* Tombol link desain Canva di kartu rencana konten */
 a.ig-dm-iconbtn { text-decoration: none; }
+/* Input link Canva sejajar dengan tipe & tanggal: mengisi sisa lebar baris */
+.ig-dm-edit-row .ig-dm-canva-input { flex: 1 1 180px; min-width: 0; }
+.ig-plan-canva-off { font-size: 12px; color: var(--ink-soft); }
 .ig-dm .ig-dm-iconbtn.ig-dm-canva { color: #7D2AE8; font-weight: 600; background: rgba(125, 42, 232, .08); margin-right: 6px; }
 .ig-dm .ig-dm-iconbtn.ig-dm-canva:hover { background: rgba(125, 42, 232, .16); color: #6a1fd0; }
 .ig-dm-danger.is-armed { background: var(--danger-tint); border-color: var(--danger); font-weight: 700; }
