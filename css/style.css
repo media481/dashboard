@@ -815,6 +815,14 @@
         /* Infografis: modal lebih lebar & 5 kolom (10 gambar = 5 atas + 5 bawah) */
         .rekap-ratio-45 .modal-content.rekap-gallery-modal { max-width: 1280px; }
         .rekap-ratio-45 .rekap-gallery-grid { grid-template-columns: repeat(5, 1fr); }
+        /* Layar lebar (5 kolom): area galeri pas 2 baris = 10 gambar terlihat, sisanya di-scroll.
+           cqw = lebar isi .modal-body; tinggi baris = lebar kolom x 5/4. */
+        @media (min-width: 1101px) {
+            .rekap-ratio-45 .rekap-gallery-modal .modal-body {
+                container-type: inline-size; flex: 0 1 auto;
+                max-height: calc(2 * (100cqw - 4 * 16px) / 5 * 1.25 + 16px + 44px);
+            }
+        }
         @media (max-width: 1100px) { .rekap-ratio-45 .rekap-gallery-grid { grid-template-columns: repeat(4, 1fr); } }
         @media (max-width: 900px)  { .rekap-ratio-45 .rekap-gallery-grid { grid-template-columns: repeat(3, 1fr); } }
         @media (max-width: 700px)  { .rekap-ratio-45 .rekap-gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } }

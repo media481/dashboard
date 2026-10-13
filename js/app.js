@@ -1580,7 +1580,7 @@ const REKAP_SOURCES = {
     infografis: {
         table: 'infografis_items', syncUrl: SYNC_INFOGRAFIS_URL, metricId: 'totalInfografis',
         title: 'Infografis', sub: 'Infografis terbaru · ketuk untuk memperbesar', icon: 'bi-pie-chart-fill',
-        unit: 'gambar', alt: 'Infografis', ratio45: true, limit: 10,   // rasio 4:5, tampilkan 10 terbaru
+        unit: 'gambar', alt: 'Infografis', ratio45: true, limit: 0,    // rasio 4:5; semua gambar dimuat, area lihat awal 10 (2 baris x 5), sisanya di-scroll
         loading: 'Memuat infografis…', syncing: 'Menyinkron infografis dari Google Drive...',
         empty: 'Belum ada gambar di folder infografis', fail: 'Gagal memuat infografis: '
     }
@@ -1711,8 +1711,7 @@ async function refreshRekapMetric() {
                 .from(REKAP_SOURCES[src].table)
                 .select('id', { count: 'exact', head: true });
             if (error) throw error;
-            const lim = REKAP_SOURCES[src].limit;
-            setRekapMetric(src, lim ? Math.min(count || 0, lim) : (count || 0));
+            setRekapMetric(src, count || 0);
         } catch (err) {
             console.warn('Hitung ' + REKAP_SOURCES[src].title + ' gagal:', err.message || err);
         }
