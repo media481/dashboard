@@ -4194,6 +4194,7 @@ async function showAdminForm() {
     // Muat data referensi Hotel Saudi Arabia di background (non-blocking) supaya
     // hint di field Hotel Makkah/Madinah sudah siap begitu admin mulai mengetik.
     ensureHotelReferenceLoaded();
+    ensureHotelDetailsLoaded();
     // Bersihkan juga sisa teks broadcast dari sesi tambah program sebelumnya,
     // supaya kotak referensi tidak menampilkan broadcast program lain.
     const bcInput = document.getElementById('parseBroadcastInput');
@@ -5000,6 +5001,7 @@ async function saveAdminProgram() {
         if (result.error) throw result.error;
         const savedRow = (result.data && result.data[0]) || (isEdit ? { id: editingProgramId } : null);
 
+        saveHotelDetailsFromForm(formData); // ingat jarak/menit jalan kaki tiap hotel untuk program berikutnya (non-blocking)
         showToast(editingProgramId ? 'Program berhasil diperbarui' : 'Program berhasil ditambahkan');
         hideAdminForm(true);
         await loadDataFromSupabase(true);
@@ -5053,6 +5055,7 @@ async function editAdminProgram(id, focusFieldId) {
     if (unpacked.autofilled_fields?.length) cxApplyAutofillHighlight(unpacked.autofilled_fields);
     // Muat data referensi Hotel Saudi Arabia di background, lalu tampilkan
     // hint untuk nilai Hotel Makkah/Madinah yang sudah tersimpan di program ini.
+    ensureHotelDetailsLoaded().then(() => HOTEL_DETAIL_INPUT_IDS.forEach(refreshHotelDetailSuggest));
     ensureHotelReferenceLoaded().then(() => {
         updateHotelRefHint('admin_hotel_makkah', 'hotelRefHint_makkah', 'makkah');
         updateHotelRefHint('admin_hotel_madinah', 'hotelRefHint_madinah', 'madinah');
@@ -5183,6 +5186,7 @@ async function clearAllAdminData() {
 function parseBroadcastText() {
     const rawInput = document.getElementById('parseBroadcastInput').value.trim();
     if (!rawInput) { showToast('Paste teks broadcast dulu', 'error'); return; }
+    ensureHotelDetailsLoaded(); // jaga-jaga: pustaka detail hotel dimuat (dipakai combineHotel)
     // Broadcast dari grup WA sering pakai ejaan "Umrah" -- standarisasi ke "Umroh"
     // dan singkatan "pp" (Pulang-Pergi) huruf kecil -- standarisasi ke "PP" --
     // dulu sebelum diparsing, supaya field yang terisi otomatis (nama program,
@@ -5316,6 +5320,7 @@ function parseBroadcastText() {
     // Akomodasi Hotel & caption, format: "Nama Hotel (X malam, jarak)".
     const combineHotel = (nama, hari, jarak) => {
         if (!nama) return '';
+        if (!jarak) jarak = lookupHotelDetailJarak(nama); // broadcast tak menyebut jarak -> ambil dari pustaka hotel
         const detail = [];
         if (hari) detail.push(hari + ' malam');
         if (jarak) detail.push(jarak);
@@ -5440,6 +5445,7 @@ function parseBroadcastText() {
 // instan offline sebagai cadangan).
 // Edge Function: PARSE_BROADCAST_AI_FUNCTION_URL (supabase/functions/parse-broadcast-ai).
 async function parseBroadcastTextAI() {
+    await ensureHotelDetailsLoaded(); // pustaka detail hotel harus siap sebelum hasil AI digabung (combineHotel)
     const btn = document.getElementById('btnParseBroadcastAI');
     const btnText = document.getElementById('btnParseBroadcastAIText');
     const rawInput = document.getElementById('parseBroadcastInput').value.trim();
@@ -5490,6 +5496,7 @@ async function parseBroadcastTextAI() {
 
         const combineHotel = (nama, hari, jarak) => {
             if (!nama) return '';
+            if (!jarak) jarak = lookupHotelDetailJarak(nama); // hasil AI tak menyebut jarak -> ambil dari pustaka hotel
             const detail = [];
             if (hari) detail.push(hari + ' malam');
             if (jarak) detail.push(jarak);
@@ -13247,6 +13254,141 @@ function ensureHotelReferenceLoaded() {
     }
     return hotelRefLoadPromise;
 }
+
+// ============================================================
+// PUSTAKA DETAIL HOTEL (tabel hotel_detail, sql/54_tambah_hotel_detail.sql)
+// ------------------------------------------------------------
+// Jarak & estimasi menit jalan kaki ("550m 7 menit jalan kaki") diingat per
+// nama hotel. Efeknya:
+//  1) Tiap program disimpan -> detail hotel di form (Makkah/Madinah/Hotel 3/4)
+//     otomatis disimpan/diperbarui ke pustaka (saveHotelDetailsFromForm).
+//  2) Isi Otomatis / Parse AI: kalau broadcast tidak menyebut jarak, jarak
+//     diambil dari pustaka (lookupHotelDetailJarak, dipakai combineHotel).
+//  3) Mengetik nama hotel yang sudah pernah dipakai di form -> muncul tombol
+//     saran "Pakai detail tersimpan" (refreshHotelDetailSuggest).
+// Jumlah malam sengaja TIDAK disimpan (beda tiap program).
+// Kalau tabelnya belum dibuat di Supabase, fitur ini diam-diam non-aktif.
+// ============================================================
+let hotelDetailMap = {}, hotelDetailLoaded = false, hotelDetailLoadPromise = null;
+
+function hotelDetailKey(name) {
+    return String(name || '')
+        .replace(/\([^)]*\)/g, ' ')                       // buang "(4 malam, ...)"
+        .split('/')[0]                                    // buang "/ setaraf"
+        .toLowerCase()
+        .replace(/\b[1-5]\s*(\*+|bintang)|\bbintang\s*[1-5]\b|\*+/g, ' ') // buang "5*", "bintang 5"
+        .replace(/[^a-z0-9\u0600-\u06FF\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+// "Hilton Suites (4 malam, 550m 7 menit jalan kaki)" ->
+//   { name: "Hilton Suites", malam: "4", jarak: "550m 7 menit jalan kaki" }
+// Bagian kurung yang bukan "X malam" dan memuat jarak (m/km) atau "menit" dianggap detail jarak.
+function parseHotelDetailText(str) {
+    const text = String(str || '').trim();
+    const m = text.match(/\(([^)]*)\)/);
+    const name = text.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!m) return { name, malam: '', jarak: '', hasParen: false };
+    const parts = m[1].split(',').map(x => x.trim()).filter(Boolean);
+    let malam = '';
+    const jarakParts = [];
+    parts.forEach(p => {
+        const mm = p.match(/(\d+)\s*malam/i);
+        if (mm) { malam = mm[1]; return; }
+        if (/\d/.test(p) && (/\b\d+(?:[.,]\d+)?\s*(m|meter|km)\b/i.test(p) || /menit/i.test(p))) jarakParts.push(p);
+    });
+    return { name, malam, jarak: jarakParts.join(', '), hasParen: true };
+}
+
+function loadHotelDetails() {
+    return supabaseClient.from('hotel_detail').select('hotel_key,hotel_name,kota,jarak_text')
+        .then(({ data, error }) => {
+            if (error) throw error;
+            hotelDetailMap = {};
+            (data || []).forEach(r => { if (r.hotel_key && r.jarak_text) hotelDetailMap[r.hotel_key] = r; });
+        })
+        .catch(err => { console.warn('Pustaka detail hotel tidak termuat (tabel hotel_detail sudah dibuat?):', err && err.message); })
+        .finally(() => { hotelDetailLoaded = true; });
+}
+function ensureHotelDetailsLoaded() {
+    if (hotelDetailLoaded) return Promise.resolve();
+    if (!hotelDetailLoadPromise) hotelDetailLoadPromise = loadHotelDetails().finally(() => { hotelDetailLoadPromise = null; });
+    return hotelDetailLoadPromise;
+}
+
+// Jarak tersimpan untuk nama hotel (sinkron; '' kalau belum ada / belum termuat).
+function lookupHotelDetailJarak(name) {
+    const key = hotelDetailKey(name);
+    return (key && hotelDetailMap[key] && hotelDetailMap[key].jarak_text) || '';
+}
+
+// Simpan/perbarui detail jarak semua hotel di form program ke pustaka.
+// Dipanggil setelah program berhasil disimpan; tidak pernah memblokir/menggagalkan simpan.
+async function saveHotelDetailsFromForm(formData) {
+    try {
+        const slots = [
+            ['hotel_makkah', 'makkah'], ['hotel_madinah', 'madinah'],
+            ['hotel_3', String(formData.hotel_3_kota || '').toLowerCase()],
+            ['hotel_4', String(formData.hotel_4_kota || '').toLowerCase()]
+        ];
+        const rows = [];
+        slots.forEach(([field, kota]) => {
+            const d = parseHotelDetailText(formData[field]);
+            const key = hotelDetailKey(d.name);
+            if (!key || !d.jarak) return;
+            const existing = hotelDetailMap[key];
+            if (existing && existing.jarak_text === d.jarak) return; // sudah sama, tidak perlu tulis
+            rows.push({ hotel_key: key, hotel_name: d.name, kota: kota || null, jarak_text: d.jarak, updated_at: new Date().toISOString() });
+        });
+        if (!rows.length) return;
+        const uniq = Object.values(rows.reduce((acc, r) => { acc[r.hotel_key] = r; return acc; }, {}));
+        const { error } = await supabaseClient.from('hotel_detail').upsert(uniq, { onConflict: 'hotel_key' });
+        if (error) throw error;
+        uniq.forEach(r => { hotelDetailMap[r.hotel_key] = r; });
+    } catch (err) {
+        console.warn('Gagal menyimpan detail hotel:', err && err.message);
+    }
+}
+
+// Tombol saran di bawah field hotel: "Pakai detail tersimpan: 550m 7 menit jalan kaki".
+const HOTEL_DETAIL_INPUT_IDS = ['admin_hotel_makkah', 'admin_hotel_madinah', 'admin_hotel_3', 'admin_hotel_4'];
+function refreshHotelDetailSuggest(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const group = input.closest('.form-group');
+    if (!group) return;
+    let box = document.getElementById('hotelDetailSuggest_' + inputId);
+    if (!box) {
+        box = document.createElement('div');
+        box.id = 'hotelDetailSuggest_' + inputId;
+        box.className = 'hotel-detail-suggest';
+        group.appendChild(box);
+    }
+    const d = parseHotelDetailText(input.value);
+    const saved = d.name && !d.jarak ? lookupHotelDetailJarak(d.name) : '';
+    if (!saved) { box.innerHTML = ''; box.style.display = 'none'; return; }
+    box.style.display = 'flex';
+    box.innerHTML = `<button type="button" class="hotel-detail-btn" onclick="applyHotelDetailSuggest('${inputId}')"><i class="bi bi-stars"></i> Pakai detail tersimpan: <b>${escapeHtml(saved)}</b></button><span class="hotel-detail-note">jumlah malam isi sendiri</span>`;
+}
+function applyHotelDetailSuggest(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const d = parseHotelDetailText(input.value);
+    const saved = lookupHotelDetailJarak(d.name);
+    if (!saved) return;
+    const detail = [d.malam ? d.malam + ' malam' : '', saved].filter(Boolean).join(', ');
+    input.value = `${d.name} (${detail})`;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    refreshHotelDetailSuggest(inputId);
+}
+let _hotelDetailSuggestTimers = {};
+document.addEventListener('input', function (e) {
+    const id = e.target && e.target.id;
+    if (!id || !HOTEL_DETAIL_INPUT_IDS.includes(id)) return;
+    clearTimeout(_hotelDetailSuggestTimers[id]);
+    _hotelDetailSuggestTimers[id] = setTimeout(() => { ensureHotelDetailsLoaded().then(() => refreshHotelDetailSuggest(id)); }, 400);
+});
 
 // Buang "(3 malam, 200m jalan kaki)" dkk dari string gabungan hasil
 // combineHotel() di parseBroadcastText, supaya yang dicocokkan cuma nama

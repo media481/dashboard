@@ -6078,3 +6078,15 @@ main { padding-bottom: 0; }
     background: var(--danger); color: #fff; font-weight: 700;
     box-shadow: 0 0 0 1px var(--danger);
 }
+
+/* -- Saran detail hotel tersimpan (pustaka hotel_detail) di bawah field hotel -- */
+.hotel-detail-suggest { display: none; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-top: 6px; }
+.hotel-detail-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px; border-radius: 8px;
+    border: 1px dashed var(--brand); background: var(--brand-tint); color: var(--brand);
+    font: 600 11.5px 'Inter', sans-serif; cursor: pointer; line-height: 1.4; text-align: left;
+    transition: background .15s, color .15s;
+}
+.hotel-detail-btn:hover { background: var(--brand); color: #fff; }
+.hotel-detail-note { font-size: 11px; color: var(--ink-soft); }
