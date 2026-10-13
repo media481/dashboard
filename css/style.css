@@ -5720,3 +5720,318 @@ main { padding-bottom: 0; }
     .topbar-left, .topbar-center, .topbar-actions { flex: 0 0 auto; }
     .topbar-actions { justify-content: flex-end; }
 }
+
+
+/* ============================================================
+   [REDESIGN UI/UX] Form Tambah/Edit Program  (#adminFormContainer)
+   ------------------------------------------------------------
+   Murni CSS -- markup & logic di js/app.js TIDAK diubah. Semua selector
+   di-scope ke #adminFormContainer supaya form lain tidak ikut berubah.
+
+   Ringkasan perubahan:
+   1) Header + banner + tab section benar-benar "nempel" saat scroll
+      (sebelumnya mati karena overflow:hidden di card & overflow-x:hidden
+      di <main> -- keduanya membuat sticky kehilangan scroll-container-nya).
+   2) Section jadi card putih di atas kanvas abu-abu (hierarki jelas).
+   3) Grid Informasi Program 12 kolom (tidak ada lagi Kuota Pax "sendirian").
+   4) Panah <details> broadcast diganti chevron CSS (ikon Font Awesome
+      sebelumnya tidak ter-load -> tampil kotak kosong).
+   5) Banner auto-isi, hint hotel, dan footer aksi dirapikan.
+   6) Gap kosong ~48px di atas form (toolbar kosong) dihilangkan.
+   ============================================================ */
+
+/* -- (1) Sticky fix: scroll-container palsu dimatikan ------------------- */
+@supports (overflow: clip) {
+    main:has(#adminFormContainer) { overflow-x: clip; }
+}
+
+/* -- (6) Toolbar kosong (tidak ada tombol batch caption) tidak perlu makan ruang -- */
+#adminSubTab-program .admin-toolbar:not(:has(button)) { display: none; }
+
+/* -- Card utama --------------------------------------------------------- */
+#adminFormContainer.admin-form-card {
+    overflow: clip; /* ganti hidden: tetap memotong sudut membulat, tapi sticky anak-anaknya hidup */
+    border-radius: 18px;
+    background: var(--bg);
+    box-shadow: 0 1px 2px rgba(15,33,56,.04), 0 10px 30px -14px rgba(15,33,56,.18);
+}
+
+/* -- Header sticky (judul + banner + tab section) ----------------------- */
+#adminFormContainer .admin-form-stickygroup {
+    background: var(--surface);
+    box-shadow: 0 1px 0 var(--line), 0 8px 16px -12px rgba(15,33,56,.28);
+}
+#adminFormContainer .admin-form-head {
+    padding: 12px 20px;
+    background: var(--surface);
+    border-bottom: 0;
+}
+#adminFormContainer .admin-form-head h3 { font-size: 16px; gap: 10px; }
+#adminFormContainer .admin-form-head h3 > i:first-child {
+    width: 32px; height: 32px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: var(--brand-tint);
+    color: var(--brand);
+    font-size: 15px;
+    flex-shrink: 0;
+}
+#adminFormContainer .admin-form-head-actions { gap: 10px; }
+#adminFormContainer .btn-submit-sm {
+    height: 36px; padding: 0 16px;
+    border-radius: 10px; font-size: 13px;
+    box-shadow: 0 2px 6px -2px rgba(15,33,56,.45);
+}
+#adminFormContainer .admin-form-close {
+    width: 36px; height: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    font-size: 20px;
+}
+#adminFormContainer .admin-form-close:hover {
+    background: var(--danger-tint); border-color: var(--danger); color: var(--danger);
+}
+
+/* -- Banner "N field terisi otomatis dari poster" ----------------------- */
+#adminFormContainer .cx-autofill-note {
+    margin: 0;
+    padding: 7px 20px;
+    font-size: 12px; line-height: 1.45; font-weight: 600;
+    color: #9a4f12;
+    background: var(--warn-tint);
+    border-top: 1px solid #f3d7b8;
+}
+#adminFormContainer .cx-autofill-note i { margin-right: 6px; }
+
+/* -- Tab section (Info / Harga / Akomodasi / Link / Konten) ------------- */
+#adminFormContainer .admin-form-anchor-nav {
+    gap: 6px;
+    padding: 8px 20px 10px;
+    border-bottom: 0;
+}
+#adminFormContainer .admin-form-anchor-nav button {
+    padding: 6px 14px;
+    background: var(--bg);
+    border-color: transparent;
+    font-size: 12px;
+}
+#adminFormContainer .admin-form-anchor-nav button:hover {
+    background: var(--brand-tint); border-color: transparent; color: var(--brand);
+}
+#adminFormContainer .admin-form-anchor-nav button.active {
+    background: var(--brand); border-color: var(--brand); color: #fff;
+}
+
+/* -- Kanvas isi form: abu-abu muda, tiap section = card putih ----------- */
+#adminFormContainer .admin-form-body {
+    padding: 16px 20px 20px;
+    background: var(--bg);
+    display: flex; flex-direction: column; gap: 16px;
+}
+#adminFormContainer .admin-fieldset {
+    margin: 0;
+    padding: 16px 20px 4px; /* bawah 4px: tiap .form-group sudah bawa margin-bottom 16px */
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+}
+#adminFormContainer .admin-fieldset-title {
+    gap: 10px;
+    margin: 0 0 16px;
+    padding: 0 0 12px;
+    font-size: 12px; letter-spacing: .06em;
+    border-bottom: 1px solid var(--line);
+}
+#adminFormContainer .admin-fieldset-title i {
+    width: 26px; height: 26px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    background: var(--brand-tint);
+    font-size: 12px;
+    flex-shrink: 0;
+}
+#adminFormContainer #af-konten { padding-bottom: 20px; }
+
+/* -- Kotak Auto-isi dari Teks Broadcast --------------------------------- */
+#adminFormContainer .admin-broadcast-box {
+    margin: 0; padding: 0;
+    border: 1px solid #bfe8d3;
+    border-radius: 14px;
+    overflow: hidden;
+}
+#adminFormContainer .admin-broadcast-box .label {
+    padding: 12px 16px;
+    font-size: 13px;
+    min-height: 44px;
+}
+#adminFormContainer .admin-broadcast-box .label:hover { background: rgba(39,158,112,.07); }
+#adminFormContainer .admin-broadcast-box .bc-hint { font-size: 11.5px; }
+/* chevron murni CSS (ikon Font Awesome tidak ter-load di proyek ini) */
+#adminFormContainer .admin-broadcast-box .label::after {
+    content: '';
+    width: 8px; height: 8px;
+    margin: -3px 4px 0 auto;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    font-family: inherit; font-size: 0;
+    opacity: .75;
+    transform: rotate(45deg);
+    transition: transform .15s;
+}
+#adminFormContainer .admin-broadcast-box[open] .label::after {
+    margin-top: 3px;
+    transform: rotate(-135deg);
+}
+#adminFormContainer .admin-broadcast-box textarea {
+    display: block;
+    width: calc(100% - 32px);
+    margin: 2px 16px 0;
+    border-radius: 10px;
+}
+#adminFormContainer .admin-broadcast-box .bc-actions { padding: 10px 16px 14px; margin-top: 0; flex-wrap: wrap; }
+#adminFormContainer .admin-broadcast-box .bc-actions button {
+    height: 34px; padding: 0 14px; border-radius: 9px;
+}
+#adminFormContainer .admin-broadcast-box #btnParseBroadcastAI { background: var(--brand); }
+#adminFormContainer .admin-broadcast-box #btnParseBroadcastAI:hover { background: var(--brand-deep); }
+#adminFormContainer .admin-broadcast-box .bc-actions button:disabled { opacity: .6; cursor: not-allowed; }
+
+/* -- Field: label, input, select, textarea ------------------------------ */
+#adminFormContainer .form-group label {
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: var(--ink);
+}
+#adminFormContainer .form-group input,
+#adminFormContainer .form-group select,
+#adminFormContainer .form-group textarea {
+    border-color: #cfd9e5;
+    border-radius: 10px;
+    background-color: var(--surface);
+    transition: border-color .15s, box-shadow .15s, background-color .15s;
+}
+#adminFormContainer .form-group input,
+#adminFormContainer .form-group select { min-height: 42px; }
+#adminFormContainer .form-group input::placeholder,
+#adminFormContainer .form-group textarea::placeholder { color: #9aa8ba; }
+#adminFormContainer .form-group input:hover,
+#adminFormContainer .form-group select:hover,
+#adminFormContainer .form-group textarea:hover { border-color: #aebdd0; }
+#adminFormContainer .wa-autogrow { border-color: #cfd9e5; border-radius: 10px; }
+#adminFormContainer .wa-broadcast-ref { background: var(--bg); }
+
+/* Field hasil auto-isi poster (belum diperiksa). Pakai background-color --
+   bukan shorthand "background" -- supaya panah dropdown <select> tidak hilang. */
+#adminFormContainer .form-group input.cx-autofill-pending,
+#adminFormContainer .form-group select.cx-autofill-pending,
+#adminFormContainer .form-group textarea.cx-autofill-pending {
+    border-color: var(--warn);
+    background-color: var(--warn-tint);
+    box-shadow: 0 0 0 3px rgba(224,123,46,.12);
+}
+#adminFormContainer .form-group input:focus,
+#adminFormContainer .form-group select:focus,
+#adminFormContainer .form-group textarea:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px var(--brand-tint);
+}
+#adminFormContainer .form-group input.cx-field-flash,
+#adminFormContainer .form-group select.cx-field-flash { border-color: var(--danger); }
+
+/* -- (3) Informasi Program: grid 12 kolom ------------------------------- */
+#adminFormContainer #af-info {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: 20px;
+}
+#adminFormContainer #af-info .admin-fieldset-title { grid-column: 1 / -1; }
+#adminFormContainer #af-info .form-row { display: contents; }
+#adminFormContainer #af-info .form-group { grid-column: span 4; min-width: 0; }
+/* baris 1: Nama Program (lebar) + Tanggal Berangkat; baris 2: Durasi | Maskapai | Kuota Pax */
+#adminFormContainer #af-info .form-row:nth-child(2) .form-group:first-child { grid-column: span 8; }
+@media (max-width: 900px) {
+    #adminFormContainer #af-info { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #adminFormContainer #af-info .form-group,
+    #adminFormContainer #af-info .form-row:nth-child(2) .form-group:first-child { grid-column: span 1; }
+    #adminFormContainer #af-info .form-row:nth-child(2) .form-group:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) {
+    #adminFormContainer #af-info { grid-template-columns: 1fr; }
+    #adminFormContainer #af-info .form-group,
+    #adminFormContainer #af-info .form-row:nth-child(2) .form-group:first-child { grid-column: 1 / -1; }
+}
+
+/* -- Harga per kamar ---------------------------------------------------- */
+#adminFormContainer .form-row,
+#adminFormContainer .form-row-harga { column-gap: 20px; }
+#adminFormContainer .form-group input.input-rupiah {
+    font-weight: 600;
+    color: var(--brand-deep);
+}
+
+/* -- Akomodasi: hint kecocokan hotel jadi chip -------------------------- */
+#adminFormContainer .hotel-ref-hint {
+    margin-top: 6px;
+    padding: 5px 10px;
+    width: fit-content; max-width: 100%;
+    border-radius: 8px;
+    font-size: 11.5px; line-height: 1.4;
+}
+#adminFormContainer .hotel-ref-hint.ok { background: var(--success-tint); color: #1c7a55; }
+#adminFormContainer .hotel-ref-hint.suggest { background: var(--warn-tint); color: #9a4f12; }
+#adminFormContainer .hotel-ref-hint.unknown,
+#adminFormContainer .hotel-ref-hint.loading { background: var(--bg); color: var(--ink-soft); }
+
+/* Tombol "Tambah Hotel 3/4" = baris tambah putus-putus */
+#adminFormContainer #btnAddHotelExtra {
+    width: 100%; height: 40px;
+    margin-bottom: 16px;
+    justify-content: center;
+    border: 1.5px dashed #b9c6d6;
+    background: transparent;
+    color: var(--brand);
+}
+#adminFormContainer #btnAddHotelExtra:hover { border-color: var(--brand); background: var(--brand-tint); }
+
+/* -- Konten: Teks WA ---------------------------------------------------- */
+#adminFormContainer .teks-wa-label-row { margin-bottom: 8px; }
+#adminFormContainer .btn-ai-caption { height: 32px; border-radius: 9px; padding: 0 12px; }
+#adminFormContainer .wa-compare-grid { column-gap: 20px; }
+
+/* -- Footer aksi (sticky di bawah) -------------------------------------- */
+#adminFormContainer .admin-form-footer {
+    padding: 12px 20px calc(12px + var(--safe-bottom));
+    align-items: center;
+    justify-content: flex-end;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -8px 18px -12px rgba(15,33,56,.28);
+    z-index: 4;
+}
+#adminFormContainer .admin-form-footer::before {
+    content: 'Ctrl + Enter untuk simpan  ·  Esc untuk batal';
+    order: 0;
+    margin-right: auto;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+}
+#adminFormContainer .admin-form-footer button { height: 40px; padding: 0 22px; border-radius: 10px; }
+#adminFormContainer .admin-form-footer .btn-cancel { order: 1; }
+#adminFormContainer .admin-form-footer .btn-submit { order: 2; box-shadow: 0 2px 6px -2px rgba(15,33,56,.45); }
+
+/* -- Layar sempit / sentuh ---------------------------------------------- */
+@media (max-width: 720px), (hover: none) {
+    #adminFormContainer .admin-form-footer::before { display: none; }
+}
+@media (max-width: 560px) {
+    #adminFormContainer .admin-form-head,
+    #adminFormContainer .cx-autofill-note { padding-left: 14px; padding-right: 14px; }
+    #adminFormContainer .admin-form-anchor-nav { padding-left: 14px; padding-right: 14px; }
+    #adminFormContainer .admin-form-body { padding: 12px 12px 16px; gap: 12px; }
+    #adminFormContainer .admin-fieldset { padding: 14px 14px 2px; }
+    #adminFormContainer #af-konten { padding-bottom: 14px; }
+    #adminFormContainer .admin-form-footer { padding-left: 14px; padding-right: 14px; }
+    #adminFormContainer .admin-form-footer button { flex: 1; }
+}
