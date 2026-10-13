@@ -1573,14 +1573,14 @@ const REKAP_SOURCES = {
     rekap: {
         table: 'rekap_program_items', syncUrl: SYNC_REKAP_PROGRAM_URL, metricId: 'totalRekapProgram',
         title: 'Rekap Program', sub: 'Poster rekap terbaru · ketuk untuk memperbesar', icon: 'bi-images',
-        unit: 'poster', alt: 'Rekap Program',
+        unit: 'poster', alt: 'Rekap Program', ratio45: false, limit: 0,
         loading: 'Memuat rekap…', syncing: 'Menyinkron rekap dari Google Drive...',
         empty: 'Belum ada gambar di folder rekap', fail: 'Gagal memuat rekap: '
     },
     infografis: {
         table: 'infografis_items', syncUrl: SYNC_INFOGRAFIS_URL, metricId: 'totalInfografis',
         title: 'Infografis', sub: 'Infografis terbaru · ketuk untuk memperbesar', icon: 'bi-pie-chart-fill',
-        unit: 'gambar', alt: 'Infografis',
+        unit: 'gambar', alt: 'Infografis', ratio45: true, limit: 10,   // rasio 4:5, tampilkan 10 terbaru
         loading: 'Memuat infografis…', syncing: 'Menyinkron infografis dari Google Drive...',
         empty: 'Belum ada gambar di folder infografis', fail: 'Gagal memuat infografis: '
     }
@@ -1603,6 +1603,11 @@ function openRekapGallery(src) {
     if (ic) ic.className = 'bi ' + cfg.icon;
     const lbImg = document.getElementById('rekapLbImg');
     if (lbImg) lbImg.alt = cfg.alt;
+    // Infografis memakai rasio 4:5 (Rekap Program tetap 9:16) -- lihat .rekap-ratio-45 di css/style.css
+    ['rekapProgramModal', 'rekapLightbox'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('rekap-ratio-45', !!cfg.ratio45);
+    });
     document.getElementById('rekapProgramModal').classList.add('open');
     const refreshBtn = document.getElementById('btnRekapRefresh');
     if (refreshBtn) refreshBtn.style.display = canManageProgramData() ? '' : 'none';
@@ -1665,7 +1670,8 @@ async function loadRekapProgram(forceSync = false) {
         const { data, error } = await supabaseClient
             .from(cfg.table)
             .select('id, name, full_url, thumb_url, drive_updated_at')
-            .order('drive_updated_at', { ascending: false, nullsFirst: false });
+            .order('drive_updated_at', { ascending: false, nullsFirst: false })
+            .limit(cfg.limit || 1000);
         if (error) throw error;
 
         store.items = (data || [])
@@ -1705,7 +1711,8 @@ async function refreshRekapMetric() {
                 .from(REKAP_SOURCES[src].table)
                 .select('id', { count: 'exact', head: true });
             if (error) throw error;
-            setRekapMetric(src, count || 0);
+            const lim = REKAP_SOURCES[src].limit;
+            setRekapMetric(src, lim ? Math.min(count || 0, lim) : (count || 0));
         } catch (err) {
             console.warn('Hitung ' + REKAP_SOURCES[src].title + ' gagal:', err.message || err);
         }

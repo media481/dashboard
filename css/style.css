@@ -808,6 +808,11 @@
         .rekap-lb-next:hover { transform: translateY(-50%) translateX(2px); }
         .rekap-lb-arrow.empty { visibility: hidden; }
 
+        /* Infografis: poster 4:5 (1080 x 1350). Kelas ini dipasang js/app.js (openRekapGallery)
+           di #rekapProgramModal & #rekapLightbox; Rekap Program tetap 9:16. */
+        .rekap-ratio-45 .rekap-tile { aspect-ratio: 4 / 5; }
+        .rekap-ratio-45 .rekap-lb-side { --lb-cw: min(80cqh, 100cqw); aspect-ratio: 4 / 5; }
+
         @media (max-width: 900px) {
             .rekap-gallery-grid { grid-template-columns: repeat(3, 1fr); }
         }
