@@ -16706,16 +16706,49 @@ function igTaskDoneSave(set) {
     igTaskLsSet(IG_TASK_DONE_LS, { [key]: [...set] }); // hanya simpan hari ini, yang lama otomatis hilang
 }
 
-async function loadIgTasks() {
+// Status muat: kartu & modal menampilkan "Memuat…" selama data belum datang, BUKAN "Belum ada kerjaan"
+// (sebelumnya kosong dulu, lalu baru terisi setelah refresh berikutnya).
+let igTasksLoaded = false;  // true setelah data benar-benar terbaca (dari DB atau localStorage)
+let igTaskLoading = false;
+let igTaskRetryTimer = null;
+
+// Tabel ig_tasklist belum dibuat (beda dengan gagal jaringan/sementara)
+function igTaskTabelBelumAda(err) {
+    const code = String((err && err.code) || '');
+    return code === '42P01' || code === 'PGRST205' || /does not exist|schema cache/i.test((err && err.message) || '');
+}
+
+async function loadIgTasks(attempt = 0) {
+    clearTimeout(igTaskRetryTimer);
+    if (igTaskLoading && attempt === 0) return;   // sudah ada request berjalan
+    igTaskLoading = true;
+    if (!igTasksLoaded) { renderIgCalendar(); if (document.getElementById('igTaskModal')?.classList.contains('open')) igTaskRender(); }
     try {
-        const { data, error } = await supabaseClient.from('ig_tasklist').select('*').order('hari').order('urut').order('created_at');
-        if (error) throw error;
+        // Retry untuk gangguan jaringan sesaat (timeout/QUIC). Error "tabel belum ada" tidak di-retry.
+        const res = await withRetry(async () => {
+            const r = await supabaseClient.from('ig_tasklist').select('*').order('hari').order('urut').order('created_at');
+            if (r.error && !igTaskTabelBelumAda(r.error)) throw r.error;   // gangguan sementara -> di-retry
+            return r;
+        }, { retries: 2, label: 'Muat tasklist' });
+        if (res.error) throw res.error;   // tabel belum ada -> ditangani di catch (tanpa retry)
+        const data = res.data;
         igTaskDb = true;
         igTasks = data || [];
+        igTasksLoaded = true;
     } catch (err) {
-        igTaskDb = false;
-        igTasks = igTaskLsGet(IG_TASK_LS, []);
+        if (igTaskTabelBelumAda(err)) {
+            // Hanya kalau tabelnya memang belum ada -> pakai localStorage
+            igTaskDb = false;
+            igTasks = igTaskLsGet(IG_TASK_LS, []);
+            igTasksLoaded = true;
+        } else {
+            // Gagal sementara (jaringan/sesi): JANGAN dianggap "tidak ada data". Coba lagi otomatis di latar belakang.
+            console.warn('Muat tasklist gagal:', err);
+            igTasksLoaded = false;
+            if (attempt < 4) igTaskRetryTimer = setTimeout(() => loadIgTasks(attempt + 1), 4000 * (attempt + 1));
+        }
     }
+    igTaskLoading = false;
     renderIgCalendar();
     if (document.getElementById('igTaskModal')?.classList.contains('open')) igTaskRender();
 }
@@ -16726,9 +16759,11 @@ function igTaskCardHtml() {
     const selesai = hariIni.filter(t => done.has(String(t.id))).length;
     const sisa = hariIni.filter(t => !done.has(String(t.id))).map(t => t.nama);
     const total = hariIni.length;
-    const state = !total ? 'is-empty' : sisa.length ? 'is-pending' : 'is-done';
+    const memuat = !igTasksLoaded;   // data belum datang -> jangan tampilkan "Belum ada kerjaan"
+    const state = memuat ? 'is-empty' : !total ? 'is-empty' : sisa.length ? 'is-pending' : 'is-done';
     // 2 baris: (1) label kecil + hitungan, (2) NAMA kerjaan pertama yang belum selesai (ditonjolkan)
-    const baris2 = state === 'is-empty' ? '<div class="ig-task-kosong">Belum ada kerjaan hari ini</div>'
+    const baris2 = memuat ? '<div class="ig-task-kosong">Memuat…</div>'
+        : state === 'is-empty' ? '<div class="ig-task-kosong">Belum ada kerjaan hari ini</div>'
         : state === 'is-done' ? '<div class="ig-task-kosong">Semua kerjaan selesai</div>'
         : `<div class="ig-task-item" title="${escapeHtml(sisa[0])}"><span class="ig-task-txt">${escapeHtml(sisa[0])}</span>`
             + (sisa.length > 1 ? `<small class="ig-task-lagi">+${sisa.length - 1} lagi</small>` : '') + '</div>';
@@ -16744,6 +16779,7 @@ function openIgTaskModal() {
     igTaskSelHari = igTaskHariIni();
     igTaskRender();
     modal.classList.add('open');
+    if (!igTasksLoaded && !igTaskLoading) loadIgTasks();   // belum berhasil dimuat -> coba lagi sekarang
 }
 function closeIgTaskModal() {
     const modal = document.getElementById('igTaskModal');
@@ -16765,6 +16801,11 @@ function igTaskRender() {
     const done = igTaskDoneToday();
     const note = document.getElementById('igTaskNote');
     if (note) note.textContent = igTaskDb ? '' : 'Tabel ig_tasklist belum dibuat, tasklist sementara hanya tersimpan di browser ini (jalankan sql/49_tambah_ig_tasklist.sql).';
+
+    if (!igTasksLoaded) {
+        body.innerHTML = `<div class="ig-tm-empty" style="padding:40px 0;"><i class="bi ${igTaskLoading ? 'bi-hourglass-split' : 'bi-exclamation-triangle'}"></i><span>${igTaskLoading ? 'Memuat tasklist…' : 'Tasklist belum bisa dimuat, mencoba lagi…'}</span></div>`;
+        return;
+    }
 
     // ---- Tab 7 hari ----
     const tabs = IG_TASK_HARI.map((nama, i) => {
