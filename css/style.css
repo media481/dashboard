@@ -6035,3 +6035,33 @@ main { padding-bottom: 0; }
     #adminFormContainer .admin-form-footer { padding-left: 14px; padding-right: 14px; }
     #adminFormContainer .admin-form-footer button { flex: 1; }
 }
+
+/* -- [REDESIGN] Konten Tambahan: Termasuk | Tidak Termasuk berdampingan,
+      textarea auto-tinggi supaya seluruh isi langsung terlihat (tanpa scroll) -- */
+#adminFormContainer #af-konten {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 20px;
+    align-items: start;
+}
+#adminFormContainer #af-konten > .admin-fieldset-title,
+#adminFormContainer #af-konten > .form-group:nth-child(4),
+#adminFormContainer #af-konten > .form-group:nth-child(5) { grid-column: 1 / -1; }
+#adminFormContainer #af-konten > .form-group { min-width: 0; }
+
+/* field-sizing: tinggi mengikuti isi (Chrome/Edge 123+). Di browser lama
+   fallback-nya min-height yang cukup lega + bisa di-resize manual. */
+#adminFormContainer #admin_termasuk,
+#adminFormContainer #admin_tidak_termasuk,
+#adminFormContainer #admin_catatan_cx {
+    field-sizing: content;
+    min-height: 150px;
+    max-height: none;
+    overflow-y: hidden;
+    line-height: 1.55;
+}
+#adminFormContainer #admin_catatan_cx { min-height: 64px; }
+
+@media (max-width: 720px) {
+    #adminFormContainer #af-konten { grid-template-columns: 1fr; }
+}
