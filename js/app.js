@@ -12604,7 +12604,6 @@ function renderCxPanel(progId) {
     </div>`}
     ${adl.poster_data ? `
     <div class="cx-section-title" style="margin-top:20px;"><i class="bi bi-arrow-left-right"></i> Perbandingan: Data Teks vs Poster</div>
-    <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Hijau = cocok &nbsp;·&nbsp; Kuning = tanggal termasuk rentang poster (benar, tapi bukan tanggal persis sama) &nbsp;·&nbsp; Merah = tidak sesuai (di daftar Fasilitas, item berwarna merah = tidak ada padanannya di sisi lain)${posterSource==='ocr' ? ' &nbsp;·&nbsp; Hasil OCR bisa salah baca, koreksi via Input Manual.' : ''}</div>
     ${buildCompareRows()}` : ''}
     `;
 }
