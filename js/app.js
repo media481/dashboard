@@ -15137,7 +15137,9 @@ function igDmPlanCard(pl, canEdit) {
             </div>
             ${igCanvaReady ? `<label class="ig-dm-edit-label">Link Canva <em>${pl.tema_minggu ? `(berlaku untuk seluruh seri ${escapeHtml(pl.tema_minggu)})` : '(desain poster)'}</em></label>
             <input type="url" class="ig-dm-input ig-dm-canva-input" value="${escapeHtmlAttr(igCanvaUrlFor(pl))}" maxlength="500" placeholder="https://www.canva.com/design/..." autocomplete="off"
-                onblur="igPlanSetCanva('${pl.id}',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">` : ''}
+                onblur="igPlanSetCanva('${pl.id}',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">`
+                : `<label class="ig-dm-edit-label">Link Canva <em>(belum aktif)</em></label>
+            <p style="font-size:12px;color:var(--ink-soft);margin:0 0 8px;">Jalankan <b>sql/56_tambah_ig_content_plan_canva.sql</b> di Supabase SQL Editor, lalu muat ulang halaman, agar kolom link Canva muncul di sini.</p>`}
             ${igTeksGambarReady ? `<label class="ig-dm-edit-label">Teks di gambar <em>(2–4 baris pendek)</em></label>
             <textarea class="ig-dm-input ig-dm-textarea ig-dm-imgtext-input" rows="3" maxlength="700" placeholder="Contoh: Niat umroh itu muncul diam-diam."
                 onblur="igPlanUpdateField('${pl.id}','teks_gambar',this.value)">${escapeHtml(imgTxt)}</textarea>
