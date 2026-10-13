@@ -14441,6 +14441,7 @@ const IG_PILLARS = {
 const IG_STAGES = { ide: 'Ide', dikerjakan: 'Dikerjakan', siap: 'Siap posting' };
 let igPlannerColsReady = false; // true kalau sql/45_tambah_ig_content_plan_planner.sql sudah dijalankan (kolom pilar & tahap)
 let igTeksGambarReady = false;  // true kalau sql/46_tambah_ig_content_plan_pola_amiru.sql sudah dijalankan (kolom teks_gambar)
+let igCanvaReady = false;       // true kalau sql/56_tambah_ig_content_plan_canva.sql sudah dijalankan (kolom canva_url)
 let igTemaMingguReady = false;  // true kalau sql/47_tambah_ig_content_plan_tema_minggu.sql sudah dijalankan (kolom tema_minggu)
 
 function igApplyPlannerMode() {
@@ -15027,6 +15028,21 @@ function igDmPostCard(post) {
     </div>`;
 }
 
+// Link Canva: hanya http(s) yang dipakai (tolak javascript:, data:, dll). Kembalikan '' kalau tidak valid.
+function igCanvaSafeUrl(raw) {
+    let v = String(raw || '').trim();
+    if (!v) return '';
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(v)) v = 'https://' + v;   // "canva.com/design/..." -> tambah https://
+    try {
+        const u = new URL(v);
+        return (u.protocol === 'https:' || u.protocol === 'http:') ? u.href : '';
+    } catch (e) { return ''; }
+}
+function igCanvaBtnHtml(url) {
+    const href = igCanvaSafeUrl(url);
+    return href ? `<a class="ig-dm-iconbtn ig-dm-canva" href="${escapeHtmlAttr(href)}" target="_blank" rel="noopener noreferrer" title="Buka desain poster di Canva" onclick="event.stopPropagation()"><i class="bi bi-palette-fill"></i> Canva</a>` : '';
+}
+
 function igDmPlanCard(pl, canEdit) {
     const pil = IG_PILLARS[pl.pilar];
     const stage = pl.tahap || 'ide';
@@ -15042,6 +15058,7 @@ function igDmPlanCard(pl, canEdit) {
             `<button type="button" class="${k === stage ? 'active' : ''}" onclick="igPlanSetStage('${pl.id}','${k}')">${v}</button>`).join('')}</div>` : '';
     const actions = canEdit ? `<div class="ig-dm-card-actions ig-dm-plan-actions">
             <div class="ig-dm-icons">
+                ${igCanvaReady ? igCanvaBtnHtml(pl.canva_url) : ''}
                 <button type="button" class="ig-dm-iconbtn" title="Lewati (sembunyikan dari kalender)" onclick="igSkipPlanItem('${pl.id}')">Lewati</button>
                 <button type="button" class="ig-dm-iconbtn ig-dm-danger" title="Hapus" onclick="igArmDelete(this,'${pl.id}')">Hapus</button>
             </div>
@@ -15058,6 +15075,9 @@ function igDmPlanCard(pl, canEdit) {
                 ${pilOpts}
                 <input type="date" class="ig-dm-input" value="${escapeHtmlAttr(pl.tanggal)}" title="Pindah ke tanggal lain" onchange="igMovePlanToDate('${pl.id}',this.value,true)">
             </div>
+            ${igCanvaReady ? `<label class="ig-dm-edit-label">Link Canva <em>(desain poster)</em></label>
+            <input type="url" class="ig-dm-input ig-dm-canva-input" value="${escapeHtmlAttr(pl.canva_url || '')}" maxlength="500" placeholder="https://www.canva.com/design/..." autocomplete="off"
+                onblur="igPlanUpdateField('${pl.id}','canva_url',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">` : ''}
             ${igTeksGambarReady ? `<label class="ig-dm-edit-label">Teks di gambar <em>(2–4 baris pendek)</em></label>
             <textarea class="ig-dm-input ig-dm-textarea ig-dm-imgtext-input" rows="3" maxlength="700" placeholder="Contoh: Niat umroh itu muncul diam-diam."
                 onblur="igPlanUpdateField('${pl.id}','teks_gambar',this.value)">${escapeHtml(imgTxt)}</textarea>
@@ -16301,6 +16321,10 @@ async function loadIgContentPlan() {
         if (!igTemaMingguReady) {
             const probeTema = await supabaseClient.from('ig_content_plan').select('tema_minggu').limit(1);
             igTemaMingguReady = !probeTema.error;
+        }
+        if (!igCanvaReady) {
+            const probeCanva = await supabaseClient.from('ig_content_plan').select('canva_url').limit(1);
+            igCanvaReady = !probeCanva.error;
         }
         await loadIgRencanaTahun(); // rencana tema setahun (opsional, gagal diam-diam kalau tabel belum ada)
         renderIgCalendar();
@@ -18926,6 +18950,16 @@ function igSyncPlanCardDom(plan, field) {
     if (field === 'tema') {
         const t = card.querySelector('.ig-dm-card-title');
         if (t) t.textContent = plan.tema || '';
+    } else if (field === 'canva_url') {
+        const icons = card.querySelector('.ig-dm-icons');
+        if (icons) {
+            const old = icons.querySelector('.ig-dm-canva');
+            if (old) old.remove();
+            const html = igCanvaBtnHtml(plan.canva_url);
+            if (html) icons.insertAdjacentHTML('afterbegin', html);
+        }
+        const inp = card.querySelector('.ig-dm-canva-input');
+        if (inp && document.activeElement !== inp) inp.value = plan.canva_url || '';
     } else if (field === 'draft_caption') {
         const p = card.querySelector('.ig-dm-cap');
         if (p) {
@@ -18937,8 +18971,14 @@ function igSyncPlanCardDom(plan, field) {
 }
 
 async function igPlanUpdateField(planId, field, value) {
-    const allowedFields = ['tema', 'tipe_konten', 'draft_caption', 'pilar', 'tahap', 'teks_gambar'];
+    const allowedFields = ['tema', 'tipe_konten', 'draft_caption', 'pilar', 'tahap', 'teks_gambar', 'canva_url'];
     if (field === 'teks_gambar' && !igTeksGambarReady) return; // kolom belum ada (migrasi belum dijalankan)
+    if (field === 'canva_url') {
+        if (!igCanvaReady) { showToast('Jalankan sql/56_tambah_ig_content_plan_canva.sql dulu agar link Canva bisa disimpan', 'error'); return; }
+        const bersih = igCanvaSafeUrl(value);
+        if (String(value || '').trim() && !bersih) { showToast('Link Canva tidak valid (harus berupa alamat http/https)', 'error'); return; }
+        value = bersih;   // sudah dinormalisasi (mis. ditambah https://)
+    }
     if (!allowedFields.includes(field)) return;
 
     const plan = igContentPlan.find(pl => pl.id === planId);
@@ -18956,7 +18996,7 @@ async function igPlanUpdateField(planId, field, value) {
     const job = (async () => {
         try {
             const { error } = await supabaseClient.from('ig_content_plan')
-                .update({ [field]: ((field === 'pilar' || field === 'teks_gambar') && !newValue) ? null : newValue }).eq('id', planId);
+                .update({ [field]: ((field === 'pilar' || field === 'teks_gambar' || field === 'canva_url') && !newValue) ? null : newValue }).eq('id', planId);
             if (error) throw error;
 
             const indicator = document.getElementById(`igPlanSaved-${planId}`);

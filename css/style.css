@@ -4378,6 +4378,10 @@
 }
 .ig-dm-iconbtn:hover { background: var(--bg); color: var(--brand); }
 .ig-dm-danger:hover, .ig-dm-danger.is-armed { color: var(--danger); }
+/* Tombol link desain Canva di kartu rencana konten */
+a.ig-dm-iconbtn { text-decoration: none; }
+.ig-dm .ig-dm-iconbtn.ig-dm-canva { color: #7D2AE8; font-weight: 600; background: rgba(125, 42, 232, .08); margin-right: 6px; }
+.ig-dm .ig-dm-iconbtn.ig-dm-canva:hover { background: rgba(125, 42, 232, .16); color: #6a1fd0; }
 .ig-dm-danger.is-armed { background: var(--danger-tint); border-color: var(--danger); font-weight: 700; }
 
 /* Editor inline */
