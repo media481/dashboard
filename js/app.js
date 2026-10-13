@@ -3676,6 +3676,34 @@ async function renderAdminPanel() {
                 </div>
                 ` : ''}
             </div>
+
+            <div class="admin-table-card" id="adminExpiredCard" style="display:none;margin-top:18px;">
+                <div class="admin-table-head">
+                    <h4><i class="bi bi-clock-history" style="color:var(--ink-soft);"></i> Program Expired</h4>
+                    <span class="count" id="adminExpiredCount">0 program</span>
+                </div>
+                <div class="admin-table-wrap">
+                    <table class="admin-program-table">
+                        <thead>
+                            <tr>
+                                <th>Nama Program</th>
+                                <th>Tanggal Berangkat</th>
+                                <th>Durasi</th>
+                                <th class="col-harga">Quad</th>
+                                <th class="col-harga">Triple</th>
+                                <th class="col-harga">Double</th>
+                                <th>Maskapai</th>
+                                <th>Hotel Makkah</th>
+                                <th>Hotel Madinah</th>
+                                <th id="thAdminExpHotel3" style="display:none;">Hotel 3</th>
+                                <th id="thAdminExpHotel4" style="display:none;">Hotel 4</th>
+                                ${canEditData ? `<th style="text-align:right;">Aksi</th>` : ''}
+                            </tr>
+                        </thead>
+                        <tbody id="adminExpiredTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
             </div>
 
             <div class="admin-subtab-panel" id="adminSubTab-pembayaran" style="display:none;">
@@ -4093,7 +4121,15 @@ function renderAdminTable() {
     if (!tbody) return;
     const canEditData = currentRole === 'admin' || currentRole === 'user';
     const countEl = document.querySelector('.admin-table-head .count');
-    if (countEl) countEl.textContent = `${adminPrograms.length} program`;
+    // Program expired (tanggal berangkat sudah lewat) ditampilkan di tabel terpisah di bawah tabel utama
+    const isAdminProgramExpired = (p) => {
+        const d = p.tgl ? parseDateFromString(p.tgl) : null;
+        return !!(d && d < new Date());
+    };
+    const expiredPrograms = adminPrograms.filter(isAdminProgramExpired)
+        .sort((a, b) => parseDateFromString(b.tgl) - parseDateFromString(a.tgl)); // yang baru lewat di atas
+    const activePrograms = adminPrograms.filter(p => !isAdminProgramExpired(p));
+    if (countEl) countEl.textContent = `${activePrograms.length} program`;
 
     // Dihitung di atas (sebelum banner-banner) karena dipakai baik oleh
     // banner "Duplikat" di bawah maupun badge per-baris nanti di bawahnya.
@@ -4155,9 +4191,8 @@ function renderAdminTable() {
     // yang memakainya, supaya tabel tidak melebar tanpa guna untuk program biasa.
     const showHotel3 = adminPrograms.some(p => p.hotel_3);
     const showHotel4 = adminPrograms.some(p => p.hotel_4);
-    const th3 = document.getElementById('thAdminHotel3'), th4 = document.getElementById('thAdminHotel4');
-    if (th3) th3.style.display = showHotel3 ? '' : 'none';
-    if (th4) th4.style.display = showHotel4 ? '' : 'none';
+    ['thAdminHotel3', 'thAdminExpHotel3'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = showHotel3 ? '' : 'none'; });
+    ['thAdminHotel4', 'thAdminExpHotel4'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = showHotel4 ? '' : 'none'; });
     const extraCols = (showHotel3 ? 1 : 0) + (showHotel4 ? 1 : 0);
     const hotelExtraCell = (p, n) => {
         const nama = hotelNamaSingkat(p[`hotel_${n}`]);
@@ -4166,11 +4201,14 @@ function renderAdminTable() {
         return `<td>${kota ? `<span style="font-size:10.5px;opacity:.65;display:block;">${escapeHtml(kota)}</span>` : ''}${escapeHtml(nama)}</td>`;
     };
 
+    const expiredCard = document.getElementById('adminExpiredCard');
+    const expiredBody = document.getElementById('adminExpiredTableBody');
     if (!adminPrograms.length) {
         tbody.innerHTML = `<tr><td colspan="${(canEditData ? 10 : 9) + extraCols}" style="text-align:center;padding:30px;color:var(--ink-soft);">Belum ada program.${canEditData ? ' Klik "Tambah Program" untuk mulai.' : ''}</td></tr>`;
+        if (expiredCard) expiredCard.style.display = 'none';
         return;
     }
-    tbody.innerHTML = adminPrograms.map(p => {
+    const buildAdminRow = (p) => {
         const pDate = p.tgl ? parseDateFromString(p.tgl) : null;
         const isExpiredRow = !!(pDate && pDate < new Date());
         const expiredBadge = isExpiredRow
@@ -4251,7 +4289,16 @@ function renderAdminTable() {
             ` : ''}
         </tr>
     `;
-    }).join('');
+    };
+    tbody.innerHTML = activePrograms.length
+        ? activePrograms.map(buildAdminRow).join('')
+        : `<tr><td colspan="${(canEditData ? 10 : 9) + extraCols}" style="text-align:center;padding:30px;color:var(--ink-soft);">Tidak ada program aktif. Semua program sudah expired (lihat tabel Program Expired di bawah).</td></tr>`;
+    if (expiredCard && expiredBody) {
+        expiredCard.style.display = expiredPrograms.length ? '' : 'none';
+        const expCountEl = document.getElementById('adminExpiredCount');
+        if (expCountEl) expCountEl.textContent = `${expiredPrograms.length} program`;
+        expiredBody.innerHTML = expiredPrograms.map(buildAdminRow).join('');
+    }
 }
 
 // ============================================================
