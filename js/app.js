@@ -5466,6 +5466,13 @@ async function parseBroadcastTextAI() {
         const data = await response.json();
         const f = data.fields;
         if (!f) throw new Error('Tidak ada hasil dari model.');
+        // Standarisasi ejaan "Umrah" -> "Umroh" di SEMUA field hasil AI (nama, termasuk,
+        // tidak termasuk, catatan, dll), sama seperti tombol "Isi Otomatis" -- model
+        // kadang tetap menulis "Umrah" mengikuti teks broadcast asli.
+        Object.keys(f).forEach(k => {
+            if (typeof f[k] === 'string') f[k] = normalizeUmrohSpelling(f[k]);
+            else if (Array.isArray(f[k])) f[k] = f[k].map(x => typeof x === 'string' ? normalizeUmrohSpelling(x) : x);
+        });
 
         // Isi form -- sama persis dengan bagian akhir parseBroadcastText(),
         // cuma sumber datanya dari field hasil ekstraksi AI (nama field
