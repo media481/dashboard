@@ -778,6 +778,9 @@ function buildRawConceptFromPosterData() {
     if (pd.maskapai) lines.push(`*PESAWAT*\n${pd.maskapai}`);
     if (pd.hotel_madinah) lines.push(`*HOTEL MADINAH*\n${pd.hotel_madinah}`);
     if (pd.hotel_makkah) lines.push(`*HOTEL MEKAH*\n${pd.hotel_makkah}`);
+    [3, 4].forEach(n => {
+        if (pd[`hotel_${n}`]) lines.push(`*HOTEL ${(pd[`hotel_${n}_kota`] || String(n)).toUpperCase()}*\n${pd[`hotel_${n}`]}`);
+    });
     const hargaLines = [];
     if (pd.harga_quint) hargaLines.push(`${pd.harga_quint} Quint`);
     if (pd.harga_quad) hargaLines.push(`${pd.harga_quad} Quad`);
@@ -3560,6 +3563,8 @@ async function renderAdminPanel() {
                                 <th>Maskapai</th>
                                 <th>Hotel Makkah</th>
                                 <th>Hotel Madinah</th>
+                                <th id="thAdminHotel3" style="display:none;">Hotel 3</th>
+                                <th id="thAdminHotel4" style="display:none;">Hotel 4</th>
                                 ${canEditData ? `<th style="text-align:right;">Aksi</th>` : ''}
                             </tr>
                         </thead>
@@ -4052,8 +4057,23 @@ function renderAdminTable() {
             : '';
     }
 
+    // Kolom Hotel 3 / Hotel 4 hanya ditampilkan kalau ada minimal satu program
+    // yang memakainya, supaya tabel tidak melebar tanpa guna untuk program biasa.
+    const showHotel3 = adminPrograms.some(p => p.hotel_3);
+    const showHotel4 = adminPrograms.some(p => p.hotel_4);
+    const th3 = document.getElementById('thAdminHotel3'), th4 = document.getElementById('thAdminHotel4');
+    if (th3) th3.style.display = showHotel3 ? '' : 'none';
+    if (th4) th4.style.display = showHotel4 ? '' : 'none';
+    const extraCols = (showHotel3 ? 1 : 0) + (showHotel4 ? 1 : 0);
+    const hotelExtraCell = (p, n) => {
+        const nama = hotelNamaSingkat(p[`hotel_${n}`]);
+        if (!nama) return '<td>-</td>';
+        const kota = p[`hotel_${n}_kota`];
+        return `<td>${kota ? `<span style="font-size:10.5px;opacity:.65;display:block;">${escapeHtml(kota)}</span>` : ''}${escapeHtml(nama)}</td>`;
+    };
+
     if (!adminPrograms.length) {
-        tbody.innerHTML = `<tr><td colspan="${canEditData ? 10 : 9}" style="text-align:center;padding:30px;color:var(--ink-soft);">Belum ada program.${canEditData ? ' Klik "Tambah Program" untuk mulai.' : ''}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${(canEditData ? 10 : 9) + extraCols}" style="text-align:center;padding:30px;color:var(--ink-soft);">Belum ada program.${canEditData ? ' Klik "Tambah Program" untuk mulai.' : ''}</td></tr>`;
         return;
     }
     tbody.innerHTML = adminPrograms.map(p => {
@@ -4125,6 +4145,8 @@ function renderAdminTable() {
             <td>${escapeHtml(p.maskapai||'-')}</td>
             <td>${escapeHtml(hotelNamaSingkat(p.hotel_makkah)||'-')}</td>
             <td>${escapeHtml(hotelNamaSingkat(p.hotel_madinah)||'-')}</td>
+            ${showHotel3 ? hotelExtraCell(p, 3) : ''}
+            ${showHotel4 ? hotelExtraCell(p, 4) : ''}
             ${canEditData ? `
             <td style="text-align:right;">
                 <div class="action-btns" style="justify-content:flex-end;">
@@ -11631,6 +11653,7 @@ const CX_AUTOFILL_FIELD_TO_INPUT = {
     nama: 'admin_nama', tgl: 'admin_tgl', durasi: 'admin_durasi', maskapai: 'admin_maskapai',
     harga_quint: 'admin_harga_quint', harga_quad: 'admin_harga_quad', harga_triple: 'admin_harga_triple',
     harga_double: 'admin_harga_double', hotel_makkah: 'admin_hotel_makkah', hotel_madinah: 'admin_hotel_madinah',
+    hotel_3: 'admin_hotel_3', hotel_4: 'admin_hotel_4',
     // [CROSSCHECK] Fasilitas Termasuk/Tidak Termasuk/Catatan -- dibaca juga dari
     // poster (lihat EXTRACTION_PROMPT di scan-poster-ocr), bukan cuma dari parsing
     // teks broadcast, supaya bisa ikut dibandingkan & auto-fill kalau masih kosong.
@@ -11643,7 +11666,7 @@ const CX_AUTOFILL_FIELD_TO_INPUT = {
 const CX_FIELD_TO_SECTION = {
     nama: 'af-info', tgl: 'af-info', durasi: 'af-info', maskapai: 'af-info',
     harga_quint: 'af-harga', harga_quad: 'af-harga', harga_triple: 'af-harga', harga_double: 'af-harga',
-    hotel_makkah: 'af-akomodasi', hotel_madinah: 'af-akomodasi',
+    hotel_makkah: 'af-akomodasi', hotel_madinah: 'af-akomodasi', hotel_3: 'af-akomodasi', hotel_4: 'af-akomodasi',
     termasuk: 'af-konten', tidak_termasuk: 'af-konten', catatan_cx: 'af-konten',
 };
 
@@ -11653,6 +11676,11 @@ const CX_FIELD_TO_SECTION = {
 // field mana yang dimaksud (tanpa admin perlu cari-cari manual di form).
 async function cxGoToEditField(progId, field) {
     await editAdminProgram(progId);
+    // Baris Hotel 3/4 tersembunyi kalau belum ada isinya -- munculkan dulu supaya bisa difokuskan.
+    if (field === 'hotel_3' || field === 'hotel_4') {
+        setAdminHotelExtraVisible(3, true);
+        if (field === 'hotel_4') setAdminHotelExtraVisible(4, true);
+    }
     const sectionId = CX_FIELD_TO_SECTION[field];
     if (sectionId) scrollToAdminSection(sectionId);
     setTimeout(() => {
@@ -11818,6 +11846,7 @@ async function autoScanPosterForProgram(progId) {
             ['harga_quad', 'adl', 'Harga Quad'], ['harga_triple', 'adl', 'Harga Triple'],
             ['harga_double', 'adl', 'Harga Double'], ['hotel_makkah', 'adl', 'Hotel Makkah'],
             ['hotel_madinah', 'adl', 'Hotel Madinah'],
+            ['hotel_3', 'adl', 'Hotel 3'], ['hotel_4', 'adl', 'Hotel 4'],
             // [CROSSCHECK] where:'adl' karena termasuk/tidak_termasuk/catatan_cx disimpan
             // langsung di admin_data_lengkap (bukan kolom top-level tabel programs) --
             // sama seperti hotel_makkah/harga_quad dkk di atas.
@@ -11833,6 +11862,13 @@ async function autoScanPosterForProgram(progId) {
             filledLabels.push(label);
         });
         Object.assign(adl, adlFilled);
+        // Kota Hotel 3/4 ikut terisi dari poster kalau hotelnya baru saja terisi otomatis.
+        ['hotel_3', 'hotel_4'].forEach(h => {
+            if (adlFilled[h] && !adl[h + '_kota']) {
+                const k = normalizeHotelKota(parsed[h + '_kota']);
+                if (k) adl[h + '_kota'] = k;
+            }
+        });
 
         // [AUTO-FILL] Catat field mana saja yang barusan terisi otomatis di
         // ronde ini, supaya bisa ditandai kuning "belum dikonfirmasi" di form
@@ -11854,6 +11890,16 @@ async function autoScanPosterForProgram(progId) {
                 const inputId = CX_AUTOFILL_FIELD_TO_INPUT[field];
                 const el = inputId && document.getElementById(inputId);
                 if (el) el.value = val;
+            });
+            // Hotel 3/4 yang baru terisi dari poster: munculkan barisnya + isi kota & hint.
+            ['hotel_3', 'hotel_4'].forEach(h => {
+                if (!adlFilled[h]) return;
+                const n = h === 'hotel_3' ? 3 : 4;
+                const kEl = document.getElementById(`admin_hotel_${n}_kota`);
+                if (kEl && adl[h + '_kota']) kEl.value = adl[h + '_kota'];
+                if (n === 4) setAdminHotelExtraVisible(3, true);
+                setAdminHotelExtraVisible(n, true);
+                ensureHotelReferenceLoaded().then(() => updateAdminHotelExtraHint(n));
             });
             ['admin_harga_quint', 'admin_harga_quad', 'admin_harga_triple', 'admin_harga_double'].forEach(id => {
                 formatRupiahInput(document.getElementById(id));
@@ -12174,7 +12220,7 @@ function cxValuesMatch(field, a, b) {
         if (!na || !nb) return false;
         return na === nb || na.includes(nb) || nb.includes(na);
     }
-    if (field === 'hotel_makkah' || field === 'hotel_madinah') {
+    if (field === 'hotel_makkah' || field === 'hotel_madinah' || field === 'hotel_3' || field === 'hotel_4') {
         return cxHotelValuesMatch(a, b);
     }
     if (field === 'termasuk' || field === 'tidak_termasuk') {
@@ -12226,6 +12272,7 @@ function cxCountMismatchForProgram(prog) {
         ['harga_quint', legacyQuintIsQuad ? null : prog.harga_quint, pd.harga_quint],
         ['harga_quad', adl.harga_quad || prog.harga_quint, pd.harga_quad], ['harga_triple', adl.harga_triple, pd.harga_triple],
         ['harga_double', adl.harga_double, pd.harga_double], ['hotel_makkah', adl.hotel_makkah, pd.hotel_makkah], ['hotel_madinah', adl.hotel_madinah, pd.hotel_madinah],
+        ['hotel_3', adl.hotel_3, pd.hotel_3], ['hotel_4', adl.hotel_4, pd.hotel_4],
         ['termasuk', adl.termasuk, pd.termasuk], ['tidak_termasuk', adl.tidak_termasuk, pd.tidak_termasuk], ['catatan_cx', adl.catatan_cx, pd.catatan_cx],
     ];
     return pairs.filter(([field, a, b]) => a && b && !cxValuesMatch(field, a, b)).length;
@@ -12346,9 +12393,15 @@ function renderCxPanel(progId) {
     // yang "Beda" (mismatch): kalau salah satu sisi TIDAK dikenali sama sekali,
     // itu petunjuk kuat sisi itu salah baca OCR / typo, bukan cuma beda versi.
     const cxHotelRefLine = (field, plainVal, posterVal) => {
-        if (field !== 'hotel_makkah' && field !== 'hotel_madinah') return '';
+        if (field !== 'hotel_makkah' && field !== 'hotel_madinah' && field !== 'hotel_3' && field !== 'hotel_4') return '';
         if (!hotelSaudiLoaded || !hotelSaudiList.length) return '';
-        const cityKeyword = field === 'hotel_makkah' ? 'makkah' : 'madinah';
+        // Hotel 3/4: referensi hanya ada untuk Makkah & Madinah, ikut kota yang dipilih di form.
+        let cityKeyword = field === 'hotel_makkah' ? 'makkah' : 'madinah';
+        if (field === 'hotel_3' || field === 'hotel_4') {
+            const k = String(adl[field + '_kota'] || '').toLowerCase();
+            if (k !== 'makkah' && k !== 'madinah') return '';
+            cityKeyword = k;
+        }
         const describe = (val) => {
             if (!val) return null;
             const m = findBestHotelMatch(val, cityKeyword);
@@ -12381,6 +12434,8 @@ function renderCxPanel(progId) {
             { label: 'Harga Double',  plain: adl.harga_double, poster: null, field: 'harga_double' },
             { label: 'Hotel Makkah',  plain: adl.hotel_makkah, poster: null, field: 'hotel_makkah' },
             { label: 'Hotel Madinah', plain: adl.hotel_madinah,poster: null, field: 'hotel_madinah' },
+            { label: 'Hotel 3', plain: adl.hotel_3, poster: null, field: 'hotel_3' },
+            { label: 'Hotel 4', plain: adl.hotel_4, poster: null, field: 'hotel_4' },
             // [CROSSCHECK] Fasilitas Termasuk/Tidak Termasuk/Catatan -- sebelumnya
             // cuma diisi dari teks broadcast & tidak pernah dibandingkan ke poster.
             { label: 'Fasilitas Termasuk', plain: adl.termasuk,       poster: null, field: 'termasuk' },
@@ -12536,6 +12591,8 @@ function openCxEditModal(progId) {
         { key: 'harga_double', label: 'Harga Double', val: pd.harga_double || adl.harga_double || '' },
         { key: 'hotel_makkah', label: 'Hotel Makkah', val: pd.hotel_makkah || adl.hotel_makkah || '' },
         { key: 'hotel_madinah', label: 'Hotel Madinah', val: pd.hotel_madinah || adl.hotel_madinah || '' },
+        { key: 'hotel_3', label: 'Hotel 3', val: pd.hotel_3 || adl.hotel_3 || '' },
+        { key: 'hotel_4', label: 'Hotel 4', val: pd.hotel_4 || adl.hotel_4 || '' },
         // [CROSSCHECK] Fasilitas Termasuk/Tidak Termasuk/Catatan -- multiline, jadi
         // ditandai isList supaya dirender sbg textarea (bukan input satu baris)
         // dan disimpan dalam bentuk yang sama dengan sisi teks (\n per item).
@@ -12574,7 +12631,7 @@ async function saveCxPosterData(progId) {
     const prog = adminPrograms.find(p => String(p.id) === String(progId));
     if (!prog) return;
     const adl = (() => { try { return prog.admin_data_lengkap ? (typeof prog.admin_data_lengkap === 'string' ? JSON.parse(prog.admin_data_lengkap) : prog.admin_data_lengkap) : {}; } catch(e) { return {}; } })();
-    const keys = ['nama','tgl','durasi','maskapai','harga_quint','harga_quad','harga_triple','harga_double','hotel_makkah','hotel_madinah','termasuk','tidak_termasuk','catatan_cx'];
+    const keys = ['nama','tgl','durasi','maskapai','harga_quint','harga_quad','harga_triple','harga_double','hotel_makkah','hotel_madinah','hotel_3','hotel_4','termasuk','tidak_termasuk','catatan_cx'];
     const pd = {};
     keys.forEach(k => { const el = document.getElementById('cxp_' + k); if (el && el.value.trim()) pd[k] = el.value.trim(); });
     adl.poster_data = pd;

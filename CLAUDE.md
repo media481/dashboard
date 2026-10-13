@@ -254,7 +254,16 @@ satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
   selama belum, parse AI memakai pembaca regex yang sama sebagai cadangan.
 - Hint ejaan vs data referensi hanya untuk kota Makkah/Madinah (tabel `hotel_saudi_arabia` cuma berisi dua kota itu).
 - Ikut terpakai di `generateAutoWAText()`, `buildRawConceptFromAdminForm()`, dan `buildRawConceptFromProgramRow()`.
-  BELUM dipakai di: kolom tabel Edit Program, modal detail, Crosscheck poster, Export/Import.
+- Tabel Edit Program: kolom Hotel 3 / Hotel 4 hanya muncul kalau minimal satu program memakainya
+  (`renderAdminTable()`, header `#thAdminHotel3`/`#thAdminHotel4`).
+- Modal detail memakai `teks_wa` (atau `generateAutoWAText()` kalau kosong), jadi Hotel 3/4 ikut otomatis.
+- Crosscheck poster: `hotel_3`/`hotel_4` dibandingkan seperti Hotel Makkah/Madinah (`cxValuesMatch`,
+  `cxCountMismatchForProgram`, `buildCompareRows`, auto-fill, modal Input Data Poster). Edge Function
+  `scan-poster-ocr` membaca `hotel_3`, `hotel_3_kota`, `hotel_4`, `hotel_4_kota` dari poster
+  (**deploy ulang `scan-poster-ocr`** supaya aktif; tanpa itu Crosscheck hanya membandingkan kalau
+  diisi manual lewat "Input Data Poster").
+- Export/Import: backup JSON membawa kolom `admin_data_lengkap` apa adanya, jadi Hotel 3/4 otomatis ikut
+  ter-backup dan ter-restore (tidak ada kode khusus).
 
 ## Kalau menambah/mengubah fitur
 

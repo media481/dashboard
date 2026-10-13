@@ -7,8 +7,13 @@
 //   POST body: { imageUrl }
 //   Response : { fields: { nama, tgl, durasi, maskapai, harga_quint,
 //                           harga_quad, harga_triple, harga_double,
-//                           hotel_makkah, hotel_madinah, termasuk (array),
-//                           tidak_termasuk (array), catatan_cx }, raw_text }
+//                           hotel_makkah, hotel_madinah,
+//                           hotel_3, hotel_3_kota, hotel_4, hotel_4_kota,
+//                           termasuk (array), tidak_termasuk (array),
+//                           catatan_cx }, raw_text }
+//   [HOTEL 3 & 4] hotel_3/hotel_4 = hotel tambahan di poster selain Hotel Makkah &
+//   Hotel Madinah utama (mis. hotel Makkah kedua, hotel Jeddah/transit), urut sesuai
+//   poster; *_kota = nama kota hotel itu. Dipakai modul Crosscheck di js/app.js.
 //   [CROSSCHECK] termasuk/tidak_termasuk/catatan_cx ditambahkan supaya modul
 //   Crosscheck bisa memvalidasi daftar fasilitas & disclaimer poster juga --
 //   sebelumnya data ini cuma diisi dari parsing teks broadcast (parseBroadcastText
@@ -123,6 +128,10 @@ dengan struktur persis seperti ini:
     "harga_double": "",
     "hotel_makkah": "",
     "hotel_madinah": "",
+    "hotel_3": "",
+    "hotel_3_kota": "",
+    "hotel_4": "",
+    "hotel_4_kota": "",
     "termasuk": [],
     "tidak_termasuk": [],
     "catatan_cx": ""
@@ -136,7 +145,9 @@ Ketentuan:
 - "durasi": jumlah hari, format "X Hari".
 - "maskapai": nama maskapai penerbangan.
 - "harga_*": harga per tipe kamar, format "Rp 00.000.000". Kosongkan jika tipe kamar itu tidak tercantum.
-- "hotel_makkah" / "hotel_madinah": nama hotel di kota tersebut.
+- "hotel_makkah" / "hotel_madinah": nama hotel di kota tersebut. Kalau ada lebih dari satu hotel di kota yang sama, isi dengan hotel yang pertama disebut di poster.
+- "hotel_3" / "hotel_4": hotel TAMBAHAN di poster di luar dua hotel di atas, berurutan sesuai poster (mis. hotel Makkah kedua, atau hotel di Jeddah/Thaif/transit). Kosongkan kalau poster hanya mencantumkan satu hotel Makkah dan satu hotel Madinah.
+- "hotel_3_kota" / "hotel_4_kota": kota hotel tambahan itu, salah satu dari "Makkah", "Madinah", "Jeddah", "Thaif", "Transit". Kosongkan kalau hotelnya kosong atau kotanya tidak jelas.
 - "termasuk": daftar fasilitas yang tertulis sudah termasuk/didapat (mis. daftar dengan centang/bullet di poster), satu item singkat per elemen array apa adanya. Array kosong kalau poster tidak mencantumkan daftar seperti ini.
 - "tidak_termasuk": daftar hal yang TIDAK termasuk/harus dibayar terpisah, kalau dicantumkan di poster. Array kosong kalau tidak ada.
 - "catatan_cx": catatan kecil/disclaimer di poster (mis. harga atau jadwal sewaktu-waktu bisa berubah, mengikuti kurs, ketentuan Saudi/maskapai, dll). Kosongkan kalau tidak ada.
