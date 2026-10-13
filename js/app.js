@@ -12083,10 +12083,6 @@ function cxCompareTgl(a, b) {
     // (mis. beda format penulisan) -> tetap dianggap cocok penuh.
     if (setA.type === 'single' && setB.type === 'single' && cxSameDay(setA.date, setB.date)) return 'match';
 
-// Saklar baris hint "Referensi Hotel Saudi Arabia — Teks: mirip ... / Poster: mirip ..."
-// di panel Crosscheck. Dinonaktifkan (false). Ubah ke true untuk menyalakan lagi.
-const CX_HOTEL_REF_HINT_ENABLED = false;
-
     return 'mismatch';
 }
 function cxNormalizeMaskapai(str) {
@@ -12097,6 +12093,10 @@ function cxExtractWalkMinutes(str) {
     const m = String(str || '').match(/(\d+)\s*menit/i);
     return m ? m[1] : null;
 }
+// Saklar baris hint "Referensi Hotel Saudi Arabia — Teks: mirip ... / Poster: mirip ..."
+// di panel Crosscheck. Dinonaktifkan (false). Ubah ke true untuk menyalakan lagi.
+const CX_HOTEL_REF_HINT_ENABLED = false;
+
 // Nama hotel di field manual sering lebih detail dari poster, mis.
 //   Manual : "Maysan Al Maqam / Setaraf (6 malam, 500m 7 menit jalan kaki)"
 //   Poster : "Maysan Al Maqam 7 menit"
