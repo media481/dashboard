@@ -2270,9 +2270,41 @@ function handleSearchInput(e) {
 // ============================================================
 // 11. DETAIL MODAL
 // ============================================================
+// Urutan program untuk navigasi panah kiri/kanan di modal Detail Program. Diambil dari
+// tombol "Detail" yang SEDANG TAMPIL di tabel (tab Program Umroh atau Unggulan), jadi
+// urutannya selalu sama dengan yang dilihat user (sudah terfilter/terurut). Disimpan
+// sekali saat modal dibuka, lalu dipakai selama pindah program di dalam modal.
+let pdNavIds = [];
+function pdCollectVisibleProgramIds() {
+    const ids = [];
+    document.querySelectorAll('button[onclick^="openDetailModal("]').forEach(btn => {
+        if (btn.closest('#programDetailModal')) return;
+        if (!btn.getClientRects().length) return; // baris/tab yang tersembunyi dilewati
+        const m = /openDetailModal\('([^']*)'\)/.exec(btn.getAttribute('onclick') || '');
+        if (m && !ids.includes(m[1])) ids.push(m[1]);
+    });
+    return ids;
+}
+function navigateProgramDetail(step) {
+    const modal = document.getElementById('programDetailModal');
+    if (!modal || !modal.classList.contains('open')) return;
+    const cur = String(modal.dataset.programId || '');
+    const idx = pdNavIds.indexOf(cur);
+    if (idx === -1) return;
+    const next = pdNavIds[idx + step];
+    if (next === undefined) return; // sudah di ujung daftar
+    openDetailModal(next);
+}
+
 function openDetailModal(programId) {
     const program = dataUmroh.find(p => String(p.id) === String(programId));
     if (!program) { showToast('Program tidak ditemukan', 'error'); return; }
+    const detailModalEl = document.getElementById('programDetailModal');
+    if (!detailModalEl.classList.contains('open')) {
+        pdNavIds = pdCollectVisibleProgramIds();
+        if (!pdNavIds.includes(String(program.id))) pdNavIds = [String(program.id)];
+    }
+    detailModalEl.dataset.programId = String(program.id);
     const waText = program.teks_wa || generateAutoWAText(program);
     const hargaChips = [];
     if (program.harga_quad || program.harga_quint) hargaChips.push({ label: 'Quad', nilai: formatRupiah(program.harga_quad || program.harga_quint) });
@@ -2338,8 +2370,21 @@ function renderProgramDetailPoster(program) {
     img.onerror = () => { loading.style.display = 'none'; err.style.display = 'flex'; };
     img.src = resolveImageUrl(rawUrl);
 }
+// Panah kiri/kanan di keyboard = program sebelumnya/berikutnya saat modal Detail Program terbuka.
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.defaultPrevented) return;
+    const modal = document.getElementById('programDetailModal');
+    if (!modal || !modal.classList.contains('open')) return;
+    // Jangan ganggu pengetikan/kursor di kolom isian (textarea teks WA bersifat readonly, jadi tetap boleh)
+    const t = e.target;
+    if (t && (t.isContentEditable || (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && !t.readOnly))) return;
+    e.preventDefault();
+    navigateProgramDetail(e.key === 'ArrowRight' ? 1 : -1);
+});
 function closeProgramDetailModal() {
     document.getElementById('programDetailModal').classList.remove('open');
+    pdNavIds = [];
     // Kosongkan gambar supaya tidak ada poster program sebelumnya yang sempat berkedip
     const img = document.getElementById('pd_poster_img');
     if (img) { img.onload = img.onerror = null; img.removeAttribute('src'); img.classList.remove('loaded'); }
