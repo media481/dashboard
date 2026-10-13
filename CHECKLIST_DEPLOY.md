@@ -147,9 +147,50 @@ supabase functions deploy scan-poster-ocr --no-verify-jwt
 # 4. lokal test
 npx serve .
 # lalu clear sessionStorage di browser, refresh, login.
+
+# 5. deploy frontend (pastikan .assetsignore ada di root) -> lihat bagian 8
+npx wrangler deploy
 ```
 
 ---
+## 8. DEPLOY FRONTEND KE CLOUDFLARE (Workers Static Assets)
+
+Frontend = file statis di root repo (`index.html`, `js/`, `css/`, dst.), dilayani
+Cloudflare lewat `wrangler.jsonc` (`"assets": {"directory": "."}`).
+**Tidak ada build step.**
+
+### 8a. Pengaturan di Cloudflare (Workers & Pages → project `dashboard` → Settings → Builds)
+- Build command: *(kosongkan)*
+- Deploy command: `npx wrangler deploy`
+- Root directory: `/`
+
+### 8b. `.assetsignore` WAJIB ada di root repo
+Karena `directory` = `.`, tanpa `.assetsignore` seluruh isi repo ikut terpublish
+(`sql/`, `supabase/`, `scheduler/`, script setup, semua `.md`). Ingat: yang dipakai
+untuk aset adalah **`.assetsignore`**, bukan `.wranglerignore`.
+Kalau menambah folder/file internal baru (bukan bagian web), tambahkan juga ke
+`.assetsignore`. Kalau menambah file web baru di folder yang sudah di-ignore, keluarkan
+dulu dari daftar.
+
+> Upload lewat dashboard GitHub: file berawalan titik disembunyikan oleh file picker.
+> Buat langsung di GitHub: **Add file → Create new file** → nama `.assetsignore`.
+
+### 8c. Troubleshooting
+| Gejala di build log | Penyebab | Solusi |
+|---|---|---|
+| `Cloning repository...` lalu `Failed: error occurred while fetching repository` (menggantung ~10 menit) | Gagal di sisi Cloudflare↔GitHub, **bukan** kode. Biasanya integrasi GitHub bermasalah atau history repo terlalu besar | Retry; Disconnect lalu Connect ulang repo di Settings → Builds; cek akses app *Cloudflare Workers & Pages* di GitHub (Settings → Applications); cek `git count-objects -vH` (kalau `size-pack` ratusan MB, bersihkan history) |
+| Clone terus gagal | — | Deploy manual: `npx wrangler login` lalu `npx wrangler deploy` dari root repo |
+
+### 8d. Worker terpisah (IG scheduler)
+`scheduler/` adalah Worker cron tersendiri, **bukan** bagian deploy dashboard:
+```bash
+npx wrangler deploy --config scheduler/wrangler.toml
+npx wrangler secret put SUPABASE_FUNCTIONS_URL --config scheduler/wrangler.toml
+npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --config scheduler/wrangler.toml
+```
+
+---
+
 *Dibuat dari review `dashboard-main-fixed (3).zip`. File SQL tunggal sudah
 menggabungkan 00_setup + seluruh migrasi tambah_* + fix_bug6 + hardening_rls,
 dengan RLS final langsung tertanam (tidak ada urutan file).*

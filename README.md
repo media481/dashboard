@@ -63,3 +63,11 @@ tambahan selain deploy + secret di atas.
 
 `send-telegram` URL-nya perlu ditempel manual di form **Pengaturan Telegram**
 di aplikasi (field "Edge Function URL").
+
+## Deploy frontend ke Cloudflare
+
+Frontend adalah file statis (tanpa build step), dilayani lewat `wrangler.jsonc`.
+Deploy command: `npx wrangler deploy`. File `.assetsignore` di root **wajib ada** supaya
+`sql/`, `supabase/`, `scheduler/`, script setup, dan file `.md` tidak ikut terpublish.
+Detail & troubleshooting (termasuk error "fetching repository"): lihat
+`CHECKLIST_DEPLOY.md` bagian 8.
