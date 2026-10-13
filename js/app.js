@@ -1546,8 +1546,8 @@ window.closeInfografisPage = closeInfografisPage;
 window.loadInfografisGallery = loadInfografisGallery;
 
 // ============================================================
-// 5d. REKAP PROGRAM — kartu di dashboard (menggantikan kartu
-// "Unggulan"). Klik kartu -> galeri poster rekap 1080 x 1920 dari
+// 5d. REKAP PROGRAM & INFOGRAFIS — dua kartu di dashboard (Infografis
+// menggantikan kartu "Jadwal Tamu"; Rekap Program menggantikan "Unggulan"). Klik kartu -> galeri poster rekap 1080 x 1920 dari
 // folder Google Drive KHUSUS rekap (beda folder dengan Infografis).
 // Metodenya sama dengan Infografis: Apps Script -> Edge Function
 // sync-rekap-program -> tabel rekap_program_items (lihat
@@ -1563,18 +1563,53 @@ window.loadInfografisGallery = loadInfografisGallery;
 const SYNC_REKAP_PROGRAM_URL = `${SUPABASE_URL}/functions/v1/sync-rekap-program`;
 const REKAP_MIN_TILES = 4;        // grid selalu minimal 4 kanvas (kosong kalau belum ada gambar)
 const REKAP_SWIPE_PX = 50;        // jarak geser minimal agar dihitung pindah poster
-let rekapProgramItems = [];       // semua gambar di folder: { id, name, fullUrl, thumbUrl, updatedAt }
-let rekapProgramLoaded = false;
 let rekapIndex = 0;               // poster yang sedang dibuka di pratinjau
 
-function openRekapProgramModal() {
-    // Boleh dibuka tanpa login (baca saja; lihat sql/53_rekap_program_akses_publik.sql).
+// Satu modal galeri + pratinjau dipakai bersama oleh dua kartu dashboard:
+//   'rekap'      -> kartu Rekap Program (tabel rekap_program_items)
+//   'infografis' -> kartu Infografis    (tabel infografis_items, lihat sql/55_infografis_akses_publik.sql)
+// Keduanya boleh dibuka TANPA login (baca saja). Data tiap sumber disimpan terpisah di rekapStore.
+const REKAP_SOURCES = {
+    rekap: {
+        table: 'rekap_program_items', syncUrl: SYNC_REKAP_PROGRAM_URL, metricId: 'totalRekapProgram',
+        title: 'Rekap Program', sub: 'Poster rekap terbaru · ketuk untuk memperbesar', icon: 'bi-images',
+        unit: 'poster', alt: 'Rekap Program',
+        loading: 'Memuat rekap…', syncing: 'Menyinkron rekap dari Google Drive...',
+        empty: 'Belum ada gambar di folder rekap', fail: 'Gagal memuat rekap: '
+    },
+    infografis: {
+        table: 'infografis_items', syncUrl: SYNC_INFOGRAFIS_URL, metricId: 'totalInfografis',
+        title: 'Infografis', sub: 'Infografis terbaru · ketuk untuk memperbesar', icon: 'bi-pie-chart-fill',
+        unit: 'gambar', alt: 'Infografis',
+        loading: 'Memuat infografis…', syncing: 'Menyinkron infografis dari Google Drive...',
+        empty: 'Belum ada gambar di folder infografis', fail: 'Gagal memuat infografis: '
+    }
+};
+let rekapSource = 'rekap';        // sumber yang sedang tampil di modal
+const rekapStore = {
+    rekap:      { items: [], loaded: false, metricFetched: false },   // items: { id, name, fullUrl, thumbUrl, updatedAt }
+    infografis: { items: [], loaded: false, metricFetched: false }
+};
+function rekapItems() { return rekapStore[rekapSource].items; }
+
+function openRekapGallery(src) {
+    // Boleh dibuka tanpa login (baca saja; lihat sql/53 & sql/55).
     // Tombol Refresh (sync Drive) tetap hanya tampil untuk yang boleh kelola program.
+    rekapSource = REKAP_SOURCES[src] ? src : 'rekap';
+    const cfg = REKAP_SOURCES[rekapSource];
+    document.getElementById('rekapTitle').textContent = cfg.title;
+    document.getElementById('rekapSub').textContent = cfg.sub;
+    const ic = document.getElementById('rekapHeadIconI');
+    if (ic) ic.className = 'bi ' + cfg.icon;
+    const lbImg = document.getElementById('rekapLbImg');
+    if (lbImg) lbImg.alt = cfg.alt;
     document.getElementById('rekapProgramModal').classList.add('open');
     const refreshBtn = document.getElementById('btnRekapRefresh');
     if (refreshBtn) refreshBtn.style.display = canManageProgramData() ? '' : 'none';
     loadRekapProgram();
 }
+function openRekapProgramModal() { openRekapGallery('rekap'); }
+function openInfografisModal() { openRekapGallery('infografis'); }
 
 function closeRekapProgramModal() {
     closeRekapLightbox();
@@ -1596,18 +1631,21 @@ function setRekapNote(type, text) {
 // forceSync = true (tombol Refresh) -> minta Edge Function menarik ulang
 // daftar gambar dari Drive dulu, baru baca tabel. Kalau false -> baca cache.
 async function loadRekapProgram(forceSync = false) {
-    if (rekapProgramLoaded && !forceSync) {
+    const src = rekapSource;           // dikunci: modal bisa ditutup/ganti sumber saat request berjalan
+    const cfg = REKAP_SOURCES[src];
+    const store = rekapStore[src];
+    if (store.loaded && !forceSync) {
         renderRekapGallery();
         return;
     }
 
     renderRekapGallery(true);
-    setRekapNote('loading', 'Memuat rekap…');
+    setRekapNote('loading', cfg.loading);
 
     try {
         if (forceSync) {
-            showToast('Menyinkron rekap dari Google Drive...', 'info');
-            const syncRes = await fetch(SYNC_REKAP_PROGRAM_URL, {
+            showToast(cfg.syncing, 'info');
+            const syncRes = await fetch(cfg.syncUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1625,12 +1663,12 @@ async function loadRekapProgram(forceSync = false) {
         }
 
         const { data, error } = await supabaseClient
-            .from('rekap_program_items')
+            .from(cfg.table)
             .select('id, name, full_url, thumb_url, drive_updated_at')
             .order('drive_updated_at', { ascending: false, nullsFirst: false });
         if (error) throw error;
 
-        rekapProgramItems = (data || [])
+        store.items = (data || [])
             .map(row => ({
                 id: row.id,
                 name: row.name,
@@ -1639,38 +1677,38 @@ async function loadRekapProgram(forceSync = false) {
                 updatedAt: row.drive_updated_at
             }))
             .filter(it => it.fullUrl);
-        rekapProgramLoaded = true;
-        renderRekapGallery();
+        store.loaded = true;
+        setRekapMetric(src, store.items.length);
+        if (rekapSource === src) renderRekapGallery();
     } catch (err) {
-        setRekapNote('error', 'Gagal memuat rekap: ' + (err.message || String(err)));
+        if (rekapSource === src) setRekapNote('error', cfg.fail + (err.message || String(err)));
     }
 }
 
-// ---------- Angka jumlah poster di kartu metrik "Rekap Program" ----------
-// Tabel rekap_program_items hanya bisa dibaca user login (RLS), jadi sebelum login
-// kartu menampilkan "–". Setelah login dihitung ringan lewat count (tanpa ambil baris);
-// begitu galeri dibuka/di-refresh angkanya ikut disamakan dengan isi galeri.
-// Hemat egress Supabase: query count (head:true, tanpa baris/body) hanya dijalankan
-// SEKALI per muat halaman (tabel boleh dibaca tanpa login, jadi tidak perlu menunggu login).
-// Tidak di-polling & tidak diulang saat gagal. Setelah galeri dibuka, angka diperbarui dari
-// data galeri yang memang sudah dimuat (tanpa request tambahan).
-let rekapMetricFetched = false;
-function setRekapMetric(n) {
-    const el = document.getElementById('totalRekapProgram');
+// ---------- Angka jumlah gambar di kartu metrik "Rekap Program" & "Infografis" ----------
+// Kedua tabel boleh dibaca tanpa login (RLS: sql/53 & sql/55), jadi angkanya langsung dihitung
+// ringan lewat count (head:true, tanpa baris/body). Hemat egress Supabase: dijalankan SEKALI per
+// sumber per muat halaman, tidak di-polling & tidak diulang saat gagal. Setelah galeri dibuka,
+// angka diperbarui dari data galeri yang memang sudah dimuat (tanpa request tambahan).
+function setRekapMetric(src, n) {
+    const el = document.getElementById(REKAP_SOURCES[src].metricId);
     if (el) el.textContent = (n === null || n === undefined) ? '–' : n;
 }
 async function refreshRekapMetric() {
-    if (rekapProgramLoaded) { setRekapMetric(rekapProgramItems.length); return; }
-    if (rekapMetricFetched) return;
-    rekapMetricFetched = true;   // ditandai sebelum request: gagal pun tidak diulang-ulang
-    try {
-        const { count, error } = await supabaseClient
-            .from('rekap_program_items')
-            .select('id', { count: 'exact', head: true });
-        if (error) throw error;
-        setRekapMetric(count || 0);
-    } catch (err) {
-        console.warn('Hitung rekap program gagal:', err.message || err);
+    for (const src of Object.keys(REKAP_SOURCES)) {
+        const store = rekapStore[src];
+        if (store.loaded) { setRekapMetric(src, store.items.length); continue; }
+        if (store.metricFetched) continue;
+        store.metricFetched = true;   // ditandai sebelum request: gagal pun tidak diulang-ulang
+        try {
+            const { count, error } = await supabaseClient
+                .from(REKAP_SOURCES[src].table)
+                .select('id', { count: 'exact', head: true });
+            if (error) throw error;
+            setRekapMetric(src, count || 0);
+        } catch (err) {
+            console.warn('Hitung ' + REKAP_SOURCES[src].title + ' gagal:', err.message || err);
+        }
     }
 }
 window.refreshRekapMetric = refreshRekapMetric;
@@ -1687,15 +1725,16 @@ function renderRekapGallery(onlyEmpty = false) {
     const countEl = document.getElementById('rekapCount');
     if (!grid) return;
 
-    const items = onlyEmpty ? [] : rekapProgramItems;
-    countEl.textContent = items.length ? `${items.length} poster` : '';
-    if (!onlyEmpty) setRekapMetric(items.length);
+    const cfg = REKAP_SOURCES[rekapSource];
+    const items = onlyEmpty ? [] : rekapItems();
+    countEl.textContent = items.length ? `${items.length} ${cfg.unit}` : '';
+    if (!onlyEmpty) setRekapMetric(rekapSource, items.length);
 
     let html = items.map((it, i) => {
         const tgl = rekapDateLabel(it.updatedAt);
         return `
-        <button class="rekap-tile" onclick="openRekapLightbox(${i})" title="${escapeHtmlAttr(it.name || 'Rekap Program')}">
-            <img src="${escapeHtmlAttr(it.thumbUrl)}" alt="${escapeHtmlAttr(it.name || 'Rekap Program')}" referrerpolicy="no-referrer" loading="lazy" draggable="false">
+        <button class="rekap-tile" onclick="openRekapLightbox(${i})" title="${escapeHtmlAttr(it.name || cfg.alt)}">
+            <img src="${escapeHtmlAttr(it.thumbUrl)}" alt="${escapeHtmlAttr(it.name || cfg.alt)}" referrerpolicy="no-referrer" loading="lazy" draggable="false">
             ${i === 0 ? '<span class="rekap-tile-badge">Terbaru</span>' : ''}
             ${tgl ? `<span class="rekap-tile-label">${escapeHtml(tgl)}</span>` : ''}
         </button>`;
@@ -1708,14 +1747,14 @@ function renderRekapGallery(onlyEmpty = false) {
     grid.innerHTML = html;
 
     if (!onlyEmpty) {
-        if (!items.length) setRekapNote('empty', 'Belum ada gambar di folder rekap');
+        if (!items.length) setRekapNote('empty', cfg.empty);
         else setRekapNote(null);
     }
 }
 
 // ---------- Pratinjau layar penuh ----------
 function openRekapLightbox(i) {
-    if (i < 0 || i >= rekapProgramItems.length) return;
+    if (i < 0 || i >= rekapItems().length) return;
     rekapIndex = i;
     document.getElementById('rekapLightbox').classList.add('open');
     renderRekapLightbox();
@@ -1801,7 +1840,7 @@ function setRekapLbNote(type, text) {
 
 // dir: arah perpindahan (-1 / +1) untuk animasi; 0 = pembukaan pertama.
 function renderRekapLightbox(dir = 0) {
-    const items = rekapProgramItems;
+    const items = rekapItems();
     const idx = rekapIndex;
     const item = items[idx];
     const img = document.getElementById('rekapLbImg');
@@ -1894,7 +1933,7 @@ function renderRekapLightbox(dir = 0) {
 
 // delta: -1 = sebelumnya, +1 = berikutnya. Berhenti di ujung (tidak berputar).
 function rekapGo(delta) {
-    const next = Math.min(Math.max(rekapIndex + delta, 0), rekapProgramItems.length - 1);
+    const next = Math.min(Math.max(rekapIndex + delta, 0), rekapItems().length - 1);
     if (next === rekapIndex) return;
     rekapIndex = next;
     renderRekapLightbox(delta);
@@ -1929,6 +1968,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 window.openRekapProgramModal = openRekapProgramModal;
+window.openInfografisModal = openInfografisModal;
 window.closeRekapProgramModal = closeRekapProgramModal;
 window.loadRekapProgram = loadRekapProgram;
 window.openRekapLightbox = openRekapLightbox;
@@ -2172,7 +2212,6 @@ function renderTable(data) {
 
 function updateMetrics() {
     document.getElementById('totalPrograms').textContent = dataUmroh.filter(isProgramVisibleOnDashboard).length;
-    document.getElementById('totalJadwal').textContent = jadwalList.length;
     document.getElementById('totalKeberangkatan').textContent = kbJamaahList.length;
     refreshRekapMetric();
 }

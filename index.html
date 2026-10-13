@@ -183,11 +183,14 @@
                     <div class="m-label">Rekap Program</div>
                 </div>
             </div>
-            <div class="metric-card">
-                <div class="m-icon icon-warn"><i class="bi bi-calendar-check-fill"></i></div>
+            <div class="metric-card metric-clickable" id="metricInfografis" role="button" tabindex="0"
+                 onclick="openInfografisModal()"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openInfografisModal();}"
+                 title="Klik untuk melihat infografis">
+                <div class="m-icon icon-warn"><i class="bi bi-pie-chart-fill"></i></div>
                 <div class="m-info">
-                    <div class="m-value" id="totalJadwal">0</div>
-                    <div class="m-label">Jadwal Tamu</div>
+                    <div class="m-value" id="totalInfografis">–</div>
+                    <div class="m-label">Infografis</div>
                 </div>
             </div>
             <div class="metric-card">
@@ -921,10 +924,10 @@
     <div class="modal-content rekap-gallery-modal">
         <div class="modal-header rekap-head">
             <div class="rekap-head-main">
-                <span class="rekap-head-icon" aria-hidden="true"><i class="bi bi-images"></i></span>
+                <span class="rekap-head-icon" aria-hidden="true"><i class="bi bi-images" id="rekapHeadIconI"></i></span>
                 <div class="rekap-head-text">
-                    <h2>Rekap Program <span class="rekap-count" id="rekapCount"></span></h2>
-                    <p class="rekap-head-sub">Poster rekap terbaru &middot; ketuk untuk memperbesar</p>
+                    <h2><span id="rekapTitle">Rekap Program</span> <span class="rekap-count" id="rekapCount"></span></h2>
+                    <p class="rekap-head-sub" id="rekapSub">Poster rekap terbaru &middot; ketuk untuk memperbesar</p>
                 </div>
             </div>
             <div class="rekap-head-actions">

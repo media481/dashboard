@@ -3,7 +3,7 @@
 // fallback ke cache saat offline. Request ke domain luar (Supabase, CDN, Google Fonts)
 // tidak di-cache, dibiarkan langsung ke jaringan.
 
-const CACHE_NAME = 'amiru-repo-cache-v96';
+const CACHE_NAME = 'amiru-repo-cache-v97';
 
 const APP_SHELL = [
   './',
