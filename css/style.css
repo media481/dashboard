@@ -6065,3 +6065,16 @@ main { padding-bottom: 0; }
 @media (max-width: 720px) {
     #adminFormContainer #af-konten { grid-template-columns: 1fr; }
 }
+
+/* -- [CROSSCHECK] Daftar Fasilitas Termasuk / Tidak Termasuk di panel bandingan:
+      satu chip per item; item yang tidak berpasangan di sisi lain = merah -- */
+.cx-li-list { list-style: none; display: flex; flex-wrap: wrap; gap: 5px 6px; margin: 0; padding: 0; }
+.cx-li-list li {
+    font-size: 12px; font-weight: 600; line-height: 1.4;
+    padding: 2px 9px; border-radius: 7px;
+    background: rgba(15,33,56,.06); color: var(--ink);
+}
+.cx-li-list li.cx-li-bad {
+    background: var(--danger); color: #fff; font-weight: 700;
+    box-shadow: 0 0 0 1px var(--danger);
+}

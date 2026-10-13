@@ -12144,6 +12144,22 @@ function cxListItemsMatch(plainStr, posterStr) {
     if (!plainItems.length || !posterItems.length) return false;
     return posterItems.every(item => cxListItemContains(plainItems, item));
 }
+// [CROSSCHECK] Tampilan daftar Fasilitas Termasuk/Tidak Termasuk di panel bandingan:
+// tiap item jadi satu chip, dan item yang tidak punya pasangan di sisi lain
+// ditandai MERAH (class cx-li-bad) supaya langsung kelihatan bagian mana yang
+// bikin status "Beda". Pencocokan memakai cxListItemContains() -- aturan yang
+// sama dengan cxListItemsMatch() -- jadi tanda merah selalu konsisten dengan status.
+function cxSplitListRaw(str) {
+    return String(str || '').split('\n').map(s => s.trim()).filter(Boolean);
+}
+function cxRenderListChips(str, isBad) {
+    const items = cxSplitListRaw(str);
+    if (!items.length) return '—';
+    return '<ul class="cx-li-list">' + items.map(it => {
+        const bad = isBad(it.toLowerCase());
+        return `<li class="${bad ? 'cx-li-bad' : ''}"${bad ? ' title="Tidak ditemukan padanannya di sisi lain"' : ''}>${escapeHtml(it)}</li>`;
+    }).join('') + '</ul>';
+}
 // [OPSI B] Fallback kalau field termasuk/tidak_termasuk terstruktur GAGAL terbaca
 // dari poster (mis. posternya menulis fasilitas dalam paragraf lepas, bukan daftar
 // rapi, sehingga Gemini tidak bisa memecahnya jadi array) tapi teks mentah hasil
@@ -12527,10 +12543,24 @@ function renderCxPanel(progId) {
                 : (r.rawTextCheck
                     ? `<span style="font-style:italic;">${rtNotFound > 0 ? `${rtNotFound}/${r.rawTextCheck.total} item tidak ditemukan di teks mentah OCR` : 'Semua item ditemukan di teks mentah OCR (bukan daftar rapi poster)'}</span>`
                     : '—');
+            // [CROSSCHECK] Daftar fasilitas: tampil sebagai chip, item tak berpasangan = merah.
+            const isListField = r.field === 'termasuk' || r.field === 'tidak_termasuk';
+            let plainCellHtml = r.plain ? escapeHtml(displayVal(r, r.plain)) : '—';
+            let posterCellHtml = posterCellVal;
+            if (isListField) {
+                const plainLower = cxNormalizeListItems(r.plain);
+                const posterLower = cxNormalizeListItems(r.poster);
+                if (r.plain) {
+                    if (hasBoth) plainCellHtml = cxRenderListChips(r.plain, it => !isMatch && !cxListItemContains(posterLower, it));
+                    else if (r.rawTextCheck) { const nf = new Set(r.rawTextCheck.notFound); plainCellHtml = cxRenderListChips(r.plain, it => nf.has(it)); }
+                    else plainCellHtml = cxRenderListChips(r.plain, () => false);
+                }
+                if (r.poster) posterCellHtml = cxRenderListChips(r.poster, it => r.plain ? !cxListItemContains(plainLower, it) : false);
+            }
             return `<div class="cx-compare-row ${rowClass}"${isMismatchRow ? ` onclick="cxGoToEditField('${progId}','${r.field}')" title="Klik untuk langsung edit field ini"` : ''}>
                 <div class="cx-compare-field">${escapeHtml(r.label)}</div>
-                <div class="cx-compare-col"><span class="cx-mobile-tag"><i class="bi bi-file-earmark-text-fill"></i> Teks</span><div class="cx-compare-val ${r.plain?'':'empty'}">${r.plain ? escapeHtml(displayVal(r, r.plain)) : '—'}</div></div>
-                <div class="cx-compare-col cx-compare-col-poster"><span class="cx-mobile-tag"><i class="bi bi-image-fill"></i> Poster</span><div class="cx-compare-val ${(r.poster||r.rawTextCheck)?'':'empty'}">${posterCellVal}</div></div>
+                <div class="cx-compare-col"><span class="cx-mobile-tag"><i class="bi bi-file-earmark-text-fill"></i> Teks</span><div class="cx-compare-val ${r.plain?'':'empty'}">${plainCellHtml}</div></div>
+                <div class="cx-compare-col cx-compare-col-poster"><span class="cx-mobile-tag"><i class="bi bi-image-fill"></i> Poster</span><div class="cx-compare-val ${(r.poster||r.rawTextCheck)?'':'empty'}">${posterCellHtml}</div></div>
                 <div class="cx-compare-status">${pill}</div>
                 ${cxHotelRefLine(r.field, r.plain, r.poster)}
             </div>`;
@@ -12569,7 +12599,7 @@ function renderCxPanel(progId) {
     </div>`}
     ${adl.poster_data ? `
     <div class="cx-section-title" style="margin-top:20px;"><i class="bi bi-arrow-left-right"></i> Perbandingan: Data Teks vs Poster</div>
-    <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Hijau = cocok &nbsp;·&nbsp; Kuning = tanggal termasuk rentang poster (benar, tapi bukan tanggal persis sama) &nbsp;·&nbsp; Merah = tidak sesuai${posterSource==='ocr' ? ' &nbsp;·&nbsp; Hasil OCR bisa salah baca, koreksi via Input Manual.' : ''}</div>
+    <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Hijau = cocok &nbsp;·&nbsp; Kuning = tanggal termasuk rentang poster (benar, tapi bukan tanggal persis sama) &nbsp;·&nbsp; Merah = tidak sesuai (di daftar Fasilitas, item berwarna merah = tidak ada padanannya di sisi lain)${posterSource==='ocr' ? ' &nbsp;·&nbsp; Hasil OCR bisa salah baca, koreksi via Input Manual.' : ''}</div>
     ${buildCompareRows()}` : ''}
     `;
 }
