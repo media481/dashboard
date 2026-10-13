@@ -12603,7 +12603,7 @@ function renderCxPanel(progId) {
         ${posterSource ? `<span class="cx-source-tag ${posterSource}">${posterSource === 'ocr' ? 'Sumber: OCR otomatis' : 'Sumber: Input manual'}</span>` : ''}
     </div>`}
     ${adl.poster_data ? `
-    <div class="cx-section-title" style="margin-top:20px;"><i class="bi bi-arrow-left-right"></i> Perbandingan: Data Teks vs Poster</div>
+    <div style="margin-top:16px;"></div>
     ${buildCompareRows()}` : ''}
     `;
 }
