@@ -15125,6 +15125,8 @@ function igDmPlanCard(pl, canEdit) {
             <button type="button" class="${stage === 'siap' ? 'btn-primary' : 'btn-secondary'} ig-dm-convert" onclick="igConvertPlanToPost('${pl.id}')">Jadikan Post</button>
         </div>` : '';
     const edit = canEdit ? `<div class="ig-dm-edit" style="display:none;">
+          <div class="ig-dm-edit-cols">
+            <div class="ig-dm-edit-left">
             <div class="ig-dm-edit-row">
                 <input type="text" class="ig-dm-input ig-dm-tema" value="${escapeHtmlAttr(pl.tema)}" maxlength="120" placeholder="Tema / ide"
                     onblur="igPlanUpdateField('${pl.id}','tema',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">
@@ -15143,15 +15145,19 @@ function igDmPlanCard(pl, canEdit) {
             </div>
             ${igTeksGambarReady ? `<label class="ig-dm-edit-label">Teks di gambar <em>(2–4 baris pendek)</em></label>
             <textarea class="ig-dm-input ig-dm-textarea ig-dm-imgtext-input" rows="3" maxlength="700" placeholder="Contoh: Niat umroh itu muncul diam-diam."
-                onblur="igPlanUpdateField('${pl.id}','teks_gambar',this.value)">${escapeHtml(imgTxt)}</textarea>
-            <label class="ig-dm-edit-label">Caption</label>` : ''}
-            <textarea class="ig-dm-input ig-dm-textarea" rows="6" maxlength="2200" placeholder="Draft caption..."
+                onblur="igPlanUpdateField('${pl.id}','teks_gambar',this.value)">${escapeHtml(imgTxt)}</textarea>` : ''}
+            </div>
+            <div class="ig-dm-edit-right">
+            <label class="ig-dm-edit-label ig-dm-edit-label-caption">Caption</label>
+            <textarea class="ig-dm-input ig-dm-textarea ig-dm-caption-input" rows="6" maxlength="2200" placeholder="Draft caption..."
                 oninput="igUpdatePlanCharCount('${pl.id}',this.value.length)"
                 onblur="igPlanUpdateField('${pl.id}','draft_caption',this.value)">${escapeHtml(cap)}</textarea>
             <div class="ig-dm-edit-foot">
                 <span class="ig-plan-char-count" id="igPlanCharCount-${pl.id}">${cap.length} / 2200 karakter</span>
                 <button type="button" class="btn-primary ig-dm-done" onclick="igTogglePlanEdit('${pl.id}')">Selesai</button>
             </div>
+            </div>
+          </div>
         </div>` : '';
     // Kalau stepper tahap tampil, badge tahap teks dihilangkan (info yang sama) supaya baris meta tidak dobel.
     const pilBadge = pil ? `<span class="ig-status-pill" style="background:${pil.color}1a;color:${pil.color};">${escapeHtml(pil.label)}</span>` : '';

@@ -6124,3 +6124,19 @@ main { padding-bottom: 0; }
 }
 .hotel-detail-btn:hover { background: var(--brand); color: #fff; }
 .hotel-detail-note { font-size: 11px; color: var(--ink-soft); }
+
+
+/* ============================================================
+   Modal harian Content Planner: lebar & editor 2 kolom di layar lebar
+   Kiri  : tema, tipe/tanggal/link Canva, teks di gambar
+   Kanan : caption (area ketik lebih tinggi) + hitung karakter + tombol Selesai
+   Di bawah 900px kembali ke satu kolom seperti semula.
+   ============================================================ */
+.ig-dm-edit-cols { display: block; }
+.ig-dm .ig-dm-edit-right .ig-dm-edit-label-caption { margin-top: 12px; }
+@media (min-width: 900px) {
+    .ig-dm-edit-cols { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 0 24px; align-items: start; }
+    .ig-dm .ig-dm-edit-right .ig-dm-edit-label-caption { margin-top: 0; }
+    .ig-dm .ig-dm-edit-right .ig-dm-caption-input { min-height: 300px; }
+    .ig-dm .ig-dm-edit-left .ig-dm-imgtext-input { min-height: 150px; }
+}
