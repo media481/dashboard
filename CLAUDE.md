@@ -238,6 +238,24 @@ satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
   yang jamaahnya SUDAH diarsip (`diarsipkan = true`, lewat "Arsipkan Semua")
   tidak dihitung, jadi tetap boleh ikut kehapus.
 
+## Hotel ke-3 & ke-4 di form Edit & Tambah Program
+
+- Form Akomodasi punya Hotel Makkah & Hotel Madinah (tetap), plus **Hotel 3 & Hotel 4 opsional**
+  (id `admin_hotel_3`/`admin_hotel_4` + select kota `admin_hotel_3_kota`/`admin_hotel_4_kota`).
+  Barisnya tersembunyi sampai ada isinya: hasil parse, data tersimpan, atau tombol "Tambah Hotel 3/4".
+- Disimpan di `admin_data_lengkap` (JSON) sebagai `hotel_3`, `hotel_3_kota`, `hotel_4`, `hotel_4_kota`
+  (didaftarkan di `adminOnlyFields` di `saveAdminProgram()`), jadi **tanpa migrasi SQL**.
+- Parse "Isi Otomatis" (`parseBroadcastText()`) dan "Parse dengan AI" (`parseBroadcastTextAI()`) memakai
+  `extractBroadcastHotels()` + `pickExtraHotels()`: hotel apa pun selain Makkah/Madinah utama
+  (hotel Makkah/Madinah kedua, atau kota Jeddah/Thaif/Transit) masuk ke Hotel 3 lalu Hotel 4.
+  Lebih dari 2 hotel tambahan: hanya 2 pertama dimuat + toast info.
+- Edge Function `parse-broadcast-ai` TIDAK ada di repo ini. Client sudah siap kalau fungsi itu kelak
+  mengembalikan `hotel_3`, `hotel_3_kota`, `hotel_3_hari`, `hotel_3_jarak` (dan `hotel_4...`);
+  selama belum, parse AI memakai pembaca regex yang sama sebagai cadangan.
+- Hint ejaan vs data referensi hanya untuk kota Makkah/Madinah (tabel `hotel_saudi_arabia` cuma berisi dua kota itu).
+- Ikut terpakai di `generateAutoWAText()`, `buildRawConceptFromAdminForm()`, dan `buildRawConceptFromProgramRow()`.
+  BELUM dipakai di: kolom tabel Edit Program, modal detail, Crosscheck poster, Export/Import.
+
 ## Kalau menambah/mengubah fitur
 
 - Edit langsung di `js/app.js`, ikuti pola section comment yang sudah ada

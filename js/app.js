@@ -627,6 +627,11 @@ function generateAutoWAText(data) {
     if (data.maskapai) fasilitasLines.push(`✅ ${s(data.maskapai)}`);
     if (data.hotel_madinah) fasilitasLines.push(`✅ Hotel Madinah: ${s(data.hotel_madinah)}`);
     if (data.hotel_makkah) fasilitasLines.push(`✅ Hotel Makkah: ${s(data.hotel_makkah)}`);
+    // Hotel ke-3 & ke-4 (opsional), label pakai nama kota kalau diisi.
+    [3, 4].forEach(n => {
+        const h = data[`hotel_${n}`];
+        if (h) fasilitasLines.push(`✅ Hotel ${data[`hotel_${n}_kota`] ? s(data[`hotel_${n}_kota`]) : n}: ${s(h)}`);
+    });
     if (fasilitasLines.length) teks += `✈️ Fasilitas:\n${fasilitasLines.join('\n')}\n\n`;
 
     const hargaLines = [];
@@ -739,6 +744,10 @@ function buildRawConceptFromAdminForm() {
     if (maskapai) lines.push(`*PESAWAT*\n${maskapai}`);
     if (hotelMadinah) lines.push(`*HOTEL MADINAH*\n${hotelMadinah}`);
     if (hotelMakkah) lines.push(`*HOTEL MEKAH*\n${hotelMakkah}`);
+    [3, 4].forEach(n => {
+        const h = g(`admin_hotel_${n}`);
+        if (h) lines.push(`*HOTEL ${(g(`admin_hotel_${n}_kota`) || String(n)).toUpperCase()}*\n${h}`);
+    });
     const hargaLines = [];
     if (hargaQuint) hargaLines.push(`${hargaQuint} Quint`);
     if (hargaQuad) hargaLines.push(`${hargaQuad} Quad`);
@@ -892,6 +901,8 @@ async function generateCaptionAI() {
                     nama: g('admin_nama'), tgl: g('admin_tgl') || g('admin_tgl_date'), durasi: g('admin_durasi'),
                     maskapai: document.getElementById('admin_maskapai')?.value || '',
                     hotel_madinah: g('admin_hotel_madinah'), hotel_makkah: g('admin_hotel_makkah'),
+                    hotel_3: g('admin_hotel_3'), hotel_3_kota: g('admin_hotel_3_kota'),
+                    hotel_4: g('admin_hotel_4'), hotel_4_kota: g('admin_hotel_4_kota'),
                     harga_quad: g('admin_harga_quad'), harga_triple: g('admin_harga_triple'),
                     harga_double: g('admin_harga_double'), harga_quint: g('admin_harga_quint'),
                     termasuk: g('admin_termasuk'), tidak_termasuk: g('admin_tidak_termasuk')
@@ -954,6 +965,10 @@ function buildRawConceptFromProgramRow(prog) {
         const jarak = pd.hotel_makkah_jarak || '';
         lines.push(`*HOTEL MEKAH*\n${hotelMakkah}${jarak ? `\n(${jarak})` : ''}`);
     }
+    [3, 4].forEach(n => {
+        const h = g(`hotel_${n}`);
+        if (h) lines.push(`*HOTEL ${(g(`hotel_${n}_kota`) || String(n)).toUpperCase()}*\n${h}`);
+    });
     const hargaLines = [];
     const hargaQuint = g('harga_quint'), hargaQuad = g('harga_quad'), hargaTriple = g('harga_triple'), hargaDouble = g('harga_double');
     if (hargaQuint) hargaLines.push(`${hargaQuint} Quint`);
@@ -3441,6 +3456,31 @@ async function renderAdminPanel() {
                                 <div class="hotel-ref-hint" id="hotelRefHint_madinah"></div>
                             </div>
                         </div>
+                        <div class="form-row">
+                            <div class="form-group" id="adminHotelExtra3" style="display:none;">
+                                <label>Hotel 3 <span style="font-weight:400;opacity:.7;">(opsional)</span></label>
+                                <div style="display:flex;gap:8px;">
+                                    <select id="admin_hotel_3_kota" style="flex:0 0 112px;" onchange="updateAdminHotelExtraHint(3)">
+                                        <option value="">Kota...</option>
+                                        ${['Makkah','Madinah','Jeddah','Thaif','Transit'].map(k => `<option value="${k}">${k}</option>`).join('')}
+                                    </select>
+                                    <input type="text" id="admin_hotel_3" style="flex:1;min-width:0;" placeholder="Nama hotel & bintang" maxlength="100" oninput="handleHotelExtraInput(3)">
+                                </div>
+                                <div class="hotel-ref-hint" id="hotelRefHint_3"></div>
+                            </div>
+                            <div class="form-group" id="adminHotelExtra4" style="display:none;">
+                                <label>Hotel 4 <span style="font-weight:400;opacity:.7;">(opsional)</span></label>
+                                <div style="display:flex;gap:8px;">
+                                    <select id="admin_hotel_4_kota" style="flex:0 0 112px;" onchange="updateAdminHotelExtraHint(4)">
+                                        <option value="">Kota...</option>
+                                        ${['Makkah','Madinah','Jeddah','Thaif','Transit'].map(k => `<option value="${k}">${k}</option>`).join('')}
+                                    </select>
+                                    <input type="text" id="admin_hotel_4" style="flex:1;min-width:0;" placeholder="Nama hotel & bintang" maxlength="100" oninput="handleHotelExtraInput(4)">
+                                </div>
+                                <div class="hotel-ref-hint" id="hotelRefHint_4"></div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-footer-action" id="btnAddHotelExtra" onclick="addAdminHotelExtra()" style="margin-top:8px;"><i class="bi bi-plus-lg"></i> Tambah Hotel 3</button>
                     </div>
 
                     <div class="admin-fieldset" id="af-link">
@@ -4392,6 +4432,169 @@ document.addEventListener('keydown', function(e) {
     else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); saveAdminProgram(); }
 });
 
+// ------------------------------------------------------------
+// Hotel ke-3 & ke-4 (opsional) -- untuk program yang menginap di lebih dari
+// 2 hotel (mis. 2 hotel di Makkah, atau ada hotel transit di Jeddah).
+// Field Hotel Makkah & Hotel Madinah TIDAK berubah. Hotel tambahan disimpan di
+// admin_data_lengkap (JSON) sebagai hotel_3 / hotel_3_kota / hotel_4 /
+// hotel_4_kota, jadi TIDAK perlu migrasi SQL. Baris Hotel 3/4 di form
+// tersembunyi sampai ada isinya (hasil parse broadcast/AI, data tersimpan,
+// atau tombol "Tambah Hotel 3/4").
+// ------------------------------------------------------------
+const ADMIN_HOTEL_EXTRA_SLOTS = [3, 4];
+const ADMIN_HOTEL_EXTRA_KOTA = ['Makkah', 'Madinah', 'Jeddah', 'Thaif', 'Transit'];
+
+function normalizeHotelKota(k) {
+    const t = String(k || '').toLowerCase();
+    if (/m[ae]k+ah|mecca/.test(t)) return 'Makkah';
+    if (/mad[iy]nah|medina/.test(t)) return 'Madinah';
+    if (/jedd?ah/.test(t)) return 'Jeddah';
+    if (/tha?if/.test(t)) return 'Thaif';
+    if (/transit/.test(t)) return 'Transit';
+    return '';
+}
+
+// Data referensi hotel (hotel_saudi_arabia) cuma punya Makkah & Madinah,
+// jadi hint ejaan hanya dipakai untuk dua kota itu.
+function adminHotelExtraRefCity(n) {
+    const k = (document.getElementById(`admin_hotel_${n}_kota`)?.value || '').toLowerCase();
+    return (k === 'makkah' || k === 'madinah') ? k : null;
+}
+
+function updateAdminHotelExtraHint(n) {
+    const hintEl = document.getElementById(`hotelRefHint_${n}`);
+    const city = adminHotelExtraRefCity(n);
+    if (!city) { if (hintEl) { hintEl.className = 'hotel-ref-hint'; hintEl.innerHTML = ''; } return; }
+    updateHotelRefHint(`admin_hotel_${n}`, `hotelRefHint_${n}`, city);
+}
+
+function handleHotelExtraInput(n) {
+    const city = adminHotelExtraRefCity(n);
+    if (!city) { updateAdminHotelExtraHint(n); return; }
+    handleHotelRefInput(`admin_hotel_${n}`, `hotelRefHint_${n}`, city);
+}
+
+function syncAdminHotelExtraButton() {
+    const btn = document.getElementById('btnAddHotelExtra');
+    if (!btn) return;
+    const next = ADMIN_HOTEL_EXTRA_SLOTS.find(n => {
+        const el = document.getElementById(`adminHotelExtra${n}`);
+        return el && el.style.display === 'none';
+    });
+    btn.style.display = next ? '' : 'none';
+    if (next) btn.innerHTML = `<i class="bi bi-plus-lg"></i> Tambah Hotel ${next}`;
+}
+
+function setAdminHotelExtraVisible(n, show) {
+    const el = document.getElementById(`adminHotelExtra${n}`);
+    if (el) el.style.display = show ? '' : 'none';
+    syncAdminHotelExtraButton();
+}
+
+function addAdminHotelExtra() {
+    const next = ADMIN_HOTEL_EXTRA_SLOTS.find(n => document.getElementById(`adminHotelExtra${n}`)?.style.display === 'none');
+    if (!next) return;
+    setAdminHotelExtraVisible(next, true);
+    document.getElementById(`admin_hotel_${next}`)?.focus();
+}
+
+// Isi Hotel 3/4 dari data tersimpan (dipanggil setAdminFormData).
+function setAdminHotelExtraFromData(data) {
+    data = data || {};
+    ADMIN_HOTEL_EXTRA_SLOTS.forEach(n => {
+        const inputEl = document.getElementById(`admin_hotel_${n}`);
+        const kotaEl = document.getElementById(`admin_hotel_${n}_kota`);
+        if (inputEl) inputEl.value = data[`hotel_${n}`] || '';
+        if (kotaEl) kotaEl.value = data[`hotel_${n}_kota`] || '';
+    });
+    setAdminHotelExtraVisible(3, !!(data.hotel_3 || data.hotel_4));
+    setAdminHotelExtraVisible(4, !!data.hotel_4);
+    ADMIN_HOTEL_EXTRA_SLOTS.forEach(n => updateAdminHotelExtraHint(n));
+}
+
+// Terapkan hotel tambahan hasil parse (regex/AI) ke form.
+// extras = [{ kota, nama }] -- nama sudah gabungan "Nama (X malam, jarak)".
+function applyHotelExtrasToForm(extras) {
+    (extras || []).slice(0, ADMIN_HOTEL_EXTRA_SLOTS.length).forEach((h, idx) => {
+        if (!h || !h.nama) return;
+        const n = ADMIN_HOTEL_EXTRA_SLOTS[idx];
+        const inputEl = document.getElementById(`admin_hotel_${n}`);
+        const kotaEl = document.getElementById(`admin_hotel_${n}_kota`);
+        if (inputEl) inputEl.value = h.nama;
+        if (kotaEl) kotaEl.value = ADMIN_HOTEL_EXTRA_KOTA.includes(h.kota) ? h.kota : '';
+        setAdminHotelExtraVisible(n, true);
+        ensureHotelReferenceLoaded().then(() => updateAdminHotelExtraHint(n));
+    });
+}
+
+// Bentuk field hotel_3/hotel_3_kota/hotel_4/hotel_4_kota dari daftar extras,
+// untuk digabung ke data yang dikirim ke generateAutoWAText().
+function hotelExtraDataFields(extras) {
+    const out = {};
+    ADMIN_HOTEL_EXTRA_SLOTS.forEach((n, idx) => {
+        const h = extras && extras[idx];
+        if (h && h.nama) { out[`hotel_${n}`] = h.nama; out[`hotel_${n}_kota`] = h.kota || ''; }
+    });
+    return out;
+}
+
+// Cari SEMUA hotel di teks broadcast (bukan cuma Makkah & Madinah pertama).
+// Dukung 2 format yang sama dengan parseBroadcastText():
+//   inline : "Hotel Makkah: Nama Hotel"
+//   header : "HOTEL MAKKAH 3HR" / baris berikutnya nama / (opsional) baris jarak
+// Kota yang dikenali: Makkah, Madinah, Jeddah, Thaif, Transit. Polanya sengaja
+// ketat (satu baris penuh) supaya baris seperti "Hotel bintang 5" di daftar
+// fasilitas tidak ikut terbaca sebagai hotel.
+// Return: [{ kota, nama, hari, jarak }] sesuai urutan kemunculan.
+function extractBroadcastHotels(lines) {
+    const cleanAll = s => String(s || '').replace(/\*/g, '').trim();
+    const KOTA = 'm[ae]k+ah|mad[iy]nah|jedd?ah|tha?if|transit';
+    const HARI = '(?:hr|h|hari|malam|night|n)';
+    const reInline = new RegExp('^[^a-z0-9]*hotel\\s*(' + KOTA + ')\\s*([^:\\-\\n]{0,20})[:\\-]\\s*(\\S.*)$', 'i');
+    const reHeader = new RegExp('^[^a-z0-9]*hotel\\s*(' + KOTA + ')\\s*(?:\\(?\\s*(\\d+)\\s*' + HARI + '\\b\\)?)?\\s*[:\\-]?\\s*$', 'i');
+    const reHari = new RegExp('(\\d+)\\s*' + HARI + '\\b', 'i');
+    const parseJarak = (txt) => {
+        const t = String(txt || '');
+        const m = t.match(/\(([^)]*(?:m|km|meter)[^)]*)\)/i) || t.match(/(\d+\s*m[^,\n]*(?:jalan|menit)[^,\n]*)/i);
+        return m ? m[1].trim() : '';
+    };
+    const isHotelLine = s => reInline.test(s) || reHeader.test(s);
+    const out = [];
+    for (let i = 0; i < lines.length; i++) {
+        const lc = cleanAll(lines[i]);
+        let m = lc.match(reInline);
+        if (m) {
+            const hari = (m[2].match(reHari) || [])[1] || '';
+            out.push({ kota: normalizeHotelKota(m[1]), nama: m[3].trim(), hari, jarak: '' });
+            continue;
+        }
+        m = lc.match(reHeader);
+        if (m && i + 1 < lines.length) {
+            const namaLine = cleanAll(lines[i + 1]);
+            if (!namaLine || isHotelLine(namaLine)) continue;
+            const jarak = (i + 2 < lines.length) ? parseJarak(lines[i + 2]) : '';
+            out.push({ kota: normalizeHotelKota(m[1]), nama: namaLine, hari: m[2] || '', jarak });
+            i += jarak ? 2 : 1;
+        }
+    }
+    return out;
+}
+
+// Buang hotel yang sudah jadi Hotel Makkah/Madinah utama (dan duplikat), sisanya
+// = hotel tambahan. Dicocokkan lewat nama murni (tanpa "(X malam...)" / "/ setaraf").
+function pickExtraHotels(entries, knownNames) {
+    const key = s => String(s || '').toLowerCase().split('(')[0].split('/')[0].replace(/[^a-z0-9]/g, '');
+    const seen = new Set((knownNames || []).map(key).filter(Boolean));
+    const extras = [];
+    (entries || []).forEach(h => {
+        const k = key(h.nama);
+        if (!k || seen.has(k)) return;
+        seen.add(k);
+        extras.push(h);
+    });
+    return extras;
+}
+
 function getAdminFormData() {
     return {
         nama: document.getElementById('admin_nama')?.value.trim() || '',
@@ -4405,6 +4608,11 @@ function getAdminFormData() {
         harga_double: document.getElementById('admin_harga_double')?.value || '',
         hotel_makkah: document.getElementById('admin_hotel_makkah')?.value || '',
         hotel_madinah: document.getElementById('admin_hotel_madinah')?.value || '',
+        // Hotel ke-3 & ke-4 (opsional). Kota hanya ikut tersimpan kalau hotelnya terisi.
+        hotel_3: document.getElementById('admin_hotel_3')?.value || '',
+        hotel_3_kota: (document.getElementById('admin_hotel_3')?.value ? document.getElementById('admin_hotel_3_kota')?.value : '') || '',
+        hotel_4: document.getElementById('admin_hotel_4')?.value || '',
+        hotel_4_kota: (document.getElementById('admin_hotel_4')?.value ? document.getElementById('admin_hotel_4_kota')?.value : '') || '',
         link_poster: document.getElementById('admin_link_poster')?.value || '',
         link_itinerary: document.getElementById('admin_link_itinerary')?.value || '',
         termasuk: document.getElementById('admin_termasuk')?.value || '',
@@ -4442,6 +4650,7 @@ function setAdminFormData(data) {
     });
     document.getElementById('admin_hotel_makkah').value = data.hotel_makkah || '';
     document.getElementById('admin_hotel_madinah').value = data.hotel_madinah || '';
+    setAdminHotelExtraFromData(data);
     document.getElementById('admin_link_poster').value = data.link_poster || '';
     document.getElementById('admin_link_itinerary').value = data.link_itinerary || '';
     document.getElementById('admin_termasuk').value = data.termasuk || '';
@@ -4751,7 +4960,7 @@ async function saveAdminProgram() {
     if (!formData.teks_wa) formData.teks_wa = generateAutoWAText(formData);
 
     // Pack admin-only fields
-    const adminOnlyFields = ['harga_quad','harga_triple','harga_double','hotel_makkah','hotel_madinah','termasuk','tidak_termasuk','catatan_cx'];
+    const adminOnlyFields = ['harga_quad','harga_triple','harga_double','hotel_makkah','hotel_madinah','hotel_3','hotel_3_kota','hotel_4','hotel_4_kota','termasuk','tidak_termasuk','catatan_cx'];
     const adl = {};
     adminOnlyFields.forEach(f => { if (formData[f]) adl[f] = formData[f]; });
     const saveData = { ...formData };
@@ -4825,6 +5034,7 @@ async function editAdminProgram(id, focusFieldId) {
     ensureHotelReferenceLoaded().then(() => {
         updateHotelRefHint('admin_hotel_makkah', 'hotelRefHint_makkah', 'makkah');
         updateHotelRefHint('admin_hotel_madinah', 'hotelRefHint_madinah', 'madinah');
+        ADMIN_HOTEL_EXTRA_SLOTS.forEach(n => updateAdminHotelExtraHint(n));
     });
     // Program lama tidak punya teks broadcast asli tersimpan — bersihkan kotak
     // broadcast & referensinya supaya tidak menampilkan sisa dari program lain.
@@ -5091,6 +5301,11 @@ function parseBroadcastText() {
     };
     const hotel_makkah_full = combineHotel(hotel_makkah, hotel_makkah_hari, hotel_makkah_jarak);
     const hotel_madinah_full = combineHotel(hotel_madinah, hotel_madinah_hari, hotel_madinah_jarak);
+    // Hotel tambahan (ke-3 & ke-4): hotel lain di broadcast selain Makkah &
+    // Madinah utama di atas (mis. hotel Makkah kedua, atau hotel Jeddah/transit).
+    const hotelExtraAll = pickExtraHotels(extractBroadcastHotels(lines), [hotel_makkah, hotel_madinah])
+        .map(h => ({ kota: h.kota, nama: combineHotel(h.nama, h.hari, h.jarak) }));
+    const hotelExtras = hotelExtraAll.slice(0, 2);
 
     // Termasuk & Tidak Termasuk
     let termasuk = [], tidak_termasuk = [];
@@ -5138,6 +5353,7 @@ function parseBroadcastText() {
     // dengan malam & jarak) supaya pencocokan lebih akurat.
     if (hotel_makkah) { ensureHotelReferenceLoaded().then(() => updateHotelRefHint('admin_hotel_makkah', 'hotelRefHint_makkah', 'makkah')); }
     if (hotel_madinah) { ensureHotelReferenceLoaded().then(() => updateHotelRefHint('admin_hotel_madinah', 'hotelRefHint_madinah', 'madinah')); }
+    applyHotelExtrasToForm(hotelExtras);
     if (termasuk.length) setVal('admin_termasuk', termasuk.join('\n'));
     if (tidak_termasuk.length) setVal('admin_tidak_termasuk', tidak_termasuk.join('\n'));
     if (catatan_admin) setVal('admin_catatan_cx', catatan_admin);
@@ -5159,6 +5375,7 @@ function parseBroadcastText() {
     const parsedData = {
         nama, durasi, tgl: tglDisplay, maskapai, harga_quad, harga_triple, harga_double, harga_quint,
         hotel_makkah: hotel_makkah_full, hotel_madinah: hotel_madinah_full,
+        ...hotelExtraDataFields(hotelExtras),
         termasuk: termasuk.join('\n'),
         tidak_termasuk: tidak_termasuk.join('\n')
     };
@@ -5180,6 +5397,7 @@ function parseBroadcastText() {
     if (harga_double) parts.push('Double');
     if (hotel_makkah) parts.push('Hotel Makkah');
     if (hotel_madinah) parts.push('Hotel Madinah');
+    hotelExtras.forEach((h, i) => parts.push('Hotel ' + (i + 3)));
     if (tglISO) parts.push('Tanggal');
     if (termasuk.length) parts.push('Fasilitas (' + termasuk.length + ' item)');
 
@@ -5188,6 +5406,9 @@ function parseBroadcastText() {
     status.style.display = 'inline';
     setTimeout(() => status.style.display = 'none', 6000);
     showToast('Form berhasil diisi otomatis (' + parts.length + ' field)');
+    if (hotelExtraAll.length > hotelExtras.length) {
+        showToast(`Ada ${hotelExtraAll.length} hotel tambahan di broadcast, hanya 2 yang dimuat (Hotel 3 & 4). Cek manual sisanya.`, 'info');
+    }
 }
 
 // Versi AI dari parseBroadcastText() di atas -- dipanggil lewat tombol
@@ -5253,6 +5474,27 @@ async function parseBroadcastTextAI() {
         if (f.hotel_makkah) { ensureHotelReferenceLoaded().then(() => updateHotelRefHint('admin_hotel_makkah', 'hotelRefHint_makkah', 'makkah')); }
         if (f.hotel_madinah) { ensureHotelReferenceLoaded().then(() => updateHotelRefHint('admin_hotel_madinah', 'hotelRefHint_madinah', 'madinah')); }
 
+        // Hotel tambahan (ke-3 & ke-4). Kalau Edge Function AI mengembalikan
+        // hotel_3/hotel_3_kota/hotel_3_hari/hotel_3_jarak (dan hotel_4...), pakai itu.
+        // Kalau tidak (Edge Function belum diperbarui), cari sendiri dari teks
+        // broadcast dengan pembaca regex yang sama seperti tombol "Isi Otomatis".
+        let hotelExtraAll = [];
+        ADMIN_HOTEL_EXTRA_SLOTS.forEach(n => {
+            if (f[`hotel_${n}`]) {
+                hotelExtraAll.push({
+                    kota: normalizeHotelKota(f[`hotel_${n}_kota`]),
+                    nama: combineHotel(f[`hotel_${n}`], f[`hotel_${n}_hari`], f[`hotel_${n}_jarak`])
+                });
+            }
+        });
+        if (!hotelExtraAll.length) {
+            const rawLines = normalizePpAbbreviation(normalizeUmrohSpelling(rawInput)).split('\n').map(l => l.trim()).filter(l => l);
+            hotelExtraAll = pickExtraHotels(extractBroadcastHotels(rawLines), [f.hotel_makkah, f.hotel_madinah])
+                .map(h => ({ kota: h.kota, nama: combineHotel(h.nama, h.hari, h.jarak) }));
+        }
+        const hotelExtras = hotelExtraAll.slice(0, 2);
+        applyHotelExtrasToForm(hotelExtras);
+
         if (f.termasuk && f.termasuk.length) setVal('admin_termasuk', f.termasuk.join('\n'));
         if (f.tidak_termasuk && f.tidak_termasuk.length) setVal('admin_tidak_termasuk', f.tidak_termasuk.join('\n'));
         if (f.catatan_admin) setVal('admin_catatan_cx', f.catatan_admin);
@@ -5277,6 +5519,7 @@ async function parseBroadcastTextAI() {
             nama: f.nama, durasi: f.durasi, tgl: f.tgl_display, maskapai: f.maskapai,
             harga_quad: f.harga_quad, harga_triple: f.harga_triple, harga_double: f.harga_double, harga_quint: f.harga_quint,
             hotel_makkah: hotelMakkahFull, hotel_madinah: hotelMadinahFull,
+            ...hotelExtraDataFields(hotelExtras),
             termasuk: (f.termasuk || []).join('\n'),
             tidak_termasuk: (f.tidak_termasuk || []).join('\n')
         };
@@ -5295,6 +5538,7 @@ async function parseBroadcastTextAI() {
         if (f.harga_double) parts.push('Double');
         if (f.hotel_makkah) parts.push('Hotel Makkah');
         if (f.hotel_madinah) parts.push('Hotel Madinah');
+        hotelExtras.forEach((h, i) => parts.push('Hotel ' + (i + 3)));
         if (f.tgl_iso) parts.push('Tanggal');
         if (f.termasuk && f.termasuk.length) parts.push('Fasilitas (' + f.termasuk.length + ' item)');
 
@@ -5303,6 +5547,9 @@ async function parseBroadcastTextAI() {
         status.style.display = 'inline';
         setTimeout(() => status.style.display = 'none', 6000);
         showToast('Form berhasil diisi otomatis dengan AI (' + parts.length + ' field)');
+        if (hotelExtraAll.length > hotelExtras.length) {
+            showToast(`Ada ${hotelExtraAll.length} hotel tambahan di broadcast, hanya 2 yang dimuat (Hotel 3 & 4). Cek manual sisanya.`, 'info');
+        }
     } catch (err) {
         console.error(err);
         // Fallback: kalau AI gagal (Gemini error/limit habis/internet putus),
