@@ -5744,9 +5744,8 @@ main { padding-bottom: 0; }
 }
 .btn-homepage:hover { background: var(--brand); color: #fff; transform: translateY(-1px); box-shadow: var(--shadow); }
 .btn-homepage:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-/* Tombol Share Katalog: pakai gaya .btn-homepage, tapi elemen <button> perlu reset kecil
-   dan hanya ikon di layar sempit supaya topbar tidak melebar. */
-.btn-share-katalog { cursor: pointer; line-height: inherit; }
+/* Tombol Share Katalog (link ke katalog.html): pakai gaya .btn-homepage; hanya ikon di layar
+   sempit supaya topbar tidak melebar. */
 @media (max-width: 480px) {
     .btn-share-katalog span { display: none; }
     .btn-share-katalog { padding: 7px 11px; }
