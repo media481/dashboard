@@ -15,6 +15,9 @@
 :root{--bg:#F4F7FB;--surface:#fff;--ink:#1C2B3A;--ink-soft:#64758A;--brand:#1a355b;--brand-deep:#0f2138;--brand-tint:#dbe4ee;--success:#279E70;--success-tint:#E1F5EC;--warn:#E07B2E;--warn-tint:#FBEBD9;--line:#E1E8F0;--radius:14px;--shadow:0 4px 24px rgba(0,0,0,.08)}
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-tap-highlight-color:transparent}
+/* Sembunyikan scrollbar (halaman & modal), scroll tetap berfungsi */
+html,.sheet{scrollbar-width:none;-ms-overflow-style:none}
+html::-webkit-scrollbar,body::-webkit-scrollbar,.sheet::-webkit-scrollbar{display:none;width:0;height:0}
 body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;padding-bottom:env(safe-area-inset-bottom,0)}
 h1,h2,h3{font-family:"Space Grotesk",Inter,system-ui,sans-serif}
 .hero{background:linear-gradient(135deg,var(--brand-deep),var(--brand));color:#fff;padding:calc(14px + env(safe-area-inset-top,0)) 0 44px}
@@ -79,7 +82,7 @@ footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px 
 </head>
 <body>
 <section class="hero"><div class="wrap">
-  <div class="brand"><img src="logo-amirutour.png" alt="Logo Amiru Tour" onerror="this.style.display='none'"><div><b>Amiru Tour</b><span>PT Amiru Haramain Indonesia</span></div></div>
+  <div class="brand"><img src="assets/logo-amirutour.png" alt="Logo Amiru Tour" onerror="this.style.display='none'"><div><b>Amiru Tour</b><span>PT Amiru Haramain Indonesia</span></div></div>
   <h1>Program Umroh Tersedia</h1>
   <p>Pilih jadwal keberangkatan, maskapai, dan hotel yang sesuai. Harga dan jadwal diperbarui otomatis.</p>
 </div></section>
@@ -147,7 +150,13 @@ function daftarList(v) {
   if (typeof v === 'string') return v.split('\n').map(x => x.replace(/^[-•*\s]+/, '').trim()).filter(Boolean);
   return [];
 }
-function hargaUtama(p) { return angka(p.harga_quad) || angka(p.harga_quint) || angka(p.harga_triple) || angka(p.harga_double); }
+// Harga yang dipakai kartu DAN pengurutan: ambil kamar termurah yang terisi (quint/quad/triple/double)
+function hargaPilih(p) {
+  const c = [['Quint', p.harga_quint], ['Quad', p.harga_quad], ['Triple', p.harga_triple], ['Double', p.harga_double]]
+    .map(([k, v]) => ({ k, n: angka(v), v })).filter(x => x.n > 0);
+  return c.length ? c.reduce((a, b) => b.n < a.n ? b : a) : null;
+}
+function hargaUtama(p) { const h = hargaPilih(p); return h ? h.n : 0; }
 
 async function muat() {
   const grid = document.getElementById('grid');
@@ -181,7 +190,7 @@ function render() {
   tampil = semua.filter(p => !q || [p.nama, p.maskapai, p.hotel_makkah, p.hotel_madinah, p.tgl].join(' ').toLowerCase().includes(q));
   tampil.sort((a, b) => mode === 'low' ? (hargaUtama(a) || 1e12) - (hargaUtama(b) || 1e12)
                       : mode === 'high' ? hargaUtama(b) - hargaUtama(a)
-                      : (a.dateObj || 0) - (b.dateObj || 0));
+                      : (a.dateObj ? +a.dateObj : 8.64e15) - (b.dateObj ? +b.dateObj : 8.64e15));
   document.getElementById('meta').textContent = tampil.length ? tampil.length + ' program tersedia' : '';
   const grid = document.getElementById('grid');
   if (!tampil.length) {
@@ -189,12 +198,13 @@ function render() {
     return;
   }
   grid.innerHTML = tampil.map((p, i) => {
-    const harga = rupiah(p.harga_quad || p.harga_quint);
-    const lbl = p.harga_quad ? 'Mulai dari (quad)' : 'Mulai dari';
+    const hp = hargaPilih(p);
+    const harga = hp ? rupiah(hp.v) : '';
+    const lbl = hp ? 'Mulai dari (' + hp.k.toLowerCase() + ')' : 'Mulai dari';
     const iti = safeUrl(p.link_itinerary);
     return `<article class="card">
       <button class="poster" data-i="${i}" aria-label="Lihat detail ${esc(p.nama)}">
-        <img src="${esc(posterSrc(p.link_poster))}" alt="Poster ${esc(p.nama)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${esc(p.nama).replace(/'/g,'')}'}))">
+        <img src="${esc(posterSrc(p.link_poster))}" alt="Poster ${esc(p.nama)}" loading="lazy" referrerpolicy="no-referrer" data-nama="${esc(p.nama)}">
         <div class="badges">${p._near ? '<span class="badge near">Terdekat</span>' : ''}${p._baru ? '<span class="badge new">Baru</span>' : ''}</div>
       </button>
       <div class="body">
@@ -244,6 +254,13 @@ document.getElementById('grid').addEventListener('click', e => { const t = e.tar
 document.getElementById('mClose').addEventListener('click', tutup);
 document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') tutup(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') tutup(); });
+// Poster gagal dimuat -> ganti dengan placeholder nama program (aman untuk nama berapostrof)
+document.getElementById('grid').addEventListener('error', e => {
+  const im = e.target;
+  if (!im || im.tagName !== 'IMG' || !im.dataset.nama) return;
+  const d = document.createElement('div'); d.className = 'ph'; d.textContent = im.dataset.nama;
+  im.replaceWith(d);
+}, true);
 document.getElementById('q').addEventListener('input', render);
 document.getElementById('sort').addEventListener('change', render);
 muat();
