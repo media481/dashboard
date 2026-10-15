@@ -60,33 +60,58 @@ h1,h2,h3{font-family:"Space Grotesk",Inter,system-ui,sans-serif}
 .state{max-width:none;margin:40px auto;padding:40px 20px;text-align:center;color:var(--ink-soft)}
 .skel{height:420px;border-radius:var(--radius);background:linear-gradient(90deg,#eaeff5 25%,#f4f7fb 50%,#eaeff5 75%);background-size:200% 100%;animation:sh 1.2s infinite}
 @keyframes sh{to{background-position:-200% 0}}
-.modal{position:fixed;inset:0;background:rgba(15,33,56,.6);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal{position:fixed;inset:0;background:rgba(10,24,42,.62);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
 .modal.open{display:flex}
-.sheet{background:#fff;border-radius:var(--radius);max-width:720px;width:100%;max-height:92dvh;overflow:auto;position:relative}
-.sheet header{padding:18px 20px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;display:flex;justify-content:space-between;gap:12px}
-.sheet header h2{font-size:20px}
-.x{border:0;background:var(--brand-tint);color:var(--brand);width:34px;height:34px;border-radius:50%;font-size:20px;cursor:pointer;flex:none}
-.sheet .in{padding:16px 20px 22px;display:grid;gap:16px}
-.sheet img.big{width:100%;border-radius:12px;display:block}
-.mdet{display:grid;gap:16px;align-content:start;min-width:0}
-@media(min-width:760px){
-  .sheet{max-width:1040px}
-  .sheet .in{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:24px;align-items:start}
-  .sheet img.big{position:sticky;top:76px}
-  .mdet{gap:18px}
-  .mdet .facts{grid-template-columns:repeat(3,1fr)}
-  .mdet .prices{grid-template-columns:repeat(4,1fr);gap:6px}
-  .mdet .prices div{padding:8px}
-  .mdet .prices b{font-size:13px;white-space:nowrap}
-  .incexc{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
-  .mdet ul{font-size:14px;padding-left:18px;gap:4px}
-}
-.sheet h4{font:600 13px Inter,sans-serif;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-soft);margin-bottom:6px}
-.prices{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
-.prices div{background:var(--bg);border-radius:10px;padding:10px}
-.prices small{color:var(--ink-soft);font-size:11px;display:block}
-.prices b{font-size:14px}
-.sheet ul{padding-left:20px;font-size:14px;display:grid;gap:3px}
+.modal.open .sheet{animation:pop .22s cubic-bezier(.2,.8,.2,1)}
+@keyframes pop{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+.sheet{background:var(--bg);border-radius:20px;max-width:1040px;width:100%;max-height:92dvh;overflow:auto;position:relative;box-shadow:0 24px 70px rgba(5,15,30,.45);display:flex;flex-direction:column}
+.sheet header{padding:16px 20px;position:sticky;top:0;z-index:3;background:#1a355b;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.sheet header .eyebrow{font-size:11px;letter-spacing:1px;text-transform:uppercase;opacity:.65;margin-bottom:2px}
+.sheet header h2{font-size:clamp(17px,2.2vw,22px);line-height:1.2}
+.mbadges{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.mbadges .badge{box-shadow:none}
+.x{border:0;background:rgba(255,255,255,.14);color:#fff;width:36px;height:36px;border-radius:50%;font-size:22px;line-height:1;cursor:pointer;flex:none;transition:background .15s}
+.x:hover{background:rgba(255,255,255,.26)}
+.sheet .in{padding:20px;display:grid;gap:20px;flex:1}
+.pwrap{background:linear-gradient(160deg,var(--brand-tint),#eef3f9);border-radius:16px;padding:14px;border:1px solid var(--line)}
+.sheet img.big{width:100%;border-radius:10px;display:block;box-shadow:0 10px 28px rgba(15,33,56,.28)}
+.mdet{display:grid;gap:14px;align-content:start;min-width:0}
+.sec{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+.sec h4{display:flex;align-items:center;gap:8px;font:700 12px Inter,sans-serif;text-transform:uppercase;letter-spacing:.7px;color:var(--brand);margin-bottom:10px}
+.sec h4 svg{width:16px;height:16px;flex:none}
+.chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.chip{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;min-width:0}
+.chip i{width:34px;height:34px;border-radius:10px;background:var(--brand-tint);color:var(--brand);display:grid;place-items:center;flex:none}
+.chip i svg{width:18px;height:18px}
+.chip small{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-soft)}
+.chip b{display:block;font-size:13.5px;line-height:1.25}
+.pricehero{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap;background:linear-gradient(135deg,#1a355b,#27508a);color:#fff;border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.pricehero small{display:block;font-size:12px;opacity:.75}
+.pricehero strong{font:700 clamp(22px,3vw,30px)/1.1 "Space Grotesk",Inter,sans-serif}
+.pricehero em{font-style:normal;font-size:12px;background:rgba(255,255,255,.16);padding:4px 10px;border-radius:999px;white-space:nowrap}
+.prices{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.prices div{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:9px 11px}
+.prices div.best{border-color:var(--brand);background:#fff;box-shadow:0 0 0 2px var(--brand-tint)}
+.prices small{color:var(--ink-soft);font-size:11px;display:flex;justify-content:space-between;gap:4px}
+.prices small u{text-decoration:none;color:var(--success);font-weight:700}
+.prices b{font-size:13.5px;white-space:nowrap}
+.hotels{display:grid;gap:8px}
+.hotel{display:flex;gap:10px;align-items:flex-start;background:var(--bg);border-radius:12px;padding:10px 12px}
+.hotel span{flex:none;font-size:11px;font-weight:700;color:var(--brand);background:var(--brand-tint);padding:3px 9px;border-radius:999px;margin-top:1px}
+.hotel p{font-size:13.5px;line-height:1.4}
+.incexc{display:grid;gap:14px;grid-template-columns:1fr 1fr;align-items:start}
+.sec ul{list-style:none;padding:0;display:grid;gap:7px;font-size:13.5px}
+.sec li{position:relative;padding-left:24px;line-height:1.4}
+.sec li::before{content:"";position:absolute;left:0;top:1px;width:17px;height:17px;border-radius:50%;background-position:center;background-repeat:no-repeat;background-size:11px}
+.ok li::before{background-color:var(--success-tint);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23279E70' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5 9-10'/%3E%3C/svg%3E")}
+.no li::before{background-color:#FDECEC;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23D64545' stroke-width='3.5' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6 6 18'/%3E%3C/svg%3E")}
+.mfoot{position:sticky;bottom:0;z-index:3;background:#fff;border-top:1px solid var(--line);padding:12px 20px calc(12px + env(safe-area-inset-bottom,0));display:flex;gap:10px;justify-content:flex-end}
+.mfoot:empty{display:none}
+.mfoot .btn{flex:0 1 260px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 16px;font-size:14.5px;border-radius:12px}
+.mfoot .btn.wa{box-shadow:0 6px 16px rgba(37,211,102,.35)}
+.mfoot .btn svg{width:18px;height:18px}
+@media(min-width:800px){.sheet .in{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);align-items:start}.pwrap{position:sticky;top:0}}
+@media(max-width:799px){.chips{grid-template-columns:1fr}.incexc{grid-template-columns:1fr}.mfoot .btn{flex:1}.sheet{border-radius:16px}.modal{padding:8px}}
 footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px calc(30px + env(safe-area-inset-bottom,0))}
 /* 5 kolom selalu muat di lebar layar: ukuran konten mengecil mengikuti lebar */
 .body{padding:clamp(8px,1vw,16px);gap:clamp(6px,.8vw,10px)}
@@ -115,8 +140,9 @@ footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px 
 <footer>Harga dan jadwal dapat berubah sewaktu-waktu mengikuti ketentuan Saudi, maskapai, dan kurs. Hubungi kami untuk informasi terbaru.</footer>
 
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="sheet">
-  <header><h2 id="mTitle"></h2><button class="x" id="mClose" aria-label="Tutup">&times;</button></header>
+  <header><div><div class="eyebrow">Detail Program</div><h2 id="mTitle"></h2><div class="mbadges" id="mBadges"></div></div><button class="x" id="mClose" aria-label="Tutup">&times;</button></header>
   <div class="in" id="mBody"></div>
+  <div class="mfoot" id="mFoot"></div>
 </div></div>
 
 <script>
@@ -272,23 +298,47 @@ function waLink(p) {
   return 'https://wa.me/' + encodeURIComponent(WA_NUMBER) + '?text=' + encodeURIComponent(t);
 }
 
+const IC = {
+  cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  plane: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5a2.1 2.1 0 0 0-3-3L13 8 4.8 6.2l-1.3 1.3L10 11l-3 3-3-.5L3 15l3.5 1.5L8 20l1.5-1-.5-3 3-3 3.5 6.5z"/></svg>',
+  tag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13 13 20a2 2 0 0 1-2.8 0L3 12.8V4h8.8L20 10.2a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="8.5" r="1.2"/></svg>',
+  bed: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18V6M3 14h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5"/><circle cx="7" cy="11" r="1.5"/></svg>',
+  ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>',
+  no: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></svg>',
+  wa: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2zm5.2 14.2c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.1.1.3 0 .5l-.3.4-.4.5c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.1 1 2 1.3 2.3 1.4.3.1.5.1.6-.1l.9-1.1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.8-.1 1.5z"/></svg>',
+  map: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>'
+};
+
 function buka(i) {
   const p = tampil[i]; if (!p) return;
   document.getElementById('mTitle').textContent = p.nama || '';
+  document.getElementById('mBadges').innerHTML = (p._near ? '<span class="badge near">Terdekat</span>' : '') + (p._baru ? '<span class="badge new">Baru</span>' : '');
   const kamar = [['Quint', p.harga_quint], ['Quad', p.harga_quad], ['Triple', p.harga_triple], ['Double', p.harga_double]].filter(k => rupiah(k[1]));
+  const best = hargaPilih(p);
   const hotel = [['Makkah', p.hotel_makkah], ['Madinah', p.hotel_madinah], [p.hotel_3_kota || 'Hotel 3', p.hotel_3], [p.hotel_4_kota || 'Hotel 4', p.hotel_4]].filter(h => h[1]);
   const inc = daftarList(p.termasuk), exc = daftarList(p.tidak_termasuk);
   const iti = safeUrl(p.link_itinerary);
+  const chip = (ic, lbl, val) => `<div class="chip"><i>${IC[ic]}</i><div><small>${lbl}</small><b>${esc(val || '-')}</b></div></div>`;
   document.getElementById('mBody').innerHTML = `
-    <img class="big" src="${esc(posterSrc(p.link_poster))}" alt="Poster ${esc(p.nama)}" referrerpolicy="no-referrer" onerror="this.remove()">
-    <div class="mdet"><div class="facts"><div><small>Berangkat</small><b>${esc(p.tgl || '-')}</b></div><div><small>Durasi</small><b>${esc(p.durasi || '-')}</b></div><div><small>Maskapai</small><b>${esc(p.maskapai || '-')}</b></div></div>
-    ${kamar.length ? `<div><h4>Harga per orang</h4><div class="prices">${kamar.map(k => `<div><small>${k[0]}</small><b>${esc(rupiah(k[1]))}</b></div>`).join('')}</div></div>` : ''}
-    ${hotel.length ? `<div><h4>Akomodasi</h4><ul>${hotel.map(h => `<li><b>${esc(h[0])}:</b> ${esc(h[1])}</li>`).join('')}</ul></div>` : ''}
-    ${(inc.length || exc.length) ? '<div class="incexc">' : ''}${inc.length ? `<div><h4>Termasuk</h4><ul>${inc.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
-    ${exc.length ? `<div><h4>Tidak termasuk</h4><ul>${exc.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}${(inc.length || exc.length) ? '</div>' : ''}
-    <div class="actions">${iti ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(iti)}">Lihat Itinerary</a>` : ''}${WA_NUMBER ? `<a class="btn wa" target="_blank" rel="noopener" href="${waLink(p)}">Chat CS via WhatsApp</a>` : ''}</div></div>`;
+    <div class="pwrap"><img class="big" src="${esc(posterSrc(p.link_poster))}" alt="Poster ${esc(p.nama)}" referrerpolicy="no-referrer" onerror="this.closest('.pwrap').remove()"></div>
+    <div class="mdet">
+      <div class="chips">${chip('cal', 'Berangkat', p.tgl)}${chip('clock', 'Durasi', p.durasi)}${chip('plane', 'Maskapai', p.maskapai)}</div>
+      ${kamar.length ? `<div class="sec"><h4>${IC.tag}Harga per orang</h4>
+        ${best ? `<div class="pricehero"><div><small>Mulai dari (${esc(best.k.toLowerCase())})</small><strong>${esc(rupiah(best.v))}</strong></div>${p.dateObj ? `<em>${esc(estimasi(p.dateObj))}</em>` : ''}</div>` : ''}
+        <div class="prices">${kamar.map(k => `<div class="${best && best.k === k[0] ? 'best' : ''}"><small>${k[0]}${best && best.k === k[0] ? '<u>Termurah</u>' : ''}</small><b>${esc(rupiah(k[1]))}</b></div>`).join('')}</div></div>` : ''}
+      ${hotel.length ? `<div class="sec"><h4>${IC.bed}Akomodasi</h4><div class="hotels">${hotel.map(h => `<div class="hotel"><span>${esc(h[0])}</span><p>${esc(h[1])}</p></div>`).join('')}</div></div>` : ''}
+      ${(inc.length || exc.length) ? `<div class="incexc">
+        ${inc.length ? `<div class="sec ok"><h4 style="color:var(--success)">${IC.ok}Termasuk</h4><ul>${inc.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
+        ${exc.length ? `<div class="sec no"><h4 style="color:#D64545">${IC.no}Tidak termasuk</h4><ul>${exc.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
+      </div>` : ''}
+    </div>`;
+  document.getElementById('mFoot').innerHTML =
+    (iti ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(iti)}">${IC.map}Lihat Itinerary</a>` : '') +
+    (WA_NUMBER ? `<a class="btn wa" target="_blank" rel="noopener" href="${waLink(p)}">${IC.wa}Chat CS via WhatsApp</a>` : '');
   document.getElementById('modal').classList.add('open');
   document.body.style.overflow = 'hidden';
+  document.querySelector('#modal .sheet').scrollTop = 0;
   document.getElementById('mClose').focus();
 }
 function tutup() { document.getElementById('modal').classList.remove('open'); document.body.style.overflow = ''; }
