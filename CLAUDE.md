@@ -28,6 +28,13 @@ Bahasa UI & komentar kode: **Bahasa Indonesia**. Ikuti gaya ini saat menambah fi
 
 ```
 index.html          ← struktur HTML saja, load css/style.css + js/app.js
+katalog.html          ← halaman marketing publik MANDIRI (CSS+JS inline, tidak memakai app.js/style.css). Baca tabel
+                        `programs` via REST dengan anon key, filter sama seperti `isProgramVisibleOnDashboard`
+                        (aktif, belum expired, punya poster). Sisa seat tidak ditampilkan karena `kb_jamaah`
+                        tidak publik. Isi `WA_NUMBER` di bagian konfigurasi untuk tombol WhatsApp. Kalau logika
+                        filter/parse tanggal di app.js berubah, sesuaikan juga di sini. Tombol "Share Katalog"
+                        (`#btnShareKatalog`, topbar di samping Homepage, fungsi `shareKatalog()` di app.js)
+                        membagikan/menyalin link halaman ini
 css/style.css        ← SATU-SATUNYA CSS aktif (semua styling, CSS custom
                         properties di :root untuk warna brand). **PENTING:**
                         ada file `/style.css` lepas di root project yang
@@ -38,7 +45,7 @@ css/style.css        ← SATU-SATUNYA CSS aktif (semua styling, CSS custom
 js/app.js            ← SATU-SATUNYA file JS, berisi SEMUA logic + koneksi Supabase
 manifest.json         ← config PWA (name, theme_color, icons)
 service-worker.js     ← precache list, HARUS disinkronkan manual kalau nama file berubah.
-                        `CACHE_NAME` (saat ini `amiru-repo-cache-v116`) dinaikkan tiap rilis
+                        `CACHE_NAME` (saat ini `amiru-repo-cache-v117`) dinaikkan tiap rilis
 icons/                ← 9 file ikon PWA sesuai daftar di manifest.json
 sql/                  ← skema & migrasi bernomor 00-56. `00_SETUP_LENGKAP_SATU_FILE.sql` = gabungan
                         semuanya (idempoten, bebas urutan) untuk project baru. Untuk project yang SUDAH

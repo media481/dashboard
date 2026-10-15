@@ -5744,6 +5744,13 @@ main { padding-bottom: 0; }
 }
 .btn-homepage:hover { background: var(--brand); color: #fff; transform: translateY(-1px); box-shadow: var(--shadow); }
 .btn-homepage:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+/* Tombol Share Katalog: pakai gaya .btn-homepage, tapi elemen <button> perlu reset kecil
+   dan hanya ikon di layar sempit supaya topbar tidak melebar. */
+.btn-share-katalog { cursor: pointer; line-height: inherit; }
+@media (max-width: 480px) {
+    .btn-share-katalog span { display: none; }
+    .btn-share-katalog { padding: 7px 11px; }
+}
 
 /* Ponsel (<=600px): topbar bersusun kolom, jadi flex-basis (220/320/220px dari
    aturan dasar) terbaca sebagai TINGGI dan topbar membengkak ~790px. Dikembalikan

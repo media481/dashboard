@@ -20166,4 +20166,45 @@ window.igApplyPolaMingguan = igApplyPolaMingguan;
     window.addEventListener('blur', closeNow);
 })();
 
+// ============================================================
+// SHARE KATALOG (halaman marketing katalog.html)
+// Tombol "Share Katalog" di topbar, di samping tombol Homepage. Alamat dibangun dari lokasi
+// dashboard saat ini, jadi otomatis benar di domain mana pun. Di HP memakai menu share bawaan
+// (WhatsApp dll); di desktop menyalin link ke clipboard.
+// ============================================================
+async function shareKatalog() {
+    const url = new URL('katalog.html', window.location.href).href;
+    const title = 'Program Umroh Tersedia | Amiru Tour';
+    const text = 'Lihat jadwal, harga, dan hotel program Umroh Amiru Tour yang tersedia:';
+    if (navigator.share) {
+        try {
+            await navigator.share({ title, text, url });
+            return;
+        } catch (err) {
+            if (err && err.name === 'AbortError') return;   // user menutup menu share, bukan error
+            // gagal lain -> lanjut ke salin link
+        }
+    }
+    let ok = false;
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(url);
+            ok = true;
+        }
+    } catch (_) { ok = false; }
+    if (!ok) {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+        document.body.appendChild(ta);
+        ta.select();
+        try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+        ta.remove();
+    }
+    if (ok) showToast('Link katalog disalin: ' + url, 'success');
+    else showToast('Gagal menyalin. Salin manual: ' + url, 'error');
+}
+window.shareKatalog = shareKatalog;
+
 console.log('🚀 Amiru Admin Dashboard loaded!');
