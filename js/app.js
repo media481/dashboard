@@ -16543,7 +16543,7 @@ function closeIgContentPlanModal() {
 // Baris "Versi:" dan "Diperbarui:" dibaca otomatis untuk header modal, jadi format dua baris itu jangan diubah.
 // ============================================================
 const ABOUT_PLANNER_MD = `# About Planner: Konsep Perencanaan Konten Instagram Amiru Tour
-Versi: 7
+Versi: 8
 Diperbarui: 15 Oktober 2026
 Status: disepakati Oktober 2026. Uji coba alur mingguan yang menyambung dimulai pekan Senin, 12 Oktober 2026. Ejaan resmi: "Umroh" (bukan "Umrah"), termasuk di hashtag.
 
@@ -16600,7 +16600,7 @@ Keseimbangan: 4 hari menyentuh hati (Senin, Kamis, Sabtu, Minggu) dan 3 hari pra
 
 | Hari | Hook |
 |---|---|
-| Senin | Pertama kali mendengar ribuan suara bertalbiyah bersamaan |
+| Senin | Pertama kali mendengar suara talbiyah bersahutan dari mana-mana |
 | Selasa | Kapan talbiyah mulai dibaca dan kapan berhenti (sesuai manasik pembimbing) |
 | Rabu | Menghafal talbiyah dari sekarang, jadwal latihan 2 minggu |
 | Kamis | Dari miqat sampai Masjidil Haram sambil bertalbiyah |
@@ -16731,6 +16731,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 | 5 | 10 Oktober 2026 | Tampilan modal Perencanaan Konten disederhanakan: form dua langkah, pengaturan jarang dipakai dilipat, satu aksi utama per kartu hasil. Aturan konten dan generator tidak berubah |
 | 6 | 15 Oktober 2026 | Tanda [cek pembimbing] dipersempit ke klaim tata cara/hukum/lafaz dan pilar Manasik; jatah doa Minggu dicadangkan (Senin-Sabtu maksimal 2 hari, doa dicari di dua paragraf terakhir); riwayat topik awal jadi data dan memblokir tema alur yang bentrok; tanda pembimbing tidak lagi dihitung sebagai kata topik saat mendeteksi ide kembar |
 | 7 | 15 Oktober 2026 | Rumus rujukan hari sebelumnya dikecualikan dari cek 3 kata terhadap 20 posting terakhir; mode pekan hanya mengulang hari yang ditolak dan hari sesudahnya; teks gambar dibersihkan dari tanda pisah panjang dan titik koma; bank tema alur diperluas menjadi 65 tema; tombol generate menampilkan perkiraan waktu; catatan bahwa bank topik per hari belum berupa data |
+| 8 | 15 Oktober 2026 | Penyelarasan: contoh hook Senin tidak lagi memakai kata "ribuan" (selaras larangan klaim jumlah); generator caption manual disamakan dengan aturan doa (tidak wajib, Senin-Sabtu maksimal 2 hari) dan emoji (maksimal 1). Aturan konten tidak berubah |
 `;
 
 // Petunjuk yang ikut tersalin di depan dokumen supaya Claude mengembalikan dokumen dalam format yang bisa dipakai lagi.

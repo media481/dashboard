@@ -179,6 +179,8 @@ Memaksimalkan izin **`instagram_manage_comments`** — bagian dari Instagram Gra
 
 ## Content Planner Bulanan (AI)
 
+> **Sebagian sudah usang.** Campuran promosi/testimoni/engagement di bawah adalah perilaku lama. Yang berlaku sekarang: pola 7 hari menyambung per Tema Minggu (lihat bagian "Pola 7 Hari Menyambung" dan `pola-konten.md`). Bukti sosial, engagement, dan info program sedang dijeda.
+
 Tombol **"Rencana Bulanan AI"** di toolbar IG Scheduler menyusun daftar IDE post untuk
 1 bulan penuh sekaligus (tersebar per tanggal, campuran promosi/edukasi/testimoni/
 engagement) lewat Gemini — otomatis memakai konteks program Umroh yang berangkat di
@@ -284,6 +286,8 @@ Flag `IG_AUTOPUBLISH_ENABLED` di `js/app.js` (default `false`):
 
 ## Pola Mingguan Amiru (teks di gambar + caption)
 
+> **USANG, jangan dijadikan acuan.** Tabel di bawah (Jumat testimoni, Sabtu engagement, Minggu info program) sudah diganti pola 7 hari menyambung. Lihat bagian "Pola 7 Hari Menyambung" di bawah dan `pola-konten.md`.
+
 Menerapkan pola konten Amiru ke Content Planner (tombol **Rencana AI** → **Pola Mingguan Amiru**), tanpa AI:
 
 | Hari | Jenis | Pilar planner | Tipe |
@@ -326,7 +330,7 @@ Acuan: `pola-konten.md`. Bagian "Pola Mingguan Amiru" dan "Generate Rencana 1 Bu
 - **Kejujuran:** AI tidak mengarang lafaz/doa Arab, testimoni, angka, atau harga. Ide Manasik dan ide yang memuat klaim tata cara/hukum/lafaz ditandai `[cek pembimbing]` di judul ide (kata "doa" atau nama ritual saja tidak ditandai); cek ke pembimbing/ustaz sebelum posting.
 - **Isi dari Pola (tanpa AI)** kini membuat kerangka kosong 7 hari sesuai tabel di atas.
 - **Migrasi (opsional):** `sql/47_tambah_ig_content_plan_tema_minggu.sql` (kolom `tema_minggu`).
-- **Deploy ulang wajib:** `generate-ig-content-plan` (kontrak `versi: 4`) dan `generate-ig-caption`.
+- **Deploy ulang wajib:** `generate-ig-content-plan` (kontrak `versi: 5`, frontend menerima >= 4) dan `generate-ig-caption`.
 
 ## Generate Rencana 1 Bulan: isi penuh & anti-duplikat
 

@@ -5,7 +5,7 @@ Dokumen acuan untuk membuat konten Instagram Amiru Tour (PT Amiru Haramain Indon
 > Status: disepakati Oktober 2026. Uji coba alur mingguan yang menyambung dimulai pekan Senin, 12 Oktober 2026.
 > Ejaan resmi: **"Umroh"** (bukan "Umrah"), termasuk di hashtag.
 >
-> Versi ringkas yang bisa dibaca, disalin, dan direvisi lewat Claude ada di tombol **About Planner** (IG Scheduler), teksnya di `ABOUT_PLANNER_MD` pada `js/app.js`. Kalau konsep berubah, perbarui keduanya.
+> Dokumen konsep yang bisa dibaca, disalin, dan direvisi lewat Claude ada di tombol **About Planner** (IG Scheduler), teksnya di `ABOUT_PLANNER_MD` pada `js/app.js` (bernomor Versi dan dianggap sumber utama bila ada beda). Kalau konsep berubah, perbarui keduanya, lalu sinkronkan ke `IG_PLAN_PROMPT_SISTEM`, `IG_POLA_AMIRU`, dan edge function `generate-ig-content-plan` serta `generate-ig-caption`.
 
 ---
 
@@ -64,7 +64,7 @@ Urutan perjalanan hati calon jamaah: **rasakan → pahami → siapkan → bayang
 
 | Hari | Hook |
 |---|---|
-| Senin | Pertama kali mendengar ribuan suara bertalbiyah bersamaan |
+| Senin | Pertama kali mendengar suara talbiyah bersahutan dari mana-mana |
 | Selasa | Kapan talbiyah mulai dibaca dan kapan berhenti (sesuai manasik pembimbing) |
 | Rabu | Menghafal talbiyah dari sekarang, jadwal latihan 2 minggu |
 | Kamis | Dari miqat sampai Masjidil Haram sambil bertalbiyah |
@@ -82,7 +82,7 @@ Urutan perjalanan hati calon jamaah: **rasakan → pahami → siapkan → bayang
 - Fokus ke perasaan: rindu, ketenangan, proses transisi jiwa, makna di balik ibadah.
 - Hindari kata kaku: "tersedia", "silakan", "hubungi kami".
 - Terdengar manusia, bukan AI: detail spesifik dan tak terduga, ritme kalimat dicampur panjang dan sangat pendek, bentuk caption bervariasi antarhari.
-- Dilarang: pola "bukan sekadar X, tapi Y", frasa klise (relung hati, hiruk pikuk, perjalanan spiritual, senantiasa, tentunya, sejatinya, mari kita), tanda pisah panjang, titik koma; maksimal 2 tanda tanya dan 1 emoji per caption.
+- Dilarang: pola "bukan sekadar X, tapi Y", daftar tiga kata berirama berulang, kalimat penutup ala kata mutiara, frasa klise (relung hati, hiruk pikuk, perjalanan spiritual, senantiasa, tentunya, sejatinya, mari kita), tanda pisah panjang, titik koma; maksimal 2 tanda tanya dan 1 emoji per caption.
 - Doa penutup tidak wajib tiap hari (maksimal 3 hari dalam sepekan; Minggu selalu salah satunya, jadi Senin sampai Sabtu paling banyak 2 hari). Jangan mengaku pengalaman pribadi yang dikarang.
 
 Acuan (JANGAN vs TULIS):
@@ -101,7 +101,7 @@ Acuan (JANGAN vs TULIS):
    - Slide 5: penutup (ajakan simpan/kirim atau doa singkat)
    - Jangan diulang di caption.
 2. **Caption:** lanjutan dari teks gambar, **tidak terlalu singkat** (3-5 paragraf pendek, sekitar 600-1200 karakter, dipisah baris kosong).
-   - *Konten emosional:* pembukaan = suasana/refleksi → isi = hubungkan dengan pengalaman batin jamaah → penutup = pertanyaan hangat (rindu/doa) + satu kalimat doa penutup sederhana dalam Bahasa Indonesia.
+   - *Konten emosional:* pembukaan = suasana/refleksi → isi = hubungkan dengan pengalaman batin jamaah → penutup = pertanyaan hangat (rindu/doa). Doa singkat hanya di sebagian hari (lihat aturan doa di bagian 4); hari lain boleh berhenti dengan satu kalimat pendek yang menggantung.
    - *Konten praktis:* pembukaan = masalah yang relatable → isi = poin ringkas → penutup = ajakan simpan/kirim + CTA ringan.
 3. **Hashtag:** tepat **5**, langsung di baris terakhir caption, **tanpa label "Hashtag:"** (supaya mudah disalin). `#UmrohBersamaAmiru` dan `#AmiruTour` selalu ada.
 
@@ -111,7 +111,7 @@ Acuan (JANGAN vs TULIS):
 
 - Satu topik hanya sekali. Sudut baru atas topik lama baru boleh muncul setelah jeda minimal 6 bulan.
   - **Cara sistem menegakkannya:** deteksi duplikat dan daftar riwayat yang dikirim ke AI hanya memuat 6 bulan terakhir (`IG_JEDA_TOPIK_BULAN` di `js/app.js`); topik atau hook yang lebih tua boleh kembali dengan sudut baru. Tema Minggu memakai jeda lebih ketat, 12 bulan, supaya peta setahun tidak punya tema pekan kembar.
-  - Hook dan pembuka caption dibandingkan dengan 20 posting terakhir, terlepas dari jendela 6 bulan.
+  - Hook dan pembuka caption dibandingkan dengan 20 posting terakhir, terlepas dari jendela 6 bulan. Rumus 3 kata pertama yang sama juga dianggap mirip, kecuali rumus rujukan hari sebelumnya (kemarin, kemaren, semalam, tadi), karena Selasa sampai Minggu wajib merujuk hari sebelumnya.
 - Hook dan kalimat pembuka caption tidak boleh mirip dengan 20 posting terakhir.
 - Isi diambil dari bank topik per hari:
 
@@ -187,7 +187,7 @@ Bertindaklah sebagai copywriter media sosial untuk biro umroh "Amiru Tour" (PT A
 1. Judul singkat: HARI · Pilar · Format · Peran
 2. TEKS DI GAMBAR: 2-4 baris pendek, jadi pemancing. Untuk carousel tulis per slide (maksimal 5 slide): Slide 1 pemancing, Slide 2-4 isi, Slide 5 penutup (ajakan simpan/kirim atau doa singkat). Jangan diulang di caption.
 3. CAPTION: lanjutan dari teks gambar, TIDAK terlalu singkat: 3-5 paragraf pendek (sekitar 600-1200 karakter) dipisah baris kosong.
-   - Konten emosional: pembukaan = suasana/refleksi; isi = hubungkan dengan pengalaman batin jamaah seolah kita melihat momennya; penutup = pertanyaan hangat tentang rindu/doa + satu kalimat doa penutup sederhana dalam Bahasa Indonesia.
+   - Konten emosional: pembukaan = suasana/refleksi; isi = hubungkan dengan pengalaman batin jamaah seolah kita melihat momennya; penutup = pertanyaan hangat tentang rindu/doa; doa singkat HANYA di sebagian hari (maksimal 3 dari 7 hari, Minggu selalu salah satunya), hari lain boleh berhenti dengan satu kalimat pendek yang menggantung.
    - Konten praktis (manasik/edukasi): pembukaan = masalah yang relatable; isi = poin ringkas; penutup = ajakan simpan/kirim ke teman + CTA ringan "chat WA aja ya".
 4. HASHTAG: tepat 5 hashtag di BARIS TERAKHIR caption, langsung tanpa tulisan "Hashtag:". #UmrohBersamaAmiru dan #AmiruTour selalu ada, 3 lainnya relevan dengan topik.
 
@@ -254,5 +254,7 @@ Deploy ulang (urutan bebas): `supabase functions deploy generate-ig-content-plan
 - Pemeriksa di server menolak: teks Arab, janji berlebihan, **kutipan atau atribusi ayat/hadis** ("bersabda", "berfirman", "QS.", "HR."), placeholder `[isi ...]`, statistik atau klaim jumlah jamaah, kata kaku (silakan/hubungi kami/tersedia), format teks gambar yang tidak cocok dengan tipe (carousel harus `Slide 1..n:` berurutan, 3 sampai 5; single post tanpa "Slide"), caption yang menyalin teks gambar, dan rumus pembuka kembar antarhari. Angka dan kata "tersedia" tetap boleh bila **Arahan tambahan** meminta info program.
 - Hari yang ditolak **ditulis ulang sendiri** (maksimal 2 putaran) dengan alasan penolakan dan hari yang sudah lolos sebagai penyambung; hari yang sudah lolos tidak dibuang. Dulu satu hari ditolak berarti hari-hari sesudahnya ikut dibuang dan dibuat ulang.
 - Opsional: secret `IG_PLAN_THINKING_LEVEL` (`low`, `medium`, atau `high`) menyalakan tingkat berpikir model untuk hasil lebih rapi, dengan waktu dan biaya lebih besar. Default mati.
+
+Tema Minggu otomatis (tema musiman, alur perjalanan 65 tema, jeda 365 hari) dan **Rencana Setahun AI** (tema 12 bulan disimpan per pekan, bisa diedit dan dikunci) dijelaskan di About Planner bagian 7 dan 9.
 
 Yang belum otomatis: tabel **Riwayat topik** (bagian 6) masih disalin manual dari "TOPIK MINGGU INI"; dashboard sudah membaca riwayat dari rencana & post tersimpan sehingga AI tetap menghindari topik lama.

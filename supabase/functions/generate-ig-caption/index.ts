@@ -225,7 +225,7 @@ type MediaType = "image" | "video" | "carousel";
 
 const TUJUAN_GUIDE: Record<Tujuan, string> = {
   storytelling:
-    "STORYTELLING (peran Rasakan / Bayangkan / Terinspirasi). Bangun suasana & perasaan (rindu, tenang, haru) dari satu momen konkret yang bisa dibayangkan. EMOSIONAL: pembukaan = suasana/refleksi; isi = hubungkan dengan pengalaman batin jamaah seolah kita melihat momennya; penutup = pertanyaan hangat tentang rindu/doa + satu kalimat doa penutup sederhana dalam Bahasa Indonesia. Jualan sangat halus, CTA ringan. Kalau berupa cerita manusiawi, tulis sebagai ilustrasi/umum (\"banyak jamaah bercerita...\"), BUKAN klaim kejadian nyata.",
+    "STORYTELLING (peran Rasakan / Bayangkan / Terinspirasi). Bangun suasana & perasaan (rindu, tenang, haru) dari satu momen konkret yang bisa dibayangkan. EMOSIONAL: pembukaan = suasana/refleksi; isi = hubungkan dengan pengalaman batin jamaah seolah kita melihat momennya; penutup = pertanyaan hangat tentang rindu/doa; doa singkat dalam Bahasa Indonesia HANYA bila pas (tidak wajib, Senin sampai Sabtu paling banyak 2 hari dalam sepekan), selain itu boleh berhenti dengan satu kalimat pendek yang menggantung. Jualan sangat halus, CTA ringan. Kalau berupa cerita manusiawi, tulis sebagai ilustrasi/umum (\"banyak jamaah bercerita...\"), BUKAN klaim kejadian nyata.",
   edukasi:
     "EDUKASI (peran Siapkan / Hindari). PRAKTIS: pembukaan = masalah yang relatable; isi = 1-3 poin ringkas yang berguna dan layak disimpan (persiapan, kesalahan umum); penutup = ajakan simpan/kirim ke teman + CTA ringan \"chat WA aja ya\".",
   manasik:
@@ -273,7 +273,7 @@ ATURAN ISI (WAJIB):
 - JANGAN membuat janji berlebihan ("pasti mabrur", "dijamin berangkat", "seat pasti ada").
 - JANGAN mengarang kutipan ayat, hadis, atau lafaz/doa berbahasa Arab. Untuk lafaz dan tata cara tulis "sesuai manasik dari pembimbing". Soal hukum ibadah tulis secara umum, tanpa fatwa.
 - Ejaan selalu "Umroh" (bukan "Umrah"), termasuk di hashtag.
-- Emoji secukupnya (maks 3-4 di seluruh caption).
+- Emoji maksimal 1 di seluruh caption, boleh nol.
 
 OUTPUT: HANYA teks caption final. Tanpa kalimat pembuka/penutup dari kamu, tanpa code fence, tanpa label seperti "Hook:" atau "CTA:".`;
 }
