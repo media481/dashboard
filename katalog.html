@@ -198,7 +198,10 @@ footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px 
   .sheet{max-height:94dvh;border-radius:20px 20px 0 0}
   .modal.open .sheet{animation:up .26s cubic-bezier(.2,.8,.2,1)}
   .sheet header{padding:12px 14px}.sheet header h2{font-size:17px}
-  .pwrap{padding:10px}.pwrap img.big{max-height:36dvh}.zoomhint{margin-top:6px}
+  /* poster modal HP: full-bleed selebar sheet, tanpa bingkai/ruang kosong kiri-kanan; tombol perbesar melayang di pojok poster */
+  .pwrap{position:relative;margin:-14px -14px 0;padding:0;background:none;border:0;border-radius:0}
+  .pwrap img.big{width:100%;max-width:none;max-height:none;margin:0;border-radius:0;box-shadow:none}
+  .zoomhint{position:absolute;right:10px;bottom:10px;margin:0;width:auto;min-height:38px;padding:0 14px;background:rgba(255,255,255,.94);border:0;box-shadow:0 2px 10px rgba(0,0,0,.28)}
   .incexc{grid-template-columns:1fr}
   .prices{grid-template-columns:repeat(2,minmax(0,1fr))}.prices small{flex-direction:row}
   .btn:active,.x:active{transform:scale(.97)}
