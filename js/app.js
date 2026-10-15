@@ -15221,14 +15221,12 @@ function igDmPlanCard(pl, canEdit) {
             <button type="button" class="${stage === 'siap' ? 'btn-primary' : 'btn-secondary'} ig-dm-convert" onclick="igConvertPlanToPost('${pl.id}')">Jadikan Post</button>
         </div>` : '';
     const edit = canEdit ? `<div class="ig-dm-edit" style="display:none;">
-          <div class="ig-dm-edit-cols">
-            <div class="ig-dm-edit-left">
-            <div class="ig-dm-edit-row">
+          <div class="ig-dm-edit-row ig-dm-edit-row-tema">
                 <input type="text" class="ig-dm-input ig-dm-tema" value="${escapeHtmlAttr(pl.tema)}" maxlength="120" placeholder="Tema / ide"
                     onblur="igPlanUpdateField('${pl.id}','tema',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">
                 <span class="ig-plan-save-indicator" id="igPlanSaved-${pl.id}"></span>
             </div>
-            <div class="ig-dm-edit-row">
+            <div class="ig-dm-edit-row ig-dm-edit-row-meta">
                 <select class="ig-dm-input" onchange="igPlanUpdateField('${pl.id}','tipe_konten',this.value)">${typeOpts}</select>
                 ${pilOpts}
                 <input type="date" class="ig-dm-input" value="${escapeHtmlAttr(pl.tanggal)}" title="Pindah ke tanggal lain" onchange="igMovePlanToDate('${pl.id}',this.value,true)">
@@ -15239,10 +15237,12 @@ function igDmPlanCard(pl, canEdit) {
                         onblur="igPlanSetCanva('${pl.id}',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">`
                     : `<span class="ig-plan-canva-off" title="Jalankan sql/56_tambah_ig_content_plan_canva.sql lalu muat ulang halaman">Link Canva belum aktif (jalankan sql/56)</span>`}
             </div>
-            ${igTeksGambarReady ? `<label class="ig-dm-edit-label">Teks di gambar <em>(2–4 baris pendek)</em></label>
+          <div class="ig-dm-edit-cols">
+            <div class="ig-dm-edit-left">${igTeksGambarReady ? `<label class="ig-dm-edit-label">Teks di gambar <em>${pl.tipe_konten === 'carousel' ? '(satu blok per slide, maks 5 slide)' : '(2–4 baris pendek)'}</em></label>
             <textarea class="ig-dm-input ig-dm-textarea ig-dm-imgtext-input" rows="3" maxlength="800" placeholder="Contoh: Niat umroh itu muncul diam-diam."
-                onblur="igPlanUpdateField('${pl.id}','teks_gambar',this.value)">${escapeHtml(imgTxt)}</textarea>` : ''}
-            </div>
+                oninput="this.parentNode.querySelector('.ig-dm-imgcount').textContent=this.value.length+' / 800 karakter'"
+                onblur="igPlanUpdateField('${pl.id}','teks_gambar',this.value)">${escapeHtml(imgTxt)}</textarea>
+            <div class="ig-dm-edit-foot"><span class="ig-plan-char-count ig-dm-imgcount">${imgTxt.length} / 800 karakter</span></div>` : ''}</div>
             <div class="ig-dm-edit-right">
             <label class="ig-dm-edit-label ig-dm-edit-label-caption">Caption</label>
             <textarea class="ig-dm-input ig-dm-textarea ig-dm-caption-input" rows="6" maxlength="2200" placeholder="Draft caption..."

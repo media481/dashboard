@@ -6144,3 +6144,39 @@ main { padding-bottom: 0; }
     .ig-dm .ig-dm-edit-right .ig-dm-caption-input { min-height: 300px; }
     .ig-dm .ig-dm-edit-left .ig-dm-imgtext-input { min-height: 150px; }
 }
+
+
+/* ============================================================
+   Rapikan editor modal harian (mode edit kartu rencana)
+   - Tema + tipe/pilar/tanggal/link Canva: dua baris penuh di atas, jadi link Canva tidak terpotong
+   - Teks di gambar (kiri) dan Caption (kanan): tinggi sama, label & footer sejajar
+   ============================================================ */
+.ig-dm .ig-dm-edit { padding: 6px 20px 20px; }
+.ig-dm .ig-dm-edit-row { gap: 10px; margin-bottom: 10px; }
+.ig-dm .ig-dm-edit-row-tema .ig-dm-tema { font-size: 14.5px; padding-top: 10px; padding-bottom: 10px; }
+.ig-dm .ig-dm-edit-row-meta { margin-bottom: 16px; }
+.ig-dm .ig-dm-edit-row-meta select.ig-dm-input { flex: 0 0 140px; }
+.ig-dm .ig-dm-edit-row-meta input[type="date"].ig-dm-input { flex: 0 0 160px; }
+.ig-dm .ig-dm-edit-row-meta .ig-dm-canva-input { flex: 1 1 220px; min-width: 0; text-overflow: ellipsis; }
+.ig-dm .ig-dm-edit-left,
+.ig-dm .ig-dm-edit-right { display: flex; flex-direction: column; min-width: 0; }
+.ig-dm .ig-dm-edit-left:empty { display: none; }
+.ig-dm .ig-dm-edit-cols .ig-dm-edit-label { margin: 0 0 6px; }
+.ig-dm .ig-dm-edit-cols .ig-dm-textarea { margin: 0; }
+.ig-dm .ig-dm-edit-cols .ig-dm-edit-foot { margin-top: 10px; min-height: 34px; }
+.ig-dm .ig-dm-edit-cols .ig-plan-char-count { font-size: 11.5px; color: var(--ink-soft); }
+@media (min-width: 900px) {
+    .ig-dm-edit-cols { align-items: stretch; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 20px; }
+    .ig-dm .ig-dm-edit-cols .ig-dm-imgtext-input,
+    .ig-dm .ig-dm-edit-cols .ig-dm-caption-input { flex: 1 1 auto; min-height: 260px; }
+}
+@media (max-width: 899px) {
+    .ig-dm .ig-dm-edit-right { margin-top: 14px; }
+    .ig-dm .ig-dm-edit-cols .ig-dm-imgtext-input { min-height: 170px; }
+    .ig-dm .ig-dm-edit-cols .ig-dm-caption-input { min-height: 200px; }
+    .ig-dm .ig-dm-edit-row-meta select.ig-dm-input,
+    .ig-dm .ig-dm-edit-row-meta input[type="date"].ig-dm-input { flex: 1 1 130px; }
+}
+@media (max-width: 600px) {
+    .ig-dm .ig-dm-edit { padding: 4px 12px 14px; }
+}
