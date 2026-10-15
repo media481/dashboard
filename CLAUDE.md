@@ -14,9 +14,13 @@ Bahasa UI & komentar kode: **Bahasa Indonesia**. Ikuti gaya ini saat menambah fi
 ## Stack
 
 - Vanilla JavaScript (tanpa framework/bundler), HTML, CSS murni
-- Supabase (Postgres + REST API) sebagai backend, diakses langsung dari browser
-  via `@supabase/supabase-js` (CDN) dan sebagian via `fetch()` manual ke endpoint REST
-- Supabase Edge Functions (Deno/TypeScript) untuk hal yang butuh secret/server-side
+- Supabase (Postgres + RLS + Auth + Storage) sebagai backend, diakses langsung dari browser
+  via `@supabase/supabase-js` (CDN) dan sebagian via `fetch()` manual ke endpoint REST.
+  Login memakai **Supabase Auth** (bukan lagi password di `app_config` / `login-dashboard`)
+- Supabase Edge Functions (Deno/TypeScript) untuk hal yang butuh secret/server-side:
+  Gemini (AI caption, OCR poster, rencana konten), Telegram, manajemen akun, Instagram Graph API
+- Cloudflare: frontend di Workers Static Assets (`wrangler.jsonc`), cron IG Scheduler di Worker
+  terpisah (`scheduler/`)
 - PWA: `manifest.json` + `service-worker.js` (strategi network-first, fallback cache)
 - jsPDF (CDN) untuk generate kuitansi PDF
 
@@ -33,35 +37,27 @@ css/style.css        ← SATU-SATUNYA CSS aktif (semua styling, CSS custom
                         `grep "style.css" index.html` kalau ragu file mana yang aktif.
 js/app.js            ← SATU-SATUNYA file JS, berisi SEMUA logic + koneksi Supabase
 manifest.json         ← config PWA (name, theme_color, icons)
-service-worker.js     ← precache list, HARUS disinkronkan manual kalau nama file berubah
+service-worker.js     ← precache list, HARUS disinkronkan manual kalau nama file berubah.
+                        `CACHE_NAME` (saat ini `amiru-repo-cache-v116`) dinaikkan tiap rilis
 icons/                ← 9 file ikon PWA sesuai daftar di manifest.json
-sql/
-  01_setup_semua_tabel.sql     ← CREATE TABLE + RLS untuk semua tabel (dari nol)
-  02_create_kwt_kuitansi.sql      ← SQL khusus tabel kwt_kuitansi
-  03_tambah_pembayaran_jamaah.sql ← migrasi tambahan: tabel pembayaran_jamaah
-                                  (jalankan ini di project yang SUDAH jalan)
-  06_tambah_dokumen_jamaah.sql    ← migrasi tambahan: kolom kb_jamaah.dokumen jsonb
-                                  (jalankan ini di project yang SUDAH jalan)
-  04_tambah_pendaftaran.sql       ← migrasi tambahan: tabel pendaftaran (calon jamaah)
-                                  (jalankan ini di project yang SUDAH jalan)
-  19_tambah_nota_audit.sql        ← migrasi tambahan: nomor nota resmi dari DB (trigger +
-                                  sequence, kolom pembayaran_jamaah.nomor_nota) + tabel
-                                  nota_audit_log (ledger append-only, UPDATE/DELETE
-                                  diblokir trigger) — lihat panel Admin > Audit Nota
-                                  (jalankan ini di project yang SUDAH jalan)
-  29_tambah_role_guest_readonly.sql ← kunci RLS write (insert/update/delete) semua tabel
-                                  inti ke role admin/user saja lewat current_dashboard_role(),
-                                  supaya role guest benar-benar read-only di database,
-                                  bukan cuma disembunyikan di UI (jalankan setelah
-                                  28_migrate_supabase_auth.sql & 26_hardening_rls_keamanan.sql)
+sql/                  ← skema & migrasi bernomor 00-56. `00_SETUP_LENGKAP_SATU_FILE.sql` = gabungan
+                        semuanya (idempoten, bebas urutan) untuk project baru. Untuk project yang SUDAH
+                        jalan, jalankan hanya migrasi baru sesuai nomor urut. Contoh penting:
+                        19 (nomor nota + `nota_audit_log` append-only), 26/27 (hardening RLS),
+                        28 (migrasi Supabase Auth), 29 (guest read-only di RLS), 30-36 (kelola user,
+                        akses menu), 41-51 (IG Scheduler), 52-55 (rekap program, infografis)
 .github/workflows/
-  keep-supabase-alive.yml      ← ping REST API tiap 3 hari biar project Supabase
-                                  free tier tidak auto-pause (butuh secret
-                                  SUPABASE_URL & SUPABASE_ANON_KEY di repo GitHub)
-supabase/functions/
-  send-telegram/index.ts       ← proxy ke Telegram Bot API
-  scan-poster-ocr/index.ts     ← OCR poster pakai Gemini Vision (butuh GEMINI_API_KEY)
-  README.md                     ← panduan deploy edge functions via Supabase CLI
+  keep-supabase-alive.yml ← ping REST API tiap 3 hari biar project free tier tidak auto-pause
+                            (secret repo: SUPABASE_URL & SUPABASE_ANON_KEY)
+supabase/functions/    ← 17 Edge Function + `_shared/gemini.ts` (acuan helper). Daftar, auth, secret,
+                          dan cara deploy ada di `supabase/functions/README.md`
+scheduler/             ← Cloudflare Worker cron IG Scheduler (deploy terpisah, BUKAN bagian deploy dashboard)
+apps-script/           ← Google Apps Script listing folder Drive (Infografis, Rekap Program)
+scripts/setup-auth-accounts.mjs ← setup akun Supabase Auth awal (sekali jalan, butuh service role key)
+tests/test-core.js     ← test minimal tanpa dependency (`npm test`)
+wrangler.jsonc, .assetsignore, _headers ← deploy & header Cloudflare. `.assetsignore` WAJIB ada
+                          (cegah sql/, supabase/, scheduler/, *.md ikut terpublish). Folder/file
+                          internal baru harus ditambahkan ke sana
 ```
 
 **PENTING:** `index.html` HANYA punya satu `<script src="js/app.js">`. Tidak ada file JS
@@ -71,7 +67,7 @@ juga, dan update `service-worker.js` precache list-nya).
 
 Riwayat: proyek ini pernah beberapa kali disusun ulang (monolith → dipecah jadi ~22 file
 modular → digabung lagi jadi satu `js/app.js`). Kalau menemukan file `.js` lepas di root
-atau folder `js/` selain `app.js`, kemungkinan besar itu sisa lama yang tidak dipakai —
+atau folder `js/` selain `app.js` (mis. `utils.js`, `test-core.js`, `js/index.html`), atau `index.ts` di root (salinan lama `generate-wa-caption`), kemungkinan besar itu sisa lama yang tidak dipakai —
 cek dulu apakah direferensikan di `index.html`/`service-worker.js` sebelum diasumsikan aktif.
 
 ## Tabel Supabase yang dipakai
@@ -80,21 +76,34 @@ cek dulu apakah direferensikan di `index.html`/`service-worker.js` sebelum diasu
 |---|---|
 | `programs` | Data program Umroh (field admin-only digabung di kolom `admin_data_lengkap` jsonb) |
 | `jadwal_tamu` | Jadwal kunjungan tamu ke kantor |
-| `kb_jamaah` | Data jamaah per program (kolom `dokumen` jsonb = checklist kelengkapan dokumen per jamaah) |
-| `pendaftaran` | Daftar minat calon jamaah (nama, WA, program diminati, asal) sebelum resmi masuk `kb_jamaah` |
-| `pembayaran_jamaah` | Riwayat pembayaran/cicilan per jamaah (tampil menyatu di tab "Keberangkatan") |
-| `featured_programs` | Program yang ditandai unggulan (diakses via `fetch()` REST langsung, bukan `.from()`) |
-| `app_config` | Password login admin/CS (key-value) |
-| `tg_config` | Config notifikasi Telegram (bot token, edge URL, daftar penerima) |
-| `kwt_kuitansi` | Kuitansi — tabel sudah disiapkan, belum otomatis dipakai di `js/app.js` |
-| `assets` | Link/bookmark ke dokumen penting — tab "Link & Dokumen" di menu Assets |
-| `hotel_saudi_arabia` | Referensi data hotel Arab Saudi, read-only (hasil import CSV) — tab "Hotel Saudi Arabia" di menu Assets |
+| `kb_jamaah` | Data jamaah per program (kolom `dokumen` jsonb = checklist kelengkapan dokumen; `diarsipkan`, `status_kepulangan`) |
+| `pendaftaran` | Daftar minat calon jamaah sebelum resmi masuk `kb_jamaah` |
+| `pembayaran_jamaah` | Riwayat pembayaran/cicilan per jamaah (punya `nomor_nota` dari trigger DB) |
+| `nota_audit_log` | Ledger audit nota, append-only (UPDATE/DELETE diblokir trigger) |
+| `jamaah_audit_log` | Log audit perubahan data jamaah |
+| `kwt_kuitansi` | Kuitansi |
+| `featured_programs` | Program unggulan (diakses via `fetch()` REST langsung, bukan `.from()`) |
+| `dashboard_profiles` | Satu baris per akun Supabase Auth: `dashboard_role` (`admin`/`user`/`guest`), label, email, last login. Dipakai RLS dan semua Edge Function untuk cek role |
+| `role_menu_access`, `user_menu_access` | Akses menu sidebar per role dan pengecualian per user |
+| `app_config` | Key-value config. Password login sudah TIDAK dipakai lagi sejak migrasi Supabase Auth |
+| `login_rate_limit` | Sisa rate-limit login versi lama |
+| `tg_config` | Config Telegram (bot token, edge URL, daftar penerima) |
+| `snapshot_backup` | Snapshot backup data (maks 10, `MAX_SNAPSHOTS`) |
+| `assets` | Link/bookmark dokumen penting (menu Assets, admin saja) |
+| `hotel_saudi_arabia`, `hotel_detail` | Referensi hotel Arab Saudi (hasil import CSV) dan detailnya |
+| `infografis_items`, `rekap_program_items` | Gambar dari folder Drive, disinkron Edge Function |
+| `ig_accounts`, `ig_posts`, `ig_post_media`, `ig_publish_logs` | IG Scheduler: akun, post, media carousel, log publish |
+| `ig_comments` | Komentar IG hasil `ig-sync-comments` |
+| `ig_content_plan`, `ig_rencana_tahunan`, `ig_tasklist` | Perencanaan konten IG (ide harian, tema per pekan, tasklist) |
 
-Setup Supabase baru: jalankan `sql/01_setup_semua_tabel.sql` di SQL Editor, lalu ganti
-password default di `app_config`, lalu update `SUPABASE_URL` & `SUPABASE_ANON_KEY` di
-`js/app.js` baris 4–5.
+Daftar di atas dari `sql/00_SETUP_LENGKAP_SATU_FILE.sql`; cek file itu bila ragu.
 
-## Peta bagian `js/app.js` (2500+ baris, dibagi per komentar section)
+Setup Supabase baru: jalankan `sql/00_SETUP_LENGKAP_SATU_FILE.sql` di SQL Editor, lalu
+`sql/28_migrate_supabase_auth.sql` dan `scripts/setup-auth-accounts.mjs` untuk akun login,
+deploy Edge Function, lalu update `SUPABASE_URL` & `SUPABASE_ANON_KEY` di `js/app.js` baris 4-5
+(harus project yang SAMA dengan tempat SQL & fungsi dideploy, kalau tidak muncul error `PGRST301`).
+
+## Peta bagian `js/app.js` (sekitar 20.000 baris, dibagi per komentar section)
 
 1. Supabase Config — 2. State — 3. Utility Functions (termasuk `withRetry()` untuk
    retry request baca yang gagal karena masalah jaringan) — 4. Generate Auto WA Text —
@@ -110,7 +119,9 @@ terhubung ke harga program & auto-sync status di kb_jamaah) — 19B. Kelola Cici
 kb_jamaah.dokumen jsonb) —
 20. Kuitansi — 21. Featured Programs —
 21A. Crosscheck Module (OCR poster vs data) — 21B. Telegram Module —
-22. Init — 23. Close Modals on Overlay Click — 24. Poster Hover Popup
+22. Init — 23. Close Modals on Overlay Click — 24. Poster Hover Popup — 24e. About Planner —
+serta modul belakangan (IG Scheduler, Rencana Konten, Infografis, Rekap Program, Pengaturan User,
+Snapshot). Daftar ini tidak lengkap: cari komentar section dengan `grep -n "^// [0-9]" js/app.js`.
 
 ## Role & akses
 
@@ -122,8 +133,9 @@ Role: `admin`, `user`, `guest`, atau belum login sama sekali (anonim).
   (lihat `sql/29_tambah_role_guest_readonly.sql`), jadi tidak bisa ditembus lewat API
   langsung meski punya JWT authenticated
 - `user` & `admin` → boleh tambah/edit/hapus data (dicek via `canManageProgramData()`)
-- `admin` saja → akses section "Manajemen": Edit & Tambah Program, Crosscheck,
-  Telegram, Pengaturan User
+- `admin` saja → akses section "Manajemen" dan "System": Edit & Tambah Program, Crosscheck,
+  Telegram, Pengaturan User, Snapshot, Assets (default; menu untuk `user`/`guest` bisa diatur
+  lewat Pengaturan User > Akses Menu, disimpan di `role_menu_access`/`user_menu_access`)
 
 Buat akun guest baru lewat tab Admin > Pengaturan User, pilih role "Guest (lihat
 saja, tanpa akses tulis)". Butuh `sql/29_tambah_role_guest_readonly.sql` sudah dijalankan
@@ -278,16 +290,37 @@ satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
 
 ## Aturan Edge Function (supabase/functions/*)
 
+Daftar fungsi, auth, secret, dan perintah deploy: lihat `supabase/functions/README.md` (sumber utama,
+perbarui di sana kalau menambah/mengubah fungsi).
+
 - Edge function **WAJIB berdiri sendiri dalam satu file `index.ts`**. JANGAN `import` dari
-  `../_shared/...` atau file lokal lain (mis. `./postprocess.ts`): deploy dilakukan lewat
+  `../_shared/...` atau file lokal lain (mis. `./postprocess.ts`): deploy bisa dilakukan lewat
   **Supabase Dashboard** (paste satu file), dan Dashboard hanya membundel file fungsi itu
   sendiri, jadi impor lokal gagal dengan "Module not found ... _shared/gemini.ts".
-- Kalau butuh helper bersama (mis. fallback Gemini multi-key), **salin helper-nya inline** ke
-  tiap `index.ts` yang memakainya (contoh: `generate-ig-content-plan`, `generate-ig-caption`).
-  Konsekuensinya: kalau helper diperbaiki, salinan di tiap fungsi perlu diperbarui manual.
-- Impor dari URL/paket luar (mis. `npm:`/`jsr:`) tetap boleh. Yang dilarang hanya impor file lokal.
+- Kalau butuh helper bersama (fallback multi-key Gemini, pasca-proses caption), **salin helper-nya
+  inline** ke tiap `index.ts` yang memakainya (contoh: `generate-ig-content-plan`,
+  `generate-ig-caption`, `scan-poster-ocr`). Kalau helper diperbaiki, salinan di tiap fungsi perlu
+  diperbarui manual. `_shared/gemini.ts` hanya acuan.
+- Impor dari URL/paket luar (`https://esm.sh/...`, `jsr:`, `npm:`) tetap boleh. Yang dilarang hanya impor file lokal.
+- Fungsi yang dipanggil user login: verifikasi token ke Supabase Auth, lalu cek
+  `dashboard_profiles.dashboard_role` pakai service role. Jangan percaya klaim dari client dan
+  jangan terima header `apikey` sebagai kredensial (selalu ikut di tiap request).
 - Saat mengirim hasil kerja, sebut fungsi mana yang perlu di-deploy ulang. Untuk fungsi yang
   diubah, kirim `index.ts`-nya utuh supaya bisa langsung di-paste ke Dashboard.
+- Masalah yang diketahui: `generate-wa-caption` masih import `_shared/gemini.ts` (melanggar aturan
+  di atas); `app.js` memanggil `parse-broadcast-ai`, `generate-tg-reminder`,
+  `generate-payment-reminder-wa`, `sync-infografis` yang source-nya tidak ada di repo;
+  `login-dashboard` sudah legacy (digantikan Supabase Auth).
+
+## Testing & deploy frontend
+
+- `npm test` menjalankan `tests/test-core.js` (memuat `app.js` lewat `vm` dengan mock DOM).
+  Fungsi baru yang murni dan kritis (uang, tanggal, escaping) sebaiknya ditambah ke test dan
+  diekspos di `globalThis.__T`. `npm run test:edge` menguji generator rencana konten IG.
+- Frontend: `npx wrangler deploy` (tanpa build step), pastikan `.assetsignore` ada. Detail dan
+  troubleshooting di `CHECKLIST_DEPLOY.md` bagian 8 (bagian JWT Signing Key/`login-dashboard`
+  di file itu sudah usang).
+- Naikkan `CACHE_NAME` di `service-worker.js` setiap `index.html`/CSS/`app.js` berubah.
 
 ## Cara kirim hasil kerja (deploy ke GitHub)
 
