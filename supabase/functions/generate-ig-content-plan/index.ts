@@ -26,6 +26,9 @@
 //     riwayatGaya?: string,      // hook + pembuka caption 20 posting terakhir ("- tgl | hook: ... | pembuka: ...") -> wajib dihindari
 //     temaMinggu?: string,       // BARU: tema pekan ini (mis. "Talbiyah"). Kosong = AI memilih sendiri
 //     temaMingguDepan?: string,  // BARU: tema pekan depan, hanya untuk teaser penutup Minggu (opsional)
+//     edisi?: number,            // BARU: edisi ke-berapa tema minggu ini tayang (1 = pertama kali; 2+ = tema kembali di tahun/siklus berikutnya)
+//     riwayatTemaIni?: string,   // BARU: SEMUA ide lama (umur berapa pun) dari tema minggu yang sama ("- tgl | tema | hook | pembuka"),
+//                                //       wajib dihindari supaya tema yang kembali tahun depan memakai sudut baru
 //     konteksPekan?: string,     // BARU: hari lain di pekan yang SUDAH jadi ("Senin 2026-10-12 | tema | hook"),
 //                                //       supaya hari yang dibuat/diulang tetap menyambung
 //     slots?: [{ tanggal, hari, peran?, pilar, tipe_konten }]
@@ -281,6 +284,7 @@ ANTI-PENGULANGAN (PENTING):
 - Satu topik hanya sekali dalam 6 bulan terakhir; sudut baru atas topik lama baru boleh muncul setelah jeda minimal 6 bulan (RIWAYAT TEMA hanya memuat 6 bulan terakhir). Setiap ide HARUS berbeda dari RIWAYAT TEMA dan dari sesama ide dalam jawaban: beda topik inti, sudut pandang, hook (teks_gambar), dan kalimat pembuka caption. Mengganti beberapa kata TIDAK dianggap berbeda. Kalau ragu sebuah ide mirip riwayat, ganti.
 - Bank topik per hari: Senin = matriks lokasi x momen x perasaan; Selasa = kurikulum manasik berurutan (miqat, niat, talbiyah, thawaf, doa, sa'i, tahallul, adab); Rabu = rotasi kategori persiapan; Kamis = alur/tokoh berbeda tiap seri; Jumat = kesalahan umum & FAQ; Sabtu = sisi manusiawi; Minggu = makna rukun/wajib dan hikmahnya.
 - Topik yang SUDAH PERNAH dipakai (awal pola, sebelum 12 Oktober 2026; jangan diulang sebelum 12 April 2027): niat umroh; pertama kali lihat Ka'bah; sa'i dan kisah Siti Hajar; Raudhah; subuh di Madinah; bawaan yang sering ketinggalan; kesalahan umum thawaf; urutan umroh (ihram, thawaf, sa'i, tahallul); larangan ihram; persiapan fisik; hari terakhir di Makkah; Makkah atau Madinah; umroh bersama orang tua; mulai dari yang kecil / menabung niat.
+- Kalau ada EDISI ke-2 atau lebih (tema yang sama kembali di tahun/siklus berikutnya), daftar ide lamanya diberikan tanpa batas umur. Tema boleh sama, tapi tiap hari HARUS membahas sudut yang benar-benar baru: jangan menulis ulang topik, hook, atau pembuka lama dengan kata yang diganti.
 - Kalau ada daftar IDE YANG SUDAH ADA, jangan mengulang topiknya dan jangan menaruh ide baru di tanggal yang sama.
 - Kalau ada daftar HOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR, hook (teks_gambar baris pertama) dan 3 kata pertama pembuka caption TIDAK boleh sama atau mirip dengan daftar itu, juga tidak antarhari dalam jawaban yang sama. Variasikan rumus pembuka (jangan terus memakai "Kemarin kita bahas").
 
@@ -571,6 +575,7 @@ interface Diterima {
 interface Konteks {
   bulanLabel: string; tanggalMulai: string; tanggalAkhir: string; tema: string; temaDepan: string;
   programCtx: string; arahan: unknown; ideSudahAda: unknown; riwayatTema: unknown; riwayatGaya: unknown;
+  edisi: number; riwayatTemaIni: string;
 }
 
 // Putaran perbaikan terarah: hari yang ditolak validator ditulis ulang SENDIRI (dengan alasan penolakan + hari lain yang
@@ -592,7 +597,7 @@ KONTEKS PROGRAM (hanya dipakai kalau ARAHAN TAMBAHAN meminta info program):
 ${c.programCtx}
 ${c.ideSudahAda && String(c.ideSudahAda).trim() ? `\nIDE YANG SUDAH ADA (jangan diulang):\n${String(c.ideSudahAda).slice(0, 4000)}` : ""}
 ${c.riwayatTema && String(c.riwayatTema).trim() ? `\nRIWAYAT TEMA, SUDAH PERNAH DIBUAT (jangan diulang & jangan dibuat mirip):\n${String(c.riwayatTema).slice(0, 20000)}` : ""}
-${c.riwayatGaya && String(c.riwayatGaya).trim() ? `\nHOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR (hook dan 3 kata pertama pembuka caption TIDAK boleh sama atau mirip dengan ini):\n${String(c.riwayatGaya).slice(0, 6000)}` : ""}${catatan ? `\n\n${catatan}` : ""}
+${c.riwayatTemaIni ? `\nEDISI ke-${c.edisi} dari tema "${c.tema}". Ide di bawah SUDAH PERNAH dibuat untuk tema ini (umur berapa pun, termasuk tahun lalu). Topik, sudut, hook, dan pembuka caption pekan ini HARUS berbeda dari daftar ini; cari sisi lain dari tema yang sama (situasi, tokoh umum, tempat, momen, pertanyaan jamaah yang berbeda):\n${c.riwayatTemaIni.slice(0, 4000)}` : ""}${c.riwayatGaya && String(c.riwayatGaya).trim() ? `\nHOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR (hook dan 3 kata pertama pembuka caption TIDAK boleh sama atau mirip dengan ini):\n${String(c.riwayatGaya).slice(0, 6000)}` : ""}${catatan ? `\n\n${catatan}` : ""}
 
 Ingat: balas HANYA dengan JSON array sesuai format yang sudah dijelaskan, tidak ada teks lain.`;
 }
@@ -746,7 +751,7 @@ Deno.serve(async (req: Request) => {
   try {
     const mulai = Date.now();
     const body = await req.json();
-    const { bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir, konteksProgram, arahan, ideSudahAda, riwayatTema, riwayatGaya, slots, temaMinggu, temaMingguDepan, konteksPekan } = body || {};
+    const { bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir, konteksProgram, arahan, ideSudahAda, riwayatTema, riwayatGaya, slots, temaMinggu, temaMingguDepan, konteksPekan, edisi, riwayatTemaIni } = body || {};
 
     if (!bulanLabel || !jumlahPost || !tanggalMulai || !tanggalAkhir) {
       return new Response(JSON.stringify({ error: "bulanLabel, jumlahPost, tanggalMulai, tanggalAkhir wajib diisi" }), {
@@ -777,6 +782,8 @@ Deno.serve(async (req: Request) => {
       temaDepan: clip(temaMingguDepan, 120),
       programCtx: konteksProgram && String(konteksProgram).trim() ? String(konteksProgram) : "(tidak ada data program spesifik untuk periode ini)",
       arahan, ideSudahAda, riwayatTema, riwayatGaya,
+      edisi: Math.max(1, Math.min(99, Math.floor(Number(edisi)) || 1)),
+      riwayatTemaIni: clip(riwayatTemaIni, 4000),
     };
     const pekanCtx = clip(konteksPekan, 3000);
     // Angka/kata "tersedia" wajar kalau admin memang meminta info program lewat arahan.

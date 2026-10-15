@@ -17506,6 +17506,7 @@ function igRtBahanMusim() {
     return IG_TEMA_MUSIM.map(e => {
         const kapan = [
             ...(e.hijri || []).map(n => 'bulan Hijriah ' + IG_NAMA_HIJRI[n - 1]),
+            ...(e.hijriRentang ? ['HANYA di pekan ' + e.peristiwa] : []),
             ...(e.masehi || []).map(n => 'bulan ' + IG_NAMA_BULAN[n - 1])
         ].join(', ');
         return `- ${e.tema} (tayang ${kapan}${e.jual ? '; tema penjualan, sengaja tayang lebih awal dari musimnya' : ''})`;
@@ -17580,6 +17581,7 @@ async function igRtSusunAI() {
             return {
                 senin: w.senin, minggu: w.minggu,
                 hijri: hm ? IG_NAMA_HIJRI[hm - 1] : '', masehi: IG_NAMA_BULAN[kamis.getMonth()],
+                peristiwa: igPeristiwaPekan(w.senin),
                 program: w.program.map(x => `${x.nama} (berangkat ${x.tgl}, fase ${x.f.label})`).join('; ')
             };
         };
@@ -17814,14 +17816,18 @@ const IG_TEMA_MUSIM = [
     { tema: 'Umroh di Libur Sekolah', masehi: [4, 5], jual: true, alasan: 'Jelang libur sekolah (Juni-Juli): keluarga memesan 2-3 bulan sebelumnya' },
     { tema: 'Umroh di Libur Akhir Tahun', masehi: [9, 10], jual: true, alasan: 'Jelang libur akhir tahun: keluarga memesan 2-3 bulan sebelumnya' },
     { tema: 'Bersiap Menyambut Musim Haji', hijri: [10, 11], jual: true, alasan: 'Jelang musim haji: dibahas lebih awal supaya calon jamaah sempat bersiap' },
-    { tema: 'Hijrah dan Awal Tahun Baru', hijri: [1] },
-    { tema: 'Cinta Rasulullah dan Rindu Madinah', hijri: [3] },
-    { tema: 'Isra Miraj dan Makna Shalat', hijri: [7] },
+    // hijriRentang: [bulan, tanggalDari, tanggalSampai] = tema HARI BESAR yang hanya boleh tayang di pekan (Senin-Minggu)
+    // yang salah satu harinya jatuh pada tanggal Hijriah itu. Dulu cukup cocok bulan Hijriahnya, akibatnya mis. Isra Miraj
+    // (27 Rajab) tayang sampai 4 pekan terlalu awal dan "Sepuluh Malam Terakhir" tayang di pekan ke-2 Ramadhan.
+    // `peristiwa` = nama peristiwa untuk label dan untuk AI Rencana Setahun.
+    { tema: 'Hijrah dan Awal Tahun Baru', hijriRentang: [1, 1, 1], peristiwa: '1 Muharram (tahun baru Hijriah)', alasan: 'Pekan 1 Muharram, tahun baru Hijriah' },
+    { tema: 'Cinta Rasulullah dan Rindu Madinah', hijriRentang: [3, 12, 12], peristiwa: '12 Rabiul Awal (Maulid Nabi)', alasan: 'Pekan 12 Rabiul Awal, Maulid Nabi' },
+    { tema: 'Isra Miraj dan Makna Shalat', hijriRentang: [7, 27, 27], peristiwa: '27 Rajab (Isra Miraj)', alasan: 'Pekan 27 Rajab, Isra Miraj' },
     { tema: 'Menyambut Ramadhan', hijri: [8] },
     { tema: 'Ramadhan dan Rindu Tanah Suci', hijri: [9] },
-    { tema: 'Sepuluh Malam Terakhir Ramadhan', hijri: [9] },
+    { tema: 'Sepuluh Malam Terakhir Ramadhan', hijriRentang: [9, 21, 30], peristiwa: '21-30 Ramadhan (sepuluh malam terakhir)', alasan: 'Pekan sepuluh malam terakhir Ramadhan' },
     { tema: 'Menjaga Semangat Setelah Ramadhan', hijri: [10] },
-    { tema: 'Rindu Berhaji dan Makna Kurban', hijri: [12] }
+    { tema: 'Rindu Berhaji dan Makna Kurban', hijriRentang: [12, 9, 10], peristiwa: '9-10 Dzulhijjah (Arafah dan Idul Adha)', alasan: 'Pekan Arafah dan Idul Adha' }
 ];
 const IG_NAMA_HIJRI = ['Muharram', 'Safar', 'Rabiul Awal', 'Rabiul Akhir', 'Jumadil Awal', 'Jumadil Akhir', 'Rajab', 'Sya\'ban', 'Ramadhan', 'Syawal', 'Dzulqa\'dah', 'Dzulhijjah'];
 
@@ -17833,6 +17839,32 @@ function igHijriMonth(date) {
         const v = parseInt(part && part.value, 10);
         return v >= 1 && v <= 12 ? v : 0;
     } catch (e) { return 0; }
+}
+
+// Bulan + tanggal Hijriah (kalender Umm al-Qura bawaan browser) dari sebuah tanggal; null kalau tidak didukung.
+function igHijriParts(date) {
+    try {
+        const parts = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', { month: 'numeric', day: 'numeric' }).formatToParts(date);
+        const m = parseInt((parts.find(p => p.type === 'month') || {}).value, 10);
+        const d = parseInt((parts.find(p => p.type === 'day') || {}).value, 10);
+        return m >= 1 && m <= 12 && d >= 1 && d <= 30 ? { m, d } : null;
+    } catch (e) { return null; }
+}
+// Tujuh tanggal Hijriah pekan yang dimulai Senin (y, m 1-12, d). Kosong kalau browser tidak mendukung kalender Hijriah.
+function igHariHijriPekan(y, m, d) {
+    const out = [];
+    for (let i = 0; i < 7; i++) { const h = igHijriParts(new Date(y, m - 1, d + i)); if (h) out.push(h); }
+    return out;
+}
+// Apakah peristiwa e (entri IG_TEMA_MUSIM ber-hijriRentang) jatuh di salah satu hari pekan ini?
+function igPeristiwaCocok(e, hariH) {
+    return !!e.hijriRentang && hariH.some(h => h.m === e.hijriRentang[0] && h.d >= e.hijriRentang[1] && h.d <= e.hijriRentang[2]);
+}
+// Peristiwa hari besar yang jatuh di pekan seninKey, untuk label / konteks AI Rencana Setahun (string kosong kalau tidak ada).
+function igPeristiwaPekan(seninKey) {
+    const [y, m, d] = String(seninKey).split('-').map(Number);
+    const hariH = igHariHijriPekan(y, m, d);
+    return IG_TEMA_MUSIM.filter(e => igPeristiwaCocok(e, hariH)).map(e => e.peristiwa).join('; ');
 }
 
 // Jeda khusus tema musiman (hari). Lebih pendek dari 365 supaya musim yang sama bisa kembali tiap tahun (lihat igKandidatTemaMinggu).
@@ -17881,9 +17913,12 @@ function igKandidatTemaMinggu(seninKey, plans, maks, rencana = igRencanaTahun) {
     const kamis = new Date(y, m - 1, d + 3); // Kamis = tengah pekan
     const bulanH = igHijriMonth(kamis);
     const bulanM = kamis.getMonth() + 1;
+    // Urutan: hari besar yang jatuh PEKAN INI (waktunya sempit, tidak boleh terlewat) > tema penjualan > musiman biasa.
+    const hariH = igHariHijriPekan(y, m, d);
+    const bobotMusim = e => e.hijriRentang ? 2 : (e.jual ? 1 : 0);
     IG_TEMA_MUSIM
-        .filter(e => (bulanH && (e.hijri || []).includes(bulanH)) || (e.masehi || []).includes(bulanM))
-        .sort((a, b) => (b.jual ? 1 : 0) - (a.jual ? 1 : 0)) // tema penjualan didahulukan
+        .filter(e => igPeristiwaCocok(e, hariH) || (bulanH && (e.hijri || []).includes(bulanH)) || (e.masehi || []).includes(bulanM))
+        .sort((a, b) => bobotMusim(b) - bobotMusim(a))
         .forEach(e => {
             if (hasil.length < batas && !sudahMusim(e.tema)) {
                 hasil.push({ tema: e.tema, alasan: e.alasan || `Musim ${IG_NAMA_HIJRI[bulanH - 1]}`, jual: !!e.jual });
@@ -18209,13 +18244,15 @@ function igRumusPembuka(teks) {
 // Tambah 1 entri ke riwayat (struktur: { tema, tgl, _t, _h, hook, buka, _o, _o3 }).
 // _t/_h = token tema / hook siap bandingkan. caption (opsional) -> pembuka caption (_o token, _o3 rumus 3 kata) dan
 // hook (hook teks, apa adanya) disimpan juga supaya bisa dikirim ke AI & dicek ("20 posting terakhir").
-function igRiwayatAdd(riwayat, tema, teksGambar, tgl, caption) {
+function igRiwayatAdd(riwayat, tema, teksGambar, tgl, caption, temaMinggu) {
     const t = String(tema || '').trim();
     if (!t) return;
     const buka = igFirstLine(caption).slice(0, 160);
     riwayat.push({
         tema: t, tgl: tgl || '', _t: igTokenSet(t), _h: igTokenSet(igFirstLine(teksGambar)),
-        hook: igFirstLine(teksGambar).slice(0, 120), buka, _o: igTokenSet(buka), _o3: igRumusPembuka(buka)
+        hook: igFirstLine(teksGambar).slice(0, 120), buka, _o: igTokenSet(buka), _o3: igRumusPembuka(buka),
+        // Tema Minggu asal entri ini (kalau diketahui): dipakai agar konten dengan tema sama TIDAK pernah kedaluwarsa (lihat igRiwayatAktif).
+        temaMinggu: String(temaMinggu || '').trim(), _tm: temaMinggu ? igTokenSet(temaMinggu) : null
     });
 }
 
@@ -18260,7 +18297,7 @@ function igBuildRiwayat() {
     const riwayat = [];
     igContentPlan.forEach(pl => {
         if (/—\s*isi\b/i.test(pl.tema || '')) return; // kerangka kosong pola mingguan, bukan konten asli
-        igRiwayatAdd(riwayat, pl.tema, pl.teks_gambar, pl.tanggal, pl.draft_caption);
+        igRiwayatAdd(riwayat, pl.tema, pl.teks_gambar, pl.tanggal, pl.draft_caption, pl.tema_minggu);
     });
     (typeof igPosts !== 'undefined' && Array.isArray(igPosts) ? igPosts : []).forEach(p => {
         const baris = igFirstLine(p.caption);
@@ -18298,9 +18335,31 @@ function igBatasRiwayat(refKey) {
 
 // Entri riwayat yang masih memblokir: tanpa tanggal (tema yang baru ditolak di proses ini), atau tanggalnya >= batas.
 // Tanggal di masa depan (rencana pekan-pekan mendatang) tetap memblokir.
-function igRiwayatAktif(riwayat, refKey) {
+// temaTokens (opsional, igTokenSet dari Tema Minggu yang sedang dibuat): entri dengan Tema Minggu yang SAMA selalu aktif,
+// berapa pun umurnya. Tema yang kembali di tahun berikutnya (mis. Talbiyah) jadi tidak bisa mengulang ide edisi lamanya;
+// jeda 6 bulan hanya berlaku untuk topik LINTAS tema.
+function igRiwayatAktif(riwayat, refKey, temaTokens) {
     const batas = igBatasRiwayat(refKey);
-    return (riwayat || []).filter(r => !r.tgl || r.tgl >= batas);
+    const sama = r => !!(temaTokens && temaTokens.size && r._tm && r._tm.size && igIsSimilarText(r._tm, temaTokens));
+    return (riwayat || []).filter(r => !r.tgl || r.tgl >= batas || sama(r));
+}
+
+// Ledger tema yang sama: SEMUA ide lama (umur berapa pun) dari tema minggu yang sama, selain pekan yang sedang dibuat,
+// untuk dikirim ke AI supaya edisi baru memilih sudut berbeda. edisi = berapa kali tema ini sudah tayang + 1.
+function igLedgerTemaIni(riwayat, temaMinggu, seninKey) {
+    const tema = String(temaMinggu || '').trim();
+    if (!tema) return { edisi: 1, teks: '' };
+    const tokens = igTokenSet(tema);
+    const [y, m, d] = String(seninKey).split('-').map(Number);
+    const mingguKey = igLocalDateKey(new Date(y, m - 1, d + 6));
+    const lama = (riwayat || []).filter(r => r.tgl && r._tm && r._tm.size && igIsSimilarText(r._tm, tokens) && (r.tgl < seninKey || r.tgl > mingguKey))
+        .sort((a, b) => String(b.tgl).localeCompare(String(a.tgl)));
+    const pekanBerbeda = new Set(lama.map(r => {
+        const [yy, mm, dd] = r.tgl.split('-').map(Number);
+        return igLocalDateKey(new Date(yy, mm - 1, dd - ((new Date(yy, mm - 1, dd).getDay() + 6) % 7)));
+    }));
+    const teks = lama.slice(0, 28).map(r => `- ${r.tgl} | ${r.tema.slice(0, 80)}${r.hook ? ' | hook: ' + r.hook.slice(0, 80) : ''}${r.buka ? ' | pembuka: ' + r.buka.slice(0, 80) : ''}`).join('\n');
+    return { edisi: pekanBerbeda.size + 1, teks };
 }
 
 // Cek 1 ide ({ tema, teks_gambar | teks, tanggal? }) terhadap riwayat.
@@ -18309,7 +18368,7 @@ function igRiwayatAktif(riwayat, refKey) {
 function igIsDuplicateIdea(item, riwayat, abaikan) {
     const t = igMinusTokens(igTokenSet(item.tema), abaikan);
     const h = igMinusTokens(igTokenSet(igFirstLine(item.teks_gambar != null ? item.teks_gambar : item.teks)), abaikan);
-    const aktif = igRiwayatAktif(riwayat, item.tanggal);
+    const aktif = igRiwayatAktif(riwayat, item.tanggal, abaikan); // abaikan = token Tema Minggu (mode pekan)
     return aktif.some(r => {
         const rt = igMinusTokens(r._t, abaikan);
         const rh = igMinusTokens(r._h, abaikan);
@@ -18519,6 +18578,7 @@ async function igGeneratePlanForSlots(year, month, slots, arahan, onProgress, op
     try {
         const konteksProgram = await buildIgPlanProgramContext(year, month, pekan ? tanggalMulai : null);
         const riwayat = igBuildRiwayat();
+        const ledger = pekan ? igLedgerTemaIni(riwayat, temaMinggu, tanggalMulai) : { edisi: 1, teks: '' };
 
         const maxPass = pekan ? IG_PLAN_MAX_PASS_PEKAN : IG_PLAN_MAX_PASS;
         for (let pass = 0; pass < maxPass && sisa.length; pass++) {
@@ -18531,7 +18591,9 @@ async function igGeneratePlanForSlots(year, month, slots, arahan, onProgress, op
                     ...(pekan ? {
                         temaMinggu,
                         temaMingguDepan: String(opsi.temaMingguDepan || '').trim(),
-                        konteksPekan: barisPekan.join('\n')
+                        konteksPekan: barisPekan.join('\n'),
+                        edisi: ledger.edisi,
+                        riwayatTemaIni: ledger.teks
                     } : {})
                 });
 
@@ -18544,7 +18606,7 @@ async function igGeneratePlanForSlots(year, month, slots, arahan, onProgress, op
                         igRiwayatAdd(riwayat, it.tema, it.teks_gambar, '');
                         return null;
                     }
-                    igRiwayatAdd(riwayat, it.tema, it.teks_gambar, it.tanggal, it.draft_caption);
+                    igRiwayatAdd(riwayat, it.tema, it.teks_gambar, it.tanggal, it.draft_caption, pekan ? temaMinggu : '');
                     // Label kecil di pojok gambar (pola-konten.md): "Seri Talbiyah · 3/7". Ditaruh di baris sendiri di akhir teks gambar.
                     let teksGambar = String(it.teks_gambar || '').trim();
                     if (pekan && slot.urutan) teksGambar += `${teksGambar ? '\n' : ''}Label gambar: Seri ${temaMinggu} · ${slot.urutan}/7`;
@@ -18797,7 +18859,7 @@ async function igRegenerasiHariPlan(planId) {
             const data = await igCallPlanFunction({
                 bulanLabel, jumlahPost: 1, tanggalMulai: ctx.senin, tanggalAkhir: ctx.minggu,
                 konteksProgram, arahan, slots: [ctx.slot], riwayatTema: igRiwayatToText(riwayat, ctx.tanggal), riwayatGaya: igRiwayatGayaToText(riwayat),
-                ...(ctx.temaMinggu ? { temaMinggu: ctx.temaMinggu } : {}),
+                ...(ctx.temaMinggu ? { temaMinggu: ctx.temaMinggu, ...(() => { const l = igLedgerTemaIni(riwayat, ctx.temaMinggu, ctx.senin); return { edisi: l.edisi, riwayatTemaIni: l.teks }; })() } : {}),
                 ...(ctx.temaMingguDepan ? { temaMingguDepan: ctx.temaMingguDepan } : {}),
                 konteksPekan: ctx.barisPekan.join('\n')
             });
@@ -18985,6 +19047,9 @@ function igSusunPromptEksternal(f) {
     if (f.riwayatTema && String(f.riwayatTema).trim()) {
         bagian.push('RIWAYAT TEMA, SUDAH PERNAH DIBUAT (jangan diulang & jangan dibuat mirip):\n' + String(f.riwayatTema).slice(0, 20000));
     }
+    if (f.riwayatTemaIni && String(f.riwayatTemaIni).trim()) {
+        bagian.push(`EDISI ke-${f.edisi || 2} dari tema "${f.temaMinggu}". Ide di bawah SUDAH PERNAH dibuat untuk tema ini (umur berapa pun). Semua topik, sudut, hook, dan pembuka caption pekan ini HARUS berbeda dari daftar ini:\n` + String(f.riwayatTemaIni).slice(0, 4000));
+    }
     if (f.riwayatGaya && String(f.riwayatGaya).trim()) {
         bagian.push('HOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR (hook dan 3 kata pertama pembuka caption TIDAK boleh sama atau mirip dengan ini):\n' + String(f.riwayatGaya).slice(0, 6000));
     }
@@ -19054,7 +19119,8 @@ async function igSalinPromptPlan() {
             slots, konteksPekan, konteksProgram,
             arahan: (document.getElementById('igPlanArahan')?.value || '').trim(),
             riwayatTema: igRiwayatToText(igBuildRiwayat(), senin),
-            riwayatGaya: igRiwayatGayaToText(igBuildRiwayat())
+            riwayatGaya: igRiwayatGayaToText(igBuildRiwayat()),
+            ...(() => { const l = igLedgerTemaIni(igBuildRiwayat(), temaMinggu, senin); return { edisi: l.edisi, riwayatTemaIni: l.teks }; })()
         });
         if (await igSalinTeks(prompt)) {
             showToast(`Prompt disalin (${prompt.length.toLocaleString('id-ID')} karakter, ${slots.length} hari). Tempel ke ChatGPT, Claude, atau asisten lain, lalu minta balasan JSON.`, 'success');

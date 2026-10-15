@@ -313,6 +313,15 @@ await test('peran hari diteruskan ke pesan AI di daftar slot', async () => {
   const { calls } = await panggilBerurutan([[item({ draft_caption: captionAwal('Subuh yang lengang') }), itemSel()]], dua({ slots: [{ ...slot, peran: 'Rasakan' }, slotSel] }));
   assert.ok(calls[0].msg.includes('- 2026-10-12 (Senin) | peran: Rasakan | pilar: storytelling | tipe_konten: image'));
 });
+await test('ledger tema yang sama: edisi + riwayatTemaIni diteruskan ke pesan AI; tanpa ledger tidak ada bagian EDISI', async () => {
+  const ada = await panggilBerurutan([[item()]], body({ temaMinggu: 'Talbiyah', edisi: 2, riwayatTemaIni: '- 2026-10-13 | Kapan talbiyah mulai dibaca | hook: Kapan mulai?' }));
+  assert.ok(ada.calls[0].msg.includes('EDISI ke-2 dari tema "Talbiyah"'));
+  assert.ok(ada.calls[0].msg.includes('- 2026-10-13 | Kapan talbiyah mulai dibaca'));
+  const tidak = await panggilBerurutan([[item()]], body({ temaMinggu: 'Talbiyah' }));
+  assert.ok(!tidak.calls[0].msg.includes('EDISI ke-'));
+  const sp = ada.calls[0].body.system_instruction.parts[0].text;
+  assert.ok(sp.includes('EDISI ke-2 atau lebih'));
+});
 await test('IG_PLAN_THINKING_LEVEL: default mati; low/medium/high diteruskan; nilai asing diabaikan', async () => {
   const mati = await panggilBerurutan([[item()]], body());
   assert.strictEqual(mati.calls[0].body.generationConfig.thinkingConfig, undefined);

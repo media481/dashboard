@@ -113,6 +113,8 @@ Acuan (JANGAN vs TULIS):
   - **Cara sistem menegakkannya:** deteksi duplikat dan daftar riwayat yang dikirim ke AI hanya memuat 6 bulan terakhir (`IG_JEDA_TOPIK_BULAN` di `js/app.js`); topik atau hook yang lebih tua boleh kembali dengan sudut baru. Tema Minggu memakai jeda lebih ketat, 12 bulan, supaya peta setahun tidak punya tema pekan kembar.
   - Hook dan pembuka caption dibandingkan dengan 20 posting terakhir, terlepas dari jendela 6 bulan. Rumus 3 kata pertama yang sama juga dianggap mirip, kecuali rumus rujukan hari sebelumnya (kemarin, kemaren, semalam, tadi), karena Selasa sampai Minggu wajib merujuk hari sebelumnya.
 - Hook dan kalimat pembuka caption tidak boleh mirip dengan 20 posting terakhir.
+- **Tema yang kembali di tahun/siklus berikutnya (edisi 2+):** jeda 6 bulan hanya berlaku untuk topik lintas tema. Ide dengan Tema Minggu yang sama selalu dibandingkan dengan SEMUA edisi sebelumnya, berapa pun umurnya (`igRiwayatAktif` memakai `temaMinggu`), dan daftar ide lama itu dikirim ke AI sebagai `riwayatTemaIni` bersama nomor `edisi` supaya tiap hari memakai sudut baru.
+- **Hari besar dikunci ke pekannya:** entri `IG_TEMA_MUSIM` ber-`hijriRentang` (Isra Miraj 27 Rajab, Maulid 12 Rabiul Awal, sepuluh malam terakhir Ramadhan, Arafah/Idul Adha, 1 Muharram) hanya disarankan di pekan yang salah satu harinya jatuh pada tanggal Hijriah itu. Tema musiman biasa tetap mengikuti bulan.
 - Isi diambil dari bank topik per hari:
 
 | Hari | Mesin topik |

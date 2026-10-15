@@ -7,9 +7,10 @@
 //
 // Kontrak (dipakai oleh js/app.js -> igRtPanggilAI):
 //   POST body: {
-//     pekan: [{ senin, minggu, hijri, masehi, program? }],  // pekan yang HARUS diisi (maks 30 per panggilan)
+//     pekan: [{ senin, minggu, hijri, masehi, program?, peristiwa? }],  // pekan yang HARUS diisi (maks 30 per panggilan)
 //                                  // hijri = nama bulan Hijriah tengah pekan (boleh kosong), masehi = nama bulan Masehi,
 //                                  // program = teks fase promosi program pada pekan itu (boleh kosong)
+//                                  // peristiwa = hari besar yang jatuh di pekan itu, dihitung frontend dari tanggal Hijriah (boleh kosong)
 //     konteksProgram?: string,     // ringkasan program aktif (nama, tanggal berangkat, harga, sisa seat)
 //     riwayatTema?: string,        // tema yang SUDAH terpakai (satu per baris) -> wajib dihindari
 //     konteksSekitar?: string,     // pekan lain yang sudah punya tema (terkunci / batch sebelumnya): "senin | tema"
@@ -136,7 +137,8 @@ ATURAN TEMA:
 - Tema harus bisa dibahas dari tujuh sudut berbeda dalam seminggu, jadi jangan terlalu sempit (bukan satu doa tertentu) dan jangan terlalu lebar (bukan "Ibadah").
 - Ejaan selalu "Umroh" (bukan "Umrah"). Pakai bahasa Indonesia.
 - JANGAN mengarang ayat, hadis, doa berbahasa Arab, angka statistik, harga, atau fasilitas. Tema soal hukum/tata cara ibadah cukup judul umum.
-- Tema pekan yang dekat Hari Besar (Ramadhan, Isra Miraj, awal tahun Hijriah, Dzulhijjah) boleh mengikuti bulan Hijriah yang diberikan di tiap pekan, tapi pakai HANYA bulan yang tertulis, jangan menghitung sendiri.
+- Tema HARI BESAR (Isra Miraj, Maulid, sepuluh malam terakhir Ramadhan, Arafah/Idul Adha, 1 Muharram) hanya boleh dipasang di pekan yang punya keterangan \"Peristiwa\" yang cocok. Jangan menaruhnya di pekan lain meski bulan Hijriahnya sama, dan jangan menghitung tanggal Hijriah sendiri. Kalau sebuah pekan punya \"Peristiwa\", utamakan tema yang berkaitan dengan peristiwa itu.
+- Tema musiman biasa (bukan hari besar) boleh mengikuti bulan Hijriah yang diberikan di tiap pekan, tapi pakai HANYA bulan yang tertulis.
 - Kalau ada ARAHAN dari admin, utamakan arahan itu selama tidak melanggar aturan di atas.
 
 "alasan" = SATU kalimat (maks. 25 kata) kenapa tema ini cocok di pekan ini (musim, fase program, kelanjutan alur, atau penyeimbang pekan sebelumnya). Tulis jujur dan spesifik, tanpa tanda pisah panjang.
@@ -144,7 +146,7 @@ ATURAN TEMA:
 
 FORMAT OUTPUT: JSON array murni (tanpa code fence, tanpa teks lain). Satu elemen per pekan yang diminta: { "senin": "YYYY-MM-DD" (persis seperti di daftar pekan), "tema": string, "alasan": string, "fokus_program": string }. Jumlah elemen HARUS sama dengan jumlah pekan yang diminta, tanpa duplikat tanggal, urut tanggal.`;
 
-interface Pekan { senin: string; minggu: string; hijri: string; masehi: string; program: string }
+interface Pekan { senin: string; minggu: string; hijri: string; masehi: string; program: string; peristiwa: string }
 interface Item { senin: string; tema: string; alasan: string; fokus_program: string }
 
 function isRealDate(str: string): boolean {
@@ -181,7 +183,7 @@ function susunPesan(p: {
   bankAlur: string[]; bankMusim: string; arahan: string; catatan: string;
 }): string {
   const daftar = p.pekan.map((w, i) =>
-    `${i + 1}. ${w.senin} s/d ${w.minggu} | Hijriah: ${w.hijri || "-"} | Masehi: ${w.masehi || "-"}${w.program ? ` | Program: ${w.program}` : ""}`).join("\n");
+    `${i + 1}. ${w.senin} s/d ${w.minggu} | Hijriah: ${w.hijri || "-"} | Masehi: ${w.masehi || "-"}${w.peristiwa ? ` | Peristiwa: ${w.peristiwa}` : ""}${w.program ? ` | Program: ${w.program}` : ""}`).join("\n");
   const bagian = [
     `DAFTAR PEKAN YANG HARUS DIISI (${p.pekan.length} pekan, isi TEPAT satu tema per pekan):\n${daftar}`,
     `KONTEKS PROGRAM (jangan mengarang data di luar daftar ini):\n${p.konteksProgram || "(tidak ada program aktif yang akan berangkat)"}`,
@@ -286,7 +288,7 @@ Deno.serve(async (req: Request) => {
       .slice(0, MAKS_PEKAN)
       .map((w: Record<string, unknown>) => ({
         senin: String(w.senin), minggu: String(w.minggu),
-        hijri: clip(w.hijri, 30), masehi: clip(w.masehi, 30), program: clip(w.program, 300),
+        hijri: clip(w.hijri, 30), masehi: clip(w.masehi, 30), program: clip(w.program, 300), peristiwa: clip(w.peristiwa, 200),
       }));
     if (!pekan.length) return jsonResp({ error: "pekan wajib diisi (tanggal Senin yang valid)" }, 400);
     pekan.sort((a, b) => a.senin.localeCompare(b.senin));
