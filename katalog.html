@@ -30,7 +30,7 @@ h1,h2,h3{font-family:"Space Grotesk",Inter,system-ui,sans-serif}
 .tools{flex:0 1 640px;display:flex;gap:12px;min-width:0}
 .tools input,.tools select{font:inherit;font-size:14.5px;height:46px;padding:0 16px;border:0;border-radius:12px;background:#fff;color:var(--ink);min-width:0}
 .tools input{flex:1 1 220px;padding-left:44px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='none' stroke='%2364758A' stroke-width='2' stroke-linecap='round' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 15px center}
-.tools select{flex:0 0 230px}
+.tools select{flex:0 0 150px}
 .tools input:focus,.tools select:focus{outline:2px solid #fff;outline-offset:2px}
 .wrap{max-width:none;margin:0 auto;padding:0 28px}
 .meta{max-width:none;margin:16px auto 0;padding:0 20px;color:var(--ink-soft);font-size:13px}
@@ -111,7 +111,7 @@ h1,h2,h3{font-family:"Space Grotesk",Inter,system-ui,sans-serif}
 .mfoot .btn{flex:0 1 260px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 16px;font-size:14.5px;border-radius:12px}
 .mfoot .btn.wa{box-shadow:0 6px 16px rgba(37,211,102,.35)}
 .mfoot .btn svg{width:18px;height:18px}
-@media(min-width:800px){
+@media(min-width:1000px){
   /* Desktop: modal setinggi layar (maks 860px). Poster mengisi penuh tinggi kolom kiri (contain),
      kolom detail di kanan setinggi sama dan bisa di-scroll di dalam -> keduanya selalu seimbang */
   .sheet{height:min(95dvh,960px);overflow:hidden}
@@ -125,7 +125,6 @@ h1,h2,h3{font-family:"Space Grotesk",Inter,system-ui,sans-serif}
   .chips{grid-template-columns:repeat(3,minmax(0,1fr))}
   .chip{padding:9px 10px;gap:8px}.chip i{width:30px;height:30px}.chip b{font-size:13px}
 }
-@media(max-width:799px){.chips{grid-template-columns:1fr}.incexc{grid-template-columns:1fr}.mfoot .btn{flex:1}.sheet{border-radius:16px}.modal{padding:8px}}
 footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px calc(30px + env(safe-area-inset-bottom,0))}
 /* 5 kolom selalu muat di lebar layar: ukuran konten mengecil mengikuti lebar */
 .body{padding:clamp(8px,1vw,16px);gap:clamp(6px,.8vw,10px)}
@@ -136,8 +135,64 @@ footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px 
 .price small{font-size:clamp(9px,.85vw,12px)}
 .btn{font-size:clamp(10px,1vw,14px);padding:clamp(6px,.8vw,11px) 4px}
 .badge{font-size:clamp(8px,.85vw,11.5px);padding:3px clamp(5px,.6vw,9px)}
-@media(max-width:700px){.facts{grid-template-columns:1fr}.actions{flex-direction:column}.actions .btn:not(.primary):not(.wa){display:none}.wrap{padding:0 12px}.meta,.grid{padding-left:10px;padding-right:10px}}
-@media(max-width:700px){.top{padding:12px 0}.top .wrap{gap:12px}.brand img{width:40px;height:40px}.brand h1{font-size:17px}.tools{flex:1 1 100%}.tools input,.tools select{height:42px}.tools select{flex:0 0 170px}.brand span{display:none}}
+/* ================= TABLET & HP ================= */
+.zoomhint{display:none}
+@media(max-width:1099px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:899px){
+  .grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+  /* ukuran teks kartu tetap (tidak lagi mengecil mengikuti lebar) */
+  .body{padding:12px;gap:8px}
+  .body h3{font-size:15px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .facts{font-size:12.5px;gap:6px 10px}.facts div small{font-size:10px}
+  .price small{font-size:11px}.price strong{font-size:18px}
+  .btn{font-size:13.5px;padding:11px 8px;min-height:42px}
+  .badge{font-size:10.5px}
+}
+@media(max-width:999px){
+  .sheet{max-width:760px}
+  .pwrap img.big{width:auto;max-width:100%;max-height:46dvh;margin:0 auto}
+  .chips{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .chip{flex-direction:column;align-items:flex-start;gap:6px;padding:10px}
+  .chip i{width:28px;height:28px}.chip i svg{width:16px;height:16px}
+  .chip small{font-size:10px}.chip b{font-size:12.5px}
+  .pwrap{padding:12px}.pwrap img.big{cursor:zoom-in}
+  .zoomhint{display:block;text-align:center;font-size:11.5px;color:var(--ink-soft);margin-top:8px}
+  .sheet .in{padding:14px;gap:14px}
+  .mfoot{gap:8px;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0))}
+  .mfoot .btn{flex:1 1 0;min-width:0;padding:13px 8px;font-size:14px}
+  .mfoot .btn.wa{flex:1.4 1 0}
+}
+@media(max-width:699px){
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0 12px;margin-top:10px}
+  .meta{padding:0 14px;margin-top:12px}
+  .body{padding:10px;gap:7px}
+  .body h3{font-size:14px;line-height:1.25}
+  .facts{grid-template-columns:1fr 1fr;font-size:12px}
+  .facts div:first-child{grid-column:1/-1}
+  .facts div:nth-child(4){display:none}
+  .price{padding-top:8px}.price strong{font-size:16px}
+  .actions{flex-direction:column;gap:6px}
+  .actions .btn:not(.primary):not(.wa){display:none}
+  .poster{aspect-ratio:4/5}
+  /* header: tidak sticky di HP supaya layar lebih lega; baris brand + baris cari/urut */
+  .top{position:static;padding:calc(12px + env(safe-area-inset-top,0)) 0 12px}
+  .top .wrap{padding:0 14px;gap:10px}
+  .brand{gap:10px}.brand img{width:40px;height:40px;border-radius:10px}.brand h1{font-size:17px}.brand span{display:none}
+  .tools{flex:1 1 100%;gap:8px}
+  .tools input,.tools select{height:44px;font-size:16px}   /* 16px: cegah auto-zoom iOS saat fokus */
+  .tools input{padding-left:40px;background-position:13px center}
+  .tools select{flex:0 0 118px;padding:0 10px}
+  .modal{align-items:flex-end;padding:0}
+  .sheet{max-height:94dvh;border-radius:20px 20px 0 0}
+  .modal.open .sheet{animation:up .26s cubic-bezier(.2,.8,.2,1)}
+  .sheet header{padding:12px 14px}.sheet header h2{font-size:17px}
+  .pwrap{padding:10px}.pwrap img.big{max-height:36dvh}.zoomhint{margin-top:6px}
+  .incexc{grid-template-columns:1fr}
+  .prices{grid-template-columns:repeat(2,minmax(0,1fr))}.prices small{flex-direction:row}
+  .btn:active,.x:active{transform:scale(.97)}
+}
+@keyframes up{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}
+@media(max-width:380px){.facts{font-size:11.5px}.price strong{font-size:15px}.chips{grid-template-columns:1fr}.chip{flex-direction:row;align-items:center}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -145,8 +200,8 @@ footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px 
 <header class="top"><div class="wrap">
   <div class="brand"><img src="assets/logo-amirutour.png" alt="Logo Amiru Tour" onerror="this.style.display='none'"><div><h1>Program Umroh Tersedia</h1><span>Amiru Tour &middot; PT Amiru Haramain Indonesia</span></div></div>
   <div class="tools">
-    <input id="q" type="search" placeholder="Cari nama program, maskapai, hotel..." aria-label="Cari program" autocomplete="off">
-    <select id="sort" aria-label="Urutkan"><option value="date">Keberangkatan terdekat</option><option value="low">Harga termurah</option><option value="high">Harga termahal</option></select>
+    <input id="q" type="search" placeholder="Cari program, hotel..." aria-label="Cari program" autocomplete="off">
+    <select id="sort" aria-label="Urutkan"><option value="date">Terdekat</option><option value="low">Termurah</option><option value="high">Termahal</option></select>
   </div>
 </div></header>
 <div class="meta" id="meta" aria-live="polite"></div>
@@ -335,7 +390,7 @@ function buka(i) {
   const iti = safeUrl(p.link_itinerary);
   const chip = (ic, lbl, val) => `<div class="chip"><i>${IC[ic]}</i><div><small>${lbl}</small><b>${esc(val || '-')}</b></div></div>`;
   document.getElementById('mBody').innerHTML = `
-    <div class="pwrap"><img class="big" src="${esc(posterSrc(p.link_poster))}" alt="Poster ${esc(p.nama)}" referrerpolicy="no-referrer" onerror="var w=this.closest('.pwrap'),g=w.parentNode;w.remove();g.style.gridTemplateColumns='1fr'"></div>
+    <div class="pwrap"><img class="big" src="${esc(posterSrc(p.link_poster))}" alt="Poster ${esc(p.nama)}" referrerpolicy="no-referrer" onerror="var w=this.closest('.pwrap'),g=w.parentNode;w.remove();g.style.gridTemplateColumns='1fr'"><div class="zoomhint">Ketuk poster untuk memperbesar</div></div>
     <div class="mdet">
       <div class="chips">${chip('cal', 'Berangkat', p.tgl)}${chip('clock', 'Durasi', p.durasi)}${chip('plane', 'Maskapai', p.maskapai)}</div>
       ${kamar.length ? `<div class="sec"><h4>${IC.tag}Harga per orang</h4>
@@ -354,6 +409,7 @@ function buka(i) {
   document.body.style.overflow = 'hidden';
   document.querySelector('#modal .sheet').scrollTop = 0;
   const im = document.querySelector('#mBody img.big');
+  if (im) { im.onclick = () => { if (innerWidth < 1000) window.open(posterSrc(p.link_poster, 1600), '_blank', 'noopener'); }; }
   if (im) { im.addEventListener('load', fitPoster); if (im.complete) fitPoster(); }
   fitPoster();
   document.getElementById('mClose').focus();
@@ -362,7 +418,7 @@ function buka(i) {
 function fitPoster() {
   const box = document.getElementById('mBody'), im = box.querySelector('img.big');
   if (!im) return;
-  if (innerWidth < 800) { box.style.gridTemplateColumns = ''; return; }
+  if (innerWidth < 1000) { box.style.gridTemplateColumns = ''; return; }
   const ar = (im.naturalWidth && im.naturalHeight) ? im.naturalWidth / im.naturalHeight : 0.8;
   const cs = getComputedStyle(box), padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom), padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
   const h = box.clientHeight - padY, w = Math.min(h * ar, (box.clientWidth - padX) * 0.58);
