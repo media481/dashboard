@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Katalog Program Umroh - Amiru Tour</title>
+<meta name="description" content="Katalog program Umroh PT Amiru Haramain Indonesia (Amiru Tour)">
+<meta name="theme-color" content="#1a355b">
+<link rel="icon" href="favicon.ico">
+<style>
+:root{--brand:#1a355b;--accent:#1a6fa8;--bg:#f4f6fa;--ink:#1c2430;--soft:#667085;--card:#fff;--wa:#25d366}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}
+header{background:var(--brand);color:#fff;padding:28px 16px 22px;text-align:center}
+header img{height:56px;margin-bottom:8px}
+header h1{font-size:1.4rem;font-weight:700}
+header p{font-size:.9rem;opacity:.85;margin-top:4px}
+main{max-width:1100px;margin:0 auto;padding:20px 14px 60px}
+.search{width:100%;padding:12px 14px;border:1px solid #d0d5dd;border-radius:10px;font-size:1rem;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.card{background:var(--card);border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(16,24,40,.08);display:flex;flex-direction:column}
+.poster{width:100%;aspect-ratio:4/5;object-fit:cover;background:#e4e7ec;display:block}
+.body{padding:14px;display:flex;flex-direction:column;gap:6px;flex:1}
+.body h2{font-size:1rem;color:var(--brand)}
+.meta{font-size:.85rem;color:var(--soft)}
+.price{font-weight:700;color:var(--accent);font-size:1.05rem;margin-top:2px}
+.btns{display:flex;gap:8px;margin-top:auto;padding-top:10px}
+.btns a{flex:1;text-align:center;text-decoration:none;padding:9px 8px;border-radius:9px;font-size:.85rem;font-weight:600}
+.wa{background:var(--wa);color:#fff}
+.det{background:#eaf2f9;color:var(--accent)}
+.state{text-align:center;color:var(--soft);padding:40px 10px}
+footer{text-align:center;color:var(--soft);font-size:.8rem;padding:20px 10px}
+</style>
+</head>
+<body>
+<header>
+  <img src="assets/logo-amirutour.png" alt="Amiru Tour" onerror="this.style.display='none'">
+  <h1>Katalog Program Umroh</h1>
+  <p>PT Amiru Haramain Indonesia</p>
+</header>
+<main>
+  <input id="q" class="search" type="search" placeholder="Cari program, maskapai, tanggal...">
+  <div id="state" class="state">Memuat program...</div>
+  <div id="grid" class="grid"></div>
+</main>
+<footer>&copy; Amiru Tour</footer>
+<script>
+// ===== KONFIGURASI =====
+const SUPABASE_URL = "https://vlrizloxsjejcfuxuyju.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZscml6bG94c2plamNmdXh1eWp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxOTE1NjMsImV4cCI6MjEwMTc2NzU2M30.hO5LGq4CwiZDG4hxU2cEB1nNaVdpJ5NepPZLIIA1fig";
+// Nomor WhatsApp untuk tombol "Tanya via WhatsApp" (format internasional tanpa +)
+const WA_NUMBER = "6285122336300";
+
+// Parse tanggal sama seperti parseDateFromString() di js/app.js
+function parseTgl(s){
+  if(!s) return null;
+  const M={Januari:0,Februari:1,Maret:2,April:3,Mei:4,Juni:5,Juli:6,Agustus:7,September:8,Oktober:9,November:10,Desember:11};
+  for(const [m,i] of Object.entries(M)){
+    if(s.includes(m)){
+      const p=s.split(' ');
+      let d=parseInt(p[0]),y=parseInt(p[2]);
+      if(isNaN(d)) d=parseInt(p[0].replace(/^0+/,''));
+      return new Date(y,i,d);
+    }
+  }
+  const d=new Date(s);
+  return isNaN(d)?null:d;
+}
+// Filter sama seperti isProgramVisibleOnDashboard() di js/app.js
+function visible(p){
+  return p.is_active!==false && !(p.dateObj && p.dateObj<new Date()) && !!p.link_poster;
+}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function img(u){
+  const m=u.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/)||u.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+  return m?`https://drive.google.com/thumbnail?id=${m[1]}&sz=w800`:u;
+}
+function rupiah(v){
+  if(v===null||v===undefined||v==='') return '';
+  if(typeof v==='string'&&(/rp/i.test(v)||/[^\d.,\s]/.test(v))) return v.trim();
+  const n=parseInt(String(v).replace(/[^\d]/g,''),10);
+  return n?'Rp '+n.toLocaleString('id-ID'):'';
+}
+function unpack(r){
+  if(r.admin_data_lengkap){
+    try{const a=typeof r.admin_data_lengkap==='string'?JSON.parse(r.admin_data_lengkap):r.admin_data_lengkap;return {...r,...a};}catch(e){}
+  }
+  return r;
+}
+
+let list=[];
+function render(){
+  const q=document.getElementById('q').value.trim().toLowerCase();
+  const rows=list.filter(p=>!q||[p.nama,p.maskapai,p.tgl,p.durasi].join(' ').toLowerCase().includes(q));
+  const g=document.getElementById('grid'),st=document.getElementById('state');
+  st.style.display=rows.length?'none':'block';
+  if(!rows.length) st.textContent=list.length?'Tidak ada program yang cocok.':'Belum ada program yang tersedia.';
+  g.innerHTML=rows.map(p=>{
+    const harga=rupiah(p.harga_quad||p.harga_quint||p.harga_triple||p.harga_double);
+    const label=p.harga_quad?'Quad':(p.harga_quint?'Quint':'');
+    const msg=encodeURIComponent(`Assalamualaikum, saya tertarik dengan program ${p.nama||''} (${p.tgl||''}). Mohon info lebih lanjut.`);
+    return `<article class="card">
+      <img class="poster" loading="lazy" src="${esc(img(p.link_poster))}" alt="${esc(p.nama)}" referrerpolicy="no-referrer">
+      <div class="body">
+        <h2>${esc(p.nama)}</h2>
+        <div class="meta">${esc(p.tgl)}${p.durasi?' &bull; '+esc(p.durasi):''}</div>
+        ${p.maskapai?`<div class="meta">${esc(p.maskapai)}</div>`:''}
+        ${harga?`<div class="price">${esc(harga)}${label?' <small>/ '+label+'</small>':''}</div>`:''}
+        <div class="btns">
+          <a class="wa" target="_blank" rel="noopener" href="https://wa.me/${WA_NUMBER}?text=${msg}">WhatsApp</a>
+          ${p.link_itinerary?`<a class="det" target="_blank" rel="noopener" href="${esc(p.link_itinerary)}">Itinerary</a>`:''}
+        </div>
+      </div></article>`;
+  }).join('');
+}
+
+(async function(){
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/programs?select=*&order=created_at.asc`,{
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data=(await res.json()).map(unpack);
+    data.forEach(p=>{p.dateObj=parseTgl(p.tgl);});
+    list=data.filter(visible).sort((a,b)=>(a.dateObj||0)-(b.dateObj||0));
+    render();
+  }catch(e){
+    console.error(e);
+    document.getElementById('state').textContent='Gagal memuat katalog. Coba muat ulang halaman.';
+  }
+})();
+document.getElementById('q').addEventListener('input',render);
+</script>
+</body>
+</html>
