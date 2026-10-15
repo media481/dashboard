@@ -16543,7 +16543,7 @@ function closeIgContentPlanModal() {
 // Baris "Versi:" dan "Diperbarui:" dibaca otomatis untuk header modal, jadi format dua baris itu jangan diubah.
 // ============================================================
 const ABOUT_PLANNER_MD = `# About Planner: Konsep Perencanaan Konten Instagram Amiru Tour
-Versi: 6
+Versi: 7
 Diperbarui: 15 Oktober 2026
 Status: disepakati Oktober 2026. Uji coba alur mingguan yang menyambung dimulai pekan Senin, 12 Oktober 2026. Ejaan resmi: "Umroh" (bukan "Umrah"), termasuk di hashtag.
 
@@ -16634,7 +16634,7 @@ Keseimbangan: 4 hari menyentuh hati (Senin, Kamis, Sabtu, Minggu) dan 3 hari pra
 ## 6. Aturan Anti-Pengulangan
 
 - Satu topik hanya sekali. Sudut baru atas topik lama baru boleh muncul setelah jeda minimal 6 bulan.
-- Hook dan pembuka caption tidak boleh mirip dengan 20 posting terakhir, terlepas dari jendela 6 bulan. Rumus 3 kata pertama pembuka caption yang sama juga dianggap mirip.
+- Hook dan pembuka caption tidak boleh mirip dengan 20 posting terakhir, terlepas dari jendela 6 bulan. Rumus 3 kata pertama pembuka caption yang sama juga dianggap mirip, kecuali rumus rujukan hari sebelumnya (diawali kemarin, kemaren, semalam, atau tadi). Rumus rujukan itu dikecualikan dari cek 3 kata terhadap 20 posting terakhir karena Selasa sampai Minggu wajib merujuk hari sebelumnya. Kemiripan seluruh kalimat pembuka tetap dicek, dan rumus pembuka yang sama antarhari dalam satu pekan tetap ditolak.
 - Tema Minggu memakai jeda lebih ketat, 12 bulan, supaya peta setahun tidak punya tema pekan kembar.
 - Kata tema minggu diabaikan saat membandingkan ide dalam satu pekan, supaya ketujuh ide tidak saling dianggap kembar.
 - Isi diambil dari bank topik per hari:
@@ -16676,7 +16676,7 @@ Dashboard menyarankan Tema Minggu tanpa AI, dengan tiga sumber dalam urutan prio
 
 1. **Tema yang sudah dipakai di pekan itu** (kalau pekan sudah pernah digenerate sebagian) tetap dipertahankan.
 2. **Tema musiman** menurut bulan Hijriah/Masehi pekan itu (Maulid, Isra Miraj, Ramadhan, musim haji, libur sekolah, dan seterusnya). Tema musiman yang mengarah ke penjualan sengaja tayang 2-3 bulan sebelum musimnya, karena calon jamaah memesan jauh hari, dan didahulukan atas tema musiman biasa.
-3. **Alur perjalanan jamaah** yang dilanjutkan dari tema alur terakhir yang dipakai, supaya pekan ke pekan terasa satu cerita: niat dan persiapan, miqat dan ihram, thawaf, sa'i, tahallul, Madinah, lalu pulang dan rindu Tanah Suci.
+3. **Alur perjalanan jamaah** yang dilanjutkan dari tema alur terakhir yang dipakai, supaya pekan ke pekan terasa satu cerita: niat dan persiapan, miqat dan ihram, thawaf, sa'i, tahallul, Madinah, lalu pulang dan rindu Tanah Suci. Bank alur berisi 65 tema, dikelompokkan menurut tahap: sebelum berangkat, ibadah di Makkah, Madinah, umroh bersama siapa, dan pulang serta sesudahnya.
 
 Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati. Admin tetap bisa mengetik Tema Minggu sendiri, dan mengisi Tema pekan depan (opsional) untuk teaser penutup Minggu.
 
@@ -16693,10 +16693,10 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 
 - Modal **Perencanaan Konten** dibuat sederhana dalam dua langkah: (1) pilih bulan dan pekan (Senin-Minggu), (2) isi **Tema pekan ini** (Tema Minggu, wajib, terisi otomatis dari saran). Ringkasan jumlah ide yang akan dibuat muncul di bawahnya.
 - Bagian yang jarang dipakai dilipat dan terbuka lewat klik: **Pengaturan lanjutan** (Tema pekan depan dan Arahan tambahan, keduanya opsional), **Pola 7 hari**, **Peta tema 12 bulan**, dan **Cara lain** (Isi dari Pola dan Salin Prompt).
-- **Generate Konten** menyusun ketujuh hari dalam satu panggilan AI, dengan peran per hari sesuai bagian 3. Hari yang sudah lewat atau sudah terisi dilewati.
-- Setiap hari hasil AI diperiksa otomatis di server. Ditolak bila memuat teks Arab, janji berlebihan, kutipan ayat atau hadis (\"bersabda\", \"berfirman\", \"QS.\", \"HR.\"), placeholder [isi ...], statistik atau klaim jumlah jamaah, kata kaku (silakan, hubungi kami, tersedia), pola atau frasa yang terasa buatan AI ("bukan sekadar X, tapi Y", frasa klise, lebih dari 2 tanda tanya, lebih dari 1 emoji, doa penutup lebih dari 2 hari dari Senin sampai Sabtu, karena satu jatah dari 3 dicadangkan untuk Minggu; doa dicari di dua paragraf terakhir caption), format teks gambar yang tidak cocok dengan tipe (carousel harus Slide 1 sampai n berurutan, 3 sampai 5 slide), caption yang menyalin teks gambar, atau pembuka caption yang sama dengan hari lain.
-- Hari yang ditolak ditulis ulang sendiri (maksimal 2 putaran) dengan alasan penolakan dan hari yang sudah lolos sebagai penyambung; hari yang sudah lolos tidak dibuang.
-- Caption dirapikan di server: ejaan "Umroh", tepat 5 hashtag (#UmrohBersamaAmiru dan #AmiruTour selalu ada), maksimal 2200 karakter.
+- **Generate Konten** menyusun ketujuh hari dalam satu panggilan AI, dengan peran per hari sesuai bagian 3. Hari yang sudah lewat atau sudah terisi dilewati. Selama menyusun, tombol menampilkan detik berjalan dan perkiraan waktu (biasanya 1-2 menit), karena hitungan n/7 baru bergerak di akhir.
+- Setiap hari hasil AI diperiksa otomatis di server. Ditolak bila memuat teks Arab, janji berlebihan, kutipan ayat atau hadis ("bersabda", "berfirman", "QS.", "HR."), placeholder [isi ...], statistik atau klaim jumlah jamaah, kata kaku (silakan, hubungi kami, tersedia), pola atau frasa yang terasa buatan AI ("bukan sekadar X, tapi Y", frasa klise, lebih dari 2 tanda tanya, lebih dari 1 emoji, doa penutup lebih dari 2 hari dari Senin sampai Sabtu, karena satu jatah dari 3 dicadangkan untuk Minggu; doa dicari di dua paragraf terakhir caption), format teks gambar yang tidak cocok dengan tipe (carousel harus Slide 1 sampai n berurutan, 3 sampai 5 slide), caption yang menyalin teks gambar, atau pembuka caption yang sama dengan hari lain.
+- Hari yang ditolak ditulis ulang sendiri (maksimal 2 putaran) dengan alasan penolakan dan hari yang sudah lolos sebagai penyambung; hari yang sudah lolos tidak dibuang. Di dashboard, hari yang ditolak diulang bersama hari sesudahnya saja, karena pembuka hari sesudahnya merujuk hari yang ditolak; hari lain yang sudah lolos tetap disimpan.
+- Caption dirapikan di server: ejaan "Umroh", tepat 5 hashtag (#UmrohBersamaAmiru dan #AmiruTour selalu ada), maksimal 2200 karakter. Teks gambar juga dibersihkan dari tanda pisah panjang dan titik koma (baris tidak digabung, rentang angka seperti "Slide 2–3" dibiarkan).
 - Label seri "Seri [Tema] · n/7" ditambahkan otomatis di akhir teks gambar.
 - **Isi dari Pola** (di Cara lain) membuat kerangka kosong 7 hari (pilar dan format sudah terisi) tanpa AI; bagian [isi ...] diganti data asli.
 - **Salin Prompt** (di Cara lain) menyalin prompt lengkap (pola 7 hari, konteks, riwayat konten lama) untuk ditempel ke asisten AI lain bila server penyusun konten bermasalah.
@@ -16717,6 +16717,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 
 - Dijeda: bukti sosial/testimoni, engagement (polling), info program, dan Story dalam pola mingguan.
 - Riwayat topik awal (bagian 6) sekarang juga tersimpan sebagai data (IG_RIWAYAT_AWAL di js/app.js): dipakai untuk menolak ide kembar, melewati tema alur yang bentrok pada saran Tema Minggu, dan Rencana Setahun AI. Menambah topik ke daftar ini masih manual, dan salinan teksnya (tabel bagian 6, prompt) harus disamakan. Selebihnya riwayat dibaca dari rencana dan post tersimpan.
+- Bank topik per hari (bagian 6) belum berupa data: ia hanya arahan di prompt yang ditafsirkan AI, dijaga oleh pengecekan duplikat. Hanya Tema Minggu yang dikelola kode (bank alur dan tema musim).
 - Desain gambar dan pengecekan ke pembimbing/ustaz dilakukan manusia.
 
 ## 12. Riwayat Revisi
@@ -16729,6 +16730,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 | 4 | 10 Oktober 2026 | Rencana Setahun AI: tema 12 bulan disusun AI, disimpan per pekan, bisa diedit dan dikunci, dan menjadi saran utama Tema Minggu |
 | 5 | 10 Oktober 2026 | Tampilan modal Perencanaan Konten disederhanakan: form dua langkah, pengaturan jarang dipakai dilipat, satu aksi utama per kartu hasil. Aturan konten dan generator tidak berubah |
 | 6 | 15 Oktober 2026 | Tanda [cek pembimbing] dipersempit ke klaim tata cara/hukum/lafaz dan pilar Manasik; jatah doa Minggu dicadangkan (Senin-Sabtu maksimal 2 hari, doa dicari di dua paragraf terakhir); riwayat topik awal jadi data dan memblokir tema alur yang bentrok; tanda pembimbing tidak lagi dihitung sebagai kata topik saat mendeteksi ide kembar |
+| 7 | 15 Oktober 2026 | Rumus rujukan hari sebelumnya dikecualikan dari cek 3 kata terhadap 20 posting terakhir; mode pekan hanya mengulang hari yang ditolak dan hari sesudahnya; teks gambar dibersihkan dari tanda pisah panjang dan titik koma; bank tema alur diperluas menjadi 65 tema; tombol generate menampilkan perkiraan waktu; catatan bahwa bank topik per hari belum berupa data |
 `;
 
 // Petunjuk yang ikut tersalin di depan dokumen supaya Claude mengembalikan dokumen dalam format yang bisa dipakai lagi.
