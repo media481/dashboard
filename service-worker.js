@@ -3,7 +3,7 @@
 // fallback ke cache saat offline. Request ke domain luar (Supabase, CDN, Google Fonts)
 // tidak di-cache, dibiarkan langsung ke jaringan.
 
-const CACHE_NAME = 'amiru-repo-cache-v117';
+const CACHE_NAME = 'amiru-repo-cache-v118';
 
 const APP_SHELL = [
   './',
@@ -68,19 +68,29 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(req)
       .then((networkResponse) => {
-        const responseClone = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(req, responseClone);
-        });
+        // Hanya simpan response sukses ke cache (jangan cache 404/5xx)
+        if (networkResponse && networkResponse.ok) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(req, responseClone);
+          });
+        }
         return networkResponse;
       })
-      .catch(() => {
-        return caches.match(req).then((cachedResponse) => {
-          if (cachedResponse) return cachedResponse;
-          // Fallback terakhir untuk navigasi halaman saat offline total
-          if (req.mode === 'navigate') {
-            return caches.match('./index.html');
-          }
+      .catch(async () => {
+        const cachedResponse = await caches.match(req);
+        if (cachedResponse) return cachedResponse;
+        // Fallback terakhir untuk navigasi halaman saat offline total
+        if (req.mode === 'navigate') {
+          const shell = await caches.match('./index.html');
+          if (shell) return shell;
+        }
+        // PENTING: respondWith() TIDAK boleh menerima undefined, kalau tidak
+        // Chrome menampilkan ERR_INVALID_RESPONSE. Selalu kembalikan Response valid.
+        return new Response('Tidak bisa terhubung ke server. Periksa koneksi lalu muat ulang.', {
+          status: 503,
+          statusText: 'Service Unavailable',
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
         });
       })
   );
