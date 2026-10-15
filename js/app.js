@@ -15203,7 +15203,7 @@ function igDmPlanCard(pl, canEdit) {
     const pil = IG_PILLARS[pl.pilar];
     const stage = pl.tahap || 'ide';
     const cap = pl.draft_caption || '';
-    const imgTxt = pl.teks_gambar || '';
+    const imgTxt = igSpasiSlide(pl.teks_gambar || '');
     const typeOpts = ['image', 'video', 'carousel'].map(t =>
         `<option value="${t}"${pl.tipe_konten === t ? ' selected' : ''}>${t === 'video' ? 'Video/Reels' : IG_TYPE_LABELS[t]}</option>`).join('');
     const pilOpts = igPlannerColsReady
@@ -15240,7 +15240,7 @@ function igDmPlanCard(pl, canEdit) {
                     : `<span class="ig-plan-canva-off" title="Jalankan sql/56_tambah_ig_content_plan_canva.sql lalu muat ulang halaman">Link Canva belum aktif (jalankan sql/56)</span>`}
             </div>
             ${igTeksGambarReady ? `<label class="ig-dm-edit-label">Teks di gambar <em>(2–4 baris pendek)</em></label>
-            <textarea class="ig-dm-input ig-dm-textarea ig-dm-imgtext-input" rows="3" maxlength="700" placeholder="Contoh: Niat umroh itu muncul diam-diam."
+            <textarea class="ig-dm-input ig-dm-textarea ig-dm-imgtext-input" rows="3" maxlength="800" placeholder="Contoh: Niat umroh itu muncul diam-diam."
                 onblur="igPlanUpdateField('${pl.id}','teks_gambar',this.value)">${escapeHtml(imgTxt)}</textarea>` : ''}
             </div>
             <div class="ig-dm-edit-right">
@@ -18235,6 +18235,14 @@ function igFirstLine(text) {
     return String(text || '').split('\n')[0].trim();
 }
 
+// Rapikan teks gambar carousel: beri 1 baris kosong sebelum tiap "Slide 2:", "Slide 3:", dst (dan sebelum "Label gambar:")
+// supaya antar slide nyaman dibaca. Slide 1 tidak diubah. Aman dipanggil berulang (idempoten).
+function igSpasiSlide(text) {
+    return String(text || '')
+        .replace(/[ \t]*\n[ \t\n]*(?=slide\s*\d+\s*[:.)\-\u2013])/gi, '\n\n')
+        .replace(/[ \t]*\n[ \t\n]*(?=Label gambar:)/gi, '\n\n');
+}
+
 // 3 kata pertama (tanpa tanda baca, tanpa filter kata umum) = "rumus pembuka" ("kemarin kita bahas"). '' kalau < 3 kata.
 function igRumusPembuka(teks) {
     const w = String(teks || '').toLowerCase().replace(/[’'`ʼ]/g, '').replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
@@ -18608,8 +18616,8 @@ async function igGeneratePlanForSlots(year, month, slots, arahan, onProgress, op
                     }
                     igRiwayatAdd(riwayat, it.tema, it.teks_gambar, it.tanggal, it.draft_caption, pekan ? temaMinggu : '');
                     // Label kecil di pojok gambar (pola-konten.md): "Seri Talbiyah · 3/7". Ditaruh di baris sendiri di akhir teks gambar.
-                    let teksGambar = String(it.teks_gambar || '').trim();
-                    if (pekan && slot.urutan) teksGambar += `${teksGambar ? '\n' : ''}Label gambar: Seri ${temaMinggu} · ${slot.urutan}/7`;
+                    let teksGambar = igSpasiSlide(String(it.teks_gambar || '').trim());
+                    if (pekan && slot.urutan) teksGambar += `${teksGambar ? '\n\n' : ''}Label gambar: Seri ${temaMinggu} · ${slot.urutan}/7`;
                     return {
                         bulan: bulanDari(it.tanggal),
                         tanggal: it.tanggal,
@@ -18874,8 +18882,8 @@ async function igRegenerasiHariPlan(planId) {
         }
 
         // Label kecil di pojok gambar, sama seperti saat generate pekan ("Seri Talbiyah · 3/7").
-        let teksGambar = String(hasil.teks_gambar || '').trim();
-        if (ctx.temaMinggu && ctx.slot.urutan) teksGambar += `${teksGambar ? '\n' : ''}Label gambar: Seri ${ctx.temaMinggu} · ${ctx.slot.urutan}/7`;
+        let teksGambar = igSpasiSlide(String(hasil.teks_gambar || '').trim());
+        if (ctx.temaMinggu && ctx.slot.urutan) teksGambar += `${teksGambar ? '\n\n' : ''}Label gambar: Seri ${ctx.temaMinggu} · ${ctx.slot.urutan}/7`;
         const patch = {
             tema: String(hasil.tema).trim(),
             draft_caption: hasil.draft_caption,
@@ -19196,8 +19204,8 @@ function renderIgPlanResultList(year, month) {
                     </select>
                     <span class="ig-plan-save-indicator" id="igPlanSaved-${pl.id}"></span>
                </div>
-               ${igTeksGambarReady ? `<textarea class="ig-plan-edit-caption ig-plan-edit-imgtext" rows="2" maxlength="700" placeholder="Teks di gambar (single: 2–4 baris; carousel: maks 5 slide)"
-                   onblur="igPlanUpdateField('${pl.id}','teks_gambar',this.value)">${escapeHtml(pl.teks_gambar || '')}</textarea>` : ''}
+               ${igTeksGambarReady ? `<textarea class="ig-plan-edit-caption ig-plan-edit-imgtext" rows="2" maxlength="800" placeholder="Teks di gambar (single: 2–4 baris; carousel: maks 5 slide)"
+                   onblur="igPlanUpdateField('${pl.id}','teks_gambar',this.value)">${escapeHtml(igSpasiSlide(pl.teks_gambar || ''))}</textarea>` : ''}
                <textarea class="ig-plan-edit-caption" rows="3"
                    onblur="igPlanUpdateField('${pl.id}','draft_caption',this.value)">${escapeHtml(pl.draft_caption || '')}</textarea>`
             : `<div class="ig-plan-result-top">
@@ -19491,7 +19499,7 @@ function igBuildPolaMingguan(year, month, existingDates, mulaiDari, riwayat) {
             status: 'idea',
             pilar: slot.pilar,
             tahap: draf ? 'dikerjakan' : 'ide',
-            teks_gambar: src.teks,
+            teks_gambar: igSpasiSlide(src.teks),
             _berisi: !!draf
         });
     }

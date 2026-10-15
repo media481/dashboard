@@ -423,7 +423,9 @@ function normalizeTeksGambar(raw: string): string {
   return String(raw || "")
     .replace(/[ \t]*\u2014[ \t]*/g, ", ")
     .replace(/(?<=\D)[ \t]*\u2013[ \t]*|[ \t]*\u2013[ \t]*(?=\D)/g, ", ")
-    .replace(/;[ \t]*/g, ", ");
+    .replace(/;[ \t]*/g, ", ")
+    // Beri 1 baris kosong antar slide ("Slide 2:", "Slide 3:", ...) supaya nyaman dibaca.
+    .replace(/[ \t]*\n[ \t\n]*(?=slide\s*\d+\s*[:.)\-\u2013])/gi, "\n\n");
 }
 
 // Jumlah slide tertinggi yang disebut di teks gambar carousel ("Slide 5: ..." atau rentang "Slide 2-4").
