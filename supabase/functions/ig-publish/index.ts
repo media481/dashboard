@@ -17,7 +17,8 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const GRAPH_API_VERSION = "v21.0";
+// Bisa diganti tanpa edit kode: supabase secrets set IG_GRAPH_API_VERSION=vXX.0 (Meta mempensiunkan versi lama berkala).
+const GRAPH_API_VERSION = Deno.env.get("IG_GRAPH_API_VERSION") || "v21.0";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 

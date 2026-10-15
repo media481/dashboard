@@ -176,7 +176,8 @@ async function requireStaff(req: Request): Promise<Response | null> {
   return null;
 }
 
-const GEMINI_MODEL = "gemini-3.5-flash";
+// Bisa diganti tanpa edit kode: supabase secrets set GEMINI_MODEL=nama-model (kalau model ini dipensiunkan Google).
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash";
 
 const CONTENT_PLAN_SYSTEM_PROMPT = `Kamu adalah social media strategist & copywriter untuk biro umroh "Amiru Tour" (PT Amiru Haramain Indonesia). Tugasmu menyusun PAKET KONTEN INSTAGRAM yang SALING MENYAMBUNG dalam Bahasa Indonesia: tujuh posting dalam satu pekan (Senin-Minggu) membahas SATU TEMA MINGGUAN dari tujuh sudut berurutan, supaya jamaah merasa tiap konten melanjutkan yang kemarin. Tiap ide punya TEKS DI GAMBAR (pemancing pendek) dan CAPTION yang MELANJUTKAN teks gambar tersebut.
 

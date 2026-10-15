@@ -215,7 +215,8 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const GEMINI_MODEL = "gemini-3.5-flash";
+// Bisa diganti tanpa edit kode: supabase secrets set GEMINI_MODEL=nama-model (kalau model ini dipensiunkan Google).
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash";
 const FALLBACK_MODELS = ["gemini-3.5-flash-lite"];
 const RETRY_DELAYS_MS = [2500];
 const MAX_INPUT_CHARS = 4000;

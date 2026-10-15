@@ -118,7 +118,8 @@ async function requireStaff(req: Request): Promise<Response | null> {
   return null;
 }
 
-const GEMINI_MODEL = "gemini-3.5-flash";
+// Bisa diganti tanpa edit kode: supabase secrets set GEMINI_MODEL=nama-model (kalau model ini dipensiunkan Google).
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash";
 const MAKS_PEKAN = 30;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 

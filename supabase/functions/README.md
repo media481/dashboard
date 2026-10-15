@@ -79,3 +79,19 @@ supabase secrets set REKAP_PROGRAM_API_URL=https://script.google.com/macros/s/XX
 supabase functions deploy sync-rekap-program
 ```
 Hanya role `admin`/`user` yang bisa menekan Refresh (cek role di dalam function).
+
+## Perawatan jangka panjang (agar tetap jalan bertahun-tahun)
+
+Dua hal di luar kendali kita yang berganti berkala. Keduanya sekarang bisa diganti lewat secret, tanpa edit kode:
+
+| Secret | Dipakai oleh | Bawaan | Kapan diganti |
+|---|---|---|---|
+| `GEMINI_MODEL` | `generate-ig-content-plan`, `generate-ig-caption`, `generate-ig-year-plan` | `gemini-3.5-flash` | Bila Google mempensiunkan model, atau muncul pesan error model tidak ditemukan |
+| `IG_GRAPH_API_VERSION` | `ig-publish`, `ig-sync-comments`, `ig-comment-action`, `ig-refresh-token` | `v21.0` | Meta mempensiunkan tiap versi Graph API sekitar dua tahun setelah versi berikutnya rilis; cek jadwalnya di changelog Meta setiap 6 bulan |
+
+Contoh: `supabase secrets set IG_GRAPH_API_VERSION=v23.0` (uji dengan menjadwalkan satu post percobaan dulu).
+
+Pengecekan berkala (disarankan tiap Januari dan Juli):
+1. Jalankan Rencana Setahun AI untuk pekan yang belum terisi, pastikan tema musiman tayang di bulan yang tepat.
+2. Cek bank tema (`IG_TEMA_ALUR`) dan daftar musiman (`IG_TEMA_MUSIM`) di `js/app.js`, tambah bila perlu.
+3. Pastikan token Instagram masih diperpanjang otomatis (`ig-refresh-token`) dan workflow `keep-supabase-alive` masih aktif.
