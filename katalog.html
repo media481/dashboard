@@ -97,7 +97,7 @@ footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px 
 .price small{font-size:clamp(9px,.85vw,12px)}
 .btn{font-size:clamp(10px,1vw,14px);padding:clamp(6px,.8vw,11px) 4px}
 .badge{font-size:clamp(8px,.85vw,11.5px);padding:3px clamp(5px,.6vw,9px)}
-@media(max-width:700px){.facts{grid-template-columns:1fr}.actions .btn:not(.primary){display:none}.wrap,.tools,.meta,.grid{padding-left:10px;padding-right:10px}}
+@media(max-width:700px){.facts{grid-template-columns:1fr}.actions{flex-direction:column}.actions .btn:not(.primary):not(.wa){display:none}.wrap,.tools,.meta,.grid{padding-left:10px;padding-right:10px}}
 @media(max-width:520px){.tools select{flex:1 1 100%}.hero p{display:none}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -126,7 +126,7 @@ footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px 
 // ===== KONFIGURASI =====
 const SUPABASE_URL = "https://vlrizloxsjejcfuxuyju.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZscml6bG94c2plamNmdXh1eWp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxOTE1NjMsImV4cCI6MjEwMTc2NzU2M30.hO5LGq4CwiZDG4hxU2cEB1nNaVdpJ5NepPZLIIA1fig"; // anon key memang publik; data dilindungi RLS
-const WA_NUMBER = "";   // isi nomor WhatsApp admin format internasional tanpa +, mis. "6281234567890". Kosong = tombol WA disembunyikan
+const WA_NUMBER = "6285122336300";   // isi nomor WhatsApp admin format internasional tanpa +, mis. "6281234567890". Kosong = tombol WA disembunyikan
 const BARU_HARI = 3;    // badge "Baru" tampil selama N hari sejak program dibuat
 
 const BULAN = {Januari:0,Februari:1,Maret:2,April:3,Mei:4,Juni:5,Juli:6,Agustus:7,September:8,Oktober:9,November:10,Desember:11};
@@ -240,7 +240,7 @@ function render() {
         ${harga ? `<div class="price"><small>${lbl}</small><strong>${esc(harga)}</strong></div>` : ''}
         <div class="actions">
           <button class="btn primary" data-i="${i}">Detail</button>
-          ${WA_NUMBER ? `<a class="btn wa" target="_blank" rel="noopener" href="${waLink(p)}">Tanya via WA</a>` : (iti ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(iti)}">Itinerary</a>` : '')}
+          ${WA_NUMBER ? `<a class="btn wa" target="_blank" rel="noopener" href="${waLink(p)}">Chat CS via WA</a>` : (iti ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(iti)}">Itinerary</a>` : '')}
         </div>
       </div></article>`;
   }).join('');
@@ -265,7 +265,7 @@ function buka(i) {
     ${hotel.length ? `<div><h4>Akomodasi</h4><ul>${hotel.map(h => `<li><b>${esc(h[0])}:</b> ${esc(h[1])}</li>`).join('')}</ul></div>` : ''}
     ${(inc.length || exc.length) ? '<div class="incexc">' : ''}${inc.length ? `<div><h4>Termasuk</h4><ul>${inc.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
     ${exc.length ? `<div><h4>Tidak termasuk</h4><ul>${exc.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}${(inc.length || exc.length) ? '</div>' : ''}
-    <div class="actions">${iti ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(iti)}">Lihat Itinerary</a>` : ''}${WA_NUMBER ? `<a class="btn wa" target="_blank" rel="noopener" href="${waLink(p)}">Tanya via WhatsApp</a>` : ''}</div></div>`;
+    <div class="actions">${iti ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(iti)}">Lihat Itinerary</a>` : ''}${WA_NUMBER ? `<a class="btn wa" target="_blank" rel="noopener" href="${waLink(p)}">Chat CS via WhatsApp</a>` : ''}</div></div>`;
   document.getElementById('modal').classList.add('open');
   document.body.style.overflow = 'hidden';
   document.getElementById('mClose').focus();
