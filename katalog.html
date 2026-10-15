@@ -2,134 +2,355 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Katalog Program Umroh - Amiru Tour</title>
-<meta name="description" content="Katalog program Umroh PT Amiru Haramain Indonesia (Amiru Tour)">
-<meta name="theme-color" content="#1a355b">
+<meta name="theme-color" content="#0f2440">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Program Umroh Tersedia | Amiru Tour</title>
+<meta name="description" content="Daftar program Umroh Amiru Tour yang masih tersedia: jadwal, harga, maskapai, dan hotel.">
+<meta property="og:title" content="Program Umroh Tersedia | Amiru Tour">
+<meta property="og:description" content="Jadwal, harga, maskapai, dan hotel program Umroh Amiru Tour.">
 <link rel="icon" href="favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
 <style>
-:root{--brand:#1a355b;--accent:#1a6fa8;--bg:#f4f6fa;--ink:#1c2430;--soft:#667085;--card:#fff;--wa:#25d366}
+:root{--bg:#e9eff3;--paper:#fff;--ink:#15263a;--ink2:#566678;--navy:#1a355b;--navy-deep:#0f2440;--line:#d3dde6;--gold:#f0c35a;--gold-ink:#4d3800;--emerald:#17795a;--emerald-tint:#dff1ea;--wa:#0f7a45;--focus:#1a6fa8;--r:18px}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}
-header{background:var(--brand);color:#fff;padding:28px 16px 22px;text-align:center}
-header img{height:56px;margin-bottom:8px}
-header h1{font-size:1.4rem;font-weight:700}
-header p{font-size:.9rem;opacity:.85;margin-top:4px}
-main{max-width:1100px;margin:0 auto;padding:20px 14px 60px}
-.search{width:100%;padding:12px 14px;border:1px solid #d0d5dd;border-radius:10px;font-size:1rem;margin-bottom:18px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
-.card{background:var(--card);border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(16,24,40,.08);display:flex;flex-direction:column}
-.poster{width:100%;aspect-ratio:4/5;object-fit:cover;background:#e4e7ec;display:block}
-.body{padding:14px;display:flex;flex-direction:column;gap:6px;flex:1}
-.body h2{font-size:1rem;color:var(--brand)}
-.meta{font-size:.85rem;color:var(--soft)}
-.price{font-weight:700;color:var(--accent);font-size:1.05rem;margin-top:2px}
-.btns{display:flex;gap:8px;margin-top:auto;padding-top:10px}
-.btns a{flex:1;text-align:center;text-decoration:none;padding:9px 8px;border-radius:9px;font-size:.85rem;font-weight:600}
-.wa{background:var(--wa);color:#fff}
-.det{background:#eaf2f9;color:var(--accent)}
-.state{text-align:center;color:var(--soft);padding:40px 10px}
-footer{text-align:center;color:var(--soft);font-size:.8rem;padding:20px 10px}
+html{-webkit-tap-highlight-color:transparent}
+body{font:400 16px/1.5 Barlow,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+h1,h2,h3,h4,.hari,.harga{font-family:"Barlow Condensed",Barlow,system-ui,sans-serif}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.wrap{max-width:980px;margin:0 auto;padding:0 18px}
+
+/* Hero */
+.hero{background:var(--navy-deep);color:#fff;padding:calc(22px + env(safe-area-inset-top,0px)) 0 36px}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+.brand img{width:44px;height:44px;border-radius:10px;background:#fff;object-fit:contain;padding:3px}
+.brand b{display:block;font:600 20px/1.1 "Barlow Condensed",sans-serif;letter-spacing:.3px}
+.brand span{font-size:13px;opacity:.75}
+.hero h1{font-weight:700;font-size:clamp(44px,10vw,72px);line-height:.96;letter-spacing:-.5px;max-width:14ch}
+.hero p{margin-top:14px;max-width:46ch;opacity:.86;font-size:16px}
+
+/* Filter */
+.filter{position:sticky;top:0;z-index:20;background:var(--bg);padding:14px 0 8px}
+.tools{display:flex;gap:10px;flex-wrap:wrap}
+.cari{position:relative;flex:1 1 260px}
+.cari svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--ink2);pointer-events:none}
+.cari input,.tools select{font:inherit;font-size:16px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);min-width:0}
+.cari input{width:100%;padding:12px 14px 12px 40px}
+.tools select{flex:0 1 250px;padding:12px 14px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 0 4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips[hidden]{display:none}
+.chip{flex:none;font:600 15px Barlow,sans-serif;padding:7px 15px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--navy);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+.meta{padding:12px 0 4px;color:var(--ink2);font-size:15px;min-height:30px}
+
+/* Tiket */
+.daftar{display:grid;gap:16px;padding:6px 0 30px}
+.tiket{display:grid;grid-template-columns:132px minmax(0,1fr) 256px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r)}
+.foto{padding:16px 0 16px 16px}
+.poster{display:block;width:100%;aspect-ratio:4/5;border:0;padding:0;border-radius:10px;overflow:hidden;cursor:pointer;background:#dbe4ee}
+.poster img{width:100%;height:100%;object-fit:cover;display:block}
+.poster .ph{height:100%;display:grid;place-items:center;padding:8px;text-align:center;overflow:hidden;overflow-wrap:anywhere;color:var(--navy);font:600 15px/1.2 "Barlow Condensed",sans-serif}
+.utama{padding:16px 20px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.tgl{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px}
+.hari{font-weight:700;font-size:56px;line-height:.9;color:var(--navy)}
+.bt{display:flex;flex-direction:column;line-height:1.15}
+.bln{font:600 21px/1.1 "Barlow Condensed",sans-serif;color:var(--navy)}
+.sisa{font-size:14px;color:var(--ink2)}
+.tags{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end;align-self:flex-start}
+.tag{font:600 13px/1 Barlow,sans-serif;padding:5px 9px;border-radius:6px}
+.tag.near{background:var(--gold);color:var(--gold-ink)}
+.tag.new{background:var(--emerald-tint);color:var(--emerald)}
+.utama h3{font-weight:600;font-size:27px;line-height:1.1;margin-top:6px}
+.info{display:flex;flex-wrap:wrap;gap:6px 26px;margin-top:auto;padding-top:10px}
+.info dt{font-size:13px;color:var(--ink2)}
+.info dd{font-weight:600;font-size:16px}
+
+/* Bagian tiket (kanan) + lubang perforasi */
+.stub{position:relative;border-left:2px dashed var(--line);padding:16px 18px;display:flex;flex-direction:column;justify-content:space-between;gap:14px}
+.stub::before,.stub::after{content:"";position:absolute;left:-12px;width:22px;height:22px;border-radius:50%;background:var(--bg);border:1px solid var(--line)}
+.stub::before{top:-12px;clip-path:inset(50% 0 0 0)}
+.stub::after{bottom:-12px;clip-path:inset(0 0 50% 0)}
+.hrg small{display:block;font-size:14px;color:var(--ink2)}
+.harga{display:block;font-weight:700;font-size:30px;line-height:1.05;color:var(--navy);white-space:nowrap}
+.aksi{display:flex;flex-direction:column;gap:8px;margin-top:auto}
+.btn{flex:1;font:600 16px Barlow,sans-serif;text-align:center;text-decoration:none;padding:11px 14px;border-radius:10px;border:1.5px solid var(--navy);background:#fff;color:var(--navy);cursor:pointer;display:inline-block}
+.btn.primary{background:var(--navy);color:#fff}
+.btn.wa{background:var(--wa);border-color:var(--wa);color:#fff}
+.btn:hover{filter:brightness(.93)}
+
+.state{padding:48px 20px;text-align:center;color:var(--ink2)}
+.state b{display:block;font:600 24px "Barlow Condensed",sans-serif;color:var(--ink);margin-bottom:4px}
+.skel{height:200px;border-radius:var(--r);background:linear-gradient(90deg,#dde6ec 25%,#eaf0f4 50%,#dde6ec 75%);background-size:200% 100%;animation:sh 1.2s infinite}
+@keyframes sh{to{background-position:-200% 0}}
+.catatan{padding-top:4px;padding-bottom:calc(34px + env(safe-area-inset-bottom,0px));color:var(--ink2);font-size:14px}
+.catatan p{max-width:70ch}
+
+/* Detail */
+.modal{position:fixed;inset:0;background:rgba(10,24,42,.62);display:none;align-items:flex-end;justify-content:center;z-index:50}
+.modal.open{display:flex}
+.sheet{background:#fff;width:100%;max-width:880px;max-height:92dvh;overflow:auto;border-radius:20px 20px 0 0;animation:naik .22s ease-out}
+@keyframes naik{from{transform:translateY(40px);opacity:0}}
+.sheet>header{padding:16px 20px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;z-index:2}
+.sheet>header h2{font-weight:700;font-size:28px;line-height:1.1;color:var(--navy)}
+.x{border:0;background:var(--bg);color:var(--navy);width:38px;height:38px;border-radius:50%;font-size:24px;line-height:1;cursor:pointer;flex:none}
+.in{padding:18px 20px 22px;display:grid;gap:20px}
+.kiri img.big{width:100%;border-radius:12px;display:block}
+.kanan{display:grid;gap:22px;min-width:0;align-content:start}
+.sheet h4{font:600 20px/1.2 "Barlow Condensed",sans-serif;color:var(--navy);margin-bottom:6px}
+.ringkas{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
+.ringkas small{display:block;color:var(--ink2);font-size:13px}
+.ringkas b{font-weight:600;font-size:17px}
+.baris{display:flex;justify-content:space-between;align-items:baseline;gap:14px;padding:9px 0;border-bottom:1px dashed var(--line)}
+.baris span{color:var(--ink2)}
+.baris b{font-weight:600;text-align:right}
+.baris.hb b{font:700 24px "Barlow Condensed",sans-serif;color:var(--navy)}
+.cek{list-style:none;display:grid;gap:6px}
+.cek li{position:relative;padding-left:26px;font-size:16px}
+.cek li::before{position:absolute;left:0;top:0;font-weight:700}
+.cek.ya li::before{content:"\2713";color:var(--emerald)}
+.cek.tidak li::before{content:"\2715";color:#b4432f}
+.aksi-sheet{grid-column:1/-1;position:sticky;bottom:0;display:flex;gap:10px;margin:0 -20px -22px;padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));background:#fff;border-top:1px solid var(--line)}
+
+@media(min-width:760px){
+  .modal{align-items:center;padding:24px}
+  .sheet{border-radius:20px}
+  .in{grid-template-columns:290px 1fr;align-items:start}
+  .in.tanpa-foto{grid-template-columns:1fr}
+  .kiri{position:sticky;top:78px}
+}
+@media(max-width:720px){
+  .hero{padding-bottom:30px}
+  .tools select{flex:1 1 100%}
+  .tags{order:3;flex-basis:100%;margin-left:0;justify-content:flex-start}
+  .tiket{grid-template-columns:104px minmax(0,1fr)}
+  .foto{padding:14px 0 14px 14px}
+  .utama{padding:14px 16px}
+  .hari{font-size:46px}
+  .utama h3{font-size:23px}
+  .stub{grid-column:1/-1;border-left:0;border-top:2px dashed var(--line);flex-direction:row;align-items:center;flex-wrap:wrap;padding:14px 16px}
+  .stub::before{left:-12px;top:-12px;bottom:auto;clip-path:inset(0 0 0 50%)}
+  .stub::after{left:auto;right:-12px;top:-12px;bottom:auto;clip-path:inset(0 50% 0 0)}
+  .hrg{flex:1 1 auto}
+  .harga{font-size:29px}
+  .aksi{flex-direction:row;margin-top:0;flex:1 1 220px}
+  .skel{height:250px}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<header>
-  <img src="assets/logo-amirutour.png" alt="Amiru Tour" onerror="this.style.display='none'">
-  <h1>Katalog Program Umroh</h1>
-  <p>PT Amiru Haramain Indonesia</p>
-</header>
-<main>
-  <input id="q" class="search" type="search" placeholder="Cari program, maskapai, tanggal...">
-  <div id="state" class="state">Memuat program...</div>
-  <div id="grid" class="grid"></div>
+<section class="hero"><div class="wrap">
+  <div class="brand"><img src="logo-amirutour.png" alt="Logo Amiru Tour" onerror="this.style.display='none'"><div><b>Amiru Tour</b><span>PT Amiru Haramain Indonesia</span></div></div>
+  <h1>Program Umroh Tersedia</h1>
+  <p>Pilih jadwal keberangkatan, maskapai, dan hotel yang sesuai. Harga dan jadwal diperbarui otomatis.</p>
+</div></section>
+
+<div class="filter"><div class="wrap">
+  <div class="tools">
+    <label class="cari"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" type="search" placeholder="Cari program, maskapai, hotel" aria-label="Cari program" autocomplete="off"></label>
+    <select id="sort" aria-label="Urutkan"><option value="date">Keberangkatan terdekat</option><option value="low">Harga termurah</option><option value="high">Harga termahal</option></select>
+  </div>
+  <div class="chips" id="bulan" role="group" aria-label="Filter bulan keberangkatan" hidden></div>
+</div></div>
+
+<main class="wrap">
+  <div class="meta" id="meta" aria-live="polite"></div>
+  <div class="daftar" id="grid" aria-busy="true"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
 </main>
-<footer>&copy; Amiru Tour</footer>
+<footer class="wrap catatan"><p>Harga dan jadwal dapat berubah sewaktu-waktu mengikuti ketentuan Saudi, maskapai, dan kurs. Hubungi kami untuk informasi terbaru.</p></footer>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="sheet">
+  <header><h2 id="mTitle"></h2><button class="x" id="mClose" aria-label="Tutup">&times;</button></header>
+  <div class="in" id="mBody"></div>
+</div></div>
+
 <script>
 // ===== KONFIGURASI =====
 const SUPABASE_URL = "https://vlrizloxsjejcfuxuyju.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZscml6bG94c2plamNmdXh1eWp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxOTE1NjMsImV4cCI6MjEwMTc2NzU2M30.hO5LGq4CwiZDG4hxU2cEB1nNaVdpJ5NepPZLIIA1fig";
-// Nomor WhatsApp untuk tombol "Tanya via WhatsApp" (format internasional tanpa +)
-const WA_NUMBER = "6285122336300";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZscml6bG94c2plamNmdXh1eWp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxOTE1NjMsImV4cCI6MjEwMTc2NzU2M30.hO5LGq4CwiZDG4hxU2cEB1nNaVdpJ5NepPZLIIA1fig"; // anon key memang publik; data dilindungi RLS
+const WA_NUMBER = "";   // isi nomor WhatsApp admin format internasional tanpa +, mis. "6281234567890". Kosong = tombol WA disembunyikan
+const BARU_HARI = 3;    // badge "Baru" tampil selama N hari sejak program dibuat
 
-// Parse tanggal sama seperti parseDateFromString() di js/app.js
-function parseTgl(s){
-  if(!s) return null;
-  const M={Januari:0,Februari:1,Maret:2,April:3,Mei:4,Juni:5,Juli:6,Agustus:7,September:8,Oktober:9,November:10,Desember:11};
-  for(const [m,i] of Object.entries(M)){
-    if(s.includes(m)){
-      const p=s.split(' ');
-      let d=parseInt(p[0]),y=parseInt(p[2]);
-      if(isNaN(d)) d=parseInt(p[0].replace(/^0+/,''));
-      return new Date(y,i,d);
+const BULAN = {Januari:0,Februari:1,Maret:2,April:3,Mei:4,Juni:5,Juli:6,Agustus:7,September:8,Oktober:9,November:10,Desember:11};
+let semua = [], tampil = [], bulanAktif = '';
+const NAMA_BULAN = Object.keys(BULAN);
+const kunciBulan = d => d.getFullYear() + '-' + d.getMonth();
+
+function buatChip() {
+  const box = document.getElementById('bulan');
+  const uniq = new Map();
+  semua.filter(p => p.dateObj).sort((a, b) => a.dateObj - b.dateObj).forEach(p => {
+    const k = kunciBulan(p.dateObj);
+    if (!uniq.has(k)) uniq.set(k, NAMA_BULAN[p.dateObj.getMonth()].slice(0, 3) + ' ' + p.dateObj.getFullYear());
+  });
+  if (uniq.size < 2) { box.hidden = true; return; }
+  box.innerHTML = '<button class="chip" data-b="" aria-pressed="true">Semua</button>' +
+    [...uniq].map(([k, l]) => `<button class="chip" data-b="${k}" aria-pressed="false">${esc(l)}</button>`).join('');
+  box.hidden = false;
+}
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeUrl = u => { u = String(u || '').trim(); return /^https?:\/\//i.test(u) ? u : ''; };
+
+function parseTgl(s) {
+  if (!s) return null;
+  for (const [nama, i] of Object.entries(BULAN)) {
+    if (s.includes(nama)) {
+      const p = s.trim().split(/\s+/);
+      const d = parseInt(p[0], 10), y = parseInt(p[2], 10);
+      if (!isNaN(d) && !isNaN(y)) return new Date(y, i, d);
     }
   }
-  const d=new Date(s);
-  return isNaN(d)?null:d;
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
 }
-// Filter sama seperti isProgramVisibleOnDashboard() di js/app.js
-function visible(p){
-  return p.is_active!==false && !(p.dateObj && p.dateObj<new Date()) && !!p.link_poster;
+function angka(v) { const d = String(v ?? '').replace(/[^\d]/g, ''); return d ? parseInt(d, 10) : 0; }
+function rupiah(v) {
+  if (v === null || v === undefined || v === '') return '';
+  if (typeof v === 'string' && /[^\d.,\s]/.test(v)) return v.trim();   // sudah terformat, mis. "Rp 32.500.000"
+  const n = angka(v);
+  return n ? new Intl.NumberFormat('id-ID', {style:'currency', currency:'IDR', maximumFractionDigits:0}).format(n) : '';
 }
-function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function img(u){
-  const m=u.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/)||u.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
-  return m?`https://drive.google.com/thumbnail?id=${m[1]}&sz=w800`:u;
+function posterSrc(u) {
+  u = safeUrl(u);
+  const m = u.match(/drive\.google\.com\/file\/d\/([\w-]+)/) || u.match(/drive\.google\.com\/open\?id=([\w-]+)/);
+  return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w800` : u;
 }
-function rupiah(v){
-  if(v===null||v===undefined||v==='') return '';
-  if(typeof v==='string'&&(/rp/i.test(v)||/[^\d.,\s]/.test(v))) return v.trim();
-  const n=parseInt(String(v).replace(/[^\d]/g,''),10);
-  return n?'Rp '+n.toLocaleString('id-ID'):'';
+function estimasi(d) {
+  const t = new Date(); t.setHours(0,0,0,0);
+  const diff = Math.round((d - t) / 864e5);
+  if (diff <= 0) return 'Hari ini';
+  if (diff < 31) return diff + ' hari lagi';
+  const bln = Math.floor(diff / 30);
+  return bln + ' bulan' + (diff % 30 ? ' ' + (diff % 30) + ' hari' : '') + ' lagi';
 }
-function unpack(r){
-  if(r.admin_data_lengkap){
-    try{const a=typeof r.admin_data_lengkap==='string'?JSON.parse(r.admin_data_lengkap):r.admin_data_lengkap;return {...r,...a};}catch(e){}
+function daftarList(v) {
+  if (Array.isArray(v)) return v.map(String).filter(Boolean);
+  if (typeof v === 'string') return v.split('\n').map(x => x.replace(/^[-•*\s]+/, '').trim()).filter(Boolean);
+  return [];
+}
+function hargaUtama(p) { return angka(p.harga_quad) || angka(p.harga_quint) || angka(p.harga_triple) || angka(p.harga_double); }
+
+async function muat() {
+  const grid = document.getElementById('grid');
+  try {
+    const sel = 'id,nama,tgl,durasi,maskapai,harga_quint,link_itinerary,link_poster,created_at,is_active,admin_data_lengkap';
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/programs?select=${sel}&order=created_at.asc`, {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY }
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const rows = await r.json();
+    const now = new Date(); now.setHours(0,0,0,0);
+    semua = rows.map(row => {
+      let adl = row.admin_data_lengkap;
+      if (typeof adl === 'string') { try { adl = JSON.parse(adl); } catch { adl = {}; } }
+      return { ...row, ...(adl || {}), dateObj: parseTgl(row.tgl) };
+    }).filter(p => p.is_active !== false && p.link_poster && (!p.dateObj || p.dateObj >= now));
+    // 3 keberangkatan terdekat
+    const terdekat = new Set([...semua].filter(p => p.dateObj).sort((a,b) => a.dateObj - b.dateObj).slice(0,3).map(p => String(p.id)));
+    semua.forEach(p => { p._near = terdekat.has(String(p.id)); const c = new Date(p.created_at); p._baru = !isNaN(c) && (Date.now() - c) < BARU_HARI * 864e5; });
+    grid.setAttribute('aria-busy', 'false');
+    buatChip();
+    render();
+  } catch (e) {
+    console.error(e);
+    grid.outerHTML = '<div class="state" id="grid"><p><b>Gagal memuat program.</b></p><p>Periksa koneksi internet lalu coba lagi.</p><p style="margin-top:14px"><button class="btn primary" style="flex:none;padding:10px 22px" onclick="location.reload()">Muat ulang</button></p></div>';
   }
-  return r;
 }
 
-let list=[];
-function render(){
-  const q=document.getElementById('q').value.trim().toLowerCase();
-  const rows=list.filter(p=>!q||[p.nama,p.maskapai,p.tgl,p.durasi].join(' ').toLowerCase().includes(q));
-  const g=document.getElementById('grid'),st=document.getElementById('state');
-  st.style.display=rows.length?'none':'block';
-  if(!rows.length) st.textContent=list.length?'Tidak ada program yang cocok.':'Belum ada program yang tersedia.';
-  g.innerHTML=rows.map(p=>{
-    const harga=rupiah(p.harga_quad||p.harga_quint||p.harga_triple||p.harga_double);
-    const label=p.harga_quad?'Quad':(p.harga_quint?'Quint':'');
-    const msg=encodeURIComponent(`Assalamualaikum, saya tertarik dengan program ${p.nama||''} (${p.tgl||''}). Mohon info lebih lanjut.`);
-    return `<article class="card">
-      <img class="poster" loading="lazy" src="${esc(img(p.link_poster))}" alt="${esc(p.nama)}" referrerpolicy="no-referrer">
-      <div class="body">
-        <h2>${esc(p.nama)}</h2>
-        <div class="meta">${esc(p.tgl)}${p.durasi?' &bull; '+esc(p.durasi):''}</div>
-        ${p.maskapai?`<div class="meta">${esc(p.maskapai)}</div>`:''}
-        ${harga?`<div class="price">${esc(harga)}${label?' <small>/ '+label+'</small>':''}</div>`:''}
-        <div class="btns">
-          <a class="wa" target="_blank" rel="noopener" href="https://wa.me/${WA_NUMBER}?text=${msg}">WhatsApp</a>
-          ${p.link_itinerary?`<a class="det" target="_blank" rel="noopener" href="${esc(p.link_itinerary)}">Itinerary</a>`:''}
+function render() {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const mode = document.getElementById('sort').value;
+  tampil = semua.filter(p => (!bulanAktif || (p.dateObj && kunciBulan(p.dateObj) === bulanAktif))
+    && (!q || [p.nama, p.maskapai, p.hotel_makkah, p.hotel_madinah, p.tgl].join(' ').toLowerCase().includes(q)));
+  tampil.sort((a, b) => mode === 'low' ? (hargaUtama(a) || 1e12) - (hargaUtama(b) || 1e12)
+                      : mode === 'high' ? hargaUtama(b) - hargaUtama(a)
+                      : (a.dateObj || 0) - (b.dateObj || 0));
+  document.getElementById('meta').textContent = tampil.length ? tampil.length + ' program tersedia' : '';
+  const grid = document.getElementById('grid');
+  if (!tampil.length) {
+    grid.innerHTML = semua.length
+      ? '<div class="state"><b>Tidak ada program yang cocok</b><p>Ubah kata kunci atau pilih bulan lain.</p></div>'
+      : '<div class="state"><b>Belum ada program tersedia saat ini</b><p>Hubungi kami untuk jadwal keberangkatan terbaru.</p></div>';
+    return;
+  }
+  grid.innerHTML = tampil.map((p, i) => {
+    const harga = rupiah(p.harga_quad || p.harga_quint);
+    const lbl = p.harga_quad ? 'Mulai dari (quad)' : 'Mulai dari';
+    const iti = safeUrl(p.link_itinerary);
+    const tags = (p._near ? '<span class="tag near">Terdekat</span>' : '') + (p._baru ? '<span class="tag new">Baru</span>' : '');
+    const tgl = p.dateObj
+      ? `<span class="hari">${p.dateObj.getDate()}</span><span class="bt"><span class="bln">${esc(NAMA_BULAN[p.dateObj.getMonth()])} ${p.dateObj.getFullYear()}</span><span class="sisa">${esc(estimasi(p.dateObj))}</span></span>`
+      : `<span class="bln">${esc(p.tgl || '-')}</span>`;
+    return `<article class="tiket">
+      <div class="foto"><button class="poster" data-i="${i}" aria-label="Lihat poster dan detail ${esc(p.nama)}">
+        <img src="${esc(posterSrc(p.link_poster))}" alt="Poster ${esc(p.nama)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${esc(p.nama).replace(/'/g,'')}'}))">
+      </button></div>
+      <div class="utama">
+        <div class="tgl">${tgl}${tags ? `<span class="tags">${tags}</span>` : ''}</div>
+        <h3>${esc(p.nama)}</h3>
+        <dl class="info">
+          <div><dt>Durasi</dt><dd>${esc(p.durasi || '-')}</dd></div>
+          <div><dt>Maskapai</dt><dd>${esc(p.maskapai || '-')}</dd></div>
+        </dl>
+      </div>
+      <div class="stub">
+        ${harga ? `<div class="hrg"><small>${lbl}</small><strong class="harga">${esc(harga)}</strong></div>` : ''}
+        <div class="aksi">
+          <button class="btn primary" data-i="${i}">Detail</button>
+          ${WA_NUMBER ? `<a class="btn wa" target="_blank" rel="noopener" href="${waLink(p)}">Tanya via WA</a>` : (iti ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(iti)}">Itinerary</a>` : '')}
         </div>
       </div></article>`;
   }).join('');
 }
 
-(async function(){
-  try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/programs?select=*&order=created_at.asc`,{
-      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}
-    });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data=(await res.json()).map(unpack);
-    data.forEach(p=>{p.dateObj=parseTgl(p.tgl);});
-    list=data.filter(visible).sort((a,b)=>(a.dateObj||0)-(b.dateObj||0));
-    render();
-  }catch(e){
-    console.error(e);
-    document.getElementById('state').textContent='Gagal memuat katalog. Coba muat ulang halaman.';
-  }
-})();
-document.getElementById('q').addEventListener('input',render);
+function waLink(p) {
+  const t = `Assalamu'alaikum, saya tertarik dengan program "${p.nama}" (berangkat ${p.tgl || '-'}). Mohon info lebih lanjut.`;
+  return 'https://wa.me/' + encodeURIComponent(WA_NUMBER) + '?text=' + encodeURIComponent(t);
+}
+
+function buka(i) {
+  const p = tampil[i]; if (!p) return;
+  document.getElementById('mTitle').textContent = p.nama || '';
+  const kamar = [['Quint', p.harga_quint], ['Quad', p.harga_quad], ['Triple', p.harga_triple], ['Double', p.harga_double]].filter(k => rupiah(k[1]));
+  const hotel = [['Makkah', p.hotel_makkah], ['Madinah', p.hotel_madinah], [p.hotel_3_kota || 'Hotel 3', p.hotel_3], [p.hotel_4_kota || 'Hotel 4', p.hotel_4]].filter(h => h[1]);
+  const inc = daftarList(p.termasuk), exc = daftarList(p.tidak_termasuk);
+  const iti = safeUrl(p.link_itinerary);
+  const aksi = (iti ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(iti)}">Lihat itinerary</a>` : '')
+             + (WA_NUMBER ? `<a class="btn wa" target="_blank" rel="noopener" href="${waLink(p)}">Tanya via WhatsApp</a>` : '');
+  const body = document.getElementById('mBody');
+  body.classList.remove('tanpa-foto');
+  body.innerHTML = `
+    <div class="kiri"><img class="big" src="${esc(posterSrc(p.link_poster))}" alt="Poster ${esc(p.nama)}" referrerpolicy="no-referrer" onerror="var b=this.closest('.in');this.parentNode.remove();b.classList.add('tanpa-foto')"></div>
+    <div class="kanan">
+      <div class="ringkas"><div><small>Berangkat</small><b>${esc(p.tgl || '-')}</b></div><div><small>Durasi</small><b>${esc(p.durasi || '-')}</b></div><div><small>Maskapai</small><b>${esc(p.maskapai || '-')}</b></div></div>
+      ${kamar.length ? `<div><h4>Harga per orang</h4>${kamar.map(k => `<div class="baris hb"><span>${k[0]}</span><b>${esc(rupiah(k[1]))}</b></div>`).join('')}</div>` : ''}
+      ${hotel.length ? `<div><h4>Akomodasi</h4>${hotel.map(h => `<div class="baris"><span>${esc(h[0])}</span><b>${esc(h[1])}</b></div>`).join('')}</div>` : ''}
+      ${inc.length ? `<div><h4>Termasuk</h4><ul class="cek ya">${inc.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
+      ${exc.length ? `<div><h4>Tidak termasuk</h4><ul class="cek tidak">${exc.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
+    </div>
+    ${aksi ? `<div class="aksi-sheet">${aksi}</div>` : ''}`;
+  document.getElementById('modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('mClose').focus();
+}
+function tutup() { document.getElementById('modal').classList.remove('open'); document.body.style.overflow = ''; }
+
+document.getElementById('grid').addEventListener('click', e => { const t = e.target.closest('[data-i]'); if (t) buka(+t.dataset.i); });
+document.getElementById('mClose').addEventListener('click', tutup);
+document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') tutup(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') tutup(); });
+document.getElementById('q').addEventListener('input', render);
+document.getElementById('bulan').addEventListener('click', e => {
+  const t = e.target.closest('.chip'); if (!t) return;
+  bulanAktif = t.dataset.b;
+  document.querySelectorAll('#bulan .chip').forEach(c => c.setAttribute('aria-pressed', String(c === t)));
+  render();
+});
+document.getElementById('sort').addEventListener('change', render);
+muat();
 </script>
 </body>
 </html>
