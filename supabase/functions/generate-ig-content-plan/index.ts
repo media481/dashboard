@@ -272,7 +272,7 @@ SUARA MANUSIA (supaya tidak terasa buatan AI):
 - Ritme kalimat jangan seragam: campur kalimat agak panjang dengan yang sangat pendek, sesekali kalimat tanpa subjek ("Pelan-pelan aja."). Paragraf boleh hanya satu kalimat. Boleh ada sikap atau pendapat kecil yang lembut, tidak semuanya netral dan manis.
 - DILARANG: pola kontras "bukan sekadar X, tapi Y" / "bukan hanya X melainkan Y"; daftar tiga kata berirama ("rindu, tenang, dan syukur") lebih dari sekali dalam satu caption; kalimat penutup ala kata mutiara; "Mari kita"; kata/frasa "relung hati", "hiruk pikuk", "perjalanan spiritual", "tak terhingga", "senantiasa", "tentunya", "sejatinya", "di sanalah", "di situlah"; tanda pisah panjang (em dash dan en dash) dan titik koma (pakai titik atau koma); tanda seru beruntun; huruf kapital semua.
 - Maksimal 2 tanda tanya dalam satu caption. Emoji maksimal 1, boleh nol.
-- Jangan satu cetakan tiap hari (adegan > refleksi > pertanyaan > doa). Ganti bentuknya antarhari: ada yang dibuka dialog singkat, ada pengakuan jujur, ada daftar pendek, ada yang berhenti menggantung tanpa doa. Doa penutup TIDAK wajib tiap hari: pakai hanya di sebagian hari emosional (maksimal 3 dari 7 hari dalam sepekan).
+- Jangan satu cetakan tiap hari (adegan > refleksi > pertanyaan > doa). Ganti bentuknya antarhari: ada yang dibuka dialog singkat, ada pengakuan jujur, ada daftar pendek, ada yang berhenti menggantung tanpa doa. Doa penutup TIDAK wajib tiap hari: pakai hanya di sebagian hari emosional (maksimal 3 dari 7 hari dalam sepekan; MINGGU selalu menjadi salah satunya, jadi Senin sampai Sabtu paling banyak 2 hari).
 - Jangan mengaku pengalaman pribadi atau kejadian nyata yang dikarang ("dulu aku...", "seorang jamaah kami bilang..."). Pakai "kamu" dan "kita".
 - Uji akhir: bacakan dalam hati. Kalau terdengar seperti pidato atau iklan, tulis ulang lebih pendek dan lebih spesifik.
 
@@ -284,7 +284,7 @@ ANTI-PENGULANGAN (PENTING):
 - Kalau ada daftar HOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR, hook (teks_gambar baris pertama) dan 3 kata pertama pembuka caption TIDAK boleh sama atau mirip dengan daftar itu, juga tidak antarhari dalam jawaban yang sama. Variasikan rumus pembuka (jangan terus memakai "Kemarin kita bahas").
 
 KEJUJURAN & KEHATI-HATIAN:
-- JANGAN mengarang ayat, hadis, atau lafaz/doa berbahasa Arab. Untuk lafaz dan tata cara tulis "sesuai manasik dari pembimbing". Soal agama dan hukum ibadah tulis secara umum, tanpa fatwa; tandai di akhir kolom "tema" dengan "[cek pembimbing]" kalau memuat tata cara/hukum/doa.
+- JANGAN mengarang ayat, hadis, atau lafaz/doa berbahasa Arab. Untuk lafaz dan tata cara tulis "sesuai manasik dari pembimbing". Soal agama dan hukum ibadah tulis secara umum, tanpa fatwa; tandai di akhir kolom "tema" dengan "[cek pembimbing]" kalau memuat tata cara, hukum, atau lafaz (menyebut kata \"doa\" atau nama ritual saja TIDAK perlu ditandai).
 - JANGAN menulis kalimat bertanda "Rasulullah bersabda", "Allah berfirman", "QS.", "HR." ataupun terjemahan ayat/hadis. Cukup sampaikan makna secara umum dan arahkan ke pembimbing.
 - JANGAN menulis statistik, persentase, atau klaim jumlah jamaah ("ribuan jamaah", "98%").
 - JANGAN mengarang testimoni, nama jamaah, angka, harga, tanggal, hotel, atau fasilitas. Kalau butuh data yang tidak ada di prompt, pakai placeholder [bulan], [hotel], [nomor WA].
@@ -430,13 +430,16 @@ const SCRIPTURE_RE = /(bersabda|berfirman|firman\s+allah|sabda\s+(?:rasul|nabi)|
 const PLACEHOLDER_RE = /\[(?:isi|diisi|tulis|contoh)\b[^\]]*\]|lorem ipsum|\bTODO\b/i;
 const KAKU_RE = /\b(silakan|silahkan|hubungi\s+kami|tersedia)\b/i; // kata kaku ala brosur (pola-konten.md bagian 4)
 const KLAIM_ANGKA_RE = /\b\d[\d.,]*\s*%|\b\d{2,}[\d.,]*\s+(?:jamaah|jemaah|peserta)\b|\b(?:ribuan|ratusan|jutaan)\s+(?:jamaah|jemaah|peserta)\b/i;
-const IBADAH_RE = /\b(doa|tata\s*cara|niat|lafaz|talbiyah|hukum|wajib|rukun|sunnah|sunah|haram|ihram|thawaf|tawaf|sa'?i|tahallul|miqat)\b/i;
+// Penanda klaim hukum/tata cara/lafaz yang perlu dicek pembimbing. Sengaja TIDAK memuat kata yang ada di hampir semua
+// konten umroh (doa, niat, talbiyah, thawaf, ihram, sa'i, miqat, tahallul): kalau semua posting bertanda, tanda itu tidak
+// lagi memberi sinyal. Pilar manasik (Selasa) selalu ditandai, lihat tandaiCekPembimbing.
+const CEK_PEMBIMBING_RE = /\b(tata\s*cara|lafaz|hukum(?:nya)?|wajib|rukun|sunnah|sunah|haram|makruh|fidyah|larangan\s+ihram)\b/i;
 // Penanda "terasa buatan AI" (ditegakkan di server; item yang kena ditulis ulang SENDIRI lewat putaran perbaikan terarah).
 const POLA_KONTRAS_RE = /\bbukan\s+(?:sekadar|sekedar|hanya|cuma)\b[^.!?\n]{0,90}?\b(?:tapi|tetapi|melainkan|namun)\b/i;
 const KLISE_AI_RE = /\b(?:relung\s+hati|hiruk\s*pikuk|perjalanan\s+spiritual|tak\s+terhingga|senantiasa|tentunya|sejatinya|mari\s+kita|di\s+sanalah|di\s+situlah|sejuta\s+rasa|samudra\s+(?:rindu|cinta|kasih))\b/i;
 const EMOJI_RE = /\p{Extended_Pictographic}/gu;
 const DOA_PENUTUP_RE = /\b(?:semoga|ya\s+allah|ya\s+rabb|aamiin|amin)\b/i;
-const MAKS_DOA_PEKAN = 3;
+const MAKS_DOA_PEKAN = 3; // total hari berdoa per pekan; satu jatah dicadangkan untuk Minggu (peran Renungkan: tutup dengan doa singkat)
 const MAKS_TANDA_TANYA = 2;
 const MAKS_EMOJI = 1;
 const CAPTION_MIN = 500; // pola: sekitar 600-1200 karakter; toleransi sedikit
@@ -471,6 +474,12 @@ function penutupCaption(caption: string): string {
   const last = paras[paras.length - 1] || "";
   return last.length > 140 ? last.slice(last.length - 140).replace(/^\S*\s/, "") : last;
 }
+// Doa penutup dicari di DUA paragraf terakhir (sebelum hashtag): doa sering diikuti paragraf teaser pendek.
+function adaDoaPenutup(caption: string): boolean {
+  const paras = captionTanpaTag(caption).split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
+  return DOA_PENUTUP_RE.test(paras.slice(-2).join("\n"));
+}
+
 // Hook = baris pertama teks gambar (carousel: isi Slide 1 tanpa awalan "Slide 1:").
 function hookDari(teksGambar: string): string {
   const baris = String(teksGambar || "").split("\n").map((x) => x.trim()).find(Boolean) || "";
@@ -524,9 +533,9 @@ function tolakAlasan(it: { tipe_konten: string; tema: string; teks_gambar: strin
 }
 
 // Tandai "[cek pembimbing]" otomatis di akhir tema kalau isinya soal tata cara/hukum/doa.
-function tandaiCekPembimbing(tema: string, teksGambar: string, caption: string): string {
+function tandaiCekPembimbing(tema: string, teksGambar: string, caption: string, pilar?: string | null): string {
   if (/\[cek pembimbing\]/i.test(tema)) return tema;
-  if (!IBADAH_RE.test(`${tema}\n${teksGambar}\n${caption}`)) return tema;
+  if (pilar !== "manasik" && !CEK_PEMBIMBING_RE.test(`${tema}\n${teksGambar}\n${caption}`)) return tema;
   const base = tema.slice(0, 200 - CEK_PEMBIMBING.length - 1).trim();
   return `${base} ${CEK_PEMBIMBING}`;
 }
@@ -675,12 +684,20 @@ function olahHasil(
     const r = rumusPembuka(barisPertamaCaption(x.draft_caption));
     if (r) rumusTerpakai.set(r, x.tanggal);
   }
-  const doaPekan = (o.sudahLolos as { draft_caption: string }[]).filter((x) => DOA_PENUTUP_RE.test(penutupCaption(x.draft_caption))).length;
-  let jumlahDoa = doaPekan;
+  // Kuota doa: Senin-Sabtu paling banyak MAKS_DOA_PEKAN - 1 hari, jadi jatah terakhir selalu tersisa untuk Minggu.
+  // (Dulu kuota habis berurutan tanggal, sehingga Minggu bisa ditolak padahal perannya justru menutup dengan doa.)
+  const hariMinggu = (tgl: string) => namaHari(tgl) === "Minggu";
+  let doaSenSab = (o.sudahLolos as { tanggal: string; draft_caption: string }[]).filter((x) => !hariMinggu(x.tanggal) && adaDoaPenutup(x.draft_caption)).length;
+  let doaMinggu = (o.sudahLolos as { tanggal: string; draft_caption: string }[]).filter((x) => hariMinggu(x.tanggal) && adaDoaPenutup(x.draft_caption)).length;
   for (const it of cleaned) {
     let why = tolakAlasan(it, o.opsi);
-    if (!why && DOA_PENUTUP_RE.test(penutupCaption(it.draft_caption)) && jumlahDoa >= MAKS_DOA_PEKAN) {
-      why = `penutup berupa doa sudah dipakai ${jumlahDoa} hari di pekan ini (maksimal ${MAKS_DOA_PEKAN}); ganti penutup dengan kalimat pendek yang menggantung atau pertanyaan`;
+    const doa = adaDoaPenutup(it.draft_caption);
+    if (!why && doa) {
+      if (!hariMinggu(it.tanggal) && doaSenSab >= MAKS_DOA_PEKAN - 1) {
+        why = `penutup berupa doa sudah dipakai ${doaSenSab} hari antara Senin dan Sabtu (maksimal ${MAKS_DOA_PEKAN - 1}; satu jatah dicadangkan untuk Minggu); ganti penutup dengan kalimat pendek yang menggantung atau pertanyaan`;
+      } else if (hariMinggu(it.tanggal) && doaSenSab + doaMinggu >= MAKS_DOA_PEKAN) {
+        why = `penutup berupa doa sudah dipakai ${doaSenSab + doaMinggu} hari di pekan ini (maksimal ${MAKS_DOA_PEKAN}); ganti penutup dengan kalimat pendek yang menggantung atau pertanyaan`;
+      }
     }
     if (!why) {
       const r = rumusPembuka(barisPertamaCaption(it.draft_caption));
@@ -695,8 +712,8 @@ function olahHasil(
     }
     const r = rumusPembuka(barisPertamaCaption(it.draft_caption));
     if (r) rumusTerpakai.set(r, it.tanggal);
-    if (DOA_PENUTUP_RE.test(penutupCaption(it.draft_caption))) jumlahDoa++;
-    lolos.push({ ...it, tema: tandaiCekPembimbing(it.tema, it.teks_gambar, it.draft_caption) });
+    if (doa) { if (hariMinggu(it.tanggal)) doaMinggu++; else doaSenSab++; }
+    lolos.push({ ...it, tema: tandaiCekPembimbing(it.tema, it.teks_gambar, it.draft_caption, it.pilar) });
   }
   return { lolos, alasan };
 }

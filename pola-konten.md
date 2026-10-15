@@ -83,7 +83,7 @@ Urutan perjalanan hati calon jamaah: **rasakan → pahami → siapkan → bayang
 - Hindari kata kaku: "tersedia", "silakan", "hubungi kami".
 - Terdengar manusia, bukan AI: detail spesifik dan tak terduga, ritme kalimat dicampur panjang dan sangat pendek, bentuk caption bervariasi antarhari.
 - Dilarang: pola "bukan sekadar X, tapi Y", frasa klise (relung hati, hiruk pikuk, perjalanan spiritual, senantiasa, tentunya, sejatinya, mari kita), tanda pisah panjang, titik koma; maksimal 2 tanda tanya dan 1 emoji per caption.
-- Doa penutup tidak wajib tiap hari (maksimal 3 hari dalam sepekan). Jangan mengaku pengalaman pribadi yang dikarang.
+- Doa penutup tidak wajib tiap hari (maksimal 3 hari dalam sepekan; Minggu selalu salah satunya, jadi Senin sampai Sabtu paling banyak 2 hari). Jangan mengaku pengalaman pribadi yang dikarang.
 
 Acuan (JANGAN vs TULIS):
 
@@ -129,7 +129,7 @@ Acuan (JANGAN vs TULIS):
 
 ### Riwayat topik (jangan diulang)
 
-Perbarui tabel ini setiap minggu.
+Perbarui tabel ini setiap minggu. Topik awal juga ada sebagai data di `IG_RIWAYAT_AWAL` (`js/app.js`); kalau menambah topik, samakan keduanya.
 
 | Topik | Pilar | Sumber |
 |---|---|---|
@@ -156,7 +156,7 @@ Perbarui tabel ini setiap minggu.
 - **Jangan** mengarang testimoni, nama jamaah, angka, harga, tanggal, hotel, atau fasilitas. Pakai placeholder `[bulan]`, `[hotel]`, `[nomor WA]` bila data belum ada.
 - Testimoni hanya dari jamaah asli dan **seizin jamaah**.
 - **Jangan** memberi janji berlebihan ("pasti mabrur", "dijamin berangkat", "seat pasti ada").
-- Konten tata cara dan hukum ibadah ditulis secara umum, tanpa fatwa, dan **dicek ke pembimbing/ustaz** sebelum diposting.
+- Konten tata cara dan hukum ibadah ditulis secara umum, tanpa fatwa, dan **dicek ke pembimbing/ustaz** sebelum diposting. Di dashboard, ide Manasik dan ide yang memuat klaim tata cara/hukum/lafaz ditandai "[cek pembimbing]"; kata "doa" atau nama ritual saja tidak ditandai.
 
 ---
 

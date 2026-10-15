@@ -192,13 +192,17 @@ test('program kosong -> teks "tidak ada data program"; bagian opsional kosong ti
 
 console.log('\n=== TEST: Tema Minggu otomatis ===');
 const tp = (tanggal, tema) => ({ tanggal, tema_minggu: tema, status: 'idea' });
+// Tema alur yang TIDAK bentrok dengan riwayat topik awal (IG_RIWAYAT_AWAL, jeda sampai 12 April 2027): tes di pekan
+// 2 Nov 2026 yang dulu mengharapkan IG_TEMA_ALUR[0] sekarang mengharapkan tema bebas pertama.
+const ALUR_TERBLOKIR = new Set(vm.runInContext('IG_RIWAYAT_AWAL', context).flatMap(r => r.alur || [])); // `run` baru didefinisikan lebih bawah
+const ALUR_BEBAS = T.IG_TEMA_ALUR.filter(a => !ALUR_TERBLOKIR.has(a));
 test('bulan Hijriah: 22 Feb 2027 = Ramadhan (9), 15 Okt 2026 = Jumadil Awal (5)', () => {
   assert.strictEqual(T.igHijriMonth(new Date(2027, 1, 22)), 9);
   assert.strictEqual(T.igHijriMonth(new Date(2026, 9, 15)), 5);
 });
 test('tanpa riwayat & bukan musim tema: mulai dari awal alur perjalanan', () => {
   const k = T.igKandidatTemaMinggu('2026-11-02', [], 3);
-  assert.strictEqual(k[0].tema, T.IG_TEMA_ALUR[0]); assert.ok(/Awal alur/.test(k[0].alasan));
+  assert.strictEqual(k[0].tema, ALUR_BEBAS[0]); assert.ok(/Awal alur/.test(k[0].alasan));
   assert.strictEqual(k.length, 3);
 });
 test('melanjutkan alur dari tema alur terakhir yang dipakai', () => {
@@ -220,7 +224,7 @@ test('tema yang sudah dipakai (bahkan di pekan depan) dilewati', () => {
 test('tema lebih dari setahun lalu tidak lagi memblokir (alur melingkar kembali ke tema lama)', () => {
   const A = T.IG_TEMA_ALUR;
   const plans = [tp('2025-05-26', A[0]), tp('2025-06-02', A[A.length - 1])]; // keduanya di luar jendela 365 hari
-  assert.strictEqual(T.igKandidatTemaMinggu('2026-11-02', plans, 1)[0].tema, A[0]);
+  assert.strictEqual(T.igKandidatTemaMinggu('2026-11-02', plans, 1)[0].tema, ALUR_BEBAS[0]); // A[0] terblokir riwayat awal -> tema bebas berikutnya
 });
 test('semua tema alur sudah terpakai -> tetap ada saran (tidak kosong)', () => {
   const semua = T.IG_TEMA_ALUR.map((tema, i) => tp(`2026-${String(1 + Math.floor(i / 4)).padStart(2, '0')}-${String(1 + (i % 4) * 7).padStart(2, '0')}`, tema));
@@ -621,6 +625,52 @@ testAsync('generate pekan: tema serupa dari >6 bulan lalu tidak menolak Senin (1
 });
 
 // ============================================================
+// PERBAIKAN OKT 2026: tag [cek pembimbing] di dedup + riwayat topik awal sebagai data
+// ============================================================
+console.log('\n=== TEST: tag pembimbing di dedup & riwayat topik awal ===');
+const sama = (a, b) => run('igIsSimilarText')(a, b);
+// Riwayat/plan global dikosongkan selama tes lalu dipulihkan, supaya hasil tidak bergantung tes lain.
+const denganDataBersih = fn => { sandbox.__sv = run('[igContentPlan, igPosts]'); run('igContentPlan = []; igPosts = [];'); try { return fn(); } finally { run('igContentPlan = __sv[0]; igPosts = __sv[1];'); } };
+test('tag [cek pembimbing] tidak membuat dua judul pendek yang berbeda terbaca kembar (regresi)', () => {
+  assert.strictEqual(sama('Doa di Multazam [cek pembimbing]', 'Doa saat thawaf [cek pembimbing]'), false);
+  assert.strictEqual(sama('Makna Sa\'i [cek pembimbing]', 'Makna Talbiyah [cek pembimbing]'), false);
+});
+test('judul yang sama tetap kembar walau salah satunya bertanda', () => {
+  assert.strictEqual(sama('Larangan Ihram [cek pembimbing]', 'Larangan Ihram'), true);
+});
+test('IG_RIWAYAT_AWAL: pemetaan alur menunjuk tema yang benar-benar ada di IG_TEMA_ALUR (9 tema)', () => {
+  assert.strictEqual(ALUR_TERBLOKIR.size, 9);
+  assert.ok([...ALUR_TERBLOKIR].every(a => T.IG_TEMA_ALUR.includes(a)), 'ada nama alur salah ketik');
+});
+test('riwayat awal ikut igBuildRiwayat: ide "larangan ihram" kembar sampai 11 Apr 2027, boleh lagi 12 Apr 2027', () => {
+  denganDataBersih(() => {
+    const r = run('igBuildRiwayat')();
+    assert.ok(r.some(x => x.tema === 'Larangan ihram' && x.tgl === '2026-10-11'));
+    const dup = tgl => run('igIsDuplicateIdea')({ tema: 'Larangan ihram untuk jamaah wanita', teks_gambar: '', tanggal: tgl }, r);
+    assert.strictEqual(dup('2026-11-03'), true);
+    assert.strictEqual(dup('2027-04-11'), true);
+    assert.strictEqual(dup('2027-04-12'), false);
+  });
+});
+test('riwayat awal masuk teks riwayat yang dikirim ke AI selama masih dalam jeda', () => {
+  denganDataBersih(() => {
+    const r = run('igBuildRiwayat')();
+    assert.ok(run('igRiwayatToText')(r, '2026-11-02').includes('- Larangan ihram'));
+    assert.ok(!run('igRiwayatToText')(r, '2027-04-12').includes('- Larangan ihram'));
+  });
+});
+test('saran Tema Minggu melewati tema alur yang bentrok dengan riwayat awal', () => {
+  const k = T.igKandidatTemaMinggu('2026-11-02', [], T.IG_TEMA_ALUR.length);
+  assert.ok(k.length > 20);
+  assert.ok(k.every(x => !ALUR_TERBLOKIR.has(x.tema)), 'saran memuat: ' + k.filter(x => ALUR_TERBLOKIR.has(x.tema)).map(x => x.tema));
+  assert.ok(k.some(x => x.tema === 'Umroh Pertama Kali'), '"Umroh Pertama Kali" bukan duplikat "Pertama kali lihat Ka\'bah"');
+});
+test('jeda berakhir: 12 Apr 2027 tema alur itu boleh disarankan lagi, 5 Apr 2027 belum', () => {
+  assert.ok(T.igKandidatTemaMinggu('2027-04-12', [], T.IG_TEMA_ALUR.length).some(x => x.tema === 'Larangan Ihram'));
+  assert.ok(!T.igKandidatTemaMinggu('2027-04-05', [], T.IG_TEMA_ALUR.length).some(x => x.tema === 'Larangan Ihram'));
+});
+
+// ============================================================
 // TES RENCANA SETAHUN (AI): saran utama dari rencana tersimpan, status "Rencana AI", alur susun lewat AI
 // ============================================================
 console.log('\n=== TEST: Rencana Setahun (tersimpan, disusun AI) ===');
@@ -633,7 +683,7 @@ test('pekan yang punya rencana setahun: tema rencana jadi saran UTAMA, saran oto
 });
 test('tanpa rencana (default kosong): perilaku lama tidak berubah', () => {
   const k = T.igKandidatTemaMinggu('2026-11-02', [], 1, []);
-  assert.strictEqual(k[0].tema, T.IG_TEMA_ALUR[0]); assert.ok(!k[0].rencana);
+  assert.strictEqual(k[0].tema, ALUR_BEBAS[0]); assert.ok(!k[0].rencana);
 });
 test('tema rencana di pekan LAIN dianggap terpakai (saran otomatis tidak mengulangnya)', () => {
   const k = T.igKandidatTemaMinggu('2026-11-02', [], 1, [rn('2026-11-23', T.IG_TEMA_ALUR[0])]);
@@ -747,6 +797,16 @@ testAsync('rencana setahun: AI gagal di batch kedua -> batch pertama tetap tersi
   assert.strictEqual(log.upsert.length, 26);
   assert.ok(log.toast.some(t => t.type === 'error' && /Gemini overload/.test(t.msg)));
   assert.strictEqual(run('igRtBusy'), false);
+});
+testAsync('rencana setahun: tema alur yang bentrok riwayat awal tidak masuk bankAlur, topiknya masuk riwayatTema', async () => {
+  const log = siapkanRt();
+  // Pasti aktif di tes ini (tanggal mesin tes bisa di luar jendela jeda): stub, lalu pulihkan.
+  run('globalThis.__awalAsli = igRiwayatAwalAktif; igRiwayatAwalAktif = () => IG_RIWAYAT_AWAL;');
+  try { await run('igRtSusunAI()'); } finally { run('igRiwayatAwalAktif = globalThis.__awalAsli;'); }
+  const c0 = log.panggilan[0];
+  assert.ok(c0.bankAlur.length > 20 && c0.bankAlur.length === T.IG_TEMA_ALUR.length - ALUR_TERBLOKIR.size);
+  assert.ok(c0.bankAlur.every(a => !ALUR_TERBLOKIR.has(a)));
+  assert.ok(c0.riwayatTema.split('\n').includes('Larangan ihram'));
 });
 testAsync('rencana setahun: tanpa izin (guest) -> tidak ada panggilan', async () => {
   const log = siapkanRt();

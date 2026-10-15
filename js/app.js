@@ -16543,8 +16543,8 @@ function closeIgContentPlanModal() {
 // Baris "Versi:" dan "Diperbarui:" dibaca otomatis untuk header modal, jadi format dua baris itu jangan diubah.
 // ============================================================
 const ABOUT_PLANNER_MD = `# About Planner: Konsep Perencanaan Konten Instagram Amiru Tour
-Versi: 5
-Diperbarui: 10 Oktober 2026
+Versi: 6
+Diperbarui: 15 Oktober 2026
 Status: disepakati Oktober 2026. Uji coba alur mingguan yang menyambung dimulai pekan Senin, 12 Oktober 2026. Ejaan resmi: "Umroh" (bukan "Umrah"), termasuk di hashtag.
 
 ## 1. Tujuan dan Prinsip
@@ -16617,7 +16617,7 @@ Keseimbangan: 4 hari menyentuh hati (Senin, Kamis, Sabtu, Minggu) dan 3 hari pra
 - Hindari kata kaku: "tersedia", "silakan", "hubungi kami".
 - Terdengar manusia, bukan AI: detail spesifik dan tak terduga (benda, bau, suara, kejadian kecil), ritme kalimat dicampur panjang dan sangat pendek, satu hari tidak harus berbentuk adegan-refleksi-pertanyaan-doa.
 - Dilarang: pola "bukan sekadar X, tapi Y", daftar tiga kata berirama berulang, kalimat penutup ala kata mutiara, frasa klise (relung hati, hiruk pikuk, perjalanan spiritual, senantiasa, tentunya, sejatinya, mari kita), tanda pisah panjang, titik koma. Maksimal 2 tanda tanya dan 1 emoji per caption.
-- Doa penutup tidak wajib tiap hari: maksimal 3 hari dalam sepekan. Jangan mengaku pengalaman pribadi atau kejadian nyata yang dikarang.
+- Doa penutup tidak wajib tiap hari: maksimal 3 hari dalam sepekan, dan Minggu selalu menjadi salah satunya (jadi Senin sampai Sabtu paling banyak 2 hari). Jangan mengaku pengalaman pribadi atau kejadian nyata yang dikarang.
 
 | JANGAN | TULIS |
 |---|---|
@@ -16686,7 +16686,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 - Jangan mengarang testimoni, nama jamaah, angka, harga, tanggal, hotel, atau fasilitas. Pakai placeholder [bulan], [hotel], [nomor WA] bila data belum ada.
 - Testimoni hanya dari jamaah asli dan seizin jamaah.
 - Jangan memberi janji berlebihan ("pasti mabrur", "dijamin berangkat", "seat pasti ada").
-- Konten tata cara dan hukum ibadah ditulis secara umum, tanpa fatwa, dan dicek ke pembimbing/ustaz sebelum diposting. Di dashboard, ide yang memuat tata cara/hukum/doa ditandai "[cek pembimbing]" pada judul ide.
+- Konten tata cara dan hukum ibadah ditulis secara umum, tanpa fatwa, dan dicek ke pembimbing/ustaz sebelum diposting. Di dashboard, ide bertema Manasik (Selasa) dan ide yang memuat klaim tata cara, hukum, atau lafaz (wajib, rukun, sunnah, haram, dan sejenisnya) ditandai "[cek pembimbing]" pada judul ide. Menyebut kata doa atau nama ritual saja tidak ditandai, supaya tanda itu tetap bermakna.
 - Cerita Sabtu dan renungan Minggu bersifat ilustrasi/umum, bukan klaim kejadian nyata.
 
 ## 9. Cara Kerja di Dashboard
@@ -16694,7 +16694,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 - Modal **Perencanaan Konten** dibuat sederhana dalam dua langkah: (1) pilih bulan dan pekan (Senin-Minggu), (2) isi **Tema pekan ini** (Tema Minggu, wajib, terisi otomatis dari saran). Ringkasan jumlah ide yang akan dibuat muncul di bawahnya.
 - Bagian yang jarang dipakai dilipat dan terbuka lewat klik: **Pengaturan lanjutan** (Tema pekan depan dan Arahan tambahan, keduanya opsional), **Pola 7 hari**, **Peta tema 12 bulan**, dan **Cara lain** (Isi dari Pola dan Salin Prompt).
 - **Generate Konten** menyusun ketujuh hari dalam satu panggilan AI, dengan peran per hari sesuai bagian 3. Hari yang sudah lewat atau sudah terisi dilewati.
-- Setiap hari hasil AI diperiksa otomatis di server. Ditolak bila memuat teks Arab, janji berlebihan, kutipan ayat atau hadis (\"bersabda\", \"berfirman\", \"QS.\", \"HR.\"), placeholder [isi ...], statistik atau klaim jumlah jamaah, kata kaku (silakan, hubungi kami, tersedia), pola atau frasa yang terasa buatan AI ("bukan sekadar X, tapi Y", frasa klise, lebih dari 2 tanda tanya, lebih dari 1 emoji, doa penutup lebih dari 3 hari sepekan), format teks gambar yang tidak cocok dengan tipe (carousel harus Slide 1 sampai n berurutan, 3 sampai 5 slide), caption yang menyalin teks gambar, atau pembuka caption yang sama dengan hari lain.
+- Setiap hari hasil AI diperiksa otomatis di server. Ditolak bila memuat teks Arab, janji berlebihan, kutipan ayat atau hadis (\"bersabda\", \"berfirman\", \"QS.\", \"HR.\"), placeholder [isi ...], statistik atau klaim jumlah jamaah, kata kaku (silakan, hubungi kami, tersedia), pola atau frasa yang terasa buatan AI ("bukan sekadar X, tapi Y", frasa klise, lebih dari 2 tanda tanya, lebih dari 1 emoji, doa penutup lebih dari 2 hari dari Senin sampai Sabtu, karena satu jatah dari 3 dicadangkan untuk Minggu; doa dicari di dua paragraf terakhir caption), format teks gambar yang tidak cocok dengan tipe (carousel harus Slide 1 sampai n berurutan, 3 sampai 5 slide), caption yang menyalin teks gambar, atau pembuka caption yang sama dengan hari lain.
 - Hari yang ditolak ditulis ulang sendiri (maksimal 2 putaran) dengan alasan penolakan dan hari yang sudah lolos sebagai penyambung; hari yang sudah lolos tidak dibuang.
 - Caption dirapikan di server: ejaan "Umroh", tepat 5 hashtag (#UmrohBersamaAmiru dan #AmiruTour selalu ada), maksimal 2200 karakter.
 - Label seri "Seri [Tema] · n/7" ditambahkan otomatis di akhir teks gambar.
@@ -16716,7 +16716,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 ## 11. Yang Dijeda dan Belum Otomatis
 
 - Dijeda: bukti sosial/testimoni, engagement (polling), info program, dan Story dalam pola mingguan.
-- Belum otomatis: tabel Riwayat topik awal (bagian 6) masih diperbarui manual; dashboard sudah membaca riwayat dari rencana dan post tersimpan sehingga AI tetap menghindari topik lama.
+- Riwayat topik awal (bagian 6) sekarang juga tersimpan sebagai data (IG_RIWAYAT_AWAL di js/app.js): dipakai untuk menolak ide kembar, melewati tema alur yang bentrok pada saran Tema Minggu, dan Rencana Setahun AI. Menambah topik ke daftar ini masih manual, dan salinan teksnya (tabel bagian 6, prompt) harus disamakan. Selebihnya riwayat dibaca dari rencana dan post tersimpan.
 - Desain gambar dan pengecekan ke pembimbing/ustaz dilakukan manusia.
 
 ## 12. Riwayat Revisi
@@ -16728,6 +16728,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 | 3 | 10 Oktober 2026 | Suara manusia: larangan pola dan frasa yang terasa buatan AI, bentuk caption bervariasi antarhari, doa penutup tidak wajib tiap hari (maksimal 3 dalam sepekan), pemeriksa server menolak pola tersebut |
 | 4 | 10 Oktober 2026 | Rencana Setahun AI: tema 12 bulan disusun AI, disimpan per pekan, bisa diedit dan dikunci, dan menjadi saran utama Tema Minggu |
 | 5 | 10 Oktober 2026 | Tampilan modal Perencanaan Konten disederhanakan: form dua langkah, pengaturan jarang dipakai dilipat, satu aksi utama per kartu hasil. Aturan konten dan generator tidak berubah |
+| 6 | 15 Oktober 2026 | Tanda [cek pembimbing] dipersempit ke klaim tata cara/hukum/lafaz dan pilar Manasik; jatah doa Minggu dicadangkan (Senin-Sabtu maksimal 2 hari, doa dicari di dua paragraf terakhir); riwayat topik awal jadi data dan memblokir tema alur yang bentrok; tanda pembimbing tidak lagi dihitung sebagai kata topik saat mendeteksi ide kembar |
 `;
 
 // Petunjuk yang ikut tersalin di depan dokumen supaya Claude mengembalikan dokumen dalam format yang bisa dipakai lagi.
@@ -17538,6 +17539,12 @@ async function igRtSusunAI() {
         const riwayatSet = new Map(); // tema -> true (unik, huruf asli)
         dipertahankan.forEach(w => riwayatSet.set(w.tema, true));
         igContentPlan.filter(pl => pl.tema_minggu).forEach(pl => riwayatSet.set(pl.tema_minggu, true));
+        // Riwayat topik awal yang masih dalam jeda 6 bulan pada pekan pertama target: jangan diulang, dan tema alur yang
+        // dipetakan ke sana dikeluarkan dari bank alur (lihat IG_RIWAYAT_AWAL).
+        const seninAwal = target.map(w => w.senin).sort()[0];
+        const awalAktif = igRiwayatAwalAktif(seninAwal);
+        awalAktif.forEach(r => riwayatSet.set(r.tema, true));
+        const alurTerblokir = new Set(awalAktif.flatMap(r => r.alur || []));
         const diterima = []; // [{ senin, tema }] hasil yang lolos selama proses ini
         const semuaTerpakai = () => [...riwayatSet.keys(), ...diterima.map(x => x.tema)];
         const cekMirip = tema => { const t = igTokenSet(tema); return semuaTerpakai().some(u => igIsSimilarText(t, u)); };
@@ -17567,7 +17574,7 @@ async function igRtSusunAI() {
                     konteksProgram,
                     riwayatTema: semuaTerpakai().join('\n'),
                     konteksSekitar: sekitar,
-                    bankAlur: IG_TEMA_ALUR,
+                    bankAlur: IG_TEMA_ALUR.filter(a => !alurTerblokir.has(a)),
                     bankMusim: igRtBahanMusim(),
                     arahan
                 });
@@ -17724,6 +17731,35 @@ const IG_TEMA_ALUR = [
     'Umroh Bersama Pasangan', 'Umroh Bersama Keluarga', 'Umroh untuk Lansia', 'Thawaf Wada', 'Hari Terakhir di Makkah',
     'Pulang dan Oleh-oleh Hati', 'Menjaga Kemabruran', 'Rindu Tanah Suci', 'Berbagi Cerita Setelah Pulang'
 ];
+// Riwayat topik awal (sebelum pola mingguan dimulai 12 Okt 2026): SATU sumber data untuk (a) deteksi ide kembar
+// (igBuildRiwayat), (b) saran Tema Minggu (igKandidatTemaMinggu), dan (c) Rencana Setahun AI (igRtSusunAI).
+// Jeda 6 bulan (IG_JEDA_TOPIK_BULAN) dari tgl ini = tidak diulang sebelum 12 April 2027 (tgl sengaja 11 Okt supaya
+// 12 April 2027 sudah boleh). `alur` = nama tema di IG_TEMA_ALUR yang dianggap SAMA dengan topik itu (pemetaan eksplisit,
+// bukan kemiripan kata, supaya mis. "Umroh Pertama Kali" tidak ikut terblokir oleh "Pertama kali lihat Ka'bah").
+// Daftar yang sama masih tertulis di prompt (server & IG_PLAN_PROMPT_SISTEM), About Planner, dan pola-konten.md:
+// kalau menambah topik di sini, perbarui salinan teks itu juga.
+const IG_RIWAYAT_AWAL = [
+    { tema: 'Niat umroh', tgl: '2026-10-11', alur: ['Niat dan Panggilan'] },
+    { tema: 'Pertama kali lihat Ka\'bah', tgl: '2026-10-11', alur: ['Pertama Melihat Kabah'] },
+    { tema: 'Sa\'i dan kisah Siti Hajar', tgl: '2026-10-11', alur: ['Sa\'i dan Siti Hajar'] },
+    { tema: 'Raudhah', tgl: '2026-10-11', alur: ['Raudhah'] },
+    { tema: 'Subuh di Madinah', tgl: '2026-10-11' },
+    { tema: 'Bawaan yang sering ketinggalan', tgl: '2026-10-11' },
+    { tema: 'Kesalahan umum thawaf', tgl: '2026-10-11' },
+    { tema: 'Urutan umroh (ihram, thawaf, sa\'i, tahallul)', tgl: '2026-10-11' },
+    { tema: 'Larangan ihram', tgl: '2026-10-11', alur: ['Larangan Ihram'] },
+    { tema: 'Persiapan fisik', tgl: '2026-10-11', alur: ['Persiapan Fisik'] },
+    { tema: 'Hari terakhir di Makkah', tgl: '2026-10-11', alur: ['Hari Terakhir di Makkah'] },
+    { tema: 'Makkah atau Madinah', tgl: '2026-10-11' },
+    { tema: 'Umroh bersama orang tua', tgl: '2026-10-11', alur: ['Umroh Bersama Orang Tua'] },
+    { tema: 'Mulai dari yang kecil / menabung niat', tgl: '2026-10-11', alur: ['Menabung Niat'] }
+];
+// Entri riwayat awal yang masih memblokir untuk tanggal acuan refKey (jendela jeda topik yang sama dengan riwayat lain).
+function igRiwayatAwalAktif(refKey) {
+    const batas = igBatasRiwayat(refKey);
+    return IG_RIWAYAT_AWAL.filter(r => r.tgl >= batas);
+}
+
 // Tema musiman. Tiap entri: tema, hijri (nomor bulan Hijriah 1 Muharram ... 12 Dzulhijjah) dan/atau masehi (nomor bulan
 // Masehi) = bulan TAYANG-nya. jual:true = tema yang mengarah ke penjualan: sengaja ditayangkan 2-3 bulan SEBELUM
 // musimnya karena calon jamaah memesan jauh hari, dan didahulukan atas tema musiman biasa. Tanpa `alasan` -> "Musim <bulan>".
@@ -17771,7 +17807,9 @@ function igKandidatTemaMinggu(seninKey, plans, maks, rencana = igRencanaTahun) {
     const rencanaIni = (rencana || []).find(x => x.senin === seninKey);
     const terpakai = berTema.filter(pl => pl.tanggal >= awal && pl.tanggal <= akhir).map(pl => igTokenSet(pl.tema_minggu))
         .concat((rencana || []).filter(x => x.senin !== seninKey && x.senin >= awal && x.senin <= akhir).map(x => igTokenSet(x.tema)));
-    const sudah = tema => { const t = igTokenSet(tema); return terpakai.some(u => igIsSimilarText(t, u)); };
+    // Topik riwayat awal yang masih dalam jeda 6 bulan: tema alur yang dipetakan ke sana dilewati (lihat IG_RIWAYAT_AWAL).
+    const alurTerblokir = new Set(igRiwayatAwalAktif(seninKey).flatMap(r => (r.alur || []).map(a => a.toLowerCase())));
+    const sudah = tema => { const t = igTokenSet(tema); return alurTerblokir.has(String(tema).toLowerCase()) || terpakai.some(u => igIsSimilarText(t, u)); };
     const batas = Math.max(1, maks || 6);
     const hasil = [];
 
@@ -18033,7 +18071,10 @@ const IG_DEDUP_STOPWORDS = new Set([
     'ada', 'tidak', 'nggak', 'bisa', 'jadi', 'sebelum', 'setelah', 'sesudah', 'akan', 'sudah', 'udah', 'lagi',
     'masih', 'banget', 'aja', 'juga', 'karena', 'kalau', 'biar', 'agar', 'supaya', 'dalam', 'para', 'oleh',
     'tentang', 'umroh', 'umrah', 'jamaah', 'jemaah', 'amiru', 'tour', 'tanah', 'suci', 'konten', 'tema', 'isi',
-    'slide', 'ide'
+    'slide', 'ide',
+    // Penanda "[cek pembimbing]" ditempel server ke judul ide; bukan bagian topik. Tanpa ini dua judul pendek
+    // yang sama-sama bertanda (mis. "Doa di Multazam" & "Doa saat thawaf") terbaca kembar.
+    'cek', 'pembimbing'
 ]);
 
 // Varian ejaan istilah umroh -> satu bentuk baku, supaya "tawaf" = "thawaf", "Mekah" = "Makkah", dst.
@@ -18157,6 +18198,8 @@ function igBuildRiwayat() {
         const d = (typeof igPostRefDate === 'function') ? igPostRefDate(p) : null;
         igRiwayatAdd(riwayat, baris.slice(0, 100), '', d ? igLocalDateKey(d) : '', p.caption);
     });
+    // Riwayat topik awal (data, bukan hanya teks prompt) ikut menghalangi ide kembar sampai jedanya habis.
+    IG_RIWAYAT_AWAL.forEach(r => igRiwayatAdd(riwayat, r.tema, '', r.tgl, ''));
     return riwayat;
 }
 
@@ -18800,7 +18843,7 @@ SUARA MANUSIA (supaya tidak terasa buatan AI):
 - Ritme kalimat jangan seragam: campur kalimat agak panjang dengan yang sangat pendek, sesekali kalimat tanpa subjek ("Pelan-pelan aja."). Paragraf boleh hanya satu kalimat. Boleh ada sikap atau pendapat kecil yang lembut, tidak semuanya netral dan manis.
 - DILARANG: pola kontras "bukan sekadar X, tapi Y" / "bukan hanya X melainkan Y"; daftar tiga kata berirama ("rindu, tenang, dan syukur") lebih dari sekali dalam satu caption; kalimat penutup ala kata mutiara; "Mari kita"; kata/frasa "relung hati", "hiruk pikuk", "perjalanan spiritual", "tak terhingga", "senantiasa", "tentunya", "sejatinya", "di sanalah", "di situlah"; tanda pisah panjang (em dash dan en dash) dan titik koma (pakai titik atau koma); tanda seru beruntun; huruf kapital semua.
 - Maksimal 2 tanda tanya dalam satu caption. Emoji maksimal 1, boleh nol.
-- Jangan satu cetakan tiap hari (adegan > refleksi > pertanyaan > doa). Ganti bentuknya antarhari: ada yang dibuka dialog singkat, ada pengakuan jujur, ada daftar pendek, ada yang berhenti menggantung tanpa doa. Doa penutup TIDAK wajib tiap hari: pakai hanya di sebagian hari emosional (maksimal 3 dari 7 hari dalam sepekan).
+- Jangan satu cetakan tiap hari (adegan > refleksi > pertanyaan > doa). Ganti bentuknya antarhari: ada yang dibuka dialog singkat, ada pengakuan jujur, ada daftar pendek, ada yang berhenti menggantung tanpa doa. Doa penutup TIDAK wajib tiap hari: pakai hanya di sebagian hari emosional (maksimal 3 dari 7 hari dalam sepekan; MINGGU selalu menjadi salah satunya, jadi Senin sampai Sabtu paling banyak 2 hari).
 - Jangan mengaku pengalaman pribadi atau kejadian nyata yang dikarang ("dulu aku...", "seorang jamaah kami bilang..."). Pakai "kamu" dan "kita".
 - Uji akhir: bacakan dalam hati. Kalau terdengar seperti pidato atau iklan, tulis ulang lebih pendek dan lebih spesifik.
 
@@ -18812,7 +18855,7 @@ ANTI-PENGULANGAN (PENTING):
 - Kalau ada daftar HOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR, hook (teks_gambar baris pertama) dan 3 kata pertama pembuka caption TIDAK boleh sama atau mirip dengan daftar itu, juga tidak antarhari dalam jawaban yang sama. Variasikan rumus pembuka (jangan terus memakai "Kemarin kita bahas").
 
 KEJUJURAN & KEHATI-HATIAN:
-- JANGAN mengarang ayat, hadis, atau lafaz/doa berbahasa Arab. Untuk lafaz dan tata cara tulis "sesuai manasik dari pembimbing". Soal agama dan hukum ibadah tulis secara umum, tanpa fatwa; tandai di akhir kolom "tema" dengan "[cek pembimbing]" kalau memuat tata cara/hukum/doa.
+- JANGAN mengarang ayat, hadis, atau lafaz/doa berbahasa Arab. Untuk lafaz dan tata cara tulis "sesuai manasik dari pembimbing". Soal agama dan hukum ibadah tulis secara umum, tanpa fatwa; tandai di akhir kolom "tema" dengan "[cek pembimbing]" kalau memuat tata cara, hukum, atau lafaz (menyebut kata \"doa\" atau nama ritual saja TIDAK perlu ditandai).
 - JANGAN menulis kalimat bertanda "Rasulullah bersabda", "Allah berfirman", "QS.", "HR." ataupun terjemahan ayat/hadis. Cukup sampaikan makna secara umum dan arahkan ke pembimbing.
 - JANGAN menulis statistik, persentase, atau klaim jumlah jamaah ("ribuan jamaah", "98%").
 - JANGAN mengarang testimoni, nama jamaah, angka, harga, tanggal, hotel, atau fasilitas. Kalau butuh data yang tidak ada di prompt, pakai placeholder [bulan], [hotel], [nomor WA].

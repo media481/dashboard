@@ -117,11 +117,39 @@ await test('1 item cacat tidak menggagalkan item lain', async () => {
   const { json } = await panggil([item(), item({ tanggal: '2026-10-13', draft_caption: 'pendek' })], body({ jumlahPost: 2, slots }));
   assert.strictEqual(json.items.length, 1); assert.strictEqual(json.items[0].tanggal, '2026-10-12');
 });
-await test('tema soal doa/tata cara otomatis diberi [cek pembimbing]; tema biasa tidak', async () => {
+await test('[cek pembimbing] hanya untuk klaim hukum/tata cara/lafaz atau pilar manasik; kata "doa" / nama ritual saja tidak', async () => {
   const a = await panggil([item({ tema: 'Doa saat thawaf' })], body());
-  assert.ok(a.json.items[0].tema.endsWith('[cek pembimbing]'), a.json.items[0].tema);
-  const b = await panggil([item({ tema: 'Subuh sunyi di Madinah', teks_gambar: 'Pernah merinding?', draft_caption: captionOk() })], body());
-  assert.ok(!b.json.items[0].tema.includes('[cek pembimbing]'));
+  assert.ok(!a.json.items[0].tema.includes('[cek pembimbing]'), a.json.items[0].tema);
+  const b = await panggil([item({ tema: 'Tata cara thawaf' })], body());
+  assert.ok(b.json.items[0].tema.endsWith('[cek pembimbing]'), b.json.items[0].tema);
+  const c = await panggil([item({ tema: 'Subuh sunyi di Madinah', pilar: 'manasik' })], body({ slots: [{ ...slot, pilar: 'manasik' }] }));
+  assert.ok(c.json.items[0].tema.endsWith('[cek pembimbing]'), 'pilar manasik selalu ditandai: ' + c.json.items[0].tema);
+  const d = await panggil([item({ tema: 'Subuh sunyi di Madinah', teks_gambar: 'Pernah merinding?', draft_caption: captionOk() })], body());
+  assert.ok(!d.json.items[0].tema.includes('[cek pembimbing]'));
+});
+
+// ---- kuota doa penutup: Senin-Sabtu maksimal 2 hari, jatah ke-3 dicadangkan untuk Minggu ----
+const HARI = ['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18'];
+const slotMinggu = HARI.map((tanggal, i) => ({ tanggal, hari: ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'][i], pilar: 'storytelling', tipe_konten: 'image' }));
+// pembuka unik per hari (supaya tidak kena aturan rumus pembuka kembar); doa di paragraf SEBELUM paragraf penutup terakhir
+const capHari = (i, doa) => `Hari${i}a hari${i}b hari${i}c. ` + kalimat.repeat(8).trim() + (doa ? '\n\nSemoga dimudahkan.' : '') + '\n\nChat WA aja ya.';
+await test('doa di paragraf kedua dari akhir ikut dihitung; Senin-Sabtu maksimal 2 hari dan Minggu tetap lolos', async () => {
+  const items = HARI.map((tanggal, i) => item({ tanggal, draft_caption: capHari(i, true) }));
+  const { json } = await panggil(items, body({ jumlahPost: 7, tanggalAkhir: '2026-10-18', slots: slotMinggu }));
+  assert.deepStrictEqual(json.items.map(x => x.tanggal), ['2026-10-12', '2026-10-13', '2026-10-18']);
+  assert.ok(json.ditolak.some(x => x.startsWith('2026-10-14') && /dicadangkan untuk Minggu/.test(x)), JSON.stringify(json.ditolak));
+});
+await test('tanpa doa di hari lain, semua tujuh hari lolos termasuk Minggu berdoa', async () => {
+  const items = HARI.map((tanggal, i) => item({ tanggal, draft_caption: capHari(i, i === 6) }));
+  const { json } = await panggil(items, body({ jumlahPost: 7, tanggalAkhir: '2026-10-18', slots: slotMinggu }));
+  assert.strictEqual(json.items.length, 7);
+  assert.ok(!json.ditolak);
+});
+await test('prompt: Minggu selalu salah satu hari berdoa; penanda pembimbing hanya untuk tata cara/hukum/lafaz', async () => {
+  const { calls } = await panggil([item()], body());
+  const sys = calls[0].body.system_instruction.parts[0].text;
+  assert.ok(/MINGGU selalu menjadi salah satunya/.test(sys));
+  assert.ok(/tata cara, hukum, atau lafaz/.test(sys) && !/tata cara\/hukum\/doa/.test(sys));
 });
 await test('slot memaksa pilar & tipe konten; carousel > 5 slide dibuang', async () => {
   const s = { ...slot, tipe_konten: 'carousel', pilar: 'edukasi' };
