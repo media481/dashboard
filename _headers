@@ -19,3 +19,9 @@
   Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=(), usb=(), interest-cohort=()
   Cross-Origin-Opener-Policy: same-origin
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://cdnjs.cloudflare.com https://api.open-meteo.com; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; object-src 'none'
+
+# Katalog publik: aset statis di-cache browser (revalidate di belakang layar)
+/assets/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+/favicon.ico
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
