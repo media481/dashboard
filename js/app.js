@@ -3249,7 +3249,7 @@ function switchAdminSubTab(name) {
         }
     }
     if (name === 'telegram') { renderTgRecipients(); }
-    if (name === 'auditnota') { loadNotaAuditLog(true); }
+    if (name === 'auditnota') { loadNotaAuditLog(true); loadNotaAuditStats(); }
     if (name === 'pembayaran') { renderPembayaranPanel(); }
     if (name === 'unggulan') { renderFeaturedAdminTable(); }
     if (name === 'snapshot') { renderSnapshotAdminTable(); }
@@ -3971,44 +3971,55 @@ async function renderAdminPanel() {
             </div>
 
             <div class="admin-subtab-panel" id="adminSubTab-auditnota" style="display:none;">
-                <div class="admin-section-header">
-                    <div><h4>Audit Nota</h4>
-                    <p>Setiap nota yang diunduh (pembayaran, riwayat & kuitansi) otomatis tercatat di sini. Log ini append-only — tidak bisa diedit atau dihapus siapa pun, termasuk Admin.</p></div>
-                </div>
-                <div class="admin-toolbar">
-                    <input type="text" id="auditNotaSearch" placeholder="Cari nama jamaah / no. nota / kode verifikasi..." style="flex:1;min-width:220px;" oninput="handleAuditNotaSearchInput()">
-                    <select id="auditNotaFilterJenis" onchange="loadNotaAuditLog(true)" style="min-width:160px;">
-                        <option value="">Semua Jenis</option>
-                        <option value="pembayaran">Nota Pembayaran</option>
-                        <option value="riwayat">Nota Riwayat</option>
-                        <option value="kuitansi">Kuitansi</option>
-                    </select>
-                </div>
-                <div class="admin-table-card">
-                    <div class="admin-table-head">
-                        <h4>Log Audit Nota</h4>
-                        <span class="count" id="auditNotaCount">0 baris</span>
+                <div class="us-head">
+                    <div class="us-head-text">
+                        <h4>Audit Nota</h4>
+                        <p>Setiap nota dan kuitansi yang diunduh tercatat otomatis di sini.</p>
                     </div>
-                    <div class="admin-table-wrap">
-                        <table>
+                    <span class="an-lock" title="Log ini dilindungi trigger database: tidak bisa diedit atau dihapus siapa pun, termasuk Admin."><i class="bi bi-shield-lock-fill"></i> Append-only · tidak bisa diubah</span>
+                </div>
+
+                <div class="us-stats" id="anStats">
+                    <div class="us-stat"><span class="us-stat-ico"><i class="bi bi-journal-check"></i></span><div><b id="anStatTotal">-</b><span>Total tercatat</span></div></div>
+                    <div class="us-stat an-j-pay"><span class="us-stat-ico"><i class="bi bi-cash-coin"></i></span><div><b id="anStatPay">-</b><span>Nota Pembayaran</span></div></div>
+                    <div class="us-stat an-j-hist"><span class="us-stat-ico"><i class="bi bi-clock-history"></i></span><div><b id="anStatHist">-</b><span>Nota Riwayat</span></div></div>
+                    <div class="us-stat an-j-kwt"><span class="us-stat-ico"><i class="bi bi-receipt"></i></span><div><b id="anStatKwt">-</b><span>Kuitansi</span></div></div>
+                </div>
+
+                <div class="us-card">
+                    <div class="us-toolbar">
+                        <div class="us-search">
+                            <i class="bi bi-search"></i>
+                            <input type="text" id="auditNotaSearch" placeholder="Cari nama jamaah, no. nota, atau kode verifikasi..." autocomplete="off" oninput="handleAuditNotaSearchInput()">
+                        </div>
+                        <input type="hidden" id="auditNotaFilterJenis" value="">
+                        <div class="us-chips" id="anJenisChips">
+                            <button type="button" class="us-chip active" data-jenis="" onclick="anSetJenis('')">Semua</button>
+                            <button type="button" class="us-chip" data-jenis="pembayaran" onclick="anSetJenis('pembayaran')">Pembayaran</button>
+                            <button type="button" class="us-chip" data-jenis="riwayat" onclick="anSetJenis('riwayat')">Riwayat</button>
+                            <button type="button" class="us-chip" data-jenis="kuitansi" onclick="anSetJenis('kuitansi')">Kuitansi</button>
+                        </div>
+                        <span class="us-count" id="auditNotaCount">0 nota</span>
+                    </div>
+                    <div class="admin-table-wrap us-table-wrap">
+                        <table class="an-table">
                             <thead>
                                 <tr>
                                     <th>Waktu</th>
-                                    <th>No. Nota</th>
-                                    <th>Jenis</th>
+                                    <th>Nota</th>
                                     <th>Jamaah</th>
-                                    <th>Jumlah</th>
+                                    <th style="text-align:right;">Jumlah</th>
                                     <th>Dicetak Oleh</th>
                                     <th>Kode Verifikasi</th>
-                                    <th>Preview</th>
+                                    <th style="text-align:right;">Preview</th>
                                 </tr>
                             </thead>
-                            <tbody id="auditNotaTableBody"><tr><td colspan="8" style="text-align:center;padding:24px;color:var(--ink-soft);">Memuat...</td></tr></tbody>
+                            <tbody id="auditNotaTableBody"><tr><td colspan="7" class="us-state">Memuat...</td></tr></tbody>
                         </table>
                     </div>
                 </div>
                 <div style="display:flex;justify-content:center;margin-top:14px;">
-                    <button class="btn-cancel" id="auditNotaLoadMoreBtn" onclick="loadNotaAuditLog(false)" style="display:none;"><i class="bi bi-arrow-clockwise"></i> Muat Lebih Banyak</button>
+                    <button class="btn-cancel an-more" id="auditNotaLoadMoreBtn" onclick="loadNotaAuditLog(false)" style="display:none;"><i class="bi bi-arrow-down-circle"></i> Muat Lebih Banyak</button>
                 </div>
             </div>
 
@@ -9122,6 +9133,57 @@ function handleAuditNotaSearchInput() {
     auditNotaSearchDebounce = setTimeout(() => loadNotaAuditLog(true), 350);
 }
 
+// Tampilan jenis nota (label, ikon, kelas warna) dan label hari untuk pemisah di daftar.
+const AUDIT_NOTA_JENIS = {
+    pembayaran: { label: 'Pembayaran', icon: 'bi-cash-coin', cls: 'an-j-pay' },
+    riwayat:    { label: 'Riwayat',    icon: 'bi-clock-history', cls: 'an-j-hist' },
+    kuitansi:   { label: 'Kuitansi',   icon: 'bi-receipt', cls: 'an-j-kwt' }
+};
+let auditNotaLastDay = '';
+
+function anDayLabel(d) {
+    const dayKey = d.toDateString();
+    const now = new Date();
+    const yest = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    const full = d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    if (dayKey === now.toDateString()) return 'Hari ini · ' + full;
+    if (dayKey === yest.toDateString()) return 'Kemarin · ' + full;
+    return full;
+}
+
+function anSetJenis(val) {
+    const input = document.getElementById('auditNotaFilterJenis');
+    if (input) input.value = val;
+    document.querySelectorAll('#anJenisChips .us-chip').forEach(c => c.classList.toggle('active', c.dataset.jenis === val));
+    loadNotaAuditLog(true);
+}
+window.anSetJenis = anSetJenis;
+
+function copyAuditKode(kode) {
+    if (!kode) return;
+    const done = () => showToast('Kode verifikasi disalin');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(kode).then(done).catch(() => showToast('Gagal menyalin kode', 'error'));
+    } else {
+        showToast('Browser tidak mendukung salin otomatis', 'error');
+    }
+}
+window.copyAuditKode = copyAuditKode;
+
+// Ringkasan jumlah log per jenis (query count saja, tidak menarik baris).
+async function loadNotaAuditStats() {
+    if (currentRole !== 'admin' && currentRole !== 'user') return;
+    const count = async (jenis) => {
+        let q = supabaseClient.from('nota_audit_log').select('id', { count: 'exact', head: true });
+        if (jenis) q = q.eq('jenis', jenis);
+        const { count: c, error } = await q;
+        return error ? '-' : c;
+    };
+    const [total, pay, hist, kwt] = await Promise.all([count(''), count('pembayaran'), count('riwayat'), count('kuitansi')]);
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v != null ? Number(v).toLocaleString('id-ID') : '-'; };
+    set('anStatTotal', total); set('anStatPay', pay); set('anStatHist', hist); set('anStatKwt', kwt);
+}
+
 async function loadNotaAuditLog(reset) {
     // Sebelumnya hardcode admin-only, padahal menu "Audit Nota" sendiri sudah
     // bisa diizinkan untuk role "user" lewat Userman > Akses Menu per Role.
@@ -9135,7 +9197,8 @@ async function loadNotaAuditLog(reset) {
 
     if (reset) {
         auditNotaOffset = 0;
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--ink-soft);">Memuat...</td></tr>';
+        auditNotaLastDay = '';
+        tbody.innerHTML = '<tr><td colspan="7" class="us-state">Memuat...</td></tr>';
     }
 
     const search = (document.getElementById('auditNotaSearch')?.value || '').trim();
@@ -9154,35 +9217,46 @@ async function loadNotaAuditLog(reset) {
         if (error) throw error;
 
         const rows = data || [];
-        const jenisLabel = { pembayaran: 'Nota Pembayaran', riwayat: 'Nota Riwayat', kuitansi: 'Kuitansi' };
-        const rowsHtml = rows.map(r => `
+        const rowsHtml = rows.map(r => {
+            const d = new Date(r.created_at);
+            const dayKey = d.toDateString();
+            let sep = '';
+            if (dayKey !== auditNotaLastDay) {
+                auditNotaLastDay = dayKey;
+                sep = `<tr class="an-day"><td colspan="7">${escapeHtml(anDayLabel(d))}</td></tr>`;
+            }
+            const jm = AUDIT_NOTA_JENIS[r.jenis] || { label: r.jenis || '-', icon: 'bi-file-earmark-text', cls: '' };
+            const role = r.dicetak_oleh_role || '';
+            const roleCls = US_ROLE_META[role] ? ` us-role-${role}` : '';
+            const kode = r.kode_verifikasi || '';
+            return sep + `
             <tr>
-                <td style="white-space:nowrap;font-size:12px;">${escapeHtml(new Date(r.created_at).toLocaleString('id-ID'))}</td>
-                <td style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;white-space:nowrap;">${escapeHtml(r.nomor_nota || '-')}</td>
-                <td>${escapeHtml(jenisLabel[r.jenis] || r.jenis)}</td>
-                <td>${escapeHtml(r.jamaah_nama || '-')}</td>
-                <td style="white-space:nowrap;">${r.jumlah != null ? formatRupiah(Number(r.jumlah)) : '-'}</td>
-                <td>${escapeHtml(r.dicetak_oleh_label || r.dicetak_oleh_nama || '-')} <span style="color:var(--ink-soft);font-size:11px;">(${escapeHtml(r.dicetak_oleh_role || '-')})</span></td>
-                <td style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;">${escapeHtml(r.kode_verifikasi || '-')}</td>
-                <td style="text-align:center;">
-                    <button type="button" class="row-icon-btn" onclick="previewNotaFromAudit('${r.id}', this)" style="background:var(--brand-tint);color:var(--brand);" title="Preview nota sesuai kode verifikasi ini">
-                        <i class="bi bi-eye-fill"></i>
-                    </button>
+                <td data-label="Waktu" class="an-time"><b>${escapeHtml(d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }))}</b><span>${escapeHtml(d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }))}</span></td>
+                <td data-label="Nota"><div class="an-nota"><code>${escapeHtml(r.nomor_nota || '-')}</code><span class="an-jenis ${jm.cls}"><i class="bi ${jm.icon}"></i> ${escapeHtml(jm.label)}</span></div></td>
+                <td data-label="Jamaah"><div class="us-user-txt"><b>${escapeHtml(r.jamaah_nama || '-')}</b>${r.program_nama ? `<span>${escapeHtml(r.program_nama)}</span>` : ''}</div></td>
+                <td data-label="Jumlah" class="an-amount">${r.jumlah != null ? escapeHtml(formatRupiah(Number(r.jumlah))) : '<span class="an-none">-</span>'}</td>
+                <td data-label="Dicetak oleh"><div class="us-user-txt"><b>${escapeHtml(r.dicetak_oleh_label || r.dicetak_oleh_nama || '-')}</b><span><span class="us-badge us-badge-sm${roleCls}">${escapeHtml(role || '-')}</span></span></div></td>
+                <td data-label="Kode"><button type="button" class="an-code" title="Salin kode verifikasi" onclick="copyAuditKode('${escapeJsAttr(kode)}')"${kode ? '' : ' disabled'}>${escapeHtml(kode || '-')}<i class="bi bi-clipboard"></i></button></td>
+                <td class="us-actions">
+                    <button type="button" class="btn-icon-ghost" onclick="previewNotaFromAudit('${r.id}', this)" title="Preview nota sesuai kode verifikasi ini"><i class="bi bi-eye-fill"></i></button>
                 </td>
-            </tr>`).join('');
+            </tr>`;
+        }).join('');
 
         if (reset) {
-            tbody.innerHTML = rowsHtml || '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--ink-soft);">Belum ada nota yang tercatat.</td></tr>';
+            const emptyMsg = (search || jenis) ? 'Tidak ada nota yang cocok dengan pencarian.' : 'Belum ada nota yang tercatat.';
+            tbody.innerHTML = rowsHtml || `<tr><td colspan="7" class="us-state">${emptyMsg}</td></tr>`;
         } else {
             tbody.insertAdjacentHTML('beforeend', rowsHtml);
         }
 
         auditNotaOffset += rows.length;
-        if (countEl) countEl.textContent = `${count != null ? count : auditNotaOffset} baris`;
+        const total = count != null ? count : auditNotaOffset;
+        if (countEl) countEl.textContent = (count != null && auditNotaOffset < count) ? `${auditNotaOffset} dari ${total} nota` : `${total} nota`;
         if (loadMoreBtn) loadMoreBtn.style.display = (count != null && auditNotaOffset < count) ? '' : 'none';
     } catch (err) {
         console.error('loadNotaAuditLog error:', err);
-        if (reset) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--danger);">Gagal memuat log audit: ${escapeHtml(err.message)}. Pastikan migrasi sql/19_tambah_nota_audit.sql sudah dijalankan di Supabase.</td></tr>`;
+        if (reset) tbody.innerHTML = `<tr><td colspan="7" class="us-state us-state-err">Gagal memuat log audit: ${escapeHtml(err.message)}. Pastikan migrasi sql/19_tambah_nota_audit.sql sudah dijalankan di Supabase.</td></tr>`;
         showToast('Gagal memuat log audit nota', 'error');
     }
 }

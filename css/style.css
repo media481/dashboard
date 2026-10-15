@@ -6250,7 +6250,7 @@ main { padding-bottom: 0; }
 .us-user-txt b { font-size: 13.5px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .us-user-txt > span { font-size: 12px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .us-avatar { width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--rt); color: var(--rc); font-size: 13px; font-weight: 700; letter-spacing: .02em; }
-.us-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 99px; background: var(--rt); color: var(--rc); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.us-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 99px; background: var(--rt, var(--bg)); color: var(--rc, var(--ink-soft)); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
 .us-badge i { font-size: 11px; }
 .us-me { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 99px; background: var(--brand-tint); color: var(--brand); font-size: 10px; font-weight: 700; vertical-align: 1px; }
 .us-last { font-size: 12.5px; color: var(--ink); white-space: nowrap; }
@@ -6339,3 +6339,48 @@ main { padding-bottom: 0; }
 .us-savebar .btn-cancel { display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
 .us-pass .btn-cancel:hover,
 .us-savebar .btn-cancel:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-tint); }
+
+
+/* ============================================================
+   Audit Nota -- tampilan baru (memakai komponen .us- dari Manajemen User)
+   ============================================================ */
+.an-j-pay  { --rc: #279E70; --rt: #E1F5EC; }
+.an-j-hist { --rc: #1a355b; --rt: #dbe4ee; }
+.an-j-kwt  { --rc: #B8581A; --rt: #FBEBD9; }
+
+.an-lock { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 99px; background: var(--success-tint); color: var(--success); font-size: 12px; font-weight: 700; white-space: nowrap; cursor: help; }
+.us-badge-sm { padding: 2px 8px; font-size: 10.5px; text-transform: capitalize; }
+
+.an-table th { padding: 10px 16px; }
+.an-table td { padding: 11px 16px; vertical-align: middle; }
+.an-table tbody tr.an-day:hover { background: transparent; }
+.an-table tr.an-day td { padding: 9px 16px; background: var(--bg); border-top: 1px solid var(--line); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); }
+.an-time { white-space: nowrap; }
+.an-time b { display: block; font-size: 13px; font-weight: 600; color: var(--ink); }
+.an-time span { display: block; font-size: 11px; color: var(--ink-soft); }
+.an-nota { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.an-nota code { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ink); white-space: nowrap; }
+.an-jenis { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 99px; background: var(--rt); color: var(--rc); font-size: 11px; font-weight: 700; }
+.an-jenis i { font-size: 10.5px; }
+.an-amount { text-align: right; white-space: nowrap; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+.an-none { color: var(--ink-soft); font-weight: 400; }
+.an-code { display: inline-flex; align-items: center; gap: 7px; padding: 4px 9px; border: 1px dashed var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .02em; cursor: pointer; transition: all .15s; }
+.an-code i { font-size: 11px; color: var(--ink-soft); }
+.an-code:hover { border-color: var(--brand); border-style: solid; background: var(--brand-tint); color: var(--brand); }
+.an-code:hover i { color: var(--brand); }
+.an-code:disabled { cursor: default; opacity: .6; }
+.an-more { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
+.an-more:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-tint); }
+
+@media (max-width: 760px) {
+    .an-table thead { display: none; }
+    .an-table, .an-table tbody, .an-table tr, .an-table td { display: block; width: 100%; }
+    .an-table tbody tr:not(.an-day) { position: relative; padding: 12px 14px; border-top: 1px solid var(--line); }
+    .an-table tr.an-day td { padding: 8px 14px; }
+    .an-table td { padding: 3px 0; border: 0; text-align: left; }
+    .an-table .an-time { display: flex; gap: 8px; align-items: baseline; }
+    .an-table .an-time b, .an-table .an-time span { display: inline; }
+    .an-table .an-amount { text-align: left; font-size: 15px; }
+    .an-table td[data-label="Dicetak oleh"]::before { content: "Dicetak oleh"; display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); }
+    .an-table .us-actions { position: absolute; top: 10px; right: 10px; width: auto; }
+}
