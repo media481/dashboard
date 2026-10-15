@@ -16543,7 +16543,7 @@ function closeIgContentPlanModal() {
 // Baris "Versi:" dan "Diperbarui:" dibaca otomatis untuk header modal, jadi format dua baris itu jangan diubah.
 // ============================================================
 const ABOUT_PLANNER_MD = `# About Planner: Konsep Perencanaan Konten Instagram Amiru Tour
-Versi: 8
+Versi: 9
 Diperbarui: 15 Oktober 2026
 Status: disepakati Oktober 2026. Uji coba alur mingguan yang menyambung dimulai pekan Senin, 12 Oktober 2026. Ejaan resmi: "Umroh" (bukan "Umrah"), termasuk di hashtag.
 
@@ -16676,7 +16676,7 @@ Dashboard menyarankan Tema Minggu tanpa AI, dengan tiga sumber dalam urutan prio
 
 1. **Tema yang sudah dipakai di pekan itu** (kalau pekan sudah pernah digenerate sebagian) tetap dipertahankan.
 2. **Tema musiman** menurut bulan Hijriah/Masehi pekan itu (Maulid, Isra Miraj, Ramadhan, musim haji, libur sekolah, dan seterusnya). Tema musiman yang mengarah ke penjualan sengaja tayang 2-3 bulan sebelum musimnya, karena calon jamaah memesan jauh hari, dan didahulukan atas tema musiman biasa.
-3. **Alur perjalanan jamaah** yang dilanjutkan dari tema alur terakhir yang dipakai, supaya pekan ke pekan terasa satu cerita: niat dan persiapan, miqat dan ihram, thawaf, sa'i, tahallul, Madinah, lalu pulang dan rindu Tanah Suci. Bank alur berisi 65 tema, dikelompokkan menurut tahap: sebelum berangkat, ibadah di Makkah, Madinah, umroh bersama siapa, dan pulang serta sesudahnya.
+3. **Alur perjalanan jamaah** yang dilanjutkan dari tema alur terakhir yang dipakai, supaya pekan ke pekan terasa satu cerita: niat dan persiapan, miqat dan ihram, thawaf, sa'i, tahallul, Madinah, lalu pulang dan rindu Tanah Suci. Bank alur berisi 95 tema, dikelompokkan menurut tahap: sebelum berangkat, ibadah di Makkah, Madinah, umroh bersama siapa, dan pulang serta sesudahnya.
 
 Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati. Admin tetap bisa mengetik Tema Minggu sendiri, dan mengisi Tema pekan depan (opsional) untuk teaser penutup Minggu.
 
@@ -16732,6 +16732,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 | 6 | 15 Oktober 2026 | Tanda [cek pembimbing] dipersempit ke klaim tata cara/hukum/lafaz dan pilar Manasik; jatah doa Minggu dicadangkan (Senin-Sabtu maksimal 2 hari, doa dicari di dua paragraf terakhir); riwayat topik awal jadi data dan memblokir tema alur yang bentrok; tanda pembimbing tidak lagi dihitung sebagai kata topik saat mendeteksi ide kembar |
 | 7 | 15 Oktober 2026 | Rumus rujukan hari sebelumnya dikecualikan dari cek 3 kata terhadap 20 posting terakhir; mode pekan hanya mengulang hari yang ditolak dan hari sesudahnya; teks gambar dibersihkan dari tanda pisah panjang dan titik koma; bank tema alur diperluas menjadi 65 tema; tombol generate menampilkan perkiraan waktu; catatan bahwa bank topik per hari belum berupa data |
 | 8 | 15 Oktober 2026 | Penyelarasan: contoh hook Senin tidak lagi memakai kata "ribuan" (selaras larangan klaim jumlah); generator caption manual disamakan dengan aturan doa (tidak wajib, Senin-Sabtu maksimal 2 hari) dan emoji (maksimal 1). Aturan konten tidak berubah |
+| 9 | 15 Oktober 2026 | Bank tema alur diperluas dari 65 menjadi 95 tema (30 tema baru di lima tahap) supaya siklus tahunan tidak kehabisan tema dan tidak berulang dalam jendela 365 hari. Aturan konten tidak berubah |
 `;
 
 // Petunjuk yang ikut tersalin di depan dokumen supaya Claude mengembalikan dokumen dalam format yang bisa dipakai lagi.
@@ -17728,6 +17729,8 @@ const IG_TEMA_ALUR = [
     'Dokumen dan Administrasi', 'Menyelesaikan Urusan Sebelum Berangkat', 'Anggaran dan Keuangan Perjalanan', 'Persiapan Fisik',
     'Menjaga Kesehatan', 'Perlengkapan Perjalanan', 'Cuaca dan Pakaian di Tanah Suci', 'Mengenal Rombongan dan Pembimbing',
     'Kesiapan Hati dan Kesabaran', 'Pamit pada Keluarga dan Rumah', 'Belajar Manasik',
+    'Mengatasi Rasa Takut Sebelum Berangkat', 'Menyiapkan Mental untuk Antrean dan Menunggu', 'Membiasakan Jalan Kaki Jauh', 'Menulis Daftar Doa Sebelum Berangkat',
+    'Memaafkan dan Meminta Maaf Sebelum Pergi', 'Obat dan Perlengkapan Kesehatan Pribadi', 'Mengatur Barang Bawaan di Koper', 'Hari Keberangkatan dan Suasana Bandara',
     // Ibadah di Makkah
     'Miqat dan Ihram', 'Larangan Ihram', 'Talbiyah', 'Tiba di Tanah Suci', 'Sejarah Makkah dan Kabah', 'Pertama Melihat Kabah',
     'Thawaf', 'Multazam dan Doa', 'Maqam Ibrahim', 'Air Zamzam', 'Sa\'i dan Siti Hajar', 'Tahallul', 'Adab di Masjidil Haram',
@@ -17735,16 +17738,22 @@ const IG_TEMA_ALUR = [
     'Bertemu Jamaah dari Berbagai Negara', 'Menjaga Stamina Selama di Tanah Suci', 'Istirahat yang Cukup di Sela Ibadah',
     'Makanan dan Kebiasaan Makan di Tanah Suci', 'Mengabadikan Momen dengan Bijak', 'Berkabar dengan Keluarga di Rumah',
     'Mengisi Waktu di Tanah Suci', 'Ziarah di Makkah',
+    'Malam Pertama di Makkah', 'Subuh di Masjidil Haram', 'Hajar Aswad dan Rukun Yamani', 'Berdoa di Tengah Keramaian',
+    'Kaki Pegal dan Hati yang Tetap Kuat', 'Menjaga Wudhu dan Kebersihan', 'Dzikir dan Tilawah di Tanah Suci', 'Menjaga Lisan dan Pandangan',
+    'Rendah Hati di Tanah Suci', 'Tawakal dan Menyerahkan Urusan',
     // Madinah
     'Perjalanan ke Madinah', 'Masjid Nabawi', 'Raudhah', 'Ziarah di Madinah', 'Doa Titipan', 'Doa untuk Diri Sendiri',
     'Sedekah dan Berbagi',
+    'Suasana Malam di Madinah', 'Antre Shalat Berjamaah di Madinah', 'Sejarah Hijrah ke Madinah', 'Masjid Quba',
     // Umroh bersama siapa
     'Umroh Bersama Orang Tua', 'Umroh Bersama Pasangan', 'Umroh Bersama Keluarga', 'Umroh Bersama Anak', 'Umroh Bersama Sahabat',
     'Umroh untuk Lansia',
+    'Umroh Sendirian', 'Umroh Bersama Saudara', 'Umroh dengan Kursi Roda dan Pendamping',
     // Pulang dan sesudahnya
     'Thawaf Wada', 'Hari Terakhir di Makkah', 'Pulang dan Oleh-oleh Hati', 'Bersyukur atas Kesempatan', 'Menjaga Kemabruran',
     'Membawa Pulang Kebiasaan Baik', 'Kembali ke Rutinitas dengan Hati Baru', 'Rindu Tanah Suci', 'Berbagi Cerita Setelah Pulang',
-    'Menularkan Semangat Umroh ke Keluarga'
+    'Menularkan Semangat Umroh ke Keluarga',
+    'Janji pada Diri Sendiri Setelah Pulang', 'Menjaga Shalat Berjamaah Setelah Pulang', 'Menjaga Silaturahmi dengan Rombongan', 'Merencanakan Kembali ke Tanah Suci', 'Syukur Sederhana di Rumah'
 ];
 // Riwayat topik awal (sebelum pola mingguan dimulai 12 Okt 2026): SATU sumber data untuk (a) deteksi ide kembar
 // (igBuildRiwayat), (b) saran Tema Minggu (igKandidatTemaMinggu), dan (c) Rencana Setahun AI (igRtSusunAI).
