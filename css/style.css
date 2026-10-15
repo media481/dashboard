@@ -5258,14 +5258,10 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
    Semua selektor di-scope ke .ig-plan-modal supaya modal lain tidak ikut berubah.
    ===================================================================== */
 .ig-plan-modal {
-    max-width: min(600px, 100%);
-    max-height: min(92vh, 860px);
     display: flex; flex-direction: column; overflow: hidden;
-    transition: max-width .2s ease;
 }
 /* Saat form disembunyikan JS (style="display:none") berarti sedang di tampilan hasil -> lebarkan.
    Kalau browser tidak mendukung :has, hasil tetap tampil satu kolom (tetap berfungsi). */
-.ig-plan-modal:has(#igPlanGenerateWrap[style*="none"]) { max-width: min(1100px, 100%); }
 
 .ig-plan-modal .modal-header { flex: 0 0 auto; align-items: center; padding: 14px 22px; }
 .ig-plan-head-text { min-width: 0; }
@@ -5428,7 +5424,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* =====================================================================
    Modal About Planner (#igAboutPlannerModal): dokumen konsep yang dirender dari markdown ringan
    ===================================================================== */
-.ig-plan-modal.ig-about-modal { max-width: min(860px, 100%); }
 .ig-about-body { padding: 4px 24px 20px !important; font-size: 13.5px; line-height: 1.65; color: var(--ink); }
 .ig-about-body h2 { font-family: 'Space Grotesk', 'Inter', sans-serif; font-size: 16px; font-weight: 700; margin: 22px 0 8px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--ink); }
 .ig-about-body h2:first-child { border-top: 0; padding-top: 10px; margin-top: 8px; }
@@ -5646,7 +5641,6 @@ details.ig-rk-minggu > summary.ig-rk-row::-webkit-details-marker { display: none
 
 /* ---- Modal Tasklist Mingguan v3: tab hari + satu panel (js/app.js igTaskRender) ---- */
 #igTaskModal .ig-tm-body { padding: 6px 24px 24px !important; display: flex; flex-direction: column; gap: 16px; }
-#igTaskModal .ig-plan-modal, #igTaskModal .ig-task-modal { max-width: min(560px, 100%); }
 .ig-tm-tabs { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
 .ig-tm-tab { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px 7px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; position: relative; transition: background .15s, border-color .15s; }
 .ig-tm-tab:hover { border-color: var(--brand); }
@@ -6179,4 +6173,22 @@ main { padding-bottom: 0; }
 }
 @media (max-width: 600px) {
     .ig-dm .ig-dm-edit { padding: 4px 12px 14px; }
+}
+
+
+/* ============================================================
+   SATU UKURAN MODAL untuk seluruh modal Content Planner
+   (Detail harian, Perencanaan Konten, Rencana Konten, Tasklist, About Planner).
+   Ubah ukuran cukup di dua variabel ini.
+   ============================================================ */
+:root { --ig-modal-w: 1120px; --ig-modal-h: 90vh; }
+.modal-content.ig-dm,
+.modal-content.ig-plan-modal {
+    width: 100%;
+    max-width: min(var(--ig-modal-w), 100%);
+    max-height: var(--ig-modal-h);
+}
+@media (max-width: 600px) {
+    .modal-content.ig-dm,
+    .modal-content.ig-plan-modal { max-height: 92dvh; }
 }
