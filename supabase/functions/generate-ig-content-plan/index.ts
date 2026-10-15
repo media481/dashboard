@@ -412,6 +412,15 @@ function normalizeCaption(raw: string): string {
   return fitted ? `${fitted}\n\n${tagLine}` : tagLine;
 }
 
+// Teks gambar: larangan tanda pisah panjang & titik koma berlaku sama dengan caption. Baris dipertahankan (tidak digabung),
+// dan en dash di antara dua angka (rentang "Slide 2\u20134") dibiarkan karena dibaca maxSlideNumber.
+function normalizeTeksGambar(raw: string): string {
+  return String(raw || "")
+    .replace(/[ \t]*\u2014[ \t]*/g, ", ")
+    .replace(/(?<=\D)[ \t]*\u2013[ \t]*|[ \t]*\u2013[ \t]*(?=\D)/g, ", ")
+    .replace(/;[ \t]*/g, ", ");
+}
+
 // Jumlah slide tertinggi yang disebut di teks gambar carousel ("Slide 5: ..." atau rentang "Slide 2-4").
 function maxSlideNumber(teks: string): number {
   let max = 0;
@@ -651,7 +660,7 @@ function olahHasil(
       tema: fixSpelling(String(it.tema).trim().slice(0, 200)),
       tipe_konten: VALID_TYPES.has(String(it.tipe_konten)) ? String(it.tipe_konten) : "image",
       pilar: VALID_PILARS.has(String(it.pilar)) ? String(it.pilar) : null,
-      teks_gambar: it.teks_gambar ? fixSpelling(String(it.teks_gambar).trim().slice(0, 700)) : "",
+      teks_gambar: it.teks_gambar ? normalizeTeksGambar(fixSpelling(String(it.teks_gambar).trim().slice(0, 700))) : "",
       draft_caption: normalizeCaption(String(it.draft_caption)),
       sudut: str(it.sudut, 300),
       jembatan: str(it.jembatan, 300),

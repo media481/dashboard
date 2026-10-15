@@ -18163,12 +18163,17 @@ function igGayaTerbaru(riwayat) {
         .slice(0, IG_GAYA_JUMLAH);
 }
 
+// Rumus pembuka yang memang WAJIB dipakai Selasa-Minggu untuk merujuk hari sebelumnya ("Kemarin kita bahas...").
+// Rumus ini dikecualikan dari cek 3 kata pertama, kalau tidak hampir pasti bentrok dengan 20 posting terakhir.
+const IG_RUMUS_RUJUKAN_RE = /^(kemarin|kemaren|semalam|tadi)\s/;
+
 // true kalau pembuka caption item mengulang pembuka salah satu dari 20 posting terakhir: rumus 3 kata pertama sama
-// ("Kemarin kita bahas..." lagi) ATAU token pembukanya hampir sama (kata tema minggu dibuang lewat `abaikan`).
+// (selain rumus rujukan hari sebelumnya) ATAU token pembukanya hampir sama (kata tema minggu dibuang lewat `abaikan`).
 function igIsPembukaMirip(item, riwayat, abaikan) {
     const buka = igFirstLine(item.draft_caption).slice(0, 160);
     if (!buka) return false;
-    const o3 = igRumusPembuka(buka);
+    const o3Mentah = igRumusPembuka(buka);
+    const o3 = IG_RUMUS_RUJUKAN_RE.test(o3Mentah) ? '' : o3Mentah;
     const o = igMinusTokens(igTokenSet(buka), abaikan);
     return igGayaTerbaru(riwayat).some(r => {
         if (!r.buka) return false;
@@ -18354,7 +18359,7 @@ function igFormatBarisPekan(tgl, tema, teksGambar, caption) {
 
 const IG_PLAN_BATCH = 6;    // jumlah slot per panggilan AI mode bulan (batch kecil = tidak timeout, hasil tersimpan bertahap)
 const IG_PLAN_BATCH_PEKAN = 7; // mode pekan: ketujuh hari dalam SATU panggilan supaya konten menyambung
-const IG_PLAN_MAX_PASS_PEKAN = 5; // mode pekan: hari sesudah hari yang ditolak ikut diulang, jadi butuh putaran lebih banyak
+const IG_PLAN_MAX_PASS_PEKAN = 5; // mode pekan: hari yang ditolak (dan hari sesudahnya) diulang di putaran berikutnya
 const IG_PLAN_MAX_PASS = 3; // total putaran (1 putaran awal + 2 percobaan ulang untuk slot yang ditolak karena duplikat)
 
 // Header untuk edge function AI IG. Function memverifikasi token login (bukan anon key), jadi
@@ -18389,6 +18394,30 @@ async function igCallPlanFunction(payload) {
 
 let igPlanBusy = false; // true selama proses generate (manual atau otomatis) berjalan -> cegah dobel
 let igPlanResultRange = null; // { mulai, akhir } -> daftar hasil menampilkan 1 pekan; null = 1 bulan penuh
+
+function igHariBerikutnya(tgl) {
+    const [y, m, d] = String(tgl).split('-').map(Number);
+    return igLocalDateKey(new Date(y, m - 1, d + 1));
+}
+
+// Seleksi hasil mode pekan (fungsi murni, mudah dites). `coba(slot)` mengembalikan baris siap simpan atau null (ditolak).
+// Aturan: hari yang ditolak membuat hari SESUDAHNYA (tanggal persis +1) ikut diulang, karena pembukanya merujuk versi lama.
+// Hari lain yang lolos tetap diterima. Hari yang ikut diulang tidak dicoba (coba tidak dipanggil), jadi tidak masuk riwayat.
+function igSeleksiPekan(batch, coba) {
+    const hasil = [];
+    let prev = null;      // slot sebelumnya di batch
+    let prevGagal = false;
+    for (const slot of batch) {
+        const berurutan = !!prev && igHariBerikutnya(prev.tanggal) === slot.tanggal;
+        const ikutGagal = prevGagal && berurutan;
+        let row = null;
+        if (!ikutGagal) row = coba(slot);
+        if (row) hasil.push(row);
+        prevGagal = !row && !ikutGagal; // hari yang ikut diulang tidak menyeret hari sesudahnya lagi
+        prev = slot;
+    }
+    return hasil;
+}
 
 // ---- Inti generate: isi daftar slot (semua dalam 1 bulan) lewat AI + anti-duplikat ----
 // Alur: kirim slot ke AI per batch bersama riwayat SEMUA konten lama -> buang hasil yang mirip
@@ -18468,20 +18497,15 @@ async function igGeneratePlanForSlots(year, month, slots, arahan, onProgress, op
                 };
 
                 if (pekan) {
-                    // Mode pekan: tiap caption merujuk hari sebelumnya ("Kemarin kita bahas...") dan menutup dengan teaser hari
-                    // berikutnya. Kalau satu hari ditolak lalu dibuat ulang sendirian, hari-hari sesudahnya masih merujuk versi lama
-                    // yang sudah dibuang. Jadi hanya awalan berurutan yang diterima: dari hari pertama yang ditolak, hari sesudahnya
-                    // TIDAK disimpan dan ikut diulang di putaran berikutnya dengan awalan yang sudah jadi sebagai konteks.
+                    // Mode pekan: pembuka caption hari N+1 merujuk hari N ("Kemarin kita bahas..."). Kalau hari N ditolak lalu
+                    // dibuat ulang, hanya hari N+1 yang rujukannya jadi usang, jadi cukup N dan N+1 yang diulang. Hari lain yang
+                    // sudah lolos tetap disimpan (lihat igSeleksiPekan).
                     const itemByDate = new Map();
                     (data.items || []).forEach(it => { if (it && it.tanggal && !itemByDate.has(it.tanggal)) itemByDate.set(it.tanggal, it); });
-                    let putus = false;
-                    for (const slot of batch) {
-                        if (putus) break;
+                    igSeleksiPekan(batch, slot => {
                         const it = itemByDate.get(slot.tanggal);
-                        const row = (it && it.tema && it.draft_caption) ? terima(it, slot) : null;
-                        if (!row) { putus = true; break; }
-                        rows.push(row);
-                    }
+                        return (it && it.tema && it.draft_caption) ? terima(it, slot) : null;
+                    }).forEach(r => rows.push(r));
                 } else {
                     (data.items || []).forEach(it => {
                         const slot = slotByDate.get(it.tanggal);
@@ -18553,9 +18577,17 @@ async function generateIgContentPlanAI() {
 
     igPlanBusy = true;
     if (btn) btn.disabled = true;
+    // Mode pekan hanya satu panggilan AI (plus putaran perbaikan di server), jadi angka n/total baru bergerak di akhir.
+    // Tampilkan detik berjalan + perkiraan supaya tidak terlihat macet.
+    const tMulai = Date.now();
+    let igProgresTeks = `Menyusun 0/${slots.length}`;
+    const tampilProgres = () => { if (btnText) btnText.textContent = `${igProgresTeks} · ${Math.round((Date.now() - tMulai) / 1000)} dtk (biasanya 1-2 menit)...`; };
+    tampilProgres();
+    const ticker = setInterval(tampilProgres, 1000);
     const { berhasil, sisa, errMsg } = await igGeneratePlanForSlots(sy, sm - 1, slots, arahan,
-        n => { if (btnText) btnText.textContent = `Menyusun ${n}/${slots.length}...`; },
+        n => { igProgresTeks = `Menyusun ${n}/${slots.length}`; tampilProgres(); },
         { temaMinggu, temaMingguDepan, mulai: senin, akhir: minggu });
+    clearInterval(ticker);
     igPlanBusy = false;
     if (btn) btn.disabled = false;
     if (btnText) btnText.textContent = 'Generate Konten';
@@ -18973,95 +19005,6 @@ async function igSalinPromptPlan() {
     }
 }
 window.igSalinPromptPlan = igSalinPromptPlan;
-
-// ============================================================
-// 24e. GENERATE OTOMATIS PER PEKAN (MINGGU - SABTU)
-// Tiap IG Scheduler dibuka, dashboard memeriksa pekan berjalan (Minggu s/d Sabtu). Kalau ada tanggal pola
-// yang masih kosong (dan belum lewat), ide untuk tanggal itu dibuat otomatis. Kalau pekan berjalan sudah
-// penuh/terlewat, giliran pekan berikutnya -- jadi yang diisi selalu SATU pekan saja, bukan sebulan penuh
-// (hemat token; ide jauh ke depan juga sering basi karena program berubah). Pekan yang menyentuh 2 bulan
-// (mis. Minggu 25 Okt - Sabtu 31 Okt, atau 29 Nov - 5 Des) ditangani otomatis.
-// Hanya admin/user yang boleh mengelola; bisa dimatikan lewat checkbox di modal Perencanaan Konten.
-// ============================================================
-const IG_AUTO_PLAN_KEY = 'igAutoPlanEnabled';   // '0' = dimatikan (default aktif)
-const IG_AUTO_PLAN_FAIL_KEY = 'igAutoPlanFailAt'; // waktu gagal terakhir -> jeda 1 jam sebelum coba lagi
-const IG_AUTO_PLAN_LOCK_KEY = 'igAutoPlanLockAt'; // kunci antar-tab (kedaluwarsa 10 menit)
-
-// Generate otomatis DINONAKTIFKAN permanen (hanya jalan saat tombol Generate diklik).
-function igAutoPlanEnabled() { return false; }
-
-// Rentang 1 pekan (Minggu s/d Sabtu) yang memuat tanggal `basis`.
-function igPekanRange(basis) {
-    const awal = new Date(basis.getFullYear(), basis.getMonth(), basis.getDate() - basis.getDay()); // getDay(): 0 = Minggu
-    const akhir = new Date(awal.getFullYear(), awal.getMonth(), awal.getDate() + 6);
-    return { awal: igLocalDateKey(awal), akhir: igLocalDateKey(akhir), tepiAwal: awal, tepiAkhir: akhir };
-}
-
-// Slot pola yang masih kosong di dalam 1 pekan, dikelompokkan per bulan (pekan bisa menyentuh 2 bulan).
-function igSlotPekanPerBulan(pekan, terisi, hariIni) {
-    const grup = [];
-    let y = pekan.tepiAwal.getFullYear(), m = pekan.tepiAwal.getMonth();
-    const yAkhir = pekan.tepiAkhir.getFullYear(), mAkhir = pekan.tepiAkhir.getMonth();
-    while (y < yAkhir || (y === yAkhir && m <= mAkhir)) {
-        const slots = igBuildSlotBulan(y, m, terisi, hariIni)
-            .filter(s => s.tanggal >= pekan.awal && s.tanggal <= pekan.akhir);
-        if (slots.length) grup.push({ y, m, slots });
-        m++;
-        if (m > 11) { m = 0; y++; }
-    }
-    return grup;
-}
-
-async function igAutoPlanCheck() {
-    if (!igAutoPlanEnabled() || igPlanBusy || !canManageProgramData()) return;
-    try {
-        if (Date.now() - Number(localStorage.getItem(IG_AUTO_PLAN_FAIL_KEY) || 0) < 3600 * 1000) return;
-        if (Date.now() - Number(localStorage.getItem(IG_AUTO_PLAN_LOCK_KEY) || 0) < 600 * 1000) return;
-    } catch (e) {}
-
-    const t = new Date();
-    const hariIni = igLocalDateKey(t);
-    const terisi = igTanggalTerisiSet();
-
-    // Pekan berjalan dulu; kalau tidak ada slot kosong yang tersisa, pindah ke pekan berikutnya.
-    let pekan = igPekanRange(t);
-    let grup = igSlotPekanPerBulan(pekan, terisi, hariIni);
-    if (!grup.length) {
-        pekan = igPekanRange(new Date(t.getFullYear(), t.getMonth(), t.getDate() + 7));
-        grup = igSlotPekanPerBulan(pekan, terisi, hariIni);
-    }
-    if (!grup.length) return;
-
-    const total = grup.reduce((n, g) => n + g.slots.length, 0);
-    igPlanBusy = true;
-    try { localStorage.setItem(IG_AUTO_PLAN_LOCK_KEY, String(Date.now())); } catch (e) {}
-    showToast(`Menyusun ${total} ide konten untuk pekan ${pekan.awal} s/d ${pekan.akhir} (Minggu-Sabtu)...`, 'info');
-
-    let berhasil = 0, errMsg = '', sisa = 0;
-    for (const g of grup) {
-        const r = await igGeneratePlanForSlots(g.y, g.m, g.slots, '', null);
-        berhasil += r.berhasil;
-        sisa += r.sisa.length;
-        if (r.errMsg) { errMsg = r.errMsg; break; }
-    }
-    igPlanBusy = false;
-    const sibuk = /503|UNAVAILABLE|high demand/i.test(errMsg);
-    try {
-        localStorage.removeItem(IG_AUTO_PLAN_LOCK_KEY);
-        // Server AI sibuk (503) bersifat sementara: jeda coba lagi cukup 10 menit, bukan 1 jam.
-        if (errMsg) localStorage.setItem(IG_AUTO_PLAN_FAIL_KEY, String(Date.now() - (sibuk ? 50 * 60 * 1000 : 0)));
-    } catch (e) {}
-
-    // Tanpa error tapi masih ada slot sisa (hasil AI terus ditolak karena mirip konten lama): beri jeda 30 menit
-    // supaya setiap membuka IG Scheduler tidak memicu panggilan AI berulang yang boros token.
-    if (!errMsg && sisa > 0) {
-        try { localStorage.setItem(IG_AUTO_PLAN_FAIL_KEY, String(Date.now() - 30 * 60 * 1000)); } catch (e) {}
-    }
-
-    if (errMsg && sibuk) showToast(`Server penyusun konten sedang sibuk${berhasil ? ` (${berhasil} ide sudah tersimpan)` : ''}. Akan dicoba lagi otomatis nanti.`, 'info');
-    else if (errMsg) showToast(`Generate otomatis berhenti (${berhasil} ide tersimpan): ${errMsg}`, 'error');
-    else if (berhasil > 0) showToast(`${berhasil} ide konten otomatis ditambahkan ke kalender${sisa ? ` (${sisa} tanggal belum terisi, akan dicoba lagi nanti)` : ''}`, 'success');
-}
 
 // ---- Render daftar hasil rencana (dalam modal, setelah generate) ----
 function renderIgPlanResultList(year, month) {

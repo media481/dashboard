@@ -228,6 +228,18 @@ await test('tanda pisah panjang dan titik koma dibersihkan otomatis dari caption
   assert.strictEqual(json.items.length, 1);
   assert.ok(!/[\u2014\u2013;]/.test(json.items[0].draft_caption));
 });
+await test('teks gambar: tanda pisah panjang & titik koma dibersihkan seperti caption; baris tidak digabung; rentang "Slide 2\u20134" utuh', async () => {
+  const { json } = await panggil([item({ teks_gambar: 'Pernah merinding \u2014 sekali saja;\nCoba rasakan\u2013pelan' })], body());
+  assert.strictEqual(json.items.length, 1, JSON.stringify(json));
+  const tg = json.items[0].teks_gambar;
+  assert.ok(!/[\u2014\u2013;]/.test(tg), tg);
+  assert.strictEqual(tg.split('\n').length, 2, 'jumlah baris tetap');
+});
+await test('teks gambar carousel: rentang slide dengan en dash antar-angka tidak dirusak', async () => {
+  const tg = 'Slide 1: Judul\nSlide 2\u20133: Isi\nSlide 4: Penutup';
+  const { json } = await panggil([item({ tipe_konten: 'carousel', teks_gambar: tg })], body({ slots: [{ ...slot, tipe_konten: 'carousel' }] }));
+  if (json.items.length) assert.ok(json.items[0].teks_gambar.includes('2\u20133'), json.items[0].teks_gambar);
+});
 await test('format gambar: single post tanpa "Slide n:", carousel 3-5 slide berurutan, teks gambar tidak kosong', async () => {
   const s = { ...slot, tipe_konten: 'carousel', pilar: 'edukasi' };
   const kasus = [

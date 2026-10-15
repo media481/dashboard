@@ -450,24 +450,25 @@ const planLama = [{ id: 'lama', tanggal: '2026-09-01', tema: 'Kerinduan ladang p
 const slotPekan = () => run("igBuildSlotPekan('2026-10-12', new Set(), null)");
 const opsiPekan = { temaMinggu: 'Talbiyah', temaMingguDepan: '', mulai: '2026-10-12', akhir: '2026-10-18' };
 
-testAsync('generate pekan: Senin ditolak (mirip riwayat) -> tidak ada hari sesudahnya yang disimpan, semuanya diulang', async () => {
+testAsync('generate pekan: Senin ditolak (mirip riwayat) -> hanya Senin & Selasa diulang, Rabu..Minggu tetap tersimpan', async () => {
   const log = siapkanGenPekan([balasSemua(0), balasSemua(-1, { i: 0, tema: 'Gemetar bersama ribuan suara' })], planLama);
   sandbox.__slots = slotPekan(); sandbox.__opsi = opsiPekan;
   const r = await run("igGeneratePlanForSlots(2026, 9, __slots, '', null, __opsi)");
   assert.strictEqual(log.panggilan.length, 2);
-  assert.strictEqual(log.panggilan[1].slots.length, 7, 'Senin..Minggu semua diulang');
+  assert.strictEqual(JSON.stringify(log.panggilan[1].slots.map(x => x.tanggal)), JSON.stringify(['2026-10-12', '2026-10-13']));
   assert.strictEqual(log.insert.length, 7); assert.strictEqual(r.berhasil, 7); assert.strictEqual(r.sisa.length, 0);
   assert.ok(!log.insert.some(x => x.tema === 'Kerinduan ladang pasir sunyi'), 'versi lama yang ditolak tidak boleh tersimpan');
+  assert.strictEqual(log.insert.filter(x => x.tanggal === '2026-10-12').length, 1, 'tidak ada baris ganda');
 });
-testAsync('generate pekan: Rabu ditolak -> Senin & Selasa tersimpan, Rabu..Minggu diulang dengan Senin & Selasa sebagai konteks', async () => {
+testAsync('generate pekan (regresi bug 1): Rabu ditolak -> hanya Rabu & Kamis diulang, hari lain tidak dibuang', async () => {
   const log = siapkanGenPekan([balasSemua(2), balasSemua(-1, { i: 2, tema: 'Bekal fisik jalan jauh' })], [{ ...planLama[0], tema: 'Koper ringan bawaan sunyi' }]);
   sandbox.__slots = slotPekan(); sandbox.__opsi = opsiPekan;
   const r = await run("igGeneratePlanForSlots(2026, 9, __slots, '', null, __opsi)");
   assert.strictEqual(log.panggilan.length, 2);
-  assert.strictEqual(JSON.stringify(log.panggilan[1].slots.map(x => x.tanggal)), JSON.stringify(['2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18']));
-  assert.ok(log.panggilan[1].konteksPekan.includes('Senin 2026-10-12') && log.panggilan[1].konteksPekan.includes('Selasa 2026-10-13'));
+  assert.strictEqual(JSON.stringify(log.panggilan[1].slots.map(x => x.tanggal)), JSON.stringify(['2026-10-14', '2026-10-15']));
+  assert.ok(log.panggilan[1].konteksPekan.includes('Selasa 2026-10-13') && log.panggilan[1].konteksPekan.includes('Jumat 2026-10-16'), 'hari yang sudah jadi (sebelum & sesudah) jadi konteks');
   assert.strictEqual(r.berhasil, 7); assert.strictEqual(log.insert.length, 7);
-  assert.strictEqual(JSON.stringify(log.insert.map(x => x.tanggal)), JSON.stringify(['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18']));
+  assert.strictEqual(JSON.stringify(log.insert.map(x => x.tanggal).sort()), JSON.stringify(['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18']));
 });
 testAsync('generate pekan: tanpa penolakan -> 1 panggilan, 7 baris, label seri benar', async () => {
   const log = siapkanGenPekan([balasSemua(-1)], []);
@@ -476,12 +477,13 @@ testAsync('generate pekan: tanpa penolakan -> 1 panggilan, 7 baris, label seri b
   assert.strictEqual(log.panggilan.length, 1); assert.strictEqual(log.insert.length, 7);
   assert.ok(log.insert[6].teks_gambar.endsWith('Label gambar: Seri Talbiyah · 7/7'));
 });
-testAsync('generate pekan: hari pertama terus ditolak -> berhenti di batas putaran, tidak ada yang disimpan, sisa dilaporkan', async () => {
+testAsync('generate pekan: hari pertama terus ditolak -> berhenti di batas putaran, hanya Senin & Selasa yang gagal, sisanya tersimpan', async () => {
   const log = siapkanGenPekan([balasSemua(0), balasSemua(0), balasSemua(0), balasSemua(0), balasSemua(0)], planLama);
   sandbox.__slots = slotPekan(); sandbox.__opsi = opsiPekan;
   const r = await run("igGeneratePlanForSlots(2026, 9, __slots, '', null, __opsi)");
-  assert.strictEqual(log.panggilan.length, 5); assert.strictEqual(log.insert.length, 0);
-  assert.strictEqual(r.berhasil, 0); assert.strictEqual(r.sisa.length, 7);
+  assert.ok(log.panggilan.length <= 5);
+  assert.strictEqual(r.berhasil, 5); assert.strictEqual(log.insert.length, 5);
+  assert.strictEqual(JSON.stringify(r.sisa.map(x => x.tanggal)), JSON.stringify(['2026-10-12', '2026-10-13']));
 });
 
 console.log('\n=== TEST: igArahanTetangga (generate ulang 1 hari tetap memenuhi janji hari sebelumnya) ===');
@@ -520,9 +522,18 @@ testAsync('regen Selasa: arahan ke AI memuat janji hari sebelumnya', async () =>
 console.log('\n=== TEST: gaya 20 posting terakhir (hook & pembuka caption) ===');
 const riwayatGaya = (daftar) => { const r = []; daftar.forEach(([tgl, tema, hook, buka]) => run('igRiwayatAdd')(r, tema, hook, tgl, buka)); return r; };
 test('rumus pembuka: 3 kata pertama sama -> mirip, walau sisa kalimat beda', () => {
-  const r = riwayatGaya([['2026-10-01', 'Topik A', 'Hook A', 'Kemarin kita bahas tata cara niat.']]);
-  assert.strictEqual(run('igIsPembukaMirip')({ draft_caption: 'Kemarin kita bahas persiapan fisik.\n\nIsi' }, r), true);
+  const r = riwayatGaya([['2026-10-01', 'Topik A', 'Hook A', 'Pasir sunyi menunggu tata cara niat.']]);
+  assert.strictEqual(run('igIsPembukaMirip')({ draft_caption: 'Pasir sunyi menunggu persiapan fisik.\n\nIsi' }, r), true);
 });
+test('rumus rujukan hari sebelumnya ("Kemarin kita bahas") dikecualikan dari cek 3 kata terhadap 20 posting terakhir', () => {
+  const r = riwayatGaya([['2026-10-01', 'Topik A', 'Hook A', 'Kemarin kita bahas tata cara niat.']]);
+  assert.strictEqual(run('igIsPembukaMirip')({ draft_caption: 'Kemarin kita bahas persiapan fisik.\n\nIsi' }, r), false);
+});
+test('rumus rujukan tetap ditolak kalau seluruh kalimat pembukanya hampir sama (cek token tidak ikut dilonggarkan)', () => {
+  const r = riwayatGaya([['2026-10-01', 'Topik A', 'Hook A', 'Kemarin kita bahas tata cara niat umroh pertama.']]);
+  assert.strictEqual(run('igIsPembukaMirip')({ draft_caption: 'Kemarin kita bahas tata cara niat umroh pertama.\n\nIsi' }, r), true);
+});
+
 test('pembuka beda rumus & beda isi -> tidak mirip', () => {
   const r = riwayatGaya([['2026-10-01', 'Topik A', 'Hook A', 'Kemarin kita bahas tata cara niat.']]);
   assert.strictEqual(run('igIsPembukaMirip')({ draft_caption: 'Pernah nggak kamu menahan tangis di depan pintu?' }, r), false);
@@ -560,17 +571,51 @@ test('prompt untuk AI lain memuat bagian HOOK & PEMBUKA 20 POSTING TERAKHIR hany
   assert.ok(T.igSusunPromptEksternal({ ...dasar, riwayatGaya: '- 2026-10-05 | hook: H | pembuka: P' }).includes('HOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR'));
   assert.ok(!T.igSusunPromptEksternal(dasar).includes('=== PERMINTAAN ===\nSusun paket konten Instagram yang saling menyambung untuk Oktober 2026 (rentang tanggal 2026-10-12 s/d 2026-10-18), sebanyak TEPAT 0 ide post.\n\nTEMA MINGGU: Talbiyah\n\nHOOK'));
 });
-testAsync('generate pekan: pembuka Rabu memakai rumus yang sama dgn Selasa -> Rabu..Minggu diulang, AI diberi riwayatGaya', async () => {
+testAsync('generate pekan: pembuka Rabu memakai rumus yang sama dgn Selasa -> Rabu & Kamis diulang, AI diberi riwayatGaya', async () => {
   const log = siapkanGenPekan([
-    (payload) => payload.slots.map((sl, i) => ({ ...itemHari(sl.tanggal, i, null), draft_caption: (i === 2 ? 'Kemarin kita bahas langkah thawaf ' : i === 1 ? 'Kemarin kita bahas rindu pasir ' : 'Pembuka unik hari ' + i + ' ') + TEMA_HARI[i] })),
+    (payload) => payload.slots.map((sl, i) => ({ ...itemHari(sl.tanggal, i, null), draft_caption: (i === 2 ? 'Pasir sunyi menunggu langkah thawaf ' : i === 1 ? 'Pasir sunyi menunggu rindu ' : 'Pembuka ' + TEMA_HARI[i] + ' unik ') + TEMA_HARI[i] })),
     (payload) => payload.slots.map((sl) => { const i = ['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18'].indexOf(sl.tanggal); return { ...itemHari(sl.tanggal, i, i === 2 ? 'Bekal fisik jalan jauh' : null), draft_caption: TEMA_HARI[i] + ' dimulai dari sini' }; })
   ], []);
   sandbox.__slots = slotPekan(); sandbox.__opsi = opsiPekan;
   const r = await run("igGeneratePlanForSlots(2026, 9, __slots, '', null, __opsi)");
   assert.strictEqual(log.panggilan.length, 2);
-  assert.strictEqual(JSON.stringify(log.panggilan[1].slots.map(x => x.tanggal)), JSON.stringify(['2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18']));
-  assert.ok(log.panggilan[1].riwayatGaya.includes('Kemarin kita bahas rindu pasir'), 'pembuka hari yang sudah jadi harus dikirim ke AI');
+  assert.strictEqual(JSON.stringify(log.panggilan[1].slots.map(x => x.tanggal)), JSON.stringify(['2026-10-14', '2026-10-15']));
+  assert.ok(log.panggilan[1].riwayatGaya.includes('Pasir sunyi menunggu rindu'), 'pembuka hari yang sudah jadi harus dikirim ke AI');
   assert.strictEqual(r.berhasil, 7);
+});
+testAsync('generate pekan: rumus rujukan "Kemarin kita bahas" di Selasa-Minggu tidak membuat hari-hari itu saling menolak', async () => {
+  const log = siapkanGenPekan([(payload) => payload.slots.map((sl, i) => ({ ...itemHari(sl.tanggal, i, null), draft_caption: (i === 0 ? 'Pembuka senin ' : 'Kemarin kita bahas ') + TEMA_HARI[i] }))], []);
+  sandbox.__slots = slotPekan(); sandbox.__opsi = opsiPekan;
+  const r = await run("igGeneratePlanForSlots(2026, 9, __slots, '', null, __opsi)");
+  assert.strictEqual(log.panggilan.length, 1); assert.strictEqual(r.berhasil, 7);
+});
+
+console.log('\n=== TEST: igSeleksiPekan (hari yang ditolak menyeret hanya hari sesudahnya) ===');
+const seleksi = (tgls, ditolak) => {
+  const dicoba = [];
+  const hasil = run('igSeleksiPekan')(tgls.map(t => ({ tanggal: t })), sl => { dicoba.push(sl.tanggal); return ditolak.includes(sl.tanggal) ? null : { tanggal: sl.tanggal }; });
+  return { diterima: hasil.map(x => x.tanggal), dicoba };
+};
+test('tidak ada yang ditolak -> semua diterima', () => {
+  assert.strictEqual(seleksi(['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18'], []).diterima.length, 7);
+});
+test('N ditolak -> N dan N+1 diulang; N+1 tidak dicoba (tidak masuk riwayat); N+2 tetap dinilai sendiri', () => {
+  const r = seleksi(['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18'], ['2026-10-14']);
+  assert.strictEqual(JSON.stringify(r.diterima), JSON.stringify(['2026-10-12', '2026-10-13', '2026-10-16', '2026-10-17', '2026-10-18']));
+  assert.ok(!r.dicoba.includes('2026-10-15'));
+  assert.ok(r.dicoba.includes('2026-10-16'));
+});
+test('N ditolak dan N+1 memang ikut diulang -> N+2 dinilai sendiri (aturan sama dengan kasus N tunggal)', () => {
+  const r = seleksi(['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18'], ['2026-10-13']);
+  assert.strictEqual(JSON.stringify(r.diterima), JSON.stringify(['2026-10-12', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18']));
+});
+test('Minggu ditolak -> tidak ada hari sesudahnya; Senin ditolak -> Selasa ikut', () => {
+  assert.strictEqual(seleksi(['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18'], ['2026-10-18']).diterima.length, 6);
+  assert.strictEqual(seleksi(['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18'], ['2026-10-12']).diterima.includes('2026-10-13'), false);
+});
+test('slot tidak berurutan (hari di antaranya sudah terisi) -> penolakan tidak menyeret slot yang tidak bersebelahan', () => {
+  const r = seleksi(['2026-10-12', '2026-10-14', '2026-10-15'], ['2026-10-12']);
+  assert.strictEqual(JSON.stringify(r.diterima), JSON.stringify(['2026-10-14', '2026-10-15']));
 });
 testAsync('regen satu hari: payload ke AI memuat riwayatGaya', async () => {
   const log = siapkanMock({ balasan: [ideBaru] });
