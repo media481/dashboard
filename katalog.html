@@ -69,6 +69,8 @@ h1,h2,h3{font-family:"Space Grotesk",Inter,system-ui,sans-serif}
 .x{border:0;background:var(--brand-tint);color:var(--brand);width:34px;height:34px;border-radius:50%;font-size:20px;cursor:pointer;flex:none}
 .sheet .in{padding:16px 20px 22px;display:grid;gap:16px}
 .sheet img.big{width:100%;border-radius:12px;display:block}
+.mdet{display:grid;gap:16px;align-content:start;min-width:0}
+@media(min-width:760px){.sheet{max-width:980px}.sheet .in{grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:22px;align-items:start}.sheet img.big{position:sticky;top:76px}}
 .sheet h4{font:600 13px Inter,sans-serif;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-soft);margin-bottom:6px}
 .prices{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
 .prices div{background:var(--bg);border-radius:10px;padding:10px}
@@ -238,12 +240,12 @@ function buka(i) {
   const iti = safeUrl(p.link_itinerary);
   document.getElementById('mBody').innerHTML = `
     <img class="big" src="${esc(posterSrc(p.link_poster))}" alt="Poster ${esc(p.nama)}" referrerpolicy="no-referrer" onerror="this.remove()">
-    <div class="facts"><div><small>Berangkat</small><b>${esc(p.tgl || '-')}</b></div><div><small>Durasi</small><b>${esc(p.durasi || '-')}</b></div><div><small>Maskapai</small><b>${esc(p.maskapai || '-')}</b></div></div>
+    <div class="mdet"><div class="facts"><div><small>Berangkat</small><b>${esc(p.tgl || '-')}</b></div><div><small>Durasi</small><b>${esc(p.durasi || '-')}</b></div><div><small>Maskapai</small><b>${esc(p.maskapai || '-')}</b></div></div>
     ${kamar.length ? `<div><h4>Harga per orang</h4><div class="prices">${kamar.map(k => `<div><small>${k[0]}</small><b>${esc(rupiah(k[1]))}</b></div>`).join('')}</div></div>` : ''}
     ${hotel.length ? `<div><h4>Akomodasi</h4><ul>${hotel.map(h => `<li><b>${esc(h[0])}:</b> ${esc(h[1])}</li>`).join('')}</ul></div>` : ''}
     ${inc.length ? `<div><h4>Termasuk</h4><ul>${inc.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
     ${exc.length ? `<div><h4>Tidak termasuk</h4><ul>${exc.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
-    <div class="actions">${iti ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(iti)}">Lihat Itinerary</a>` : ''}${WA_NUMBER ? `<a class="btn wa" target="_blank" rel="noopener" href="${waLink(p)}">Tanya via WhatsApp</a>` : ''}</div>`;
+    <div class="actions">${iti ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(iti)}">Lihat Itinerary</a>` : ''}${WA_NUMBER ? `<a class="btn wa" target="_blank" rel="noopener" href="${waLink(p)}">Tanya via WhatsApp</a>` : ''}</div></div>`;
   document.getElementById('modal').classList.add('open');
   document.body.style.overflow = 'hidden';
   document.getElementById('mClose').focus();
