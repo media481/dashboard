@@ -65,10 +65,11 @@ h1,h2,h3{font-family:"Space Grotesk",Inter,system-ui,sans-serif}
 .modal.open .sheet{animation:pop .22s cubic-bezier(.2,.8,.2,1)}
 @keyframes pop{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
 .sheet{background:var(--bg);border-radius:20px;max-width:1040px;width:100%;max-height:92dvh;overflow:auto;position:relative;box-shadow:0 24px 70px rgba(5,15,30,.45);display:flex;flex-direction:column}
-.sheet header{padding:16px 20px;position:sticky;top:0;z-index:3;background:#1a355b;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.sheet header{padding:14px 20px;position:sticky;top:0;z-index:3;background:#1a355b;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .sheet header .eyebrow{font-size:11px;letter-spacing:1px;text-transform:uppercase;opacity:.65;margin-bottom:2px}
 .sheet header h2{font-size:clamp(17px,2.2vw,22px);line-height:1.2}
-.mbadges{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.htitle{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.mbadges{display:flex;gap:6px;flex-wrap:wrap}
 .mbadges .badge{box-shadow:none}
 .x{border:0;background:rgba(255,255,255,.14);color:#fff;width:36px;height:36px;border-radius:50%;font-size:22px;line-height:1;cursor:pointer;flex:none;transition:background .15s}
 .x:hover{background:rgba(255,255,255,.26)}
@@ -110,7 +111,19 @@ h1,h2,h3{font-family:"Space Grotesk",Inter,system-ui,sans-serif}
 .mfoot .btn{flex:0 1 260px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 16px;font-size:14.5px;border-radius:12px}
 .mfoot .btn.wa{box-shadow:0 6px 16px rgba(37,211,102,.35)}
 .mfoot .btn svg{width:18px;height:18px}
-@media(min-width:800px){.sheet .in{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);align-items:start}.pwrap{position:sticky;top:0}}
+@media(min-width:800px){
+  /* Desktop: modal setinggi layar (maks 860px). Poster mengisi penuh tinggi kolom kiri (contain),
+     kolom detail di kanan setinggi sama dan bisa di-scroll di dalam -> keduanya selalu seimbang */
+  .sheet{height:min(95dvh,960px);overflow:hidden}
+  .sheet .in{grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);grid-template-rows:minmax(0,1fr);align-items:stretch;min-height:0;overflow:hidden}
+  .mdet{overflow:auto;min-height:0;align-content:start;scrollbar-width:none;-webkit-mask-image:linear-gradient(#000 calc(100% - 28px),transparent);mask-image:linear-gradient(#000 calc(100% - 28px),transparent);padding-bottom:24px}
+  .mdet::-webkit-scrollbar{display:none}
+  .pwrap{position:relative;min-height:0;padding:0}
+  .pwrap img.big{position:absolute;inset:16px;width:calc(100% - 32px);height:calc(100% - 32px);object-fit:contain;box-shadow:none;border-radius:0;filter:drop-shadow(0 10px 22px rgba(15,33,56,.32))}
+  .prices{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.prices div{padding:8px 9px}.prices b{font-size:12px}.prices small{font-size:10.5px;flex-direction:column;gap:0}.prices small u{font-size:10px}
+  .chips{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .chip{padding:9px 10px;gap:8px}.chip i{width:30px;height:30px}.chip b{font-size:13px}
+}
 @media(max-width:799px){.chips{grid-template-columns:1fr}.incexc{grid-template-columns:1fr}.mfoot .btn{flex:1}.sheet{border-radius:16px}.modal{padding:8px}}
 footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px calc(30px + env(safe-area-inset-bottom,0))}
 /* 5 kolom selalu muat di lebar layar: ukuran konten mengecil mengikuti lebar */
@@ -140,7 +153,7 @@ footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px 
 <footer>Harga dan jadwal dapat berubah sewaktu-waktu mengikuti ketentuan Saudi, maskapai, dan kurs. Hubungi kami untuk informasi terbaru.</footer>
 
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="sheet">
-  <header><div><div class="eyebrow">Detail Program</div><h2 id="mTitle"></h2><div class="mbadges" id="mBadges"></div></div><button class="x" id="mClose" aria-label="Tutup">&times;</button></header>
+  <header><div class="htitle"><h2 id="mTitle"></h2><div class="mbadges" id="mBadges"></div></div><button class="x" id="mClose" aria-label="Tutup">&times;</button></header>
   <div class="in" id="mBody"></div>
   <div class="mfoot" id="mFoot"></div>
 </div></div>
@@ -321,7 +334,7 @@ function buka(i) {
   const iti = safeUrl(p.link_itinerary);
   const chip = (ic, lbl, val) => `<div class="chip"><i>${IC[ic]}</i><div><small>${lbl}</small><b>${esc(val || '-')}</b></div></div>`;
   document.getElementById('mBody').innerHTML = `
-    <div class="pwrap"><img class="big" src="${esc(posterSrc(p.link_poster))}" alt="Poster ${esc(p.nama)}" referrerpolicy="no-referrer" onerror="this.closest('.pwrap').remove()"></div>
+    <div class="pwrap"><img class="big" src="${esc(posterSrc(p.link_poster))}" alt="Poster ${esc(p.nama)}" referrerpolicy="no-referrer" onerror="var w=this.closest('.pwrap'),g=w.parentNode;w.remove();g.style.gridTemplateColumns='1fr'"></div>
     <div class="mdet">
       <div class="chips">${chip('cal', 'Berangkat', p.tgl)}${chip('clock', 'Durasi', p.durasi)}${chip('plane', 'Maskapai', p.maskapai)}</div>
       ${kamar.length ? `<div class="sec"><h4>${IC.tag}Harga per orang</h4>
