@@ -2619,6 +2619,38 @@ async function createNewUser() {
     }
 }
 
+// Metadata tampilan per role (dipakai daftar user, kartu role, matriks akses).
+const US_ROLE_META = {
+    admin: { label: 'Admin', icon: 'bi-shield-fill-check' },
+    user:  { label: 'User',  icon: 'bi-person-fill' },
+    guest: { label: 'Guest', icon: 'bi-eye-fill' }
+};
+let usCachedUsers = [];              // hasil terakhir dashboard_profiles (dipakai filter/cari tanpa query ulang)
+let usMyId = '';                     // id akun yang sedang login (tombol ganti password dimatikan untuk diri sendiri)
+let usListFilter = { q: '', role: '' };
+
+function usInitials(name) {
+    const w = String(name || '?').trim().split(/\s+/).filter(Boolean);
+    return ((w[0] || '?')[0] + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase();
+}
+
+function usRelTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const m = Math.floor((Date.now() - d.getTime()) / 60000);
+    if (m < 1) return 'Baru saja';
+    if (m < 60) return m + ' menit lalu';
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + ' jam lalu';
+    const days = Math.floor(h / 24);
+    if (days < 7) return days + ' hari lalu';
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function usStateRow(html, danger) {
+    return `<tr><td colspan="4" class="us-state${danger ? ' us-state-err' : ''}">${html}</td></tr>`;
+}
+
 async function loadUserList() {
     const body = document.getElementById('usUserListBody');
     const countEl = document.getElementById('usUserListCount');
@@ -2631,34 +2663,118 @@ async function loadUserList() {
         const isMissingSetup = /column .*email.* does not exist/i.test(error.message || '');
         const isMissingLastLogin = /column .*last_login.* does not exist/i.test(error.message || '');
         body.innerHTML = isMissingSetup
-            ? `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--danger);">Setup belum lengkap: jalankan <code>sql/30_tambah_kelola_user.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.</td></tr>`
+            ? usStateRow('Setup belum lengkap: jalankan <code>sql/30_tambah_kelola_user.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.', true)
             : isMissingLastLogin
-            ? `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--danger);">Setup belum lengkap: jalankan <code>sql/31_tambah_last_login_profiles.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.</td></tr>`
-            : `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--danger);">Gagal memuat daftar user: ${escapeHtml(error.message)}</td></tr>`;
+            ? usStateRow('Setup belum lengkap: jalankan <code>sql/31_tambah_last_login_profiles.sql</code> di SQL Editor Supabase, lalu buka lagi tab ini.', true)
+            : usStateRow('Gagal memuat daftar user: ' + escapeHtml(error.message), true);
         if (countEl) countEl.textContent = '-';
         return;
     }
-    const rows = data || [];
-    if (countEl) countEl.textContent = rows.length + ' user';
+    usCachedUsers = data || [];
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    usMyId = session?.user?.id || '';
+
+    // Ringkasan jumlah per role
+    const cnt = { admin: 0, user: 0, guest: 0 };
+    usCachedUsers.forEach(u => { if (cnt[u.dashboard_role] != null) cnt[u.dashboard_role]++; });
+    const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setTxt('usStatTotal', usCachedUsers.length);
+    setTxt('usStatAdmin', cnt.admin);
+    setTxt('usStatUser', cnt.user);
+    setTxt('usStatGuest', cnt.guest);
+
+    renderUserListRows();
+}
+
+function renderUserListRows() {
+    const body = document.getElementById('usUserListBody');
+    const countEl = document.getElementById('usUserListCount');
+    if (!body) return;
+    const q = usListFilter.q.trim().toLowerCase();
+    const rows = usCachedUsers.filter(u =>
+        (!usListFilter.role || u.dashboard_role === usListFilter.role) &&
+        (!q || (u.label || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q)));
+    if (countEl) countEl.textContent = (q || usListFilter.role) ? `${rows.length} dari ${usCachedUsers.length} user` : `${usCachedUsers.length} user`;
     if (!rows.length) {
-        body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--ink-soft);">Belum ada data.</td></tr>';
+        body.innerHTML = usStateRow(usCachedUsers.length ? 'Tidak ada user yang cocok dengan pencarian.' : 'Belum ada data.');
         return;
     }
-    const roleBadge = { admin: '👑 Admin', user: '🎧 User', guest: '👁️ Guest' };
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    const myId = session?.user?.id || '';
-    body.innerHTML = rows.map(u => `<tr>
-        <td>${escapeHtml(u.label || '-')}</td>
-        <td>${escapeHtml(u.email || '-')}</td>
-        <td>${roleBadge[u.dashboard_role] || escapeHtml(u.dashboard_role || '-')}</td>
-        <td style="white-space:nowrap;font-size:12.5px;color:var(--ink-soft);">${u.last_login ? escapeHtml(new Date(u.last_login).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })) : 'Belum pernah'}</td>
-        <td>
-            <button class="btn-icon-ghost" title="Ganti Password" onclick="openResetPasswordModal('${escapeJsAttr(u.id)}', '${escapeJsAttr(u.label || u.email || '')}')"${u.id === myId ? ' style="opacity:.5;" disabled' : ''}>
-                <i class="bi bi-key-fill"></i>
-            </button>
-        </td>
-    </tr>`).join('');
+    body.innerHTML = rows.map(u => {
+        const role = US_ROLE_META[u.dashboard_role] ? u.dashboard_role : 'user';
+        const meta = US_ROLE_META[role];
+        const isMe = u.id === myIdSafe();
+        const name = u.label || u.email || '-';
+        const last = u.last_login
+            ? `<span class="us-last" title="${escapeHtml(new Date(u.last_login).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' }))}">${escapeHtml(usRelTime(u.last_login))}</span>`
+            : '<span class="us-last us-last-never">Belum pernah</span>';
+        const accessBtn = role === 'admin' ? '' : `<button type="button" class="btn-icon-ghost" title="Atur akses menu" onclick="usJumpToAccess('${escapeJsAttr(u.id)}')"><i class="bi bi-ui-checks-grid"></i></button>`;
+        return `<tr>
+            <td data-label="User"><div class="us-user"><span class="us-avatar us-role-${role}">${escapeHtml(usInitials(name))}</span><div class="us-user-txt"><b>${escapeHtml(name)}${isMe ? ' <span class="us-me">Kamu</span>' : ''}</b><span>${escapeHtml(u.email || '-')}</span></div></div></td>
+            <td data-label="Role"><span class="us-badge us-role-${role}"><i class="bi ${meta.icon}"></i> ${meta.label}</span></td>
+            <td data-label="Terakhir login">${last}</td>
+            <td class="us-actions">
+                ${accessBtn}
+                <button type="button" class="btn-icon-ghost" title="${isMe ? 'Ganti password akun sendiri lewat menu profil' : 'Ganti password'}" onclick="openResetPasswordModal('${escapeJsAttr(u.id)}', '${escapeJsAttr(u.label || u.email || '')}')"${isMe ? ' disabled' : ''}><i class="bi bi-key-fill"></i></button>
+            </td>
+        </tr>`;
+    }).join('');
 }
+function myIdSafe() { return usMyId; }
+
+function usSetListFilter(key, val) {
+    usListFilter[key] = val;
+    if (key === 'role') document.querySelectorAll('#usRoleChips .us-chip').forEach(c => c.classList.toggle('active', c.dataset.role === val));
+    renderUserListRows();
+}
+window.usSetListFilter = usSetListFilter;
+
+// Kartu pilihan role di form Tambah User (mengisi input tersembunyi #us_new_role yang dibaca createNewUser).
+function usPickRole(role) {
+    const input = document.getElementById('us_new_role');
+    if (input) input.value = role;
+    document.querySelectorAll('#usRoleCards .us-rolecard').forEach(c => c.classList.toggle('active', c.dataset.role === role));
+}
+window.usPickRole = usPickRole;
+
+function usGeneratePassword() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    const buf = new Uint32Array(10);
+    crypto.getRandomValues(buf);
+    const el = document.getElementById('us_new_password');
+    if (el) el.value = Array.from(buf, n => chars[n % chars.length]).join('');
+}
+window.usGeneratePassword = usGeneratePassword;
+
+// Sub-tab Akses Menu: "Per Role" atau "Per User (Pengecualian)".
+function switchUsAccessMode(mode) {
+    document.querySelectorAll('#usAccessSwitch button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    const r = document.getElementById('usAccessRole'), u = document.getElementById('usAccessUser');
+    if (r) r.style.display = mode === 'role' ? 'block' : 'none';
+    if (u) u.style.display = mode === 'user' ? 'block' : 'none';
+}
+window.switchUsAccessMode = switchUsAccessMode;
+
+// Tombol "Atur akses menu" di baris daftar user: loncat ke Akses Menu > Per User dengan akun itu terpilih.
+async function usJumpToAccess(userId) {
+    switchUsInnerTab('access');
+    switchUsAccessMode('user');
+    await populateUmaUserSelect();
+    const sel = document.getElementById('umaUserSelect');
+    if (sel) { sel.value = userId; renderUserMenuAccessMatrix(); }
+}
+window.usJumpToAccess = usJumpToAccess;
+
+// Kontrol 3 pilihan (Ikuti Role / Izinkan / Larang) di matriks per user. <select class="uma-select"> tersembunyi
+// tetap jadi sumber nilai yang dibaca saveUserMenuAccessMatrix().
+function umaSetState(btn) {
+    const seg = btn.closest('.us-seg');
+    if (!seg) return;
+    seg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+    seg.dataset.state = btn.dataset.v;
+    const sel = seg.querySelector('select.uma-select');
+    if (sel) sel.value = btn.dataset.v;
+}
+window.umaSetState = umaSetState;
 
 // ============================================================
 // 12b-2b. GANTI PASSWORD USER LAIN (admin only)
@@ -2747,30 +2863,22 @@ async function renderRoleMenuAccessMatrix() {
     (data || []).forEach(row => { if (row.allowed && current[row.role]) current[row.role].add(row.menu_key); });
 
     const groups = [...new Set(SIDEBAR_MENU_REGISTRY.map(m => m.group))];
+    const roleLabelMap = { user: 'User', guest: 'Guest' };
+    const cols = SIDEBAR_MENU_CONFIGURABLE_ROLES;
     const rowsHtml = groups.map(group => {
         const itemsHtml = SIDEBAR_MENU_REGISTRY.filter(m => m.group === group).map(m => `
             <tr>
-                <td style="padding:7px 10px;font-size:12px;">${escapeHtml(m.label)}</td>
-                ${SIDEBAR_MENU_CONFIGURABLE_ROLES.map(role => `
-                <td style="padding:7px 10px;text-align:center;">
-                    <input type="checkbox" class="rma-check" data-role="${role}" data-menu-key="${m.key}" ${current[role].has(m.key) ? 'checked' : ''}>
-                </td>`).join('')}
+                <td class="us-mx-label">${escapeHtml(m.label)}</td>
+                ${cols.map(role => `
+                <td class="us-mx-cell"><label class="us-switch"><input type="checkbox" class="rma-check" data-role="${role}" data-menu-key="${m.key}" ${current[role].has(m.key) ? 'checked' : ''}><span class="us-switch-ui"></span></label></td>`).join('')}
             </tr>`).join('');
-        return `
-            <tr><td colspan="${1 + SIDEBAR_MENU_CONFIGURABLE_ROLES.length}" style="padding:10px 10px 4px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);">${escapeHtml(group)}</td></tr>
-            ${itemsHtml}`;
+        return `<tr class="us-mx-group"><td colspan="${1 + cols.length}">${escapeHtml(group)}</td></tr>${itemsHtml}`;
     }).join('');
 
-    const roleLabelMap = { user: 'User', guest: 'Guest' };
     wrap.innerHTML = `
-        <div class="admin-table-wrap">
+        <div class="admin-table-wrap us-matrix">
             <table>
-                <thead>
-                    <tr>
-                        <th>Menu</th>
-                        ${SIDEBAR_MENU_CONFIGURABLE_ROLES.map(role => `<th style="text-align:center;">${roleLabelMap[role] || role}</th>`).join('')}
-                    </tr>
-                </thead>
+                <thead><tr><th>Menu</th>${cols.map(role => `<th class="us-mx-cell">${roleLabelMap[role] || role}</th>`).join('')}</tr></thead>
                 <tbody>${rowsHtml}</tbody>
             </table>
         </div>`;
@@ -2878,27 +2986,30 @@ async function renderUserMenuAccessMatrix() {
             const hasOverride = Object.prototype.hasOwnProperty.call(override, m.key);
             const state = hasOverride ? (override[m.key] ? 'allow' : 'deny') : 'inherit';
             const defaultLabel = roleDefault[m.key] ? 'boleh' : 'tidak boleh';
+            const seg = [['inherit', 'Ikuti Role'], ['allow', 'Izinkan'], ['deny', 'Larang']]
+                .map(([v, t]) => `<button type="button" data-v="${v}" class="${state === v ? 'active' : ''}" onclick="umaSetState(this)">${t}</button>`).join('');
+            const opts = [['inherit', 'Ikuti Role'], ['allow', 'Izinkan'], ['deny', 'Larang']]
+                .map(([v, t]) => `<option value="${v}"${state === v ? ' selected' : ''}>${t}</option>`).join('');
             return `
             <tr>
-                <td style="padding:7px 10px;font-size:12px;">${escapeHtml(m.label)}<div style="font-size:10.5px;color:var(--ink-soft);">default role: ${defaultLabel}</div></td>
-                <td style="padding:7px 10px;text-align:center;">
-                    <select class="uma-select" data-menu-key="${m.key}" style="font-size:12px;padding:4px 6px;">
-                        <option value="inherit" ${state === 'inherit' ? 'selected' : ''}>Ikuti Role</option>
-                        <option value="allow" ${state === 'allow' ? 'selected' : ''}>Izinkan</option>
-                        <option value="deny" ${state === 'deny' ? 'selected' : ''}>Larang</option>
-                    </select>
-                </td>
+                <td class="us-mx-label">${escapeHtml(m.label)}<div class="us-mx-sub">Default role: ${defaultLabel}</div></td>
+                <td class="us-mx-cell"><div class="us-seg us-seg-sm" data-state="${state}">${seg}<select class="uma-select" data-menu-key="${m.key}" hidden>${opts}</select></div></td>
             </tr>`;
         }).join('');
-        return `
-            <tr><td colspan="2" style="padding:10px 10px 4px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);">${escapeHtml(group)}</td></tr>
-            ${itemsHtml}`;
+        return `<tr class="us-mx-group"><td colspan="2">${escapeHtml(group)}</td></tr>${itemsHtml}`;
     }).join('');
 
+    const tRole = (targetUser && US_ROLE_META[targetUser.dashboard_role]) ? targetUser.dashboard_role : 'user';
+    const tName = targetUser ? (targetUser.label || targetUser.email || '-') : '-';
     wrap.innerHTML = `
-        <div class="admin-table-wrap" style="margin-top:12px;">
+        <div class="us-target">
+            <span class="us-avatar us-role-${tRole}">${escapeHtml(usInitials(tName))}</span>
+            <div class="us-user-txt"><b>${escapeHtml(tName)}</b><span>${escapeHtml(targetUser?.email || '')}</span></div>
+            <span class="us-badge us-role-${tRole}"><i class="bi ${US_ROLE_META[tRole].icon}"></i> ${US_ROLE_META[tRole].label}</span>
+        </div>
+        <div class="admin-table-wrap us-matrix">
             <table>
-                <thead><tr><th>Menu</th><th style="text-align:center;">Akses</th></tr></thead>
+                <thead><tr><th>Menu</th><th class="us-mx-cell">Akses</th></tr></thead>
                 <tbody>${rowsHtml}</tbody>
             </table>
         </div>`;
@@ -3142,7 +3253,7 @@ function switchAdminSubTab(name) {
     if (name === 'pembayaran') { renderPembayaranPanel(); }
     if (name === 'unggulan') { renderFeaturedAdminTable(); }
     if (name === 'snapshot') { renderSnapshotAdminTable(); }
-    if (name === 'usersettings') { switchUsInnerTab('adduser'); loadUserList(); renderRoleMenuAccessMatrix(); populateUmaUserSelect(); }
+    if (name === 'usersettings') { switchUsInnerTab('list'); switchUsAccessMode('role'); loadUserList(); renderRoleMenuAccessMatrix(); populateUmaUserSelect(); }
     if (name === 'assets') { switchAssetsInnerTab('links'); loadAssets().then(renderAssetsAdminTable); }
     if (name === 'systemstatus') { renderSystemStatusPanel(); }
 }
@@ -3902,78 +4013,86 @@ async function renderAdminPanel() {
             </div>
 
             <div class="admin-subtab-panel" id="adminSubTab-usersettings" style="display:none;">
-                <div class="admin-section-header">
-                    <div><h4>Pengaturan User</h4>
-                    <p>Tambah akun baru per-orang dengan role Admin (akses penuh), User (kelola data program), atau Guest (lihat saja)</p></div>
+                <div class="us-head">
+                    <div class="us-head-text">
+                        <h4>Manajemen User</h4>
+                        <p>Kelola akun login, role, dan akses menu sidebar tiap orang.</p>
+                    </div>
+                    <button type="button" class="btn-primary us-head-btn" onclick="switchUsInnerTab('adduser')"><i class="bi bi-person-plus-fill"></i> Tambah User</button>
                 </div>
 
-                <div class="assets-inner-tabs">
-                    <button type="button" class="assets-inner-tab-btn active" data-inner-tab="adduser" onclick="switchUsInnerTab('adduser')">
-                        <i class="bi bi-person-plus-fill"></i> Tambah User
+                <div class="us-stats" id="usStats">
+                    <div class="us-stat"><span class="us-stat-ico"><i class="bi bi-people-fill"></i></span><div><b id="usStatTotal">-</b><span>Total user</span></div></div>
+                    <div class="us-stat us-role-admin"><span class="us-stat-ico"><i class="bi bi-shield-fill-check"></i></span><div><b id="usStatAdmin">-</b><span>Admin</span></div></div>
+                    <div class="us-stat us-role-user"><span class="us-stat-ico"><i class="bi bi-person-fill"></i></span><div><b id="usStatUser">-</b><span>User</span></div></div>
+                    <div class="us-stat us-role-guest"><span class="us-stat-ico"><i class="bi bi-eye-fill"></i></span><div><b id="usStatGuest">-</b><span>Guest</span></div></div>
+                </div>
+
+                <div class="us-tabs">
+                    <button type="button" class="assets-inner-tab-btn active" data-inner-tab="list" onclick="switchUsInnerTab('list')">
+                        <i class="bi bi-people-fill"></i> Daftar User
                     </button>
                     <button type="button" class="assets-inner-tab-btn" data-inner-tab="access" onclick="switchUsInnerTab('access')">
                         <i class="bi bi-ui-checks-grid"></i> Akses Menu
                     </button>
-                    <button type="button" class="assets-inner-tab-btn" data-inner-tab="list" onclick="switchUsInnerTab('list')">
-                        <i class="bi bi-people-fill"></i> Daftar User
+                    <button type="button" class="assets-inner-tab-btn" data-inner-tab="adduser" onclick="switchUsInnerTab('adduser')">
+                        <i class="bi bi-person-plus-fill"></i> Tambah User
                     </button>
                 </div>
 
-                <div id="usPanel-adduser" style="display:block;">
-                    <div class="admin-fieldset" style="margin-top:20px;">
-                        <div class="admin-fieldset-title"><i class="bi bi-person-plus-fill"></i> Tambah User Baru</div>
-                        <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;">Buat akun login baru untuk satu orang, dengan role Admin (akses penuh), User (kelola data program), atau Guest (hanya lihat, tanpa akses tambah/edit/hapus).</p>
-                        <div class="form-group">
-                            <label>Nama / Label<span class="required">*</span></label>
-                            <input type="text" id="us_new_label" placeholder="Contoh: Budi Santoso" autocomplete="off">
+                <div id="usPanel-list" style="display:block;">
+                    <div class="us-card">
+                        <div class="us-toolbar">
+                            <div class="us-search">
+                                <i class="bi bi-search"></i>
+                                <input type="text" id="usSearch" placeholder="Cari nama atau email..." autocomplete="off" oninput="usSetListFilter('q', this.value)">
+                            </div>
+                            <div class="us-chips" id="usRoleChips">
+                                <button type="button" class="us-chip active" data-role="" onclick="usSetListFilter('role','')">Semua</button>
+                                <button type="button" class="us-chip" data-role="admin" onclick="usSetListFilter('role','admin')">Admin</button>
+                                <button type="button" class="us-chip" data-role="user" onclick="usSetListFilter('role','user')">User</button>
+                                <button type="button" class="us-chip" data-role="guest" onclick="usSetListFilter('role','guest')">Guest</button>
+                            </div>
+                            <span class="us-count" id="usUserListCount">-</span>
                         </div>
-                        <div class="form-group">
-                            <label>Email<span class="required">*</span></label>
-                            <input type="email" id="us_new_email" placeholder="nama@contoh.com" autocomplete="off">
-                        </div>
-                        <div class="form-group">
-                            <label>Password<span class="required">*</span></label>
-                            <input type="text" id="us_new_password" placeholder="Minimal 6 karakter" autocomplete="off">
-                        </div>
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label>Role<span class="required">*</span></label>
-                            <select id="us_new_role">
-                                <option value="user">User biasa (kelola data program)</option>
-                                <option value="admin">Admin (akses penuh)</option>
-                                <option value="guest">Guest (lihat saja, tanpa akses tulis)</option>
-                            </select>
+                        <div class="admin-table-wrap us-table-wrap">
+                            <table class="us-table">
+                                <thead><tr><th>User</th><th>Role</th><th>Terakhir Login</th><th style="text-align:right;">Aksi</th></tr></thead>
+                                <tbody id="usUserListBody"><tr><td colspan="4" class="us-state">Memuat...</td></tr></tbody>
+                            </table>
                         </div>
                     </div>
-                    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
-                        <button class="btn-primary" onclick="createNewUser()"><i class="bi bi-person-plus-fill"></i> Tambah User</button>
-                    </div>
-                    <div id="usNewUserStatus" style="margin-top:12px;"></div>
                 </div>
 
                 <div id="usPanel-access" style="display:none;">
-                    <div class="admin-fieldset" style="margin-top:20px;">
-                        <div class="admin-fieldset-title"><i class="bi bi-ui-checks-grid"></i> Akses Menu Sidebar per Role</div>
-                        <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;">Atur menu sidebar apa saja yang boleh diakses oleh role <b>User</b> dan <b>Guest</b>. Role <b>Admin</b> selalu punya akses penuh ke semua menu dan tidak bisa dikunci di sini.</p>
+                    <div class="us-seg us-seg-top" id="usAccessSwitch">
+                        <button type="button" class="active" data-mode="role" onclick="switchUsAccessMode('role')"><i class="bi bi-diagram-3-fill"></i> Per Role</button>
+                        <button type="button" data-mode="user" onclick="switchUsAccessMode('user')"><i class="bi bi-person-lock"></i> Per User (Pengecualian)</button>
+                    </div>
+
+                    <div id="usAccessRole" class="us-card us-card-pad">
+                        <div class="us-card-title"><i class="bi bi-diagram-3-fill"></i> Akses Menu Sidebar per Role</div>
+                        <p class="us-hint">Atur menu yang boleh diakses role <b>User</b> dan <b>Guest</b>. Role <b>Admin</b> selalu punya akses penuh dan tidak bisa dikunci di sini.</p>
                         <div id="roleMenuAccessWrap">
-                            <div style="text-align:center;padding:20px;color:var(--ink-soft);">Memuat...</div>
+                            <div class="us-state">Memuat...</div>
                         </div>
-                        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center;">
+                        <div class="us-savebar">
                             <button class="btn-primary" id="roleMenuAccessSaveBtn" onclick="saveRoleMenuAccessMatrix()"><i class="bi bi-save-fill"></i> Simpan Akses Menu</button>
                             <span id="roleMenuAccessStatus"></span>
                         </div>
                     </div>
 
-                    <div class="admin-fieldset" style="margin-top:20px;">
-                        <div class="admin-fieldset-title"><i class="bi bi-person-lock"></i> Akses Menu per User (Pengecualian)</div>
-                        <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;">Atur pengecualian akses menu untuk 1 akun tertentu -- misal 2 akun sama-sama role <b>User</b>, tapi salah satunya mau dibatasi lebih ketat/longgar dari default role-nya. Menu yang <b>tidak</b> diubah di sini tetap ikut aturan role di atas.</p>
-                        <div class="form-group" style="max-width:360px;">
+                    <div id="usAccessUser" class="us-card us-card-pad" style="display:none;">
+                        <div class="us-card-title"><i class="bi bi-person-lock"></i> Akses Menu per User (Pengecualian)</div>
+                        <p class="us-hint">Atur pengecualian untuk satu akun, misalnya dua akun sama-sama role <b>User</b> tapi salah satunya perlu dibatasi lebih ketat atau lebih longgar. Menu yang <b>tidak</b> diubah tetap ikut aturan role.</p>
+                        <div class="form-group" style="max-width:380px;">
                             <label>Pilih User</label>
                             <select id="umaUserSelect" onchange="renderUserMenuAccessMatrix()">
                                 <option value="">-- Pilih akun --</option>
                             </select>
                         </div>
                         <div id="userMenuAccessWrap"></div>
-                        <div id="userMenuAccessActions" style="display:none;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center;">
+                        <div id="userMenuAccessActions" class="us-savebar" style="display:none;">
                             <button class="btn-primary" id="userMenuAccessSaveBtn" onclick="saveUserMenuAccessMatrix()"><i class="bi bi-save-fill"></i> Simpan Akses User Ini</button>
                             <button class="btn-cancel" id="userMenuAccessResetBtn" onclick="resetUserMenuAccessMatrix()"><i class="bi bi-arrow-counterclockwise"></i> Kembalikan ke Default Role</button>
                             <span id="userMenuAccessStatus"></span>
@@ -3981,17 +4100,53 @@ async function renderAdminPanel() {
                     </div>
                 </div>
 
-                <div id="usPanel-list" style="display:none;">
-                    <div class="admin-table-card" style="margin-top:20px;">
-                        <div class="admin-table-head">
-                            <h4>Daftar User Terdaftar</h4>
-                            <span class="count" id="usUserListCount">-</span>
+                <div id="usPanel-adduser" style="display:none;">
+                    <div class="us-card us-card-pad">
+                        <div class="us-card-title"><i class="bi bi-person-plus-fill"></i> Tambah User Baru</div>
+                        <p class="us-hint">Buat akun login untuk satu orang. Pilih role sesuai kebutuhan, role bisa dibatasi lebih lanjut di tab Akses Menu.</p>
+                        <div class="us-form-grid">
+                            <div class="us-form-fields">
+                                <div class="form-group">
+                                    <label>Nama / Label<span class="required">*</span></label>
+                                    <input type="text" id="us_new_label" placeholder="Contoh: Budi Santoso" autocomplete="off">
+                                </div>
+                                <div class="form-group">
+                                    <label>Email<span class="required">*</span></label>
+                                    <input type="email" id="us_new_email" placeholder="nama@contoh.com" autocomplete="off">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label>Password<span class="required">*</span></label>
+                                    <div class="us-pass">
+                                        <input type="text" id="us_new_password" placeholder="Minimal 6 karakter" autocomplete="off">
+                                        <button type="button" class="btn-cancel" onclick="usGeneratePassword()" title="Buat password acak"><i class="bi bi-magic"></i> Acak</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="us-form-roles">
+                                <label class="us-label">Role<span class="required">*</span></label>
+                                <input type="hidden" id="us_new_role" value="user">
+                                <div class="us-rolecards" id="usRoleCards">
+                                    <button type="button" class="us-rolecard us-role-user active" data-role="user" onclick="usPickRole('user')">
+                                        <span class="us-rolecard-ico"><i class="bi bi-person-fill"></i></span>
+                                        <span class="us-rolecard-txt"><b>User</b><span>Kelola data program, jamaah, dan pembayaran.</span></span>
+                                        <i class="bi bi-check-circle-fill us-rolecard-check"></i>
+                                    </button>
+                                    <button type="button" class="us-rolecard us-role-admin" data-role="admin" onclick="usPickRole('admin')">
+                                        <span class="us-rolecard-ico"><i class="bi bi-shield-fill-check"></i></span>
+                                        <span class="us-rolecard-txt"><b>Admin</b><span>Akses penuh ke semua menu dan pengaturan.</span></span>
+                                        <i class="bi bi-check-circle-fill us-rolecard-check"></i>
+                                    </button>
+                                    <button type="button" class="us-rolecard us-role-guest" data-role="guest" onclick="usPickRole('guest')">
+                                        <span class="us-rolecard-ico"><i class="bi bi-eye-fill"></i></span>
+                                        <span class="us-rolecard-txt"><b>Guest</b><span>Hanya lihat, tanpa tambah, ubah, atau hapus.</span></span>
+                                        <i class="bi bi-check-circle-fill us-rolecard-check"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="admin-table-wrap">
-                            <table>
-                                <thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Terakhir Login</th><th>Aksi</th></tr></thead>
-                                <tbody id="usUserListBody"><tr><td colspan="5" style="text-align:center;padding:20px;color:var(--ink-soft);">Memuat...</td></tr></tbody>
-                            </table>
+                        <div class="us-savebar">
+                            <button class="btn-primary" onclick="createNewUser()"><i class="bi bi-person-plus-fill"></i> Tambah User</button>
+                            <span id="usNewUserStatus"></span>
                         </div>
                     </div>
                 </div>
