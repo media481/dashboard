@@ -2,7 +2,6 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="theme-color" content="#0f2440">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Program Umroh Tersedia | Amiru Tour</title>
 <meta name="description" content="Daftar program Umroh Amiru Tour yang masih tersedia: jadwal, harga, maskapai, dan hotel.">
@@ -11,132 +10,69 @@
 <link rel="icon" href="favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#e9eff3;--paper:#fff;--ink:#15263a;--ink2:#566678;--navy:#1a355b;--navy-deep:#0f2440;--line:#d3dde6;--gold:#f0c35a;--gold-ink:#4d3800;--emerald:#17795a;--emerald-tint:#dff1ea;--wa:#0f7a45;--focus:#1a6fa8;--r:18px}
+:root{--bg:#F4F7FB;--surface:#fff;--ink:#1C2B3A;--ink-soft:#64758A;--brand:#1a355b;--brand-deep:#0f2138;--brand-tint:#dbe4ee;--success:#279E70;--success-tint:#E1F5EC;--warn:#E07B2E;--warn-tint:#FBEBD9;--line:#E1E8F0;--radius:14px;--shadow:0 4px 24px rgba(0,0,0,.08)}
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-tap-highlight-color:transparent}
-body{font:400 16px/1.5 Barlow,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
-h1,h2,h3,h4,.hari,.harga{font-family:"Barlow Condensed",Barlow,system-ui,sans-serif}
-:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
-.wrap{max-width:980px;margin:0 auto;padding:0 18px}
-
-/* Hero */
-.hero{background:var(--navy-deep);color:#fff;padding:calc(22px + env(safe-area-inset-top,0px)) 0 36px}
-.brand{display:flex;align-items:center;gap:12px;margin-bottom:28px}
-.brand img{width:44px;height:44px;border-radius:10px;background:#fff;object-fit:contain;padding:3px}
-.brand b{display:block;font:600 20px/1.1 "Barlow Condensed",sans-serif;letter-spacing:.3px}
-.brand span{font-size:13px;opacity:.75}
-.hero h1{font-weight:700;font-size:clamp(44px,10vw,72px);line-height:.96;letter-spacing:-.5px;max-width:14ch}
-.hero p{margin-top:14px;max-width:46ch;opacity:.86;font-size:16px}
-
-/* Filter */
-.filter{position:sticky;top:0;z-index:20;background:var(--bg);padding:14px 0 8px}
-.tools{display:flex;gap:10px;flex-wrap:wrap}
-.cari{position:relative;flex:1 1 260px}
-.cari svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--ink2);pointer-events:none}
-.cari input,.tools select{font:inherit;font-size:16px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);min-width:0}
-.cari input{width:100%;padding:12px 14px 12px 40px}
-.tools select{flex:0 1 250px;padding:12px 14px}
-.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 0 4px;scrollbar-width:none}
-.chips::-webkit-scrollbar{display:none}
-.chips[hidden]{display:none}
-.chip{flex:none;font:600 15px Barlow,sans-serif;padding:7px 15px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--navy);cursor:pointer}
-.chip[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
-.meta{padding:12px 0 4px;color:var(--ink2);font-size:15px;min-height:30px}
-
-/* Tiket */
-.daftar{display:grid;gap:16px;padding:6px 0 30px}
-.tiket{display:grid;grid-template-columns:132px minmax(0,1fr) 256px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r)}
-.foto{padding:16px 0 16px 16px}
-.poster{display:block;width:100%;aspect-ratio:4/5;border:0;padding:0;border-radius:10px;overflow:hidden;cursor:pointer;background:#dbe4ee}
+body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;padding-bottom:env(safe-area-inset-bottom,0)}
+h1,h2,h3{font-family:"Space Grotesk",Inter,system-ui,sans-serif}
+.hero{background:linear-gradient(135deg,var(--brand-deep),var(--brand));color:#fff;padding:calc(14px + env(safe-area-inset-top,0)) 20px 44px}
+.wrap{max-width:1180px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.brand img{width:36px;height:36px;border-radius:8px;background:#fff;object-fit:contain;padding:3px}
+.brand b{font:700 16px "Space Grotesk",Inter,sans-serif;letter-spacing:.2px}
+.brand span{display:block;font-size:12px;opacity:.75}
+.hero h1{font-size:clamp(22px,4vw,30px);line-height:1.15;margin-bottom:4px}
+.hero p{opacity:.85;max-width:620px;font-size:14px}
+.tools{max-width:1180px;margin:-30px auto 0;padding:0 20px;display:flex;gap:10px;flex-wrap:wrap}
+.tools input,.tools select{font:inherit;font-size:14px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);box-shadow:var(--shadow);min-width:0}
+.tools input{flex:1 1 240px}
+.tools select{flex:0 1 190px}
+.tools input:focus,.tools select:focus{outline:2px solid var(--brand);outline-offset:1px}
+.meta{max-width:1180px;margin:16px auto 0;padding:0 20px;color:var(--ink-soft);font-size:13px}
+.grid{max-width:1180px;margin:14px auto 40px;padding:0 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;transition:transform .15s,box-shadow .15s}
+.card:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,.12)}
+.poster{position:relative;aspect-ratio:4/5;background:var(--brand-tint);cursor:pointer;overflow:hidden;border:0;padding:0;width:100%;display:block}
 .poster img{width:100%;height:100%;object-fit:cover;display:block}
-.poster .ph{height:100%;display:grid;place-items:center;padding:8px;text-align:center;overflow:hidden;overflow-wrap:anywhere;color:var(--navy);font:600 15px/1.2 "Barlow Condensed",sans-serif}
-.utama{padding:16px 20px;display:flex;flex-direction:column;gap:6px;min-width:0}
-.tgl{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px}
-.hari{font-weight:700;font-size:56px;line-height:.9;color:var(--navy)}
-.bt{display:flex;flex-direction:column;line-height:1.15}
-.bln{font:600 21px/1.1 "Barlow Condensed",sans-serif;color:var(--navy)}
-.sisa{font-size:14px;color:var(--ink2)}
-.tags{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end;align-self:flex-start}
-.tag{font:600 13px/1 Barlow,sans-serif;padding:5px 9px;border-radius:6px}
-.tag.near{background:var(--gold);color:var(--gold-ink)}
-.tag.new{background:var(--emerald-tint);color:var(--emerald)}
-.utama h3{font-weight:600;font-size:27px;line-height:1.1;margin-top:6px}
-.info{display:flex;flex-wrap:wrap;gap:6px 26px;margin-top:auto;padding-top:10px}
-.info dt{font-size:13px;color:var(--ink2)}
-.info dd{font-weight:600;font-size:16px}
-
-/* Bagian tiket (kanan) + lubang perforasi */
-.stub{position:relative;border-left:2px dashed var(--line);padding:16px 18px;display:flex;flex-direction:column;justify-content:space-between;gap:14px}
-.stub::before,.stub::after{content:"";position:absolute;left:-12px;width:22px;height:22px;border-radius:50%;background:var(--bg);border:1px solid var(--line)}
-.stub::before{top:-12px;clip-path:inset(50% 0 0 0)}
-.stub::after{bottom:-12px;clip-path:inset(0 0 50% 0)}
-.hrg small{display:block;font-size:14px;color:var(--ink2)}
-.harga{display:block;font-weight:700;font-size:30px;line-height:1.05;color:var(--navy);white-space:nowrap}
-.aksi{display:flex;flex-direction:column;gap:8px;margin-top:auto}
-.btn{flex:1;font:600 16px Barlow,sans-serif;text-align:center;text-decoration:none;padding:11px 14px;border-radius:10px;border:1.5px solid var(--navy);background:#fff;color:var(--navy);cursor:pointer;display:inline-block}
-.btn.primary{background:var(--navy);color:#fff}
-.btn.wa{background:var(--wa);border-color:var(--wa);color:#fff}
-.btn:hover{filter:brightness(.93)}
-
-.state{padding:48px 20px;text-align:center;color:var(--ink2)}
-.state b{display:block;font:600 24px "Barlow Condensed",sans-serif;color:var(--ink);margin-bottom:4px}
-.skel{height:200px;border-radius:var(--r);background:linear-gradient(90deg,#dde6ec 25%,#eaf0f4 50%,#dde6ec 75%);background-size:200% 100%;animation:sh 1.2s infinite}
+.poster .ph{height:100%;display:grid;place-items:center;color:var(--brand);font:600 14px Inter,sans-serif;padding:20px;text-align:center}
+.badges{position:absolute;top:10px;left:10px;display:flex;gap:6px;flex-wrap:wrap}
+.badge{font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:999px;background:#fff;color:var(--brand);box-shadow:0 1px 6px rgba(0,0,0,.15)}
+.badge.near{background:var(--warn-tint);color:#A5541A}
+.badge.new{background:var(--success-tint);color:var(--success)}
+.body{padding:16px;display:flex;flex-direction:column;gap:10px;flex:1}
+.body h3{font-size:18px;line-height:1.25}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;font-size:13px}
+.facts div small{display:block;color:var(--ink-soft);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+.facts div b{font-weight:600}
+.price{margin-top:auto;padding-top:10px;border-top:1px dashed var(--line)}
+.price small{color:var(--ink-soft);font-size:12px}
+.price strong{display:block;font:700 21px "Space Grotesk",Inter,sans-serif;color:var(--brand)}
+.actions{display:flex;gap:8px}
+.btn{flex:1;font:600 14px Inter,sans-serif;text-align:center;text-decoration:none;padding:11px 12px;border-radius:10px;border:1px solid var(--brand);background:#fff;color:var(--brand);cursor:pointer}
+.btn.primary{background:var(--brand);color:#fff}
+.btn.wa{background:#25D366;border-color:#25D366;color:#fff}
+.btn:hover{filter:brightness(.95)}
+.state{max-width:1180px;margin:40px auto;padding:40px 20px;text-align:center;color:var(--ink-soft)}
+.skel{height:420px;border-radius:var(--radius);background:linear-gradient(90deg,#eaeff5 25%,#f4f7fb 50%,#eaeff5 75%);background-size:200% 100%;animation:sh 1.2s infinite}
 @keyframes sh{to{background-position:-200% 0}}
-.catatan{padding-top:4px;padding-bottom:calc(34px + env(safe-area-inset-bottom,0px));color:var(--ink2);font-size:14px}
-.catatan p{max-width:70ch}
-
-/* Detail */
-.modal{position:fixed;inset:0;background:rgba(10,24,42,.62);display:none;align-items:flex-end;justify-content:center;z-index:50}
+.modal{position:fixed;inset:0;background:rgba(15,33,56,.6);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
 .modal.open{display:flex}
-.sheet{background:#fff;width:100%;max-width:880px;max-height:92dvh;overflow:auto;border-radius:20px 20px 0 0;animation:naik .22s ease-out}
-@keyframes naik{from{transform:translateY(40px);opacity:0}}
-.sheet>header{padding:16px 20px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;z-index:2}
-.sheet>header h2{font-weight:700;font-size:28px;line-height:1.1;color:var(--navy)}
-.x{border:0;background:var(--bg);color:var(--navy);width:38px;height:38px;border-radius:50%;font-size:24px;line-height:1;cursor:pointer;flex:none}
-.in{padding:18px 20px 22px;display:grid;gap:20px}
-.kiri img.big{width:100%;border-radius:12px;display:block}
-.kanan{display:grid;gap:22px;min-width:0;align-content:start}
-.sheet h4{font:600 20px/1.2 "Barlow Condensed",sans-serif;color:var(--navy);margin-bottom:6px}
-.ringkas{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
-.ringkas small{display:block;color:var(--ink2);font-size:13px}
-.ringkas b{font-weight:600;font-size:17px}
-.baris{display:flex;justify-content:space-between;align-items:baseline;gap:14px;padding:9px 0;border-bottom:1px dashed var(--line)}
-.baris span{color:var(--ink2)}
-.baris b{font-weight:600;text-align:right}
-.baris.hb b{font:700 24px "Barlow Condensed",sans-serif;color:var(--navy)}
-.cek{list-style:none;display:grid;gap:6px}
-.cek li{position:relative;padding-left:26px;font-size:16px}
-.cek li::before{position:absolute;left:0;top:0;font-weight:700}
-.cek.ya li::before{content:"\2713";color:var(--emerald)}
-.cek.tidak li::before{content:"\2715";color:#b4432f}
-.aksi-sheet{grid-column:1/-1;position:sticky;bottom:0;display:flex;gap:10px;margin:0 -20px -22px;padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));background:#fff;border-top:1px solid var(--line)}
-
-@media(min-width:760px){
-  .modal{align-items:center;padding:24px}
-  .sheet{border-radius:20px}
-  .in{grid-template-columns:290px 1fr;align-items:start}
-  .in.tanpa-foto{grid-template-columns:1fr}
-  .kiri{position:sticky;top:78px}
-}
-@media(max-width:720px){
-  .hero{padding-bottom:30px}
-  .tools select{flex:1 1 100%}
-  .tags{order:3;flex-basis:100%;margin-left:0;justify-content:flex-start}
-  .tiket{grid-template-columns:104px minmax(0,1fr)}
-  .foto{padding:14px 0 14px 14px}
-  .utama{padding:14px 16px}
-  .hari{font-size:46px}
-  .utama h3{font-size:23px}
-  .stub{grid-column:1/-1;border-left:0;border-top:2px dashed var(--line);flex-direction:row;align-items:center;flex-wrap:wrap;padding:14px 16px}
-  .stub::before{left:-12px;top:-12px;bottom:auto;clip-path:inset(0 0 0 50%)}
-  .stub::after{left:auto;right:-12px;top:-12px;bottom:auto;clip-path:inset(0 50% 0 0)}
-  .hrg{flex:1 1 auto}
-  .harga{font-size:29px}
-  .aksi{flex-direction:row;margin-top:0;flex:1 1 220px}
-  .skel{height:250px}
-}
+.sheet{background:#fff;border-radius:var(--radius);max-width:720px;width:100%;max-height:92dvh;overflow:auto;position:relative}
+.sheet header{padding:18px 20px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;display:flex;justify-content:space-between;gap:12px}
+.sheet header h2{font-size:20px}
+.x{border:0;background:var(--brand-tint);color:var(--brand);width:34px;height:34px;border-radius:50%;font-size:20px;cursor:pointer;flex:none}
+.sheet .in{padding:16px 20px 22px;display:grid;gap:16px}
+.sheet img.big{width:100%;border-radius:12px;display:block}
+.sheet h4{font:600 13px Inter,sans-serif;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-soft);margin-bottom:6px}
+.prices{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.prices div{background:var(--bg);border-radius:10px;padding:10px}
+.prices small{color:var(--ink-soft);font-size:11px;display:block}
+.prices b{font-size:14px}
+.sheet ul{padding-left:20px;font-size:14px;display:grid;gap:3px}
+footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px calc(30px + env(safe-area-inset-bottom,0))}
+@media(max-width:520px){.tools select{flex:1 1 100%}.hero p{display:none}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -147,19 +83,13 @@ h1,h2,h3,h4,.hari,.harga{font-family:"Barlow Condensed",Barlow,system-ui,sans-se
   <p>Pilih jadwal keberangkatan, maskapai, dan hotel yang sesuai. Harga dan jadwal diperbarui otomatis.</p>
 </div></section>
 
-<div class="filter"><div class="wrap">
-  <div class="tools">
-    <label class="cari"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" type="search" placeholder="Cari program, maskapai, hotel" aria-label="Cari program" autocomplete="off"></label>
-    <select id="sort" aria-label="Urutkan"><option value="date">Keberangkatan terdekat</option><option value="low">Harga termurah</option><option value="high">Harga termahal</option></select>
-  </div>
-  <div class="chips" id="bulan" role="group" aria-label="Filter bulan keberangkatan" hidden></div>
-</div></div>
-
-<main class="wrap">
-  <div class="meta" id="meta" aria-live="polite"></div>
-  <div class="daftar" id="grid" aria-busy="true"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
-</main>
-<footer class="wrap catatan"><p>Harga dan jadwal dapat berubah sewaktu-waktu mengikuti ketentuan Saudi, maskapai, dan kurs. Hubungi kami untuk informasi terbaru.</p></footer>
+<div class="tools">
+  <input id="q" type="search" placeholder="Cari nama program, maskapai, hotel..." aria-label="Cari program" autocomplete="off">
+  <select id="sort" aria-label="Urutkan"><option value="date">Keberangkatan terdekat</option><option value="low">Harga termurah</option><option value="high">Harga termahal</option></select>
+</div>
+<div class="meta" id="meta" aria-live="polite"></div>
+<main class="grid" id="grid" aria-busy="true"><div class="skel"></div><div class="skel"></div><div class="skel"></div></main>
+<footer>Harga dan jadwal dapat berubah sewaktu-waktu mengikuti ketentuan Saudi, maskapai, dan kurs. Hubungi kami untuk informasi terbaru.</footer>
 
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="sheet">
   <header><h2 id="mTitle"></h2><button class="x" id="mClose" aria-label="Tutup">&times;</button></header>
@@ -174,22 +104,7 @@ const WA_NUMBER = "";   // isi nomor WhatsApp admin format internasional tanpa +
 const BARU_HARI = 3;    // badge "Baru" tampil selama N hari sejak program dibuat
 
 const BULAN = {Januari:0,Februari:1,Maret:2,April:3,Mei:4,Juni:5,Juli:6,Agustus:7,September:8,Oktober:9,November:10,Desember:11};
-let semua = [], tampil = [], bulanAktif = '';
-const NAMA_BULAN = Object.keys(BULAN);
-const kunciBulan = d => d.getFullYear() + '-' + d.getMonth();
-
-function buatChip() {
-  const box = document.getElementById('bulan');
-  const uniq = new Map();
-  semua.filter(p => p.dateObj).sort((a, b) => a.dateObj - b.dateObj).forEach(p => {
-    const k = kunciBulan(p.dateObj);
-    if (!uniq.has(k)) uniq.set(k, NAMA_BULAN[p.dateObj.getMonth()].slice(0, 3) + ' ' + p.dateObj.getFullYear());
-  });
-  if (uniq.size < 2) { box.hidden = true; return; }
-  box.innerHTML = '<button class="chip" data-b="" aria-pressed="true">Semua</button>' +
-    [...uniq].map(([k, l]) => `<button class="chip" data-b="${k}" aria-pressed="false">${esc(l)}</button>`).join('');
-  box.hidden = false;
-}
+let semua = [], tampil = [];
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const safeUrl = u => { u = String(u || '').trim(); return /^https?:\/\//i.test(u) ? u : ''; };
@@ -252,7 +167,6 @@ async function muat() {
     const terdekat = new Set([...semua].filter(p => p.dateObj).sort((a,b) => a.dateObj - b.dateObj).slice(0,3).map(p => String(p.id)));
     semua.forEach(p => { p._near = terdekat.has(String(p.id)); const c = new Date(p.created_at); p._baru = !isNaN(c) && (Date.now() - c) < BARU_HARI * 864e5; });
     grid.setAttribute('aria-busy', 'false');
-    buatChip();
     render();
   } catch (e) {
     console.error(e);
@@ -263,42 +177,35 @@ async function muat() {
 function render() {
   const q = document.getElementById('q').value.trim().toLowerCase();
   const mode = document.getElementById('sort').value;
-  tampil = semua.filter(p => (!bulanAktif || (p.dateObj && kunciBulan(p.dateObj) === bulanAktif))
-    && (!q || [p.nama, p.maskapai, p.hotel_makkah, p.hotel_madinah, p.tgl].join(' ').toLowerCase().includes(q)));
+  tampil = semua.filter(p => !q || [p.nama, p.maskapai, p.hotel_makkah, p.hotel_madinah, p.tgl].join(' ').toLowerCase().includes(q));
   tampil.sort((a, b) => mode === 'low' ? (hargaUtama(a) || 1e12) - (hargaUtama(b) || 1e12)
                       : mode === 'high' ? hargaUtama(b) - hargaUtama(a)
                       : (a.dateObj || 0) - (b.dateObj || 0));
   document.getElementById('meta').textContent = tampil.length ? tampil.length + ' program tersedia' : '';
   const grid = document.getElementById('grid');
   if (!tampil.length) {
-    grid.innerHTML = semua.length
-      ? '<div class="state"><b>Tidak ada program yang cocok</b><p>Ubah kata kunci atau pilih bulan lain.</p></div>'
-      : '<div class="state"><b>Belum ada program tersedia saat ini</b><p>Hubungi kami untuk jadwal keberangkatan terbaru.</p></div>';
+    grid.innerHTML = '<div class="state" style="grid-column:1/-1"><p><b>' + (semua.length ? 'Tidak ada program yang cocok.' : 'Belum ada program tersedia saat ini.') + '</b></p></div>';
     return;
   }
   grid.innerHTML = tampil.map((p, i) => {
     const harga = rupiah(p.harga_quad || p.harga_quint);
     const lbl = p.harga_quad ? 'Mulai dari (quad)' : 'Mulai dari';
     const iti = safeUrl(p.link_itinerary);
-    const tags = (p._near ? '<span class="tag near">Terdekat</span>' : '') + (p._baru ? '<span class="tag new">Baru</span>' : '');
-    const tgl = p.dateObj
-      ? `<span class="hari">${p.dateObj.getDate()}</span><span class="bt"><span class="bln">${esc(NAMA_BULAN[p.dateObj.getMonth()])} ${p.dateObj.getFullYear()}</span><span class="sisa">${esc(estimasi(p.dateObj))}</span></span>`
-      : `<span class="bln">${esc(p.tgl || '-')}</span>`;
-    return `<article class="tiket">
-      <div class="foto"><button class="poster" data-i="${i}" aria-label="Lihat poster dan detail ${esc(p.nama)}">
+    return `<article class="card">
+      <button class="poster" data-i="${i}" aria-label="Lihat detail ${esc(p.nama)}">
         <img src="${esc(posterSrc(p.link_poster))}" alt="Poster ${esc(p.nama)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'${esc(p.nama).replace(/'/g,'')}'}))">
-      </button></div>
-      <div class="utama">
-        <div class="tgl">${tgl}${tags ? `<span class="tags">${tags}</span>` : ''}</div>
+        <div class="badges">${p._near ? '<span class="badge near">Terdekat</span>' : ''}${p._baru ? '<span class="badge new">Baru</span>' : ''}</div>
+      </button>
+      <div class="body">
         <h3>${esc(p.nama)}</h3>
-        <dl class="info">
-          <div><dt>Durasi</dt><dd>${esc(p.durasi || '-')}</dd></div>
-          <div><dt>Maskapai</dt><dd>${esc(p.maskapai || '-')}</dd></div>
-        </dl>
-      </div>
-      <div class="stub">
-        ${harga ? `<div class="hrg"><small>${lbl}</small><strong class="harga">${esc(harga)}</strong></div>` : ''}
-        <div class="aksi">
+        <div class="facts">
+          <div><small>Berangkat</small><b>${esc(p.tgl || '-')}</b></div>
+          <div><small>Durasi</small><b>${esc(p.durasi || '-')}</b></div>
+          <div><small>Maskapai</small><b>${esc(p.maskapai || '-')}</b></div>
+          <div><small>Estimasi</small><b>${p.dateObj ? esc(estimasi(p.dateObj)) : '-'}</b></div>
+        </div>
+        ${harga ? `<div class="price"><small>${lbl}</small><strong>${esc(harga)}</strong></div>` : ''}
+        <div class="actions">
           <button class="btn primary" data-i="${i}">Detail</button>
           ${WA_NUMBER ? `<a class="btn wa" target="_blank" rel="noopener" href="${waLink(p)}">Tanya via WA</a>` : (iti ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(iti)}">Itinerary</a>` : '')}
         </div>
@@ -318,20 +225,14 @@ function buka(i) {
   const hotel = [['Makkah', p.hotel_makkah], ['Madinah', p.hotel_madinah], [p.hotel_3_kota || 'Hotel 3', p.hotel_3], [p.hotel_4_kota || 'Hotel 4', p.hotel_4]].filter(h => h[1]);
   const inc = daftarList(p.termasuk), exc = daftarList(p.tidak_termasuk);
   const iti = safeUrl(p.link_itinerary);
-  const aksi = (iti ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(iti)}">Lihat itinerary</a>` : '')
-             + (WA_NUMBER ? `<a class="btn wa" target="_blank" rel="noopener" href="${waLink(p)}">Tanya via WhatsApp</a>` : '');
-  const body = document.getElementById('mBody');
-  body.classList.remove('tanpa-foto');
-  body.innerHTML = `
-    <div class="kiri"><img class="big" src="${esc(posterSrc(p.link_poster))}" alt="Poster ${esc(p.nama)}" referrerpolicy="no-referrer" onerror="var b=this.closest('.in');this.parentNode.remove();b.classList.add('tanpa-foto')"></div>
-    <div class="kanan">
-      <div class="ringkas"><div><small>Berangkat</small><b>${esc(p.tgl || '-')}</b></div><div><small>Durasi</small><b>${esc(p.durasi || '-')}</b></div><div><small>Maskapai</small><b>${esc(p.maskapai || '-')}</b></div></div>
-      ${kamar.length ? `<div><h4>Harga per orang</h4>${kamar.map(k => `<div class="baris hb"><span>${k[0]}</span><b>${esc(rupiah(k[1]))}</b></div>`).join('')}</div>` : ''}
-      ${hotel.length ? `<div><h4>Akomodasi</h4>${hotel.map(h => `<div class="baris"><span>${esc(h[0])}</span><b>${esc(h[1])}</b></div>`).join('')}</div>` : ''}
-      ${inc.length ? `<div><h4>Termasuk</h4><ul class="cek ya">${inc.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
-      ${exc.length ? `<div><h4>Tidak termasuk</h4><ul class="cek tidak">${exc.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
-    </div>
-    ${aksi ? `<div class="aksi-sheet">${aksi}</div>` : ''}`;
+  document.getElementById('mBody').innerHTML = `
+    <img class="big" src="${esc(posterSrc(p.link_poster))}" alt="Poster ${esc(p.nama)}" referrerpolicy="no-referrer" onerror="this.remove()">
+    <div class="facts"><div><small>Berangkat</small><b>${esc(p.tgl || '-')}</b></div><div><small>Durasi</small><b>${esc(p.durasi || '-')}</b></div><div><small>Maskapai</small><b>${esc(p.maskapai || '-')}</b></div></div>
+    ${kamar.length ? `<div><h4>Harga per orang</h4><div class="prices">${kamar.map(k => `<div><small>${k[0]}</small><b>${esc(rupiah(k[1]))}</b></div>`).join('')}</div></div>` : ''}
+    ${hotel.length ? `<div><h4>Akomodasi</h4><ul>${hotel.map(h => `<li><b>${esc(h[0])}:</b> ${esc(h[1])}</li>`).join('')}</ul></div>` : ''}
+    ${inc.length ? `<div><h4>Termasuk</h4><ul>${inc.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
+    ${exc.length ? `<div><h4>Tidak termasuk</h4><ul>${exc.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
+    <div class="actions">${iti ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(iti)}">Lihat Itinerary</a>` : ''}${WA_NUMBER ? `<a class="btn wa" target="_blank" rel="noopener" href="${waLink(p)}">Tanya via WhatsApp</a>` : ''}</div>`;
   document.getElementById('modal').classList.add('open');
   document.body.style.overflow = 'hidden';
   document.getElementById('mClose').focus();
@@ -343,12 +244,6 @@ document.getElementById('mClose').addEventListener('click', tutup);
 document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') tutup(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') tutup(); });
 document.getElementById('q').addEventListener('input', render);
-document.getElementById('bulan').addEventListener('click', e => {
-  const t = e.target.closest('.chip'); if (!t) return;
-  bulanAktif = t.dataset.b;
-  document.querySelectorAll('#bulan .chip').forEach(c => c.setAttribute('aria-pressed', String(c === t)));
-  render();
-});
 document.getElementById('sort').addEventListener('change', render);
 muat();
 </script>
