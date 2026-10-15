@@ -16543,7 +16543,7 @@ function closeIgContentPlanModal() {
 // Baris "Versi:" dan "Diperbarui:" dibaca otomatis untuk header modal, jadi format dua baris itu jangan diubah.
 // ============================================================
 const ABOUT_PLANNER_MD = `# About Planner: Konsep Perencanaan Konten Instagram Amiru Tour
-Versi: 9
+Versi: 10
 Diperbarui: 15 Oktober 2026
 Status: disepakati Oktober 2026. Uji coba alur mingguan yang menyambung dimulai pekan Senin, 12 Oktober 2026. Ejaan resmi: "Umroh" (bukan "Umrah"), termasuk di hashtag.
 
@@ -16678,7 +16678,7 @@ Dashboard menyarankan Tema Minggu tanpa AI, dengan tiga sumber dalam urutan prio
 2. **Tema musiman** menurut bulan Hijriah/Masehi pekan itu (Maulid, Isra Miraj, Ramadhan, musim haji, libur sekolah, dan seterusnya). Tema musiman yang mengarah ke penjualan sengaja tayang 2-3 bulan sebelum musimnya, karena calon jamaah memesan jauh hari, dan didahulukan atas tema musiman biasa.
 3. **Alur perjalanan jamaah** yang dilanjutkan dari tema alur terakhir yang dipakai, supaya pekan ke pekan terasa satu cerita: niat dan persiapan, miqat dan ihram, thawaf, sa'i, tahallul, Madinah, lalu pulang dan rindu Tanah Suci. Bank alur berisi 95 tema, dikelompokkan menurut tahap: sebelum berangkat, ibadah di Makkah, Madinah, umroh bersama siapa, dan pulang serta sesudahnya.
 
-Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati. Admin tetap bisa mengetik Tema Minggu sendiri, dan mengisi Tema pekan depan (opsional) untuk teaser penutup Minggu.
+Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati. Tema musiman memakai jeda lebih pendek, 300 hari, karena musim yang sama kembali tiap sekitar 354 hari (Hijriah) atau 364 hari (pekan yang sama tahun depan); tanpa ini tema musiman akan bergeser atau hilang di tahun berikutnya. Dengan begitu sistem dapat berjalan berulang tiap tahun. Admin tetap bisa mengetik Tema Minggu sendiri, dan mengisi Tema pekan depan (opsional) untuk teaser penutup Minggu.
 
 ## 8. Kejujuran dan Kehati-hatian
 
@@ -16702,7 +16702,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 - **Salin Prompt** (di Cara lain) menyalin prompt lengkap (pola 7 hari, konteks, riwayat konten lama) untuk ditempel ke asisten AI lain bila server penyusun konten bermasalah.
 - Tombol **Jadikan Post** memilih tujuan caption sesuai pilar rencana (termasuk Manasik dan Kontemplasi) dan mengirim konteks seri (hari/peran, Tema Minggu, teks di gambar, tema kemarin dan besok) supaya caption yang digenerate ulang tetap menyambung.
 - **Peta tema 12 bulan** di modal (dilipat) menampilkan tema pekan-pekan setahun supaya tidak ada tema kembar.
-- **Rencana Setahun AI** (di Rencana Konten) menyusun tema 12 bulan lewat AI dengan menimbang program keberangkatan, musim, dan alur jamaah, lalu menyimpannya per pekan. Tema yang disimpan menjadi saran utama Tema Minggu; tema yang diedit admin terkunci dan tidak ditimpa saat disusun ulang.
+- **Rencana Setahun AI** (di Rencana Konten) menyusun tema 12 bulan lewat AI dengan menimbang program keberangkatan, musim, dan alur jamaah, lalu menyimpannya per pekan. Riwayat tema yang dikirim ke AI dan dipakai untuk menolak tema kembar memakai tanggal dan jendela yang sama (365 hari, musiman 300 hari), jadi tahun kedua dan seterusnya tidak memblokir tema lama selamanya. Tema yang disimpan menjadi saran utama Tema Minggu; tema yang diedit admin terkunci dan tidak ditimpa saat disusun ulang.
 - Riwayat konten dibaca dari rencana dan post tersimpan, jadi AI menghindari topik lama otomatis.
 - Setelah generate, hasil tampil sebagai kartu per hari yang bisa diedit langsung (tema, tipe, teks gambar, caption) dan tersimpan otomatis. Tombol utama tiap kartu adalah **Jadikan Post**; Generate Ulang per hari, Lewati, dan Hapus berupa ikon. Tombol **Atur Ulang** di atas hasil kembali ke form.
 
@@ -16733,6 +16733,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 | 7 | 15 Oktober 2026 | Rumus rujukan hari sebelumnya dikecualikan dari cek 3 kata terhadap 20 posting terakhir; mode pekan hanya mengulang hari yang ditolak dan hari sesudahnya; teks gambar dibersihkan dari tanda pisah panjang dan titik koma; bank tema alur diperluas menjadi 65 tema; tombol generate menampilkan perkiraan waktu; catatan bahwa bank topik per hari belum berupa data |
 | 8 | 15 Oktober 2026 | Penyelarasan: contoh hook Senin tidak lagi memakai kata "ribuan" (selaras larangan klaim jumlah); generator caption manual disamakan dengan aturan doa (tidak wajib, Senin-Sabtu maksimal 2 hari) dan emoji (maksimal 1). Aturan konten tidak berubah |
 | 9 | 15 Oktober 2026 | Bank tema alur diperluas dari 65 menjadi 95 tema (30 tema baru di lima tahap) supaya siklus tahunan tidak kehabisan tema dan tidak berulang dalam jendela 365 hari. Aturan konten tidak berubah |
+| 10 | 15 Oktober 2026 | Siklus tahunan: tema musiman memakai jeda 300 hari (bukan 365) supaya kembali tiap tahun dan tidak bergeser atau hilang; riwayat tema untuk Rencana Setahun AI kini bertanggal dan berjendela, bukan seluruh sejarah. Diuji lewat simulasi 10 tahun (520 pekan): tanpa tema kembar non-musiman dalam 364 hari, tanpa pekan fallback, semua tema musiman tayang di musimnya. Aturan konten tidak berubah |
 `;
 
 // Petunjuk yang ikut tersalin di depan dokumen supaya Claude mengembalikan dokumen dalam format yang bisa dipakai lagi.
@@ -17540,18 +17541,38 @@ async function igRtSusunAI() {
         // Tema yang sudah terpakai / dipertahankan (WAJIB dihindari AI): isi harian nyata + rencana yang tidak ditimpa.
         const dipertahankan = igRkData.bulan.flatMap(b => b.minggu).filter(w =>
             !targetSet.has(w.senin) && (w.status === 'disusun' || w.status === 'rencana') && w.tema);
-        const riwayatSet = new Map(); // tema -> true (unik, huruf asli)
-        dipertahankan.forEach(w => riwayatSet.set(w.tema, true));
-        igContentPlan.filter(pl => pl.tema_minggu).forEach(pl => riwayatSet.set(pl.tema_minggu, true));
+        // Riwayat BERTANGGAL supaya tahun ke-2 dan seterusnya tidak memblokir semua tema lama selamanya:
+        // tema biasa memblokir dalam 365 hari dari pekan yang dicek, tema musiman 300 hari (IG_JEDA_TEMA_MUSIM_HARI),
+        // supaya musim yang sama bisa kembali tiap tahun. tgl '' = selalu berlaku (riwayat awal & usulan AI yang ditolak).
+        const riwayatList = []; // [{ tema, tgl }]
+        const tambahRiwayat = (tema, tgl) => { if (tema) riwayatList.push({ tema, tgl: tgl || '' }); };
+        dipertahankan.forEach(w => tambahRiwayat(w.tema, w.senin));
+        igContentPlan.filter(pl => pl.tema_minggu).forEach(pl => tambahRiwayat(pl.tema_minggu, pl.tanggal));
         // Riwayat topik awal yang masih dalam jeda 6 bulan pada pekan pertama target: jangan diulang, dan tema alur yang
         // dipetakan ke sana dikeluarkan dari bank alur (lihat IG_RIWAYAT_AWAL).
-        const seninAwal = target.map(w => w.senin).sort()[0];
+        const senins = target.map(w => w.senin).sort();
+        const seninAwal = senins[0], seninAkhir = senins[senins.length - 1];
         const awalAktif = igRiwayatAwalAktif(seninAwal);
-        awalAktif.forEach(r => riwayatSet.set(r.tema, true));
+        awalAktif.forEach(r => tambahRiwayat(r.tema, ''));
         const alurTerblokir = new Set(awalAktif.flatMap(r => r.alur || []));
         const diterima = []; // [{ senin, tema }] hasil yang lolos selama proses ini
-        const semuaTerpakai = () => [...riwayatSet.keys(), ...diterima.map(x => x.tema)];
-        const cekMirip = tema => { const t = igTokenSet(tema); return semuaTerpakai().some(u => igIsSimilarText(t, u)); };
+        const hariAntara = (a, b) => Math.abs(igRkParseKey(a) - igRkParseKey(b)) / 864e5;
+        const jedaHari = (t1, t2) => (igTemaMusiman(t1) || igTemaMusiman(t2)) ? IG_JEDA_TEMA_MUSIM_HARI : 365;
+        // Apakah riwayat r memblokir tema baru `tema` yang akan tayang di pekan `senin`?
+        const memblokir = (r, tema, senin) => !r.tgl || hariAntara(r.tgl, senin) <= jedaHari(r.tema, tema);
+        const cekMirip = (tema, senin) => {
+            const t = igTokenSet(tema);
+            return riwayatList.some(r => memblokir(r, tema, senin) && igIsSimilarText(t, igTokenSet(r.tema)))
+                || diterima.some(x => memblokir({ tema: x.tema, tgl: x.senin }, tema, senin) && igIsSimilarText(t, igTokenSet(x.tema)));
+        };
+        // Teks riwayat untuk AI: hanya yang masih relevan terhadap rentang pekan target (bukan seluruh sejarah).
+        const jarakKeRentang = tgl => tgl < seninAwal ? hariAntara(tgl, seninAwal) : (tgl > seninAkhir ? hariAntara(tgl, seninAkhir) : 0);
+        const semuaTerpakai = () => {
+            const set = new Set();
+            riwayatList.forEach(r => { if (!r.tgl || jarakKeRentang(r.tgl) <= jedaHari(r.tema, r.tema)) set.add(r.tema); });
+            diterima.forEach(x => set.add(x.tema));
+            return [...set];
+        };
 
         const infoPekan = w => {
             const kamis = igRkParseKey(w.senin); kamis.setDate(kamis.getDate() + 3);
@@ -17585,14 +17606,14 @@ async function igRtSusunAI() {
                 const sisaSet = new Set(sisa.map(w => w.senin));
                 (data.items || []).forEach(it => {
                     if (!sisaSet.has(it.senin) || !it.tema) return;
-                    if (cekMirip(it.tema)) return; // mirip tema lain: pekan ini diulang di putaran berikutnya
+                    if (cekMirip(it.tema, it.senin)) return; // mirip tema lain: pekan ini diulang di putaran berikutnya
                     diterima.push({ senin: it.senin, tema: it.tema });
                     lolosBatch.push(it);
                 });
                 const lolosSet = new Set(lolosBatch.map(x => x.senin));
                 sisa = sisa.filter(w => !lolosSet.has(w.senin));
                 // Tema yang ditolak karena mirip ikut masuk riwayat putaran berikutnya supaya tidak diajukan lagi.
-                (data.items || []).filter(it => it.tema && !lolosSet.has(it.senin)).forEach(it => riwayatSet.set(it.tema, true));
+                (data.items || []).filter(it => it.tema && !lolosSet.has(it.senin)).forEach(it => tambahRiwayat(it.tema, ''));
             }
             gagal += sisa.length;
 
@@ -17814,6 +17835,18 @@ function igHijriMonth(date) {
     } catch (e) { return 0; }
 }
 
+// Jeda khusus tema musiman (hari). Lebih pendek dari 365 supaya musim yang sama bisa kembali tiap tahun (lihat igKandidatTemaMinggu).
+const IG_JEDA_TEMA_MUSIM_HARI = 300;
+// Apakah sebuah tema bersifat musiman? Cocok dengan bank IG_TEMA_MUSIM, atau memuat kata musim/hari besar
+// (supaya tema musiman buatan AI yang kalimatnya beda dari bank tetap boleh kembali tiap tahun).
+const IG_KATA_MUSIM = /ramadhan|ramadan|haji|kurban|qurban|libur|isra|miraj|muharram|maulid|syawal|lebaran|idul/i;
+function igTemaMusiman(tema) {
+    const s = String(tema || '');
+    if (IG_KATA_MUSIM.test(s)) return true;
+    const t = igTokenSet(s);
+    return IG_TEMA_MUSIM.some(e => igIsSimilarText(t, igTokenSet(e.tema)));
+}
+
 // Daftar tema yang cocok untuk pekan yang dimulai seninKey, urut dari yang paling disarankan (fungsi murni).
 // plans = igContentPlan (butuh kolom tema_minggu). Return [{ tema, alasan, tetap? }], paling banyak `maks`.
 function igKandidatTemaMinggu(seninKey, plans, maks, rencana = igRencanaTahun) {
@@ -17834,6 +17867,14 @@ function igKandidatTemaMinggu(seninKey, plans, maks, rencana = igRencanaTahun) {
     // Topik riwayat awal yang masih dalam jeda 6 bulan: tema alur yang dipetakan ke sana dilewati (lihat IG_RIWAYAT_AWAL).
     const alurTerblokir = new Set(igRiwayatAwalAktif(seninKey).flatMap(r => (r.alur || []).map(a => a.toLowerCase())));
     const sudah = tema => { const t = igTokenSet(tema); return alurTerblokir.has(String(tema).toLowerCase()) || terpakai.some(u => igIsSimilarText(t, u)); };
+    // Tema MUSIMAN sengaja memakai jendela lebih pendek (IG_JEDA_TEMA_MUSIM_HARI) daripada 365 hari: musim yang sama
+    // kembali tiap ~354 hari (Hijriah) atau 364 hari (pekan yang sama tahun depan), jadi jendela 365 hari akan memblokir
+    // tema musiman di tahun berikutnya (bergeser atau hilang). 300 hari tetap mencegah tema musiman muncul dua kali
+    // dalam satu musim, tapi mengizinkannya kembali di musim yang sama tahun depan.
+    const awalM = kunci(-IG_JEDA_TEMA_MUSIM_HARI), akhirM = kunci(IG_JEDA_TEMA_MUSIM_HARI);
+    const terpakaiMusim = berTema.filter(pl => pl.tanggal >= awalM && pl.tanggal <= akhirM).map(pl => igTokenSet(pl.tema_minggu))
+        .concat((rencana || []).filter(x => x.senin !== seninKey && x.senin >= awalM && x.senin <= akhirM).map(x => igTokenSet(x.tema)));
+    const sudahMusim = tema => { const t = igTokenSet(tema); return terpakaiMusim.some(u => igIsSimilarText(t, u)); };
     const batas = Math.max(1, maks || 6);
     const hasil = [];
 
@@ -17844,7 +17885,7 @@ function igKandidatTemaMinggu(seninKey, plans, maks, rencana = igRencanaTahun) {
         .filter(e => (bulanH && (e.hijri || []).includes(bulanH)) || (e.masehi || []).includes(bulanM))
         .sort((a, b) => (b.jual ? 1 : 0) - (a.jual ? 1 : 0)) // tema penjualan didahulukan
         .forEach(e => {
-            if (hasil.length < batas && !sudah(e.tema)) {
+            if (hasil.length < batas && !sudahMusim(e.tema)) {
                 hasil.push({ tema: e.tema, alasan: e.alasan || `Musim ${IG_NAMA_HIJRI[bulanH - 1]}`, jual: !!e.jual });
             }
         });
