@@ -17720,16 +17720,28 @@ function igRefreshPlanPreview() {
 // Seluruhnya dihitung lokal (tanpa AI), jadi tetap jalan walau token AI habis.
 // ============================================================
 const IG_TEMA_ALUR = [
-    'Niat dan Panggilan', 'Umroh Pertama Kali', 'Restu dan Doa Keluarga', 'Menabung Niat', 'Dokumen dan Administrasi',
-    'Anggaran dan Keuangan Perjalanan', 'Persiapan Fisik', 'Menjaga Kesehatan', 'Perlengkapan Perjalanan',
-    'Kesiapan Hati dan Kesabaran', 'Belajar Manasik', 'Miqat dan Ihram', 'Larangan Ihram', 'Talbiyah',
-    'Tiba di Tanah Suci', 'Sejarah Makkah dan Kabah', 'Pertama Melihat Kabah', 'Thawaf', 'Multazam dan Doa',
-    'Maqam Ibrahim', 'Air Zamzam', 'Sa\'i dan Siti Hajar', 'Tahallul', 'Adab di Masjidil Haram', 'Shalat di Tanah Suci',
-    'Sabar di Keramaian', 'Ikhlas dalam Ibadah', 'Menjaga Akhlak di Perjalanan', 'Kebersamaan Rombongan',
-    'Mengisi Waktu di Tanah Suci', 'Ziarah di Makkah', 'Perjalanan ke Madinah', 'Masjid Nabawi', 'Raudhah',
-    'Ziarah di Madinah', 'Doa Titipan', 'Doa untuk Diri Sendiri', 'Sedekah dan Berbagi', 'Umroh Bersama Orang Tua',
-    'Umroh Bersama Pasangan', 'Umroh Bersama Keluarga', 'Umroh untuk Lansia', 'Thawaf Wada', 'Hari Terakhir di Makkah',
-    'Pulang dan Oleh-oleh Hati', 'Menjaga Kemabruran', 'Rindu Tanah Suci', 'Berbagi Cerita Setelah Pulang'
+    // Sebelum berangkat
+    'Niat dan Panggilan', 'Umroh Pertama Kali', 'Restu dan Doa Keluarga', 'Menabung Niat', 'Memilih Waktu yang Tepat untuk Berangkat',
+    'Dokumen dan Administrasi', 'Menyelesaikan Urusan Sebelum Berangkat', 'Anggaran dan Keuangan Perjalanan', 'Persiapan Fisik',
+    'Menjaga Kesehatan', 'Perlengkapan Perjalanan', 'Cuaca dan Pakaian di Tanah Suci', 'Mengenal Rombongan dan Pembimbing',
+    'Kesiapan Hati dan Kesabaran', 'Pamit pada Keluarga dan Rumah', 'Belajar Manasik',
+    // Ibadah di Makkah
+    'Miqat dan Ihram', 'Larangan Ihram', 'Talbiyah', 'Tiba di Tanah Suci', 'Sejarah Makkah dan Kabah', 'Pertama Melihat Kabah',
+    'Thawaf', 'Multazam dan Doa', 'Maqam Ibrahim', 'Air Zamzam', 'Sa\'i dan Siti Hajar', 'Tahallul', 'Adab di Masjidil Haram',
+    'Shalat di Tanah Suci', 'Sabar di Keramaian', 'Ikhlas dalam Ibadah', 'Menjaga Akhlak di Perjalanan', 'Kebersamaan Rombongan',
+    'Bertemu Jamaah dari Berbagai Negara', 'Menjaga Stamina Selama di Tanah Suci', 'Istirahat yang Cukup di Sela Ibadah',
+    'Makanan dan Kebiasaan Makan di Tanah Suci', 'Mengabadikan Momen dengan Bijak', 'Berkabar dengan Keluarga di Rumah',
+    'Mengisi Waktu di Tanah Suci', 'Ziarah di Makkah',
+    // Madinah
+    'Perjalanan ke Madinah', 'Masjid Nabawi', 'Raudhah', 'Ziarah di Madinah', 'Doa Titipan', 'Doa untuk Diri Sendiri',
+    'Sedekah dan Berbagi',
+    // Umroh bersama siapa
+    'Umroh Bersama Orang Tua', 'Umroh Bersama Pasangan', 'Umroh Bersama Keluarga', 'Umroh Bersama Anak', 'Umroh Bersama Sahabat',
+    'Umroh untuk Lansia',
+    // Pulang dan sesudahnya
+    'Thawaf Wada', 'Hari Terakhir di Makkah', 'Pulang dan Oleh-oleh Hati', 'Bersyukur atas Kesempatan', 'Menjaga Kemabruran',
+    'Membawa Pulang Kebiasaan Baik', 'Kembali ke Rutinitas dengan Hati Baru', 'Rindu Tanah Suci', 'Berbagi Cerita Setelah Pulang',
+    'Menularkan Semangat Umroh ke Keluarga'
 ];
 // Riwayat topik awal (sebelum pola mingguan dimulai 12 Okt 2026): SATU sumber data untuk (a) deteksi ide kembar
 // (igBuildRiwayat), (b) saran Tema Minggu (igKandidatTemaMinggu), dan (c) Rencana Setahun AI (igRtSusunAI).
