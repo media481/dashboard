@@ -20,19 +20,18 @@ html,.sheet{scrollbar-width:none;-ms-overflow-style:none}
 html::-webkit-scrollbar,body::-webkit-scrollbar,.sheet::-webkit-scrollbar{display:none;width:0;height:0}
 body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;padding-bottom:env(safe-area-inset-bottom,0)}
 h1,h2,h3{font-family:"Space Grotesk",Inter,system-ui,sans-serif}
-.hero{background:linear-gradient(135deg,var(--brand-deep),var(--brand));color:#fff;padding:calc(14px + env(safe-area-inset-top,0)) 0 44px}
-.wrap{max-width:none;margin:0 auto;padding:0 20px}
-.brand{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-.brand img{width:36px;height:36px;border-radius:8px;background:#fff;object-fit:contain;padding:3px}
-.brand b{font:700 16px "Space Grotesk",Inter,sans-serif;letter-spacing:.2px}
+.top{position:sticky;top:0;z-index:20;background:linear-gradient(135deg,var(--brand-deep),var(--brand));color:#fff;padding:calc(10px + env(safe-area-inset-top,0)) 0 10px;box-shadow:0 2px 14px rgba(15,33,56,.25)}
+.top .wrap{max-width:none;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;flex:none}
+.brand img{width:38px;height:38px;border-radius:9px;background:#fff;object-fit:contain;padding:3px}
+.brand h1{font:700 17px/1.15 "Space Grotesk",Inter,sans-serif;letter-spacing:.2px}
 .brand span{display:block;font-size:12px;opacity:.75}
-.hero h1{font-size:clamp(22px,4vw,30px);line-height:1.15;margin-bottom:4px}
-.hero p{opacity:.85;max-width:620px;font-size:14px}
-.tools{max-width:none;margin:-30px auto 0;padding:0 20px;display:flex;gap:10px;flex-wrap:wrap}
-.tools input,.tools select{font:inherit;font-size:14px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);box-shadow:var(--shadow);min-width:0}
-.tools input{flex:1 1 240px}
-.tools select{flex:0 1 230px}
-.tools input:focus,.tools select:focus{outline:2px solid var(--brand);outline-offset:1px}
+.tools{flex:1 1 360px;display:flex;gap:8px;min-width:0}
+.tools input,.tools select{font:inherit;font-size:14px;padding:10px 14px;border:0;border-radius:10px;background:#fff;color:var(--ink);min-width:0}
+.tools input{flex:1 1 200px}
+.tools select{flex:0 1 210px}
+.tools input:focus,.tools select:focus{outline:2px solid #fff;outline-offset:1px}
+.wrap{max-width:none;margin:0 auto;padding:0 20px}
 .meta{max-width:none;margin:16px auto 0;padding:0 20px;color:var(--ink-soft);font-size:13px}
 .grid{max-width:none;margin:14px auto 40px;padding:0 20px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(8px,1.2vw,18px)}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;transition:transform .15s,box-shadow .15s}
@@ -97,22 +96,19 @@ footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px 
 .price small{font-size:clamp(9px,.85vw,12px)}
 .btn{font-size:clamp(10px,1vw,14px);padding:clamp(6px,.8vw,11px) 4px}
 .badge{font-size:clamp(8px,.85vw,11.5px);padding:3px clamp(5px,.6vw,9px)}
-@media(max-width:700px){.facts{grid-template-columns:1fr}.actions{flex-direction:column}.actions .btn:not(.primary):not(.wa){display:none}.wrap,.tools,.meta,.grid{padding-left:10px;padding-right:10px}}
-@media(max-width:520px){.tools select{flex:1 1 100%}.hero p{display:none}}
+@media(max-width:700px){.facts{grid-template-columns:1fr}.actions{flex-direction:column}.actions .btn:not(.primary):not(.wa){display:none}.wrap,.meta,.grid{padding-left:10px;padding-right:10px}}
+@media(max-width:520px){.tools{flex-basis:100%}.tools select{flex:0 1 150px}.brand span{display:none}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<section class="hero"><div class="wrap">
-  <div class="brand"><img src="assets/logo-amirutour.png" alt="Logo Amiru Tour" onerror="this.style.display='none'"><div><b>Amiru Tour</b><span>PT Amiru Haramain Indonesia</span></div></div>
-  <h1>Program Umroh Tersedia</h1>
-  <p>Pilih jadwal keberangkatan, maskapai, dan hotel yang sesuai. Harga dan jadwal diperbarui otomatis.</p>
-</div></section>
-
-<div class="tools">
-  <input id="q" type="search" placeholder="Cari nama program, maskapai, hotel..." aria-label="Cari program" autocomplete="off">
-  <select id="sort" aria-label="Urutkan"><option value="date">Keberangkatan terdekat</option><option value="low">Harga termurah</option><option value="high">Harga termahal</option></select>
-</div>
+<header class="top"><div class="wrap">
+  <div class="brand"><img src="assets/logo-amirutour.png" alt="Logo Amiru Tour" onerror="this.style.display='none'"><div><h1>Program Umroh Tersedia</h1><span>Amiru Tour &middot; PT Amiru Haramain Indonesia</span></div></div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Cari nama program, maskapai, hotel..." aria-label="Cari program" autocomplete="off">
+    <select id="sort" aria-label="Urutkan"><option value="date">Keberangkatan terdekat</option><option value="low">Harga termurah</option><option value="high">Harga termahal</option></select>
+  </div>
+</div></header>
 <div class="meta" id="meta" aria-live="polite"></div>
 <main class="grid" id="grid" aria-busy="true"><div class="skel"></div><div class="skel"></div><div class="skel"></div></main>
 <footer>Harga dan jadwal dapat berubah sewaktu-waktu mengikuti ketentuan Saudi, maskapai, dan kurs. Hubungi kami untuk informasi terbaru.</footer>
