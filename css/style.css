@@ -6438,13 +6438,13 @@ button.btn-homepage { cursor: pointer; }
 #btnShareKatalog span { display: none; }
 #btnShareKatalog { padding: 7px 11px; }
 
-/* Gradasi 3 keberangkatan terdekat: makin dekat tanggalnya, makin gelap warnanya */
-.table-container tbody tr.row-nearest-departure.nearest-rank-1 { background: #BFD6F5; box-shadow: inset 4px 0 0 #2F6FCB; }
-.table-container tbody tr.row-nearest-departure.nearest-rank-1:hover { background: #B1CCF1; }
-.table-container tbody tr.row-nearest-departure.nearest-rank-2 { background: #D4E4F8; box-shadow: inset 4px 0 0 #5590DE; }
-.table-container tbody tr.row-nearest-departure.nearest-rank-2:hover { background: #C8DCF5; }
-.table-container tbody tr.row-nearest-departure.nearest-rank-3 { background: #EAF2FC; box-shadow: inset 4px 0 0 #8DB6EC; }
+/* Gradasi 3 keberangkatan terdekat: makin dekat tanggalnya, makin pekat warnanya (perbedaan tipis) */
+.table-container tbody tr.row-nearest-departure.nearest-rank-1 { background: #DCE9F9; box-shadow: inset 3px 0 0 #4F88D8; }
+.table-container tbody tr.row-nearest-departure.nearest-rank-1:hover { background: #D1E1F6; }
+.table-container tbody tr.row-nearest-departure.nearest-rank-2 { background: #E4EEFA; box-shadow: inset 3px 0 0 #6A9BE0; }
+.table-container tbody tr.row-nearest-departure.nearest-rank-2:hover { background: #D9E7F8; }
+.table-container tbody tr.row-nearest-departure.nearest-rank-3 { background: #EBF3FC; box-shadow: inset 3px 0 0 #8DB6EC; }
 .table-container tbody tr.row-nearest-departure.nearest-rank-3:hover { background: #DEEBFB; }
-.nearest-badge.nearest-badge-1 { background: #A3C4EF; color: #163F78; }
-.nearest-badge.nearest-badge-2 { background: #BDD6F4; color: #214F8F; }
+.nearest-badge.nearest-badge-1 { background: #CBDFF7; color: #234F8E; }
+.nearest-badge.nearest-badge-2 { background: #D3E4F8; color: #29579A; }
 .nearest-badge.nearest-badge-3 { background: #D9E8FA; color: #2E5FA3; }
