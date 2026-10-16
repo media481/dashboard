@@ -273,6 +273,22 @@ button.flipbtn{border:0;cursor:pointer}
   .ss-poster{flex:0 0 40%}
   .ss-info{flex:1 1 auto;justify-content:flex-start;gap:1.2em}
 }
+/* Header lebih ramping di layar lebar (HP/tablet kecil tetap memakai aturan sendiri) */
+@media(min-width:700px){
+  .top{padding:calc(9px + env(safe-area-inset-top,0)) 0 9px;box-shadow:0 1px 8px rgba(15,33,56,.16)}
+  .top .wrap{gap:16px}
+  .brand{gap:10px}
+  .brand img{width:36px;height:36px;border-radius:9px;padding:3px}
+  .brand h1{font-size:16.5px;line-height:1.15}
+  .brand span{font-size:11px;margin-top:1px}
+  .tools{gap:8px}
+  .tools input,.tools select{height:38px;font-size:13.5px;padding:0 12px;border-radius:10px}
+  .tools input{padding-left:38px;background-position:12px center;background-size:16px}
+  .tools select{flex:0 0 130px}
+  .flipbtn{height:38px;padding:0 13px;font-size:13.5px;border-radius:10px;gap:6px}
+  .flipbtn svg{width:16px;height:16px}
+  .meta{margin-top:12px}
+}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
