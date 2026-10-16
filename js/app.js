@@ -348,7 +348,8 @@ function openActionConfirm(opts = {}) {
         message = '',
         confirmLabel = 'Ya, Lanjutkan',
         danger = true,
-        requireTypedWord = null
+        requireTypedWord = null,
+        hideCancel = false
     } = opts;
     return new Promise(resolve => {
         // Kalau ada modal konfirmasi lain yang masih menggantung (seharusnya
@@ -362,6 +363,8 @@ function openActionConfirm(opts = {}) {
         document.getElementById('actionConfirmMessage').innerHTML = message;
         document.getElementById('actionConfirmBtnLabel').textContent = confirmLabel;
 
+        const cancelBtn = document.getElementById('actionConfirmCancelBtn');
+        if (cancelBtn) cancelBtn.style.display = hideCancel ? 'none' : '';
         const btn = document.getElementById('actionConfirmBtn');
         btn.className = danger ? 'btn-danger' : 'btn-submit';
 
@@ -3209,7 +3212,7 @@ async function resetUserMenuAccessMatrix() {
     if (currentRole !== 'admin') { showToast('Hanya Admin yang boleh mengubah akses menu', 'error'); return; }
     const userId = document.getElementById('umaUserSelect')?.value || '';
     if (!userId) return;
-    if (!confirm('Hapus semua pengecualian akses menu untuk akun ini? Akun ini akan kembali murni ikut default role-nya.')) return;
+    if (!await openActionConfirm({ title: 'Reset Akses Menu', message: 'Hapus semua pengecualian akses menu untuk akun ini? Akun ini akan kembali murni ikut default role-nya.', confirmLabel: 'Ya, Hapus' })) return;
     const statusEl = document.getElementById('userMenuAccessStatus');
     try {
         const { error } = await supabaseClient.from('user_menu_access').delete().eq('user_id', userId);
@@ -5402,8 +5405,8 @@ async function renderSidebarNav() {
 async function saveAdminProgram() {
     if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengubah data program', 'error'); return false; }
     const nama = document.getElementById('admin_nama')?.value.trim();
-    if (!nama) { alert('Nama program wajib diisi!'); return false; }
-    if (!isValidProgramName(nama)) { alert('Nama program mengandung karakter tidak valid!'); return false; }
+    if (!nama) { showToast('Nama program wajib diisi!', 'error'); return false; }
+    if (!isValidProgramName(nama)) { showToast('Nama program mengandung karakter tidak valid!', 'error'); return false; }
 
     const formData = getAdminFormData();
 
@@ -5428,7 +5431,7 @@ async function saveAdminProgram() {
     const urlFields = ['link_poster', 'link_itinerary'];
     for (const field of urlFields) {
         if (formData[field] && !isValidUrl(formData[field])) {
-            alert(`Link ${field.replace('_',' ')} tidak valid!`);
+            showToast(`Link ${field.replace('_',' ')} tidak valid!`, 'error');
             return false;
         }
     }
@@ -6152,7 +6155,8 @@ function showImportResult(ok, failed, otherResults) {
     const list = failed.map(f => `• ${f.nama} — ${f.reason}`).join('\n');
     const otherList = otherFailed.map(f => `• ${TABLE_LABEL[f.tbl] || f.tbl} — ${f.reason}`).join('\n');
     showToast(`Import selesai — sebagian gagal, lihat detail`, 'error');
-    alert(`Hasil import:\n\n${ok} program berhasil${otherOkText ? ', ' + otherOkText : ''}.\n${failed.length ? `\nProgram GAGAL (${failed.length}):\n${list}\n` : ''}${otherFailed.length ? `\nData lain GAGAL:\n${otherList}` : ''}`);
+    const detail = `Hasil import:\n\n${ok} program berhasil${otherOkText ? ', ' + otherOkText : ''}.\n${failed.length ? `\nProgram GAGAL (${failed.length}):\n${list}\n` : ''}${otherFailed.length ? `\nData lain GAGAL:\n${otherList}` : ''}`;
+    openActionConfirm({ title: 'Hasil Import', message: `<div style="white-space:pre-line;max-height:50vh;overflow:auto;">${escapeHtml(detail)}</div>`, confirmLabel: 'Tutup', danger: false, hideCancel: true });
 }
 
 // Tabel opsional selain "programs" yang mungkin ada di file backup (mis. hasil
@@ -11881,8 +11885,8 @@ async function bukaRoomingList(btn) {
     }
 }
 
-function tutupRoomingModal() {
-    if (roomingDirty && !confirm('Ada perubahan yang belum disimpan. Tutup tanpa menyimpan?')) return;
+async function tutupRoomingModal() {
+    if (roomingDirty && !await openActionConfirm({ title: 'Perubahan Belum Disimpan', message: 'Ada perubahan yang belum disimpan. Tutup tanpa menyimpan?', confirmLabel: 'Ya, Tutup' })) return;
     document.getElementById('roomingModal').classList.remove('open');
     roomingProgram = null;
     roomingWorking = [];
@@ -11904,9 +11908,9 @@ function roomingJumlahKamar(tipe) {
 // "ulang total" biar hasilnya konsisten & tidak ada kamar bolong-bolong --
 // kalau admin sudah pernah geser manual dan ingin dipertahankan, jangan
 // pakai tombol ini lagi setelah geser.
-function autoBagiKamar() {
+async function autoBagiKamar() {
     const sudahAda = roomingWorking.some(j => j.nomor_kamar);
-    if (sudahAda && !confirm('Ini akan MENGULANG TOTAL semua pembagian kamar (termasuk yang sudah digeser manual). Lanjutkan?')) return;
+    if (sudahAda && !await openActionConfirm({ title: 'Ulang Pembagian Kamar', message: 'Ini akan MENGULANG TOTAL semua pembagian kamar (termasuk yang sudah digeser manual). Lanjutkan?', confirmLabel: 'Ya, Ulang Total' })) return;
     ROOM_TIPE_URUT.forEach(tipe => {
         const anggota = roomingWorking.filter(j => j.tipe_kamar === tipe).sort((a, b) => (a.nama || '').localeCompare(b.nama || '', 'id'));
         const kap = ROOM_KAPASITAS[tipe] || 4;
@@ -16786,7 +16790,7 @@ async function igToggleHideComment(igCommentId, hide) {
 
 async function igDeleteComment(igCommentId) {
     if (!canManageProgramData()) return;
-    if (!confirm('Hapus komentar ini secara permanen dari Instagram?')) return;
+    if (!await openActionConfirm({ title: 'Hapus Komentar', message: 'Hapus komentar ini secara permanen dari Instagram?', confirmLabel: 'Ya, Hapus' })) return;
     try {
         const result = await igCommentActionCall({ ig_comment_id: igCommentId, action: 'delete' });
         if (result.ok) {
@@ -17916,7 +17920,7 @@ async function igRtKunci(senin) {
 async function igRtHapus(senin) {
     const ada = igRencanaTahun.find(x => x.senin === senin);
     if (!ada || !canManageProgramData()) return;
-    if (ada.terkunci && !confirm('Pekan ini terkunci (sudah Anda edit atau kunci). Hapus rencananya?')) return;
+    if (ada.terkunci && !await openActionConfirm({ title: 'Hapus Rencana Pekan', message: 'Pekan ini terkunci (sudah Anda edit atau kunci). Hapus rencananya?', confirmLabel: 'Ya, Hapus' })) return;
     try {
         const { error } = await supabaseClient.from('ig_rencana_tahunan').delete().eq('senin', senin);
         if (error) throw error;
@@ -20264,7 +20268,7 @@ async function igApplyPolaMingguan() {
         (dilewati ? ` ${dilewati} tanggal dilewati karena sudah ada ide.` : '') +
         (lampau ? ` ${lampau} tanggal yang sudah lewat tidak diisi.` : '') +
         `\n\nLanjutkan?`;
-    if (!confirm(ket)) return;
+    if (!await openActionConfirm({ title: 'Terapkan Pola Mingguan', message: `<div style="white-space:pre-line;">${escapeHtml(ket)}</div>`, confirmLabel: 'Ya, Terapkan', danger: false })) return;
 
     const btn = document.getElementById('btnIgApplyPola');
     if (btn) btn.disabled = true;
@@ -20668,3 +20672,52 @@ window.igApplyPolaMingguan = igApplyPolaMingguan;
 })();
 
 console.log('🚀 Amiru Admin Dashboard loaded!');
+
+
+// ============================================================
+// STATUS LOADING TOMBOL SIMPAN/AKSI
+// Membungkus fungsi simpan supaya tombolnya otomatis: aria-busy="true" +
+// disabled + spinner (lihat css `button[aria-busy="true"]`), dan klik ganda
+// saat koneksi lambat diabaikan sampai proses sebelumnya selesai.
+// ============================================================
+function _resolveBusyBtn(arg) {
+    if (arg && typeof arg === 'object' && 'target' in arg) {
+        if (arg.submitter) return arg.submitter;
+        const t = arg.target;
+        if (t && t.tagName === 'FORM') return t.querySelector('button[type="submit"], .btn-submit, .btn-submit-sm');
+    }
+    const a = document.activeElement;
+    return a && a.tagName === 'BUTTON' ? a : null;
+}
+
+function withBusy(fn) {
+    let inflight = false;
+    return function (...args) {
+        const ev = args[0];
+        if (inflight) {
+            if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+            return Promise.resolve(false);
+        }
+        inflight = true;
+        const btn = _resolveBusyBtn(ev);
+        const wasDisabled = btn ? btn.disabled : false;
+        if (btn) { btn.setAttribute('aria-busy', 'true'); btn.disabled = true; }
+        const release = () => {
+            inflight = false;
+            if (btn) { btn.removeAttribute('aria-busy'); btn.disabled = wasDisabled; }
+        };
+        let result;
+        try { result = fn.apply(this, args); }
+        catch (err) { release(); throw err; }
+        return Promise.resolve(result).finally(release);
+    };
+}
+
+[
+    'saveAdminProgram', 'saveJadwalTamu', 'savePendaftaran', 'saveKbJamaah',
+    'saveCompanyProfile', 'saveCicilan', 'saveAsset', 'saveIgPost', 'saveTgConfig',
+    'saveRoleMenuAccessMatrix', 'saveUserMenuAccessMatrix', 'saveCxPosterData',
+    'submitResetPassword'
+].forEach(name => {
+    if (typeof window[name] === 'function') window[name] = withBusy(window[name]);
+});
