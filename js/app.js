@@ -2027,7 +2027,7 @@ async function loadDataFromSupabase(forceRefresh = false) {
                 p.isAvailable = p.dateObj >= new Date();
             });
             currentData = sortProgramsDefault(dataUmroh.filter(isProgramVisibleOnDashboard));
-            renderTable(currentData);
+            renderTableWithSearch();
             updateMetrics();
             renderFeaturedSection();
             loadingEl.style.display = 'none';
@@ -2062,7 +2062,7 @@ async function loadDataFromSupabase(forceRefresh = false) {
             p.isAvailable = p.dateObj >= new Date();
         });
         currentData = sortProgramsDefault(dataUmroh.filter(isProgramVisibleOnDashboard));
-        renderTable(currentData);
+        renderTableWithSearch();
         updateMetrics();
         renderFeaturedSection();
         loadingEl.style.display = 'none';
@@ -2143,7 +2143,23 @@ function hitungEstimasi(dateObj, now) {
 // Bangun HTML satu baris <tr> program umroh. Dipakai bareng oleh renderTable
 // (tab "Program Umroh") dan renderFeaturedSection (tab "Unggulan") supaya
 // tampilan kedua tabel identik persis.
-function buildProgramRowHTML(item, now, nearestIds) {
+// Bungkus kata pencarian dengan <mark> (aman XSS: teks di-escape per potongan)
+function markSearchHit(raw, tokens) {
+    const text = String(raw == null ? '' : raw);
+    if (!tokens || !tokens.length) return escapeHtml(text);
+    const re = new RegExp('(' + tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'ig');
+    return text.split(re).map((part, i) => i % 2 ? '<mark class="srch-hit">' + escapeHtml(part) + '</mark>' : escapeHtml(part)).join('');
+}
+// Hotel tidak tampil di tabel: kalau pencarian cocok lewat hotel, tunjukkan baris kecil di bawah nama program
+function searchHotelHintHTML(item, tokens) {
+    if (!tokens || !tokens.length) return '';
+    const hotels = [['Makkah', item.hotel_makkah], ['Madinah', item.hotel_madinah], [item.hotel_3_kota || 'Hotel 3', item.hotel_3], [item.hotel_4_kota || 'Hotel 4', item.hotel_4]];
+    const hits = hotels.filter(h => h[1] && tokens.some(t => srchNorm(h[1]).includes(t)));
+    if (!hits.length) return '';
+    return `<div class="srch-via"><i class="bi bi-building"></i> ${hits.map(h => escapeHtml(h[0]) + ': ' + markSearchHit(hotelNamaSingkat(h[1]), tokens)).join(' · ')}</div>`;
+}
+
+function buildProgramRowHTML(item, now, nearestIds, hl) {
     const isExpired = item.dateObj < now;
     const kuota = item.kuota_pax || 45;
     // Jamaah "batal" tidak dihitung mengisi kuota. kbJamaahList sendiri sudah
@@ -2183,14 +2199,14 @@ function buildProgramRowHTML(item, now, nearestIds) {
         : '';
 
     return `<tr class="${isNearest ? 'row-nearest-departure nearest-rank-' + nearestRank : ''}">
-            <td title="${hasPosterHover?'Hover untuk preview poster — ':''}${escapeHtml(item.nama||'')}"><strong${posterHoverAttrs}>${escapeHtml(item.nama||'')}</strong>${verifiedBadge}${newBadge}</td>
+            <td title="${hasPosterHover?'Hover untuk preview poster — ':''}${escapeHtml(item.nama||'')}"><strong${posterHoverAttrs}>${markSearchHit(item.nama||'', hl)}</strong>${verifiedBadge}${newBadge}${searchHotelHintHTML(item, hl)}</td>
             <td>${escapeHtml(hitungEstimasi(item.dateObj, now))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_quad || item.harga_quint))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_triple))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_double))}</td>
-            <td>${escapeHtml(item.tgl||'-')}${isNearest ? ` <span class="nearest-badge nearest-badge-${nearestRank}" title="${nearestRank === 1 ? 'Keberangkatan paling dekat' : 'Salah satu dari 3 keberangkatan terdekat'}"><i class="bi bi-lightning-charge-fill"></i> Terdekat</span>` : ''}</td>
-            <td>${escapeHtml(item.durasi||'-')}</td>
-            <td>${escapeHtml(item.maskapai||'-')}</td>
+            <td>${markSearchHit(item.tgl||'-', hl)}${isNearest ? ` <span class="nearest-badge nearest-badge-${nearestRank}" title="${nearestRank === 1 ? 'Keberangkatan paling dekat' : 'Salah satu dari 3 keberangkatan terdekat'}"><i class="bi bi-lightning-charge-fill"></i> Terdekat</span>` : ''}</td>
+            <td>${markSearchHit(item.durasi||'-', hl)}</td>
+            <td>${markSearchHit(item.maskapai||'-', hl)}</td>
             <td>
                 <div class="action-btns">
                     <button onclick="openDetailModal('${item.id}')" title="Detail"><i class="bi bi-eye-fill"></i></button>
@@ -2208,6 +2224,15 @@ function renderTable(data) {
     const now = new Date();
     const canEdit = canManageProgramData(); // admin & user boleh edit/hapus, guest & publik hanya lihat
     if (!data || !data.length) {
+        if (currentSearchTerm) {   // kosong karena pencarian, bukan karena belum ada program
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--ink-soft);">
+                <i class="bi bi-search" style="font-size:24px;display:block;margin-bottom:10px;"></i>
+                Tidak ada program yang cocok dengan <strong>"${escapeHtml(currentSearchTerm)}"</strong>.<br>
+                <span style="font-size:12.5px;">Coba kata lain: nama program, maskapai, hotel, tanggal, atau harga.</span><br>
+                <button type="button" class="btn-homepage" style="margin-top:14px;cursor:pointer;" onclick="clearProgramSearch()"><i class="bi bi-x-circle"></i> Hapus pencarian</button>
+            </td></tr>`;
+            return;
+        }
         tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--ink-soft);">
             <i class="bi bi-inbox-fill" style="font-size:24px;display:block;margin-bottom:10px;"></i>
             Belum ada program umroh.${canEdit ? ' Klik "Tambah" untuk menambahkan.' : ''}
@@ -2216,7 +2241,10 @@ function renderTable(data) {
     }
 
     const nearestIds = getNearestDepartureIds(3);
-    tbody.innerHTML = data.map(item => buildProgramRowHTML(item, now, nearestIds)).join('');
+    const fuzzyNote = currentSearchFuzzy
+        ? `<tr class="srch-note-row"><td colspan="10"><i class="bi bi-info-circle"></i> Tidak ada hasil yang persis untuk <strong>"${escapeHtml(currentSearchTerm)}"</strong> — menampilkan hasil yang mirip.</td></tr>`
+        : '';
+    tbody.innerHTML = fuzzyNote + data.map(item => buildProgramRowHTML(item, now, nearestIds, currentSearchTokens)).join('');
 }
 
 function updateMetrics() {
@@ -2249,26 +2277,141 @@ function sortTable(column) {
     renderTable(currentData);
 }
 
+// ---- Pencarian program (dashboard utama) ----
+// Fitur: banyak kata (semua harus cocok), abaikan huruf besar/kecil & aksen, cari di nama, maskapai,
+// tanggal, durasi, HOTEL (Makkah/Madinah/kota lain) dan HARGA (ketik "28950000", "28.950.000",
+// "Rp 28.950.000" atau "29jt"). Kalau tidak ada hasil persis, dicoba lagi dengan toleransi typo
+// (mis. "taif" -> Thaif). Hasil selalu urut tanggal berangkat, kata yang dicari di-highlight di tabel,
+// dan pencarian tetap aktif saat data dimuat ulang.
+let currentSearchTerm = '', currentSearchTokens = [], currentSearchFuzzy = false;
+
+function srchNorm(s) {
+    return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+function srchTokens(term) {
+    let q = String(term || '').toLowerCase();
+    q = q.replace(/\brp\.?\s*/g, ' ');                       // "Rp 28.950.000" -> "28.950.000"
+    q = q.replace(/(\d)[.,](?=\d{3}(?!\d))/g, '$1');         // 28.950.000 -> 28950000
+    q = q.replace(/(\d+)\s*(?:jt|juta)\b/g, '$1jt');         // "29 juta" -> "29jt"
+    return [...new Set(srchNorm(q).split(' ').filter(Boolean))];
+}
+function srchIndex(item) {
+    const hotels = [item.hotel_makkah, item.hotel_madinah, item.hotel_3, item.hotel_3_kota, item.hotel_4, item.hotel_4_kota];
+    const text = srchNorm([item.nama, item.maskapai, item.tgl, item.durasi].concat(hotels).join(' '));
+    return {
+        text,
+        words: text.split(' '),
+        prices: [item.harga_quint, item.harga_quad, item.harga_triple, item.harga_double].map(v => String(v || '').replace(/\D/g, '')).filter(Boolean)
+    };
+}
+// Jarak edit (transposisi dihitung 1) -- cukup untuk kata pendek
+function srchDist(a, b, max) {
+    if (Math.abs(a.length - b.length) > max) return max + 1;
+    let prev2 = null, prev = Array.from({ length: b.length + 1 }, (_, k) => k);
+    for (let i = 1; i <= a.length; i++) {
+        const cur = [i];
+        for (let k = 1; k <= b.length; k++) {
+            const cost = a[i - 1] === b[k - 1] ? 0 : 1;
+            let v = Math.min(prev[k] + 1, cur[k - 1] + 1, prev[k - 1] + cost);
+            if (prev2 && i > 1 && k > 1 && a[i - 1] === b[k - 2] && a[i - 2] === b[k - 1]) v = Math.min(v, prev2[k - 2] + 1);
+            cur.push(v);
+        }
+        prev2 = prev; prev = cur;
+    }
+    return prev[b.length];
+}
+function srchTokenMatch(tok, ix, fuzzy) {
+    if (/^\d+$/.test(tok)) {
+        // angka pendek (1-3 digit) = tanggal/durasi: cocokkan di AWAL kata saja, supaya "26" tidak ikut menangkap tahun "2026"
+        if (tok.length <= 3) return ix.words.some(w => w.startsWith(tok));
+        // angka panjang = tahun atau harga
+        return ix.text.includes(tok) || ix.prices.some(pr => pr.includes(tok));
+    }
+    const jt = tok.match(/^(\d{1,3})jt$/);                    // "29jt" -> harga 29.xxx.xxx
+    if (jt) { const re = new RegExp('^' + jt[1] + '\\d{6}$'); return ix.prices.some(pr => re.test(pr)); }
+    if (ix.text.includes(tok)) return true;
+    if (fuzzy && tok.length >= 4) {
+        const max = tok.length >= 8 ? 2 : 1;
+        return ix.words.some(w => w.length >= 3 && srchDist(tok, w, max) <= max);
+    }
+    return false;
+}
+
 function filterData(term) {
-    const t = term.toLowerCase().trim();
+    const raw = String(term == null ? '' : term);
+    const tokens = srchTokens(raw);
     const visiblePrograms = dataUmroh.filter(isProgramVisibleOnDashboard);
-    if (!t) {
+    currentSearchTerm = raw.trim();
+    currentSearchFuzzy = false;
+    if (!tokens.length) {
+        currentSearchTokens = [];
         currentData = sortProgramsDefault(visiblePrograms);
     } else {
-        const keywords = t.split(/\s+/).filter(Boolean);
-        currentData = visiblePrograms.filter(item => {
-            const haystack = [item.nama||'', item.maskapai||'', item.tgl||'', item.durasi||'', item.harga_quint||'', item.harga_quad||'', item.harga_double||'', item.harga_triple||''].join(' ').toLowerCase();
-            return keywords.every(kw => haystack.includes(kw));
-        });
+        const indexed = visiblePrograms.map(item => ({ item, ix: srchIndex(item) }));
+        let hits = indexed.filter(h => tokens.every(t => srchTokenMatch(t, h.ix, false)));
+        if (!hits.length) {
+            hits = indexed.filter(h => tokens.every(t => srchTokenMatch(t, h.ix, true)));
+            currentSearchFuzzy = hits.length > 0;
+        }
+        currentSearchTokens = tokens.filter(t => !/^\d{1,3}jt$/.test(t) && !(/^\d+$/.test(t) && t.length >= 4 && !hits.some(h => h.ix.text.includes(t))));
+        currentData = sortProgramsDefault(hits.map(h => h.item));
     }
     if (currentSort.column) applySortToData();
+    updateSearchUI(visiblePrograms.length);
     renderTable(currentData);
+}
+
+// Dipanggil setelah data dimuat/di-refresh: pencarian yang sedang diketik tidak hilang
+function renderTableWithSearch() {
+    const el = document.getElementById('searchInput');
+    if (el && el.value.trim()) filterData(el.value); else { currentSearchTerm = ''; currentSearchTokens = []; currentSearchFuzzy = false; updateSearchUI(0); renderTable(currentData); }
+}
+
+function updateSearchUI(totalVisible) {
+    const el = document.getElementById('searchInput');
+    const clr = document.getElementById('searchClear'), cnt = document.getElementById('searchCount');
+    const aktif = !!(el && el.value.trim());
+    if (clr) clr.style.display = (el && el.value) ? 'inline-flex' : 'none';
+    if (cnt) {
+        if (aktif) {
+            cnt.textContent = currentData.length + (totalVisible ? '/' + totalVisible : '');
+            cnt.title = currentData.length + ' program cocok' + (totalVisible ? ' dari ' + totalVisible : '');
+            cnt.style.display = 'inline-block';
+        } else cnt.style.display = 'none';
+    }
+}
+
+function clearProgramSearch() {
+    const el = document.getElementById('searchInput');
+    clearTimeout(debounceTimer);
+    if (el) { el.value = ''; el.focus(); }
+    filterData('');
 }
 
 function handleSearchInput(e) {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => filterData(e.target.value), 300);
+    const clr = document.getElementById('searchClear');   // tombol hapus langsung muncul/hilang saat mengetik
+    if (clr) clr.style.display = e.target.value ? 'inline-flex' : 'none';
+    debounceTimer = setTimeout(() => filterData(e.target.value), 150);
 }
+
+function handleSearchKeydown(e) {
+    if (e.key === 'Enter') { clearTimeout(debounceTimer); filterData(e.target.value); }
+    else if (e.key === 'Escape' && e.target.value) { e.preventDefault(); clearProgramSearch(); }
+}
+
+// Pintasan: "/" atau Ctrl/Cmd+K langsung fokus ke kolom cari (kalau sedang tidak mengetik di input lain)
+document.addEventListener('keydown', e => {
+    const isSlash = e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey;
+    const isCtrlK = (e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'k' || e.key === 'K');
+    if (!isSlash && !isCtrlK) return;
+    const t = e.target, tag = t && t.tagName;
+    if (isSlash && (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable))) return;
+    const el = document.getElementById('searchInput');
+    if (!el || !el.getClientRects().length) return;          // kolom cari sedang tidak tampil
+    e.preventDefault();
+    el.focus(); el.select();
+});
 
 // ============================================================
 // 11. DETAIL MODAL

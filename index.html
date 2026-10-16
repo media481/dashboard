@@ -143,7 +143,9 @@
             <div class="topbar-center">
                 <div class="search-box">
                     <i class="bi bi-search"></i>
-                    <input type="text" id="searchInput" placeholder="Cari program, maskapai..." oninput="handleSearchInput(event)">
+                    <input type="text" id="searchInput" placeholder="Cari program, maskapai, hotel, tanggal, harga...  ( / )" autocomplete="off" enterkeyhint="search" aria-label="Cari program" oninput="handleSearchInput(event)" onkeydown="handleSearchKeydown(event)">
+                    <span class="search-count" id="searchCount" style="display:none;"></span>
+                    <button type="button" class="search-clear" id="searchClear" onclick="clearProgramSearch()" title="Hapus pencarian (Esc)" aria-label="Hapus pencarian" style="display:none;"><i class="bi bi-x-lg"></i></button>
                 </div>
             </div>
             <div class="topbar-actions">
