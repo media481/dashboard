@@ -257,8 +257,6 @@ button.flipbtn{border:0;cursor:pointer}
 .ss-cta{display:flex;align-items:center;gap:.8em;font-size:1.15em;font-weight:600}
 .ss-cta svg{width:1.6em;height:1.6em;color:#25D366;flex:none}
 .ss-note{font-size:.7em;opacity:.55}
-.ss-bar{position:absolute;left:0;right:0;bottom:0;height:.4em;background:rgba(255,255,255,.12)}
-.ss-bar i{display:block;height:100%;background:#fff;transform-origin:left center;transform:scaleX(0)}
 .ss-ctl{position:absolute;left:50%;bottom:1.6em;transform:translateX(-50%);display:flex;align-items:center;gap:.5em;background:rgba(8,18,32,.8);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);padding:.5em;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .3s}
 .ss.ctl .ss-ctl{opacity:1;pointer-events:auto}
 .ss-ctl button,.ss-ctl select{height:2.8em;min-width:2.8em;border:0;border-radius:999px;background:rgba(255,255,255,.14);color:#fff;font:600 .9em Inter,sans-serif;cursor:pointer;padding:0 .9em;display:inline-flex;align-items:center;justify-content:center}
@@ -320,7 +318,6 @@ button.flipbtn{border:0;cursor:pointer}
 
 <div class="ss" id="ss" role="dialog" aria-modal="true" aria-label="Slideshow program Umroh">
   <div class="ss-stage" id="ssStage"></div>
-  <div class="ss-bar"><i id="ssProg"></i></div>
   <div class="ss-ctl" id="ssCtl">
     <button type="button" id="ssPrev" title="Sebelumnya (←)" aria-label="Slide sebelumnya"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg></button>
     <button type="button" id="ssPlay" title="Jeda / putar (Spasi)" aria-label="Jeda atau putar"><svg class="ic-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg><svg class="ic-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
@@ -594,7 +591,7 @@ document.getElementById('sort').addEventListener('change', render);
 // ===== Slideshow layar pameran =====
 // Dibuka lewat tombol "Slideshow" di header, atau otomatis lewat katalog.html?slideshow (opsional &detik=15).
 // Urutan: semua program tersedia, tanggal berangkat terdekat dulu. Data disegarkan otomatis tiap 10 menit.
-const ss = document.getElementById('ss'), ssStage = document.getElementById('ssStage'), ssProg = document.getElementById('ssProg');
+const ss = document.getElementById('ss'), ssStage = document.getElementById('ssStage');
 const ssQs = new URLSearchParams(location.search);
 let ssAuto = ssQs.has('slideshow');
 let ssList = [], ssIdx = 0, ssOpen = false, ssPaused = false, ssElapsed = 0, ssLast = 0, ssRaf = 0;
@@ -643,7 +640,6 @@ function ssSlideHTML(p, i, n) {
     </div>
   </div>`;
 }
-function ssBar(v) { ssProg.style.transform = 'scaleX(' + Math.min(1, Math.max(0, v)) + ')'; }
 function ssShow(i, instant) {
   const n = ssList.length; if (!n) return;
   ssIdx = ((i % n) + n) % n;
@@ -651,12 +647,11 @@ function ssShow(i, instant) {
     const p = ssList[ssIdx]; if (!p) return;
     ssStage.innerHTML = ssSlideHTML(p, ssIdx, ssList.length);
     ssStage.classList.remove('out');
-    ssBar(0);
     const nx = ssList[(ssIdx + 1) % ssList.length]; if (nx) preloadPosterBesar(nx);   // siapkan poster slide berikutnya
   };
   clearTimeout(ssSwapT);
   if (instant) { ssElapsed = 0; draw(); }
-  else { ssElapsed = -350; ssBar(0); ssStage.classList.add('out'); ssSwapT = setTimeout(draw, 350); }
+  else { ssElapsed = -350; ssStage.classList.add('out'); ssSwapT = setTimeout(draw, 350); }
 }
 function preloadPosterBesar(p) {
   const src = posterSrc(p.link_poster, 1600);
@@ -669,7 +664,7 @@ function ssTick(ts) {
   const dt = Math.min(ts - ssLast, 250); ssLast = ts;
   if (!ssPaused) {
     ssElapsed += dt;
-    if (ssElapsed >= ssDur) ssShow(ssIdx + 1); else ssBar(ssElapsed / ssDur);
+    if (ssElapsed >= ssDur) ssShow(ssIdx + 1);
   }
   ssRaf = requestAnimationFrame(ssTick);
 }
