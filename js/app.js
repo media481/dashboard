@@ -9174,11 +9174,15 @@ window.copyAuditKode = copyAuditKode;
 function getKatalogUrl() {
     return new URL('katalog.html', window.location.href).href; // buang query/hash, ikut domain aktif
 }
-async function copyKatalogLink() {
-    const url = getKatalogUrl();
+// Link katalog versi flipbook (katalog-flip.html) — dipakai tombol "Share Flipbook" di topbar.
+function getFlipbookUrl() {
+    return new URL('katalog-flip.html', window.location.href).href;
+}
+// Helper salin ke clipboard untuk link publik; nama = "katalog" / "flipbook" (dipakai di teks toast)
+async function salinLinkPublik(url, nama) {
     try {
         await navigator.clipboard.writeText(url);
-        showToast('Link katalog disalin: ' + url);
+        showToast('Link ' + nama + ' disalin: ' + url);
     } catch (err) {
         // Fallback untuk browser/lingkungan tanpa Clipboard API (mis. HTTP non-secure)
         const ta = document.createElement('textarea');
@@ -9189,15 +9193,18 @@ async function copyKatalogLink() {
         ta.select();
         try {
             document.execCommand('copy');
-            showToast('Link katalog disalin: ' + url);
+            showToast('Link ' + nama + ' disalin: ' + url);
         } catch (err2) {
-            showToast('Gagal menyalin. Link katalog: ' + url, 'error');
+            showToast('Gagal menyalin. Link ' + nama + ': ' + url, 'error');
         } finally {
             document.body.removeChild(ta);
         }
     }
 }
+async function copyKatalogLink() { return salinLinkPublik(getKatalogUrl(), 'katalog'); }
+async function copyFlipbookLink() { return salinLinkPublik(getFlipbookUrl(), 'flipbook'); }
 window.copyKatalogLink = copyKatalogLink;
+window.copyFlipbookLink = copyFlipbookLink;
 
 // Ringkasan jumlah log per jenis (query count saja, tidak menarik baris).
 async function loadNotaAuditStats() {
