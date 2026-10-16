@@ -26,7 +26,7 @@ Ketiganya memverifikasi token ke Supabase Auth, lalu mengecek `dashboard_profile
 | `scan-poster-ocr` | Ekstrak data poster (nama, tanggal, harga, hotel 1-4, termasuk/tidak termasuk) untuk Crosscheck. Body: `{ imageUrl }` | Tanpa auth | `gemini-3.5-flash-lite` (tertanam di kode) |
 | `generate-ig-caption` | Satu caption IG dari satu ide. Hasil dirapikan (ejaan "Umroh", 5 hashtag, maks 2200 karakter) dan diberi `warnings` untuk angka yang tidak ada di konsep | Bearer token admin/user | `GEMINI_MODEL`, bawaan `gemini-3.5-flash` |
 | `generate-ig-content-plan` | Paket 7 posting Senin-Minggu yang saling menyambung dalam satu tema pekan (output JSON terstruktur) | Bearer token admin/user | `GEMINI_MODEL`, bawaan `gemini-3.5-flash` |
-| `generate-ig-year-plan` | Tema per pekan untuk setahun (maks 30 pekan per panggilan). Isi harian dibuat oleh `generate-ig-content-plan` | Bearer token admin/user | `GEMINI_MODEL`, bawaan `gemini-3.5-flash` |
+| `generate-ig-year-plan` | Tema per pekan untuk setahun (maks 30 pekan per panggilan). Menerima bank alur per fase + bobot (`bankAlurGrup`) dan mengembalikan label `fase` per pekan (versi 2). Isi harian dibuat oleh `generate-ig-content-plan` | Bearer token admin/user | `GEMINI_MODEL`, bawaan `gemini-3.5-flash` |
 
 Fungsi IG AI memakai model cadangan `gemini-3.5-flash-lite`. Aturan isinya mengikuti `pola-konten.md`. Anon key saja ditolak (401). Fungsi-fungsi ini di-deploy dengan `--no-verify-jwt` karena pengecekan token dan role dilakukan di dalam kode.
 

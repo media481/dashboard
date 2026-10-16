@@ -14,12 +14,16 @@
 //     konteksProgram?: string,     // ringkasan program aktif (nama, tanggal berangkat, harga, sisa seat)
 //     riwayatTema?: string,        // tema yang SUDAH terpakai (satu per baris) -> wajib dihindari
 //     konteksSekitar?: string,     // pekan lain yang sudah punya tema (terkunci / batch sebelumnya): "senin | tema"
-//     bankAlur?: string[],         // daftar tema alur perjalanan jamaah (bahan, bukan keharusan)
+//     bankAlurGrup?: [{ id, label, bobot, tema: string[] }],  // bank alur per FASE beserta bobot jatahnya (maks 8 fase,
+//                                  // 60 tema per fase). Dipakai untuk komposisi seimbang antarfase. Kalau ada, bankAlur diabaikan
+//     bankAlur?: string[],         // cadangan untuk klien lama: daftar tema alur rata tanpa fase (maks 160 entri)
 //     bankMusim?: string,          // daftar tema musiman + kapan idealnya tayang (bahan)
 //     arahan?: string              // arahan tambahan dari admin
 //   }
 //   Header: Authorization: Bearer <access_token sesi login dashboard> (admin/user). Anon key saja DITOLAK (401).
-//   Response: { items: [{ senin, tema, alasan, fokus_program }], ditolak?: [...], versi: 1 }
+//   Response: { items: [{ senin, tema, alasan, fokus_program, fase }], komposisi?: { <fase>: jumlah }, ditolak?: [...], versi: 2 }
+//             fase = id fase bank alur (mis. "siap"), "musiman", "hari_besar", atau "lain". Klien lama yang hanya membaca
+//             senin/tema/alasan/fokus_program tetap jalan (versi >= 1 diterima).
 //   Jaminan: senin = salah satu pekan yang diminta (tanpa duplikat), tema 1 baris <= 80 karakter dan tidak
 //   kembar dengan riwayat/antarpekan (cek normalisasi sederhana; cek kemiripan lanjutan dilakukan frontend),
 //   alasan <= 200 karakter tanpa tanda pisah panjang.
@@ -132,6 +136,14 @@ TUJUAN RENCANA:
 3. Mengarah ke penjualan secara halus: tema musiman yang laku dijual (Ramadhan, libur sekolah, libur akhir tahun, musim haji) ditayangkan 2-3 bulan SEBELUM musimnya, karena calon jamaah memesan jauh hari. Pekan menjelang keberangkatan sebuah program mengikuti fasenya (Kenalkan > Isi paket > Seat menipis > Penutupan): kalau sebuah pekan punya keterangan "program", tema pekan itu harus memberi ruang bagi program tersebut (misalnya tema persiapan atau tema yang relevan dengan jenis perjalanannya), tanpa memaksa semua pekan jadi jualan.
 4. Tidak berulang: tiap tema BERBEDA dari RIWAYAT TEMA, dari tema di KONTEKS SEKITAR, dan dari tema pekan lain dalam jawabanmu (beda topik inti, bukan sekadar ganti kata). Satu topik inti hanya sekali dalam rentang yang diminta.
 
+ATURAN KOMPOSISI FASE (berlaku kalau ada BANK ALUR PER FASE di pesan):
+- Pekan yang BUKAN hari besar dan BUKAN tema musiman/penjualan disebut pekan ALUR. Tema pekan alur diambil dari bank fase (boleh disesuaikan kata, tetap satu topik inti) dan wajib diberi label "fase" berupa id fasenya.
+- Bagi pekan alur ke fase menurut BOBOT. Jatah kasar tiap fase untuk panggilan ini tertulis di bank; selisih satu pekan boleh. Fase berbobot kecil (Madinah, umroh bersama siapa, pulang) tetap HARUS tayang rutin: jangan ada fase yang absen lebih dari 12 pekan berturut-turut, dan jangan memborong fase yang sama lebih dari dua pekan berturut-turut.
+- Perhatikan KOMPOSISI DI SEKITAR (fase yang sudah tayang di pekan lain): fase yang masih kurang dari jatahnya didahulukan, yang sudah berlebih ditunda.
+- Di dalam satu fase, ambil tema berurutan menyambung dari tema terakhir fase itu (lihat KONTEKS SEKITAR dan RIWAYAT), bukan loncat acak.
+- Tema hari besar diberi label "hari_besar", tema musiman atau penjualan diberi label "musiman". Keduanya tidak dihitung ke jatah fase. Bank hanyalah bahan: kalau semua tema satu fase sudah terpakai, buat tema baru yang setara, tetap berlabel fase itu.
+- Selang-seling nuansa: setelah dua pekan bernuansa hati (niat, doa, rindu, makna), sisipkan pekan yang praktis (dokumen, fisik, perlengkapan, biaya, manasik).
+
 ATURAN TEMA:
 - "tema" = frasa singkat 2-6 kata, seperti judul bab (contoh gaya: "Persiapan Fisik", "Miqat dan Ihram", "Umroh Bersama Orang Tua", "Rencanakan Umroh di Bulan Ramadhan"). Tanpa tanda baca di ujung, tanpa tanda pisah panjang, tanpa tanda kutip, tanpa nomor.
 - Tema harus bisa dibahas dari tujuh sudut berbeda dalam seminggu, jadi jangan terlalu sempit (bukan satu doa tertentu) dan jangan terlalu lebar (bukan "Ibadah").
@@ -142,12 +154,19 @@ ATURAN TEMA:
 - Kalau ada ARAHAN dari admin, utamakan arahan itu selama tidak melanggar aturan di atas.
 
 "alasan" = SATU kalimat (maks. 25 kata) kenapa tema ini cocok di pekan ini (musim, fase program, kelanjutan alur, atau penyeimbang pekan sebelumnya). Tulis jujur dan spesifik, tanpa tanda pisah panjang.
+"fase" = id fase bank alur untuk pekan alur, "musiman", atau "hari_besar" (kalau tidak ada BANK ALUR PER FASE, isi "lain").
 "fokus_program" = nama program (persis seperti di KONTEKS PROGRAM) yang menjadi jangkar pekan ini, atau string kosong kalau tidak ada.
 
-FORMAT OUTPUT: JSON array murni (tanpa code fence, tanpa teks lain). Satu elemen per pekan yang diminta: { "senin": "YYYY-MM-DD" (persis seperti di daftar pekan), "tema": string, "alasan": string, "fokus_program": string }. Jumlah elemen HARUS sama dengan jumlah pekan yang diminta, tanpa duplikat tanggal, urut tanggal.`;
+FORMAT OUTPUT: JSON array murni (tanpa code fence, tanpa teks lain). Satu elemen per pekan yang diminta: { "senin": "YYYY-MM-DD" (persis seperti di daftar pekan), "tema": string, "alasan": string, "fokus_program": string, "fase": string }. Jumlah elemen HARUS sama dengan jumlah pekan yang diminta, tanpa duplikat tanggal, urut tanggal.`;
 
 interface Pekan { senin: string; minggu: string; hijri: string; masehi: string; program: string; peristiwa: string }
-interface Item { senin: string; tema: string; alasan: string; fokus_program: string }
+interface Item { senin: string; tema: string; alasan: string; fokus_program: string; fase: string }
+interface Grup { id: string; label: string; bobot: number; tema: string[] }
+
+const MAKS_GRUP = 8;
+const MAKS_TEMA_PER_GRUP = 60;
+const MAKS_BANK_RATA = 160; // batas lama 80 dinaikkan: bank alur kini 95 tema dan masih akan bertambah
+const FASE_KHUSUS = new Set(["musiman", "hari_besar", "lain"]);
 
 function isRealDate(str: string): boolean {
   if (!DATE_RE.test(str)) return false;
@@ -178,9 +197,39 @@ function norm(t: string): string {
   return t.toLowerCase().replace(/['`\u2019]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+// Fase sebuah tema menurut bank (cocok persis setelah normalisasi); "" kalau bukan tema bank.
+function faseDariTema(tema: string, grup: Grup[]): string {
+  const n = norm(tema);
+  return grup.find((g) => g.tema.some((t) => norm(t) === n))?.id || "";
+}
+
+// Hitung fase pada baris "senin | tema" di KONTEKS SEKITAR supaya batch berikutnya menyeimbangkan dengan batch sebelumnya.
+function komposisiSekitar(konteksSekitar: string, grup: Grup[]): Map<string, number> {
+  const hit = new Map<string, number>();
+  for (const baris of konteksSekitar.split("\n")) {
+    const tema = baris.includes("|") ? baris.split("|").slice(1).join("|").trim() : "";
+    const f = tema ? faseDariTema(tema, grup) : "";
+    if (f) hit.set(f, (hit.get(f) || 0) + 1);
+  }
+  return hit;
+}
+
+// Bank alur per fase + bobot + jatah kasar untuk panggilan ini. Pekan ber-"Peristiwa" tidak dihitung sebagai pekan alur
+// (hari besar). Pekan musiman biasa tidak bisa dihitung di sini, jadi jatah ini batas atas, bukan angka pasti.
+function teksBankGrup(grup: Grup[], pekan: Pekan[], konteksSekitar: string): string {
+  const totalBobot = grup.reduce((t, g) => t + g.bobot, 0) || 1;
+  const nAlur = pekan.filter((w) => !w.peristiwa).length;
+  const sekitar = komposisiSekitar(konteksSekitar, grup);
+  const blok = grup.map((g) => {
+    const jatah = Math.round((nAlur * g.bobot) / totalBobot);
+    return `[${g.id}] ${g.label} | bobot ${g.bobot} dari ${totalBobot} | jatah kasar ${jatah} pekan | sudah tayang di sekitar: ${sekitar.get(g.id) || 0}\n${g.tema.join("; ")}`;
+  }).join("\n\n");
+  return `BANK ALUR PER FASE (bahan, bukan keharusan; label "fase" memakai id di dalam kurung siku. Pekan alur kira-kira ${nAlur} dari ${pekan.length} pekan, sisanya hari besar atau musiman. Jatah kasar adalah batas atas, kurangi sesuai pekan musiman yang kamu pilih):\n${blok}`;
+}
+
 function susunPesan(p: {
   pekan: Pekan[]; konteksProgram: string; riwayatTema: string; konteksSekitar: string;
-  bankAlur: string[]; bankMusim: string; arahan: string; catatan: string;
+  bankAlur: string[]; bankAlurGrup: Grup[]; bankMusim: string; arahan: string; catatan: string;
 }): string {
   const daftar = p.pekan.map((w, i) =>
     `${i + 1}. ${w.senin} s/d ${w.minggu} | Hijriah: ${w.hijri || "-"} | Masehi: ${w.masehi || "-"}${w.peristiwa ? ` | Peristiwa: ${w.peristiwa}` : ""}${w.program ? ` | Program: ${w.program}` : ""}`).join("\n");
@@ -189,7 +238,8 @@ function susunPesan(p: {
     `KONTEKS PROGRAM (jangan mengarang data di luar daftar ini):\n${p.konteksProgram || "(tidak ada program aktif yang akan berangkat)"}`,
     p.konteksSekitar ? `KONTEKS SEKITAR (pekan lain yang sudah punya tema; sambungkan, jangan diulang):\n${p.konteksSekitar}` : "",
     p.riwayatTema ? `RIWAYAT TEMA (sudah terpakai, WAJIB dihindari):\n${p.riwayatTema}` : "RIWAYAT TEMA: (belum ada)",
-    p.bankAlur.length ? `BAHAN ALUR PERJALANAN JAMAAH (urutan kasar; boleh dipakai, diubah, atau diganti tema lain yang setara):\n${p.bankAlur.join("; ")}` : "",
+    p.bankAlurGrup.length ? teksBankGrup(p.bankAlurGrup, p.pekan, p.konteksSekitar) : "",
+    !p.bankAlurGrup.length && p.bankAlur.length ? `BAHAN ALUR PERJALANAN JAMAAH (urutan kasar; boleh dipakai, diubah, atau diganti tema lain yang setara):\n${p.bankAlur.join("; ")}` : "",
     p.bankMusim ? `BAHAN TEMA MUSIMAN (kapan idealnya tayang):\n${p.bankMusim}` : "",
     p.arahan ? `ARAHAN DARI ADMIN:\n${p.arahan}` : "",
     p.catatan,
@@ -207,8 +257,9 @@ function skemaRespons() {
         tema: { type: "STRING", description: "Tema pekan, 2-6 kata" },
         alasan: { type: "STRING", description: "Satu kalimat alasan" },
         fokus_program: { type: "STRING", description: "Nama program jangkar atau string kosong" },
+        fase: { type: "STRING", description: "Id fase bank alur, atau musiman, hari_besar, lain" },
       },
-      required: ["senin", "tema", "alasan", "fokus_program"],
+      required: ["senin", "tema", "alasan", "fokus_program", "fase"],
     },
   };
 }
@@ -247,7 +298,7 @@ async function panggilItems(pesan: string): Promise<unknown[]> {
 }
 
 // Bersihkan & validasi satu putaran. Return item lolos + alasan penolakan per tanggal.
-function olahHasil(items: unknown[], pekan: Pekan[], terpakai: Set<string>): { lolos: Item[]; alasan: Map<string, string> } {
+function olahHasil(items: unknown[], pekan: Pekan[], terpakai: Set<string>, grup: Grup[]): { lolos: Item[]; alasan: Map<string, string> } {
   const valid = new Set(pekan.map((w) => w.senin));
   const alasan = new Map<string, string>();
   const lolos: Item[] = [];
@@ -262,10 +313,15 @@ function olahHasil(items: unknown[], pekan: Pekan[], terpakai: Set<string>): { l
     const n = norm(tema);
     if (dipakai.has(n)) { alasan.set(senin, `tema "${tema}" sudah dipakai, pilih topik inti yang berbeda`); continue; }
     dipakai.add(n);
+    // Fase: pakai label AI kalau valid; kalau tema persis ada di bank, bank yang menentukan (label AI bisa meleset).
+    const labelAI = typeof raw.fase === "string" ? raw.fase.trim().toLowerCase() : "";
+    const dariBank = faseDariTema(tema, grup);
+    const fase = dariBank || (grup.some((g) => g.id === labelAI) || FASE_KHUSUS.has(labelAI) ? labelAI : "lain");
     lolos.push({
       senin, tema,
       alasan: rapikan(raw.alasan, 200),
       fokus_program: rapikan(raw.fokus_program, 120),
+      fase,
     });
     alasan.delete(senin);
   }
@@ -296,7 +352,16 @@ Deno.serve(async (req: Request) => {
     const dasar = {
       konteksProgram: clip(body?.konteksProgram, 4000),
       konteksSekitar: clip(body?.konteksSekitar, 3000),
-      bankAlur: (Array.isArray(body?.bankAlur) ? body.bankAlur : []).map((x: unknown) => clip(x, 60)).filter(Boolean).slice(0, 80),
+      bankAlur: (Array.isArray(body?.bankAlur) ? body.bankAlur : []).map((x: unknown) => clip(x, 60)).filter(Boolean).slice(0, MAKS_BANK_RATA),
+      bankAlurGrup: (Array.isArray(body?.bankAlurGrup) ? body.bankAlurGrup : [])
+        .slice(0, MAKS_GRUP)
+        .map((g: Record<string, unknown>): Grup => ({
+          id: clip(g?.id, 20).toLowerCase().replace(/[^a-z0-9_]/g, ""),
+          label: clip(g?.label, 40),
+          bobot: Math.min(10, Math.max(1, Math.round(Number(g?.bobot)) || 1)),
+          tema: (Array.isArray(g?.tema) ? g.tema : []).map((x: unknown) => clip(x, 60)).filter(Boolean).slice(0, MAKS_TEMA_PER_GRUP),
+        }))
+        .filter((g: Grup) => g.id && !FASE_KHUSUS.has(g.id) && g.tema.length),
       bankMusim: clip(body?.bankMusim, 2500),
       arahan: clip(body?.arahan, 800),
     };
@@ -305,7 +370,7 @@ Deno.serve(async (req: Request) => {
 
     // Putaran 0: semua pekan.
     const items0 = await panggilItems(susunPesan({ ...dasar, pekan, riwayatTema: riwayat, catatan: "" }));
-    const r0 = olahHasil(items0, pekan, terpakai);
+    const r0 = olahHasil(items0, pekan, terpakai, dasar.bankAlurGrup);
     let lolos = r0.lolos;
     const alasanAkhir = new Map<string, string>(r0.alasan);
 
@@ -323,7 +388,7 @@ Deno.serve(async (req: Request) => {
         const riwayatK = [riwayat, ...lolos.map((x) => x.tema)].filter(Boolean).join("\n").slice(0, 5500);
         const itemsK = await panggilItems(susunPesan({ ...dasar, pekan: perlu, konteksSekitar: sekitar, riwayatTema: riwayatK, catatan }));
         const terpakaiK = new Set<string>([...terpakai, ...lolos.map((x) => norm(x.tema))]);
-        const rk = olahHasil(itemsK, perlu, terpakaiK);
+        const rk = olahHasil(itemsK, perlu, terpakaiK, dasar.bankAlurGrup);
         lolos = [...lolos, ...rk.lolos];
         rk.lolos.forEach((x) => alasanAkhir.delete(x.senin));
         rk.alasan.forEach((v, k) => alasanAkhir.set(k, v));
@@ -339,9 +404,11 @@ Deno.serve(async (req: Request) => {
     if (ditolak.length) console.warn("generate-ig-year-plan: pekan ditolak ->", ditolak.join(" | "));
 
     if (!lolos.length) {
-      return jsonResp({ items: [], ditolak, versi: 1 });
+      return jsonResp({ items: [], ditolak, versi: 2 });
     }
-    return jsonResp({ items: lolos, ...(ditolak.length ? { ditolak } : {}), versi: 1 });
+    const komposisi: Record<string, number> = {};
+    lolos.forEach((x) => { komposisi[x.fase] = (komposisi[x.fase] || 0) + 1; });
+    return jsonResp({ items: lolos, komposisi, ...(ditolak.length ? { ditolak } : {}), versi: 2 });
   } catch (err) {
     return jsonResp({ error: String((err as Error)?.message || err) }, 500);
   }

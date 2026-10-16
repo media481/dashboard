@@ -76,7 +76,7 @@ const code = fs.readFileSync(APP_PATH, 'utf8');
 const context = vm.createContext(sandbox);
 // Tambahkan penangkap: deklarasikan fungsi sebagai property di sandbox
 // dengan meng-append kode yang menaruh fungsi ke globalThis
-const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah, igBangunKonteksRegenHari, igFormatBarisPekan, igRegenerasiHariPlan, igSusunPromptEksternal, igSalinPromptPlan, IG_PLAN_PROMPT_SISTEM, igHijriMonth, igKandidatTemaMinggu, igPetaTemaSetahun, IG_TEMA_ALUR, IG_TEMA_MUSIM, IG_ALUR_GRUP, IG_ALUR_JENDELA, igAlurGrupIdx };';
+const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah, igBangunKonteksRegenHari, igFormatBarisPekan, igRegenerasiHariPlan, igSusunPromptEksternal, igSalinPromptPlan, IG_PLAN_PROMPT_SISTEM, igHijriMonth, igKandidatTemaMinggu, igPetaTemaSetahun, IG_TEMA_ALUR, IG_TEMA_MUSIM, IG_ALUR_GRUP, IG_ALUR_JENDELA, igAlurGrupIdx, igRtBankAlurGrup };';
 vm.runInContext(wrapped, context, { filename: 'app.js' });
 const T = sandbox.__T;
 
@@ -223,6 +223,17 @@ test('alur seimbang: pekan berisi 7 baris ide bertema sama dihitung SATU pekan, 
   const lain = [1, 2, 3, 4].map((i, n) => tp('2026-10-' + String(19 + 7 * n).padStart(2, '0'), g[i].tema[2])); // 1 baris per pekan untuk 4 fase lain
   const k = T.igKandidatTemaMinggu('2026-11-16', tujuh.concat(lain), 8).filter(x => x.grup); // hanya saran tema alur (tema musiman bisa mendahului)
   assert.strictEqual(T.igAlurGrupIdx(k[0].tema), 0, 'fase siap tidak boleh terhukum 7x: ' + k[0].tema);
+});
+test('Rencana Setahun AI: bankAlurGrup memuat semua fase beserta bobot dan membuang tema yang terblokir', () => {
+  const penuh = T.igRtBankAlurGrup(new Set());
+  assert.strictEqual(penuh.length, T.IG_ALUR_GRUP.length);
+  penuh.forEach((g, i) => { assert.strictEqual(g.id, T.IG_ALUR_GRUP[i].id); assert.strictEqual(g.bobot, T.IG_ALUR_GRUP[i].bobot); assert.strictEqual(g.tema.length, T.IG_ALUR_GRUP[i].tema.length); });
+  assert.strictEqual(penuh.reduce((t, g) => t + g.tema.length, 0), T.IG_TEMA_ALUR.length);
+  const blok = new Set(['Raudhah', 'Niat dan Panggilan']);
+  const sisa = T.igRtBankAlurGrup(blok);
+  assert.ok(!sisa.some(g => g.tema.some(t => blok.has(t))));
+  const habis = new Set(T.IG_ALUR_GRUP[2].tema); // satu fase habis terblokir -> fase itu dibuang dari payload
+  assert.ok(!T.igRtBankAlurGrup(habis).some(g => g.id === T.IG_ALUR_GRUP[2].id));
 });
 test('pekan yang sudah punya tema -> tema itu saja (generate sebagian tidak ganti tema)', () => {
   const k = T.igKandidatTemaMinggu('2026-10-12', [tp('2026-10-14', 'Talbiyah')], 5);

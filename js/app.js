@@ -16964,6 +16964,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 | 9 | 15 Oktober 2026 | Bank tema alur diperluas dari 65 menjadi 95 tema (30 tema baru di lima tahap) supaya siklus tahunan tidak kehabisan tema dan tidak berulang dalam jendela 365 hari. Aturan konten tidak berubah |
 | 10 | 15 Oktober 2026 | Siklus tahunan: tema musiman memakai jeda 300 hari (bukan 365) supaya kembali tiap tahun dan tidak bergeser atau hilang; riwayat tema untuk Rencana Setahun AI kini bertanggal dan berjendela, bukan seluruh sejarah. Diuji lewat simulasi 10 tahun (520 pekan): tanpa tema kembar non-musiman dalam 364 hari, tanpa pekan fallback, semua tema musiman tayang di musimnya. Aturan konten tidak berubah |
 | 11 | 16 Oktober 2026 | Alur tema seimbang: bank alur dikelompokkan per fase dengan bobot jatah dan tiap pekan dipilih dari fase yang paling kurang dari jatahnya (dulu alur lurus, Madinah dan umroh bersama siapa baru muncul tahun ke-2). Simulasi 52 pekan: semua fase tayang, tanpa fase yang hilang lebih dari 12 pekan. Aturan konten harian tidak berubah |
+| 12 | 16 Oktober 2026 | Rencana Setahun AI seimbang: bank alur dikirim ke edge function per fase beserta bobotnya, batas 80 entri dinaikkan menjadi 160, prompt diberi aturan komposisi (jatah per fase, fase kecil tetap tayang rutin, tidak lebih dari dua pekan beruntun dari fase sama), dan hasil membawa label fase. Perlu deploy ulang generate-ig-year-plan. Aturan konten harian tidak berubah |
 `;
 
 // Petunjuk yang ikut tersalin di depan dokumen supaya Claude mengembalikan dokumen dalam format yang bisa dipakai lagi.
@@ -17732,6 +17733,15 @@ async function igRtPanggilAI(payload) {
     return data;
 }
 
+// Bank alur per fase untuk edge function (bankAlurGrup): id, label, bobot, dan tema yang belum terblokir riwayat awal.
+// Fase yang temanya habis terblokir dibuang supaya AI tidak diminta mengisi fase kosong. Sumber tunggal: IG_ALUR_GRUP.
+function igRtBankAlurGrup(terblokir) {
+    const blok = terblokir || new Set();
+    return IG_ALUR_GRUP
+        .map(g => ({ id: g.id, label: g.label, bobot: g.bobot, tema: g.tema.filter(a => !blok.has(a)) }))
+        .filter(g => g.tema.length);
+}
+
 function igRtBahanMusim() {
     return IG_TEMA_MUSIM.map(e => {
         const kapan = [
@@ -17762,7 +17772,7 @@ async function igRtSusunAI() {
     igRtBusy = true;
     const btn = document.getElementById('igRtBtn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Menyusun...'; }
-    let tersimpan = 0, gagal = 0, errMsg = '';
+    let tersimpan = 0, gagal = 0, errMsg = '', functionLama = false;
     try {
         const arahan = String((document.getElementById('igRtArahan') || {}).value || '').trim().slice(0, 800);
         igRtStatus('Membaca program dan riwayat tema...');
@@ -17831,10 +17841,12 @@ async function igRtSusunAI() {
                     konteksProgram,
                     riwayatTema: semuaTerpakai().join('\n'),
                     konteksSekitar: sekitar,
-                    bankAlur: IG_TEMA_ALUR.filter(a => !alurTerblokir.has(a)),
+                    bankAlurGrup: igRtBankAlurGrup(alurTerblokir),
+                    bankAlur: IG_TEMA_ALUR.filter(a => !alurTerblokir.has(a)), // cadangan untuk function lama yang belum di-deploy ulang
                     bankMusim: igRtBahanMusim(),
                     arahan
                 });
+                if (data.versi < 2) functionLama = true;
                 const sisaSet = new Set(sisa.map(w => w.senin));
                 (data.items || []).forEach(it => {
                     if (!sisaSet.has(it.senin) || !it.tema) return;
@@ -17880,7 +17892,8 @@ async function igRtSusunAI() {
         igRtStatus(`${tersimpan} pekan tersimpan. ${gagal} pekan belum terisi (tema yang diusulkan AI mirip tema lain); klik Susun dengan AI lagi untuk mencoba pekan itu.`);
         showToast(`${tersimpan} pekan disimpan, ${gagal} pekan belum terisi`, 'info');
     } else {
-        igRtStatus(`Selesai: ${tersimpan} pekan tersimpan. Periksa temanya, edit yang kurang pas (otomatis terkunci).`);
+        igRtStatus(`Selesai: ${tersimpan} pekan tersimpan. Periksa temanya, edit yang kurang pas (otomatis terkunci).`
+            + (functionLama ? ' Catatan: function generate-ig-year-plan masih versi lama, komposisi antarfase belum aktif. Deploy ulang function-nya.' : ''));
         showToast(`Rencana setahun tersimpan (${tersimpan} pekan)`);
     }
 }
