@@ -216,17 +216,29 @@ footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px 
 /* ================= SLIDESHOW (layar pameran / monitor display) ================= */
 button.flipbtn{border:0;cursor:pointer}
 .ss{position:fixed;inset:0;z-index:70;display:none;background:radial-gradient(120% 120% at 15% 10%,#27508a 0%,#1a355b 45%,#0b1a2e 100%);color:#fff;font-size:min(1.1vw,1.9vh);cursor:none;overflow:hidden;user-select:none;-webkit-user-select:none}
+.ss::before{content:"";position:absolute;inset:-20%;background:radial-gradient(45% 45% at 80% 20%,rgba(255,255,255,.07),transparent 70%),radial-gradient(40% 40% at 10% 90%,rgba(90,150,230,.12),transparent 70%);animation:ssDrift 50s ease-in-out infinite alternate;pointer-events:none;will-change:transform}
+@keyframes ssDrift{from{transform:translate3d(-3%,-2%,0)}to{transform:translate3d(3%,2%,0)}}
 .ss.open{display:block}
+.ss-prog{position:absolute;left:0;right:0;top:0;height:.45em;background:rgba(255,255,255,.1);z-index:2}
+.ss-prog i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#7fb2ff,#fff);transform-origin:0 50%;transform:scaleX(0);border-radius:0 .3em .3em 0}
+.ss.paused .ss-prog i{background:rgba(255,255,255,.55)}
 .ss.ctl{cursor:default}
 .ss-stage{position:absolute;inset:0;padding:3.2em 3.6em 3.4em;transition:opacity .35s ease;will-change:opacity}
 .ss-stage.out{opacity:0}
 .ss-slide{height:100%;display:flex;gap:3.2em;align-items:stretch;animation:ssIn .7s cubic-bezier(.2,.8,.2,1) both}
 @keyframes ssIn{from{opacity:0}to{opacity:1}}
+@keyframes ssPos{from{opacity:0;transform:scale(.96) translateY(1.2em)}to{opacity:1;transform:none}}
+@keyframes ssUp{from{opacity:0;transform:translateY(1.6em)}to{opacity:1;transform:none}}
+.ss-poster{animation:ssPos .8s cubic-bezier(.2,.8,.2,1) both}
+.ss-info>*{animation:ssUp .7s cubic-bezier(.2,.8,.2,1) both}
+.ss-info>:nth-child(2){animation-delay:.06s}.ss-info>:nth-child(3){animation-delay:.12s}.ss-info>:nth-child(4){animation-delay:.18s}.ss-info>:nth-child(5){animation-delay:.24s}.ss-info>:nth-child(6){animation-delay:.3s}.ss-info>:nth-child(7){animation-delay:.36s}.ss-info>:nth-child(8){animation-delay:.42s}
 .ss-poster{flex:0 1 44%;min-width:0;position:relative}
 .ss-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 1.2em 2.4em rgba(0,0,0,.5))}
 .ss-load{position:absolute;inset:0;display:grid;place-items:center;font:600 1.5em Inter,sans-serif;opacity:.7}
 .ss-ph{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:2em;font:700 2em/1.2 "Space Grotesk",Inter,sans-serif;background:rgba(255,255,255,.1);border-radius:1em}
-.ss-info{flex:1 1 56%;min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:1.4em}
+.ss-info{flex:1 1 56%;min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:1.1em}
+.ss-info>*{flex-shrink:0}
+.ss-info>h2{flex-shrink:1}
 .ss-top{display:flex;justify-content:space-between;align-items:center;gap:1em}
 .ss-brand{display:flex;align-items:center;gap:.9em;min-width:0}
 .ss-brand img{width:3em;height:3em;border-radius:.7em;background:#fff;padding:.25em;object-fit:contain;flex:none}
@@ -236,19 +248,21 @@ button.flipbtn{border:0;cursor:pointer}
 .ss-badges{display:flex;gap:.6em;flex-wrap:wrap}
 .ss-badges:empty{display:none}
 .ss-badges .badge{font-size:.85em;padding:.35em 1em;box-shadow:none}
-.ss-info h2{font:700 3em/1.1 "Space Grotesk",Inter,sans-serif;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ss-info h2.long{font-size:2.1em}
+.ss-info h2{font:700 2.7em/1.12 "Space Grotesk",Inter,sans-serif;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;padding-bottom:.08em}
 .ss-chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.9em}
 .ss-chip{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);border-radius:1em;padding:.8em 1em;min-width:0}
 .ss-chip small{display:flex;align-items:center;gap:.5em;font-size:.65em;text-transform:uppercase;letter-spacing:.08em;opacity:.75}
 .ss-chip small svg{width:1.5em;height:1.5em;flex:none}
-.ss-chip b{display:block;font-size:1.25em;line-height:1.25;margin-top:.25em}
-.ss-hero{background:#fff;color:var(--brand);border-radius:1.2em;padding:1em 1.4em;display:flex;align-items:flex-end;justify-content:space-between;gap:1em;flex-wrap:wrap}
+.ss-chip b{display:block;font-size:1.15em;line-height:1.25;margin-top:.25em}
+.ss-hero{box-shadow:0 .6em 1.8em rgba(0,0,0,.28);background:#fff;color:var(--brand);border-radius:1.2em;padding:.8em 1.4em;display:flex;align-items:flex-end;justify-content:space-between;gap:1em;flex-wrap:wrap}
 .ss-hero small{display:block;font-size:.8em;color:var(--ink-soft)}
-.ss-hero strong{display:block;font:700 3.4em/1.05 "Space Grotesk",Inter,sans-serif}
+.ss-hero strong{display:block;font:700 3em/1.05 "Space Grotesk",Inter,sans-serif}
 .ss-hero em{font-style:normal;font-weight:700;font-size:1em;background:var(--brand-tint);padding:.4em 1em;border-radius:999px;white-space:nowrap}
 .ss-prices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.7em}
 .ss-prices div{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);border-radius:.9em;padding:.6em .9em;min-width:0}
-.ss-prices div.best{background:rgba(255,255,255,.22);border-color:#fff}
+.ss-prices div.best{background:rgba(255,255,255,.22);border-color:#ffd37a;box-shadow:0 0 0 .12em rgba(255,211,122,.35)}
+.ss-prices div.best small::after{content:" \2605";color:#ffd37a}
 .ss-prices small{display:block;font-size:.65em;text-transform:uppercase;letter-spacing:.08em;opacity:.8}
 .ss-prices b{display:block;font-size:1.15em;white-space:nowrap}
 .ss-hotels{display:grid;gap:.5em}
@@ -257,7 +271,11 @@ button.flipbtn{border:0;cursor:pointer}
 .ss-hotel p{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .ss-cta{display:flex;align-items:center;gap:.8em;font-size:1.15em;font-weight:600}
 .ss-cta svg{width:1.6em;height:1.6em;color:#25D366;flex:none}
+.ss-foot{display:flex;align-items:center;justify-content:space-between;gap:1.2em;margin-top:.2em}
 .ss-note{font-size:.7em;opacity:.55}
+.ss-next{display:flex;align-items:center;gap:.6em;min-width:0;font-size:.8em;background:rgba(255,255,255,.1);padding:.4em 1em;border-radius:999px}
+.ss-next small{opacity:.7;text-transform:uppercase;letter-spacing:.08em;font-size:.8em;flex:none}
+.ss-next b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;font-weight:600}
 .ss-ctl{position:absolute;left:50%;bottom:1.6em;transform:translateX(-50%);display:flex;align-items:center;gap:.5em;background:rgba(8,18,32,.8);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);padding:.5em;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .3s}
 .ss.ctl .ss-ctl{opacity:1;pointer-events:auto}
 .ss-ctl button,.ss-ctl select{height:2.8em;min-width:2.8em;border:0;border-radius:999px;background:rgba(255,255,255,.14);color:#fff;font:600 .9em Inter,sans-serif;cursor:pointer;padding:0 .9em;display:inline-flex;align-items:center;justify-content:center}
@@ -318,6 +336,7 @@ button.flipbtn{border:0;cursor:pointer}
 </div>
 
 <div class="ss" id="ss" role="dialog" aria-modal="true" aria-label="Slideshow program Umroh">
+  <div class="ss-prog" aria-hidden="true"><i id="ssProg"></i></div>
   <div class="ss-stage" id="ssStage"></div>
   <div class="ss-ctl" id="ssCtl">
     <button type="button" id="ssPrev" title="Sebelumnya (←)" aria-label="Slide sebelumnya"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg></button>
@@ -601,7 +620,7 @@ let ssSwapT, ssHideT, ssRefreshT, ssLock = null;
 const ssImgs = new Map();   // src -> { img, state:'loading'|'ready'|'error', promise }
 let ssPW = 1000, ssTok = 0, ssTarget = 0, ssBusy = false, ssWarmTok = 0;
 let ssDur = (parseInt(ssQs.get('detik'), 10) || parseInt((() => { try { return localStorage.getItem('katalog_ss_detik'); } catch { return ''; } })(), 10) || 10) * 1000;
-const ssSel = document.getElementById('ssDetik');
+const ssSel = document.getElementById('ssDetik'), ssProg = document.getElementById('ssProg');
 if (![...ssSel.options].some(o => +o.value * 1000 === ssDur)) ssSel.add(new Option((ssDur / 1000) + ' detik', ssDur / 1000));
 ssSel.value = String(ssDur / 1000);
 
@@ -627,6 +646,7 @@ function ssSlideHTML(p, i, n) {
   const hotel = [['Makkah', p.hotel_makkah], ['Madinah', p.hotel_madinah], [p.hotel_3_kota || 'Hotel 3', p.hotel_3], [p.hotel_4_kota || 'Hotel 4', p.hotel_4]].filter(h => h[1]);
   const chip = (ic, lbl, val) => `<div class="ss-chip"><small>${IC[ic]}${lbl}</small><b>${esc(val || '-')}</b></div>`;
   const wa = WA_NUMBER ? fmtTelp(WA_NUMBER) : '';
+  const nx = n > 1 ? ssList[(i + 1) % n] : null;
   return `<div class="ss-slide">
     <div class="ss-poster"></div>
     <div class="ss-info">
@@ -635,13 +655,13 @@ function ssSlideHTML(p, i, n) {
         <div class="ss-count">${i + 1} / ${n}</div>
       </div>
       <div class="ss-badges">${p._near ? '<span class="badge near">Terdekat</span>' : ''}${p._baru ? '<span class="badge new">Baru</span>' : ''}</div>
-      <h2>${esc(p.nama)}</h2>
+      <h2 class="${(p.nama || '').length > 46 ? 'long' : ''}">${esc(p.nama)}</h2>
       <div class="ss-chips">${chip('cal', 'Berangkat', p.tgl)}${chip('clock', 'Durasi', p.durasi)}${chip('plane', 'Maskapai', p.maskapai)}</div>
       ${best ? `<div class="ss-hero"><div><small>Mulai dari (${esc(best.k.toLowerCase())}) / orang</small><strong>${esc(rupiah(best.v))}</strong></div>${p.dateObj ? `<em>${esc(estimasi(p.dateObj))}</em>` : ''}</div>` : ''}
       ${kamar.length > 1 ? `<div class="ss-prices">${kamar.map(k => `<div class="${best && best.k === k[0] ? 'best' : ''}"><small>${k[0]}</small><b>${esc(rupiah(k[1]))}</b></div>`).join('')}</div>` : ''}
       ${hotel.length ? `<div class="ss-hotels">${hotel.map(h => `<div class="ss-hotel"><span>${esc(h[0])}</span><p>${esc(h[1])}</p></div>`).join('')}</div>` : ''}
       ${wa ? `<div class="ss-cta">${IC.wa}<span>Info &amp; pendaftaran: WhatsApp ${esc(wa)}</span></div>` : ''}
-      <div class="ss-note">Harga dan jadwal dapat berubah sewaktu-waktu.</div>
+      <div class="ss-foot"><div class="ss-note">Harga dan jadwal dapat berubah sewaktu-waktu.</div>${nx ? `<div class="ss-next"><small>Berikutnya</small><b>${esc(nx.nama)}</b></div>` : ''}</div>
     </div>
   </div>`;
 }
@@ -716,6 +736,7 @@ function ssTick(ts) {
     ssElapsed += dt;
     if (ssElapsed >= ssDur) ssNav(1);
   }
+  ssProg.style.transform = 'scaleX(' + (ssBusy ? 0 : Math.min(1, ssElapsed / ssDur)).toFixed(4) + ')';
   ssRaf = requestAnimationFrame(ssTick);
 }
 function ssWake() {   // tampilkan kontrol & kursor, sembunyikan lagi setelah 3,5 detik tanpa gerakan
@@ -779,6 +800,13 @@ document.getElementById('ssNext').addEventListener('click', () => ssNav(1, true)
 document.getElementById('ssPlay').addEventListener('click', () => { ssPaused = !ssPaused; ss.classList.toggle('paused', ssPaused); });
 document.getElementById('ssFull').addEventListener('click', ssFull);
 ssSel.addEventListener('change', () => { ssDur = +ssSel.value * 1000; try { localStorage.setItem('katalog_ss_detik', ssSel.value); } catch {} });
+let ssX0 = null;   // geser kiri/kanan di tablet/HP untuk pindah slide
+ss.addEventListener('touchstart', e => { ssX0 = e.touches.length === 1 ? e.touches[0].clientX : null; }, { passive: true });
+ss.addEventListener('touchend', e => {
+  if (ssX0 === null) return;
+  const dx = e.changedTouches[0].clientX - ssX0; ssX0 = null;
+  if (Math.abs(dx) > 60 && !e.target.closest('.ss-ctl')) { ssNav(dx < 0 ? 1 : -1, true); ssWake(); }
+}, { passive: true });
 ss.addEventListener('mousemove', ssWake);
 ss.addEventListener('touchstart', ssWake, { passive: true });
 ss.addEventListener('click', e => { if (!e.target.closest('.ss-ctl')) ssWake(); });
