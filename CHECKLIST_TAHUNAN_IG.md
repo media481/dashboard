@@ -10,7 +10,9 @@ Letakkan file ini di root repo bersama `pola-konten.md`.
 
 ## Yang dicek manual
 
-1. **Bank tema alur** (`IG_TEMA_ALUR` di `js/app.js`, 95 tema)
+1. **Bank tema alur** (`IG_ALUR_GRUP` di `js/app.js`, 95 tema dalam 5 fase: sebelum berangkat 24, Makkah 36, Madinah 11, umroh bersama siapa 9, pulang 15)
+   - Rotasi antar fase otomatis menurut `bobot` tiap fase. Fase paling tipis (Madinah, umroh bersama siapa) habis lebih dulu: tambahkan tema baru di fase itu lebih dulu.
+   - Mau mengubah komposisi (mis. lebih banyak konten calon jamaah baru)? Ubah angka `bobot`, tidak perlu menyentuh logika.
    - Cukup untuk sekitar 2 tahun sebelum tema mulai kembali (simulasi: pekan ke-126).
    - Tambahkan 20-30 tema segar agar siklus berikutnya terasa baru.
    - Tema baru jangan mirip tema lama: cek dengan `igIsSimilarText`, atau cukup lihat peringatan saat menyimpan.

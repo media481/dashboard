@@ -351,7 +351,7 @@ berisi konsep perencanaan konten Amiru yang bisa dibaca, disalin ("Salin untuk C
   1. Ganti isi `ABOUT_PLANNER_MD` dengan dokumen revisi (buang bagian petunjuk dan "Dampak ke sistem" kalau ikut terbawa).
   2. Pastikan Versi naik dan Riwayat Revisi bertambah.
   3. Sinkronkan aturan yang berubah ke logika yang benar-benar berjalan, sesuai bagian "Dampak ke sistem":
-     `IG_PLAN_PROMPT_SISTEM`, `IG_POLA_AMIRU`, `IG_TEMA_ALUR`/`IG_TEMA_MUSIM`, `IG_JEDA_TOPIK_BULAN`, `IG_JEDA_TEMA_MUSIM_HARI`, edge function
+     `IG_PLAN_PROMPT_SISTEM`, `IG_POLA_AMIRU`, `IG_ALUR_GRUP` (bank alur per fase + bobot; `IG_TEMA_ALUR` diturunkan darinya)/`IG_TEMA_MUSIM`, `IG_JEDA_TOPIK_BULAN`, `IG_JEDA_TEMA_MUSIM_HARI`, edge function
      `generate-ig-content-plan` dan `generate-ig-caption` (deploy ulang kalau berubah), serta `pola-konten.md`.
   4. Naikkan `CACHE_NAME` di `service-worker.js`.
   Mengubah teks About Planner saja TIDAK mengubah perilaku generator; generator hanya berubah lewat langkah 3.

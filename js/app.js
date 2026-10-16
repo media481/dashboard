@@ -16772,8 +16772,8 @@ function closeIgContentPlanModal() {
 // Baris "Versi:" dan "Diperbarui:" dibaca otomatis untuk header modal, jadi format dua baris itu jangan diubah.
 // ============================================================
 const ABOUT_PLANNER_MD = `# About Planner: Konsep Perencanaan Konten Instagram Amiru Tour
-Versi: 10
-Diperbarui: 15 Oktober 2026
+Versi: 11
+Diperbarui: 16 Oktober 2026
 Status: disepakati Oktober 2026. Uji coba alur mingguan yang menyambung dimulai pekan Senin, 12 Oktober 2026. Ejaan resmi: "Umroh" (bukan "Umrah"), termasuk di hashtag.
 
 ## 1. Tujuan dan Prinsip
@@ -16905,7 +16905,7 @@ Dashboard menyarankan Tema Minggu tanpa AI, dengan tiga sumber dalam urutan prio
 
 1. **Tema yang sudah dipakai di pekan itu** (kalau pekan sudah pernah digenerate sebagian) tetap dipertahankan.
 2. **Tema musiman** menurut bulan Hijriah/Masehi pekan itu (Maulid, Isra Miraj, Ramadhan, musim haji, libur sekolah, dan seterusnya). Tema musiman yang mengarah ke penjualan sengaja tayang 2-3 bulan sebelum musimnya, karena calon jamaah memesan jauh hari, dan didahulukan atas tema musiman biasa.
-3. **Alur perjalanan jamaah** yang dilanjutkan dari tema alur terakhir yang dipakai, supaya pekan ke pekan terasa satu cerita: niat dan persiapan, miqat dan ihram, thawaf, sa'i, tahallul, Madinah, lalu pulang dan rindu Tanah Suci. Bank alur berisi 95 tema, dikelompokkan menurut tahap: sebelum berangkat, ibadah di Makkah, Madinah, umroh bersama siapa, dan pulang serta sesudahnya.
+3. **Alur perjalanan jamaah yang bergiliran antar fase**, supaya setahun penuh seimbang dan tetap terasa satu cerita. Bank alur berisi 95 tema dalam lima fase: sebelum berangkat (24 tema), ibadah di Makkah (36), Madinah (11), umroh bersama siapa (9), dan pulang serta sesudahnya (15). Tiap fase punya bobot jatah (3, 3, 2, 2, 2). Fase yang paling kurang dari jatahnya dalam 8 pekan terakhir mendapat giliran berikutnya, tema musiman tidak ikut dihitung. Di dalam satu fase urutan tema tetap menyambung dari tema terakhir fase itu. Dulu alur berjalan lurus dari awal sampai akhir, sehingga di tahun pertama Madinah, umroh bersama siapa, dan pulang hampir tidak pernah tayang.
 
 Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati. Tema musiman memakai jeda lebih pendek, 300 hari, karena musim yang sama kembali tiap sekitar 354 hari (Hijriah) atau 364 hari (pekan yang sama tahun depan); tanpa ini tema musiman akan bergeser atau hilang di tahun berikutnya. Dengan begitu sistem dapat berjalan berulang tiap tahun. Admin tetap bisa mengetik Tema Minggu sendiri, dan mengisi Tema pekan depan (opsional) untuk teaser penutup Minggu.
 
@@ -16963,6 +16963,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 | 8 | 15 Oktober 2026 | Penyelarasan: contoh hook Senin tidak lagi memakai kata "ribuan" (selaras larangan klaim jumlah); generator caption manual disamakan dengan aturan doa (tidak wajib, Senin-Sabtu maksimal 2 hari) dan emoji (maksimal 1). Aturan konten tidak berubah |
 | 9 | 15 Oktober 2026 | Bank tema alur diperluas dari 65 menjadi 95 tema (30 tema baru di lima tahap) supaya siklus tahunan tidak kehabisan tema dan tidak berulang dalam jendela 365 hari. Aturan konten tidak berubah |
 | 10 | 15 Oktober 2026 | Siklus tahunan: tema musiman memakai jeda 300 hari (bukan 365) supaya kembali tiap tahun dan tidak bergeser atau hilang; riwayat tema untuk Rencana Setahun AI kini bertanggal dan berjendela, bukan seluruh sejarah. Diuji lewat simulasi 10 tahun (520 pekan): tanpa tema kembar non-musiman dalam 364 hari, tanpa pekan fallback, semua tema musiman tayang di musimnya. Aturan konten tidak berubah |
+| 11 | 16 Oktober 2026 | Alur tema seimbang: bank alur dikelompokkan per fase dengan bobot jatah dan tiap pekan dipilih dari fase yang paling kurang dari jatahnya (dulu alur lurus, Madinah dan umroh bersama siapa baru muncul tahun ke-2). Simulasi 52 pekan: semua fase tayang, tanpa fase yang hilang lebih dari 12 pekan. Aturan konten harian tidak berubah |
 `;
 
 // Petunjuk yang ikut tersalin di depan dokumen supaya Claude mengembalikan dokumen dalam format yang bisa dipakai lagi.
@@ -17975,38 +17976,59 @@ function igRefreshPlanPreview() {
 // Tema yang sudah dipakai dalam +-365 hari (semua status) dilewati, jadi tidak ada pengulangan dalam setahun.
 // Seluruhnya dihitung lokal (tanpa AI), jadi tetap jalan walau token AI habis.
 // ============================================================
-const IG_TEMA_ALUR = [
-    // Sebelum berangkat
-    'Niat dan Panggilan', 'Umroh Pertama Kali', 'Restu dan Doa Keluarga', 'Menabung Niat', 'Memilih Waktu yang Tepat untuk Berangkat',
-    'Dokumen dan Administrasi', 'Menyelesaikan Urusan Sebelum Berangkat', 'Anggaran dan Keuangan Perjalanan', 'Persiapan Fisik',
-    'Menjaga Kesehatan', 'Perlengkapan Perjalanan', 'Cuaca dan Pakaian di Tanah Suci', 'Mengenal Rombongan dan Pembimbing',
-    'Kesiapan Hati dan Kesabaran', 'Pamit pada Keluarga dan Rumah', 'Belajar Manasik',
-    'Mengatasi Rasa Takut Sebelum Berangkat', 'Menyiapkan Mental untuk Antrean dan Menunggu', 'Membiasakan Jalan Kaki Jauh', 'Menulis Daftar Doa Sebelum Berangkat',
-    'Memaafkan dan Meminta Maaf Sebelum Pergi', 'Obat dan Perlengkapan Kesehatan Pribadi', 'Mengatur Barang Bawaan di Koper', 'Hari Keberangkatan dan Suasana Bandara',
-    // Ibadah di Makkah
-    'Miqat dan Ihram', 'Larangan Ihram', 'Talbiyah', 'Tiba di Tanah Suci', 'Sejarah Makkah dan Kabah', 'Pertama Melihat Kabah',
-    'Thawaf', 'Multazam dan Doa', 'Maqam Ibrahim', 'Air Zamzam', 'Sa\'i dan Siti Hajar', 'Tahallul', 'Adab di Masjidil Haram',
-    'Shalat di Tanah Suci', 'Sabar di Keramaian', 'Ikhlas dalam Ibadah', 'Menjaga Akhlak di Perjalanan', 'Kebersamaan Rombongan',
-    'Bertemu Jamaah dari Berbagai Negara', 'Menjaga Stamina Selama di Tanah Suci', 'Istirahat yang Cukup di Sela Ibadah',
-    'Makanan dan Kebiasaan Makan di Tanah Suci', 'Mengabadikan Momen dengan Bijak', 'Berkabar dengan Keluarga di Rumah',
-    'Mengisi Waktu di Tanah Suci', 'Ziarah di Makkah',
-    'Malam Pertama di Makkah', 'Subuh di Masjidil Haram', 'Hajar Aswad dan Rukun Yamani', 'Berdoa di Tengah Keramaian',
-    'Kaki Pegal dan Hati yang Tetap Kuat', 'Menjaga Wudhu dan Kebersihan', 'Dzikir dan Tilawah di Tanah Suci', 'Menjaga Lisan dan Pandangan',
-    'Rendah Hati di Tanah Suci', 'Tawakal dan Menyerahkan Urusan',
-    // Madinah
-    'Perjalanan ke Madinah', 'Masjid Nabawi', 'Raudhah', 'Ziarah di Madinah', 'Doa Titipan', 'Doa untuk Diri Sendiri',
-    'Sedekah dan Berbagi',
-    'Suasana Malam di Madinah', 'Antre Shalat Berjamaah di Madinah', 'Sejarah Hijrah ke Madinah', 'Masjid Quba',
-    // Umroh bersama siapa
-    'Umroh Bersama Orang Tua', 'Umroh Bersama Pasangan', 'Umroh Bersama Keluarga', 'Umroh Bersama Anak', 'Umroh Bersama Sahabat',
-    'Umroh untuk Lansia',
-    'Umroh Sendirian', 'Umroh Bersama Saudara', 'Umroh dengan Kursi Roda dan Pendamping',
-    // Pulang dan sesudahnya
-    'Thawaf Wada', 'Hari Terakhir di Makkah', 'Pulang dan Oleh-oleh Hati', 'Bersyukur atas Kesempatan', 'Menjaga Kemabruran',
-    'Membawa Pulang Kebiasaan Baik', 'Kembali ke Rutinitas dengan Hati Baru', 'Rindu Tanah Suci', 'Berbagi Cerita Setelah Pulang',
-    'Menularkan Semangat Umroh ke Keluarga',
-    'Janji pada Diri Sendiri Setelah Pulang', 'Menjaga Shalat Berjamaah Setelah Pulang', 'Menjaga Silaturahmi dengan Rombongan', 'Merencanakan Kembali ke Tanah Suci', 'Syukur Sederhana di Rumah'
+// Bank tema alur perjalanan jamaah, DIKELOMPOKKAN per fase supaya rotasi tayang seimbang setahun penuh
+// (lihat igKandidatTemaMinggu). `bobot` = jatah relatif tiap fase dalam jendela IG_ALUR_JENDELA pekan terakhir;
+// ubah angkanya untuk mengatur komposisi (mis. calon jamaah baru lebih banyak = naikkan `siap`). Urutan tema DI DALAM
+// satu fase tetap berurutan (menyambung dari tema terakhir fase itu). Menambah tema: taruh di fase yang cocok.
+const IG_ALUR_GRUP = [
+    { id: 'siap', label: 'Sebelum berangkat', bobot: 3, tema: [
+        'Niat dan Panggilan', 'Umroh Pertama Kali', 'Restu dan Doa Keluarga', 'Menabung Niat', 'Memilih Waktu yang Tepat untuk Berangkat',
+        'Dokumen dan Administrasi', 'Menyelesaikan Urusan Sebelum Berangkat', 'Anggaran dan Keuangan Perjalanan', 'Persiapan Fisik',
+        'Menjaga Kesehatan', 'Perlengkapan Perjalanan', 'Cuaca dan Pakaian di Tanah Suci', 'Mengenal Rombongan dan Pembimbing',
+        'Kesiapan Hati dan Kesabaran', 'Pamit pada Keluarga dan Rumah', 'Belajar Manasik',
+        'Mengatasi Rasa Takut Sebelum Berangkat', 'Menyiapkan Mental untuk Antrean dan Menunggu', 'Membiasakan Jalan Kaki Jauh', 'Menulis Daftar Doa Sebelum Berangkat',
+        'Memaafkan dan Meminta Maaf Sebelum Pergi', 'Obat dan Perlengkapan Kesehatan Pribadi', 'Mengatur Barang Bawaan di Koper', 'Hari Keberangkatan dan Suasana Bandara'
+    ] },
+    { id: 'makkah', label: 'Ibadah di Makkah', bobot: 3, tema: [
+        'Miqat dan Ihram', 'Larangan Ihram', 'Talbiyah', 'Tiba di Tanah Suci', 'Sejarah Makkah dan Kabah', 'Pertama Melihat Kabah',
+        'Thawaf', 'Multazam dan Doa', 'Maqam Ibrahim', 'Air Zamzam', 'Sa\'i dan Siti Hajar', 'Tahallul', 'Adab di Masjidil Haram',
+        'Shalat di Tanah Suci', 'Sabar di Keramaian', 'Ikhlas dalam Ibadah', 'Menjaga Akhlak di Perjalanan', 'Kebersamaan Rombongan',
+        'Bertemu Jamaah dari Berbagai Negara', 'Menjaga Stamina Selama di Tanah Suci', 'Istirahat yang Cukup di Sela Ibadah',
+        'Makanan dan Kebiasaan Makan di Tanah Suci', 'Mengabadikan Momen dengan Bijak', 'Berkabar dengan Keluarga di Rumah',
+        'Mengisi Waktu di Tanah Suci', 'Ziarah di Makkah',
+        'Malam Pertama di Makkah', 'Subuh di Masjidil Haram', 'Hajar Aswad dan Rukun Yamani', 'Berdoa di Tengah Keramaian',
+        'Kaki Pegal dan Hati yang Tetap Kuat', 'Menjaga Wudhu dan Kebersihan', 'Dzikir dan Tilawah di Tanah Suci', 'Menjaga Lisan dan Pandangan',
+        'Rendah Hati di Tanah Suci', 'Tawakal dan Menyerahkan Urusan'
+    ] },
+    { id: 'madinah', label: 'Madinah', bobot: 2, tema: [
+        'Perjalanan ke Madinah', 'Masjid Nabawi', 'Raudhah', 'Ziarah di Madinah', 'Doa Titipan', 'Doa untuk Diri Sendiri',
+        'Sedekah dan Berbagi',
+        'Suasana Malam di Madinah', 'Antre Shalat Berjamaah di Madinah', 'Sejarah Hijrah ke Madinah', 'Masjid Quba'
+    ] },
+    { id: 'bersama', label: 'Umroh bersama siapa', bobot: 2, tema: [
+        'Umroh Bersama Orang Tua', 'Umroh Bersama Pasangan', 'Umroh Bersama Keluarga', 'Umroh Bersama Anak', 'Umroh Bersama Sahabat',
+        'Umroh untuk Lansia',
+        'Umroh Sendirian', 'Umroh Bersama Saudara', 'Umroh dengan Kursi Roda dan Pendamping'
+    ] },
+    { id: 'pulang', label: 'Pulang dan sesudahnya', bobot: 2, tema: [
+        'Thawaf Wada', 'Hari Terakhir di Makkah', 'Pulang dan Oleh-oleh Hati', 'Bersyukur atas Kesempatan', 'Menjaga Kemabruran',
+        'Membawa Pulang Kebiasaan Baik', 'Kembali ke Rutinitas dengan Hati Baru', 'Rindu Tanah Suci', 'Berbagi Cerita Setelah Pulang',
+        'Menularkan Semangat Umroh ke Keluarga',
+        'Janji pada Diri Sendiri Setelah Pulang', 'Menjaga Shalat Berjamaah Setelah Pulang', 'Menjaga Silaturahmi dengan Rombongan', 'Merencanakan Kembali ke Tanah Suci', 'Syukur Sederhana di Rumah'
+    ] }
 ];
+// Daftar rata (urutan sama seperti sebelum dikelompokkan): dipakai tes, Rencana Setahun AI, dan pencocokan riwayat.
+const IG_TEMA_ALUR = IG_ALUR_GRUP.flatMap(g => g.tema);
+// Jumlah pekan terakhir (khusus tema alur, tema musiman tidak dihitung) yang dipakai untuk menakar jatah tiap fase.
+const IG_ALUR_JENDELA = 8;
+// Indeks fase (di IG_ALUR_GRUP) dari sebuah tema; -1 kalau bukan tema alur (mis. tema musiman atau ketikan sendiri).
+function igAlurGrupIdx(tema) {
+    const s = String(tema || '').trim().toLowerCase();
+    if (!s) return -1;
+    const persis = IG_ALUR_GRUP.findIndex(g => g.tema.some(a => a.toLowerCase() === s));
+    if (persis >= 0) return persis;
+    return IG_ALUR_GRUP.findIndex(g => g.tema.some(a => igIsSimilarText(a, tema)));
+}
 // Riwayat topik awal (sebelum pola mingguan dimulai 12 Okt 2026): SATU sumber data untuk (a) deteksi ide kembar
 // (igBuildRiwayat), (b) saran Tema Minggu (igKandidatTemaMinggu), dan (c) Rencana Setahun AI (igRtSusunAI).
 // Jeda 6 bulan (IG_JEDA_TOPIK_BULAN) dari tgl ini = tidak diulang sebelum 12 April 2027 (tgl sengaja 11 Okt supaya
@@ -18154,23 +18176,54 @@ function igKandidatTemaMinggu(seninKey, plans, maks, rencana = igRencanaTahun) {
             }
         });
 
-    // Lanjutkan alur dari tema alur terakhir yang dipakai sebelum pekan ini.
-    let idx = -1;
-    const sebelum = berTema.filter(pl => pl.tanggal < seninKey).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
-    for (const pl of sebelum) {
-        const i = IG_TEMA_ALUR.findIndex(a => igIsSimilarText(a, pl.tema_minggu));
-        if (i >= 0) { idx = i; break; }
-    }
-    const n = IG_TEMA_ALUR.length;
-    let pertama = true;
-    for (let k = 1; k <= n && hasil.length < batas; k++) {
-        const t = IG_TEMA_ALUR[(idx + k) % n];
-        if (sudah(t)) continue;
-        hasil.push({ tema: t, alasan: pertama ? (idx >= 0 ? `Lanjutan alur setelah "${IG_TEMA_ALUR[idx]}"` : 'Awal alur perjalanan jamaah') : 'Alur perjalanan jamaah' });
-        pertama = false;
+    // ALUR SEIMBANG: tema alur dibagi per fase perjalanan jamaah (IG_ALUR_GRUP). Fase yang paling KURANG dari jatahnya
+    // (bobot) dalam IG_ALUR_JENDELA pekan terakhir dapat giliran, jadi setahun penuh memuat persiapan, Makkah, Madinah,
+    // umroh bersama siapa, dan pulang (dulu alur jalan lurus dari awal ke akhir sehingga Madinah dst baru muncul tahun ke-2).
+    // Di dalam satu fase urutan tetap menyambung dari tema terakhir fase itu. Tema musiman tidak dihitung (bukan tema alur).
+    const seninDari = tgl => { const [yy, mm, dd] = tgl.split('-').map(Number); const dt = new Date(yy, mm - 1, dd); return igLocalDateKey(new Date(yy, mm - 1, dd - ((dt.getDay() + 6) % 7))); };
+    const perPekan = new Map(); // satu baris riwayat per pekan (tiap pekan punya sampai 7 baris ide dengan tema sama)
+    berTema.filter(pl => pl.tanggal < seninKey).forEach(pl => { const k = seninDari(pl.tanggal); if (!perPekan.has(k)) perPekan.set(k, pl.tema_minggu); });
+    (rencana || []).filter(x => x.senin < seninKey && x.tema).forEach(x => { if (!perPekan.has(x.senin)) perPekan.set(x.senin, x.tema); });
+    const riwayatAlur = [...perPekan.entries()].sort((p, q) => q[0].localeCompare(p[0]))
+        .map(([tgl, tema]) => ({ tgl, tema, g: igAlurGrupIdx(tema) })).filter(r => r.g >= 0); // terbaru dulu
+    // Jatah ditakar dari pekan-pekan TERDEKAT saja (IG_ALUR_JENDELA pekan kalender ke belakang): riwayat yang sudah lama tidak ikut,
+    // sedangkan penunjuk "lanjut setelah tema terakhir fase" di bawah tetap memakai seluruh riwayat.
+    const batasJendela = kunci(-7 * IG_ALUR_JENDELA);
+    const jendela = riwayatAlur.filter(r => r.tgl >= batasJendela).slice(0, IG_ALUR_JENDELA);
+    const totalBobot = IG_ALUR_GRUP.reduce((t, g) => t + g.bobot, 0);
+    const urut = IG_ALUR_GRUP.map((g, gi) => {
+        const pos = jendela.findIndex(r => r.g === gi);
+        const pakai = jendela.filter(r => r.g === gi).length;
+        return { gi, defisit: g.bobot / totalBobot - (jendela.length ? pakai / jendela.length : 0), umur: pos < 0 ? 99 : pos };
+    }).sort((p, q) => (q.defisit - p.defisit) || (q.umur - p.umur) || (p.gi - q.gi));
+    const antre = urut.map(u => {
+        const g = IG_ALUR_GRUP[u.gi];
+        const terakhir = riwayatAlur.find(r => r.g === u.gi);
+        const i0 = terakhir ? g.tema.findIndex(a => a.toLowerCase() === terakhir.tema.toLowerCase() || igIsSimilarText(a, terakhir.tema)) : -1;
+        const daftar = [];
+        for (let k = 1; k <= g.tema.length; k++) { const t = g.tema[(i0 + k) % g.tema.length]; if (!sudah(t)) daftar.push(t); }
+        return { g, daftar, setelah: terakhir && i0 >= 0 ? g.tema[i0] : '' };
+    });
+    const awalAlur = !riwayatAlur.length;
+    for (let putaran = 0; hasil.length < batas; putaran++) {
+        let ada = false;
+        for (const a of antre) {
+            if (hasil.length >= batas) break;
+            const t = a.daftar[putaran];
+            if (t === undefined) continue;
+            ada = true;
+            const pertamaSekali = !hasil.some(h => h.grup);
+            hasil.push({ tema: t, grup: a.g.id, alasan: pertamaSekali
+                ? (awalAlur ? 'Awal alur perjalanan jamaah' : `Seimbangkan alur: giliran fase \"${a.g.label}\"` + (a.setelah ? `, lanjut setelah \"${a.setelah}\"` : ', belum tayang belakangan'))
+                : `Alur perjalanan jamaah: ${a.g.label}` });
+        }
+        if (!ada) break;
     }
     // Semua tema alur sudah dipakai dalam setahun: ulang dari lanjutan alur, jangan sampai kosong.
-    if (!hasil.length) hasil.push({ tema: IG_TEMA_ALUR[(idx + 1) % n], alasan: 'Semua tema sudah dipakai setahun terakhir, mengulang alur' });
+    if (!hasil.length) {
+        const i = riwayatAlur.length ? IG_TEMA_ALUR.findIndex(a => igIsSimilarText(a, riwayatAlur[0].tema)) : -1;
+        hasil.push({ tema: IG_TEMA_ALUR[(i + 1) % IG_TEMA_ALUR.length], alasan: 'Semua tema sudah dipakai setahun terakhir, mengulang alur' });
+    }
     // Pekan ini punya tema di Rencana Setahun (disusun AI / diatur admin): itu pilihan utama, saran otomatis jadi cadangan.
     if (rencanaIni) {
         const utama = {
@@ -19247,6 +19300,7 @@ ANTI-PENGULANGAN (PENTING):
 - Satu topik hanya sekali dalam 6 bulan terakhir; sudut baru atas topik lama baru boleh muncul setelah jeda minimal 6 bulan (RIWAYAT TEMA hanya memuat 6 bulan terakhir). Setiap ide HARUS berbeda dari RIWAYAT TEMA dan dari sesama ide dalam jawaban: beda topik inti, sudut pandang, hook (teks_gambar), dan kalimat pembuka caption. Mengganti beberapa kata TIDAK dianggap berbeda. Kalau ragu sebuah ide mirip riwayat, ganti.
 - Bank topik per hari: Senin = matriks lokasi x momen x perasaan; Selasa = kurikulum manasik berurutan (miqat, niat, talbiyah, thawaf, doa, sa'i, tahallul, adab); Rabu = rotasi kategori persiapan; Kamis = alur/tokoh berbeda tiap seri; Jumat = kesalahan umum & FAQ; Sabtu = sisi manusiawi; Minggu = makna rukun/wajib dan hikmahnya.
 - Topik yang SUDAH PERNAH dipakai (awal pola, sebelum 12 Oktober 2026; jangan diulang sebelum 12 April 2027): niat umroh; pertama kali lihat Ka'bah; sa'i dan kisah Siti Hajar; Raudhah; subuh di Madinah; bawaan yang sering ketinggalan; kesalahan umum thawaf; urutan umroh (ihram, thawaf, sa'i, tahallul); larangan ihram; persiapan fisik; hari terakhir di Makkah; Makkah atau Madinah; umroh bersama orang tua; mulai dari yang kecil / menabung niat.
+- Kalau ada EDISI ke-2 atau lebih (tema yang sama kembali di tahun/siklus berikutnya), daftar ide lamanya diberikan tanpa batas umur. Tema boleh sama, tapi tiap hari HARUS membahas sudut yang benar-benar baru: jangan menulis ulang topik, hook, atau pembuka lama dengan kata yang diganti.
 - Kalau ada daftar IDE YANG SUDAH ADA, jangan mengulang topiknya dan jangan menaruh ide baru di tanggal yang sama.
 - Kalau ada daftar HOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR, hook (teks_gambar baris pertama) dan 3 kata pertama pembuka caption TIDAK boleh sama atau mirip dengan daftar itu, juga tidak antarhari dalam jawaban yang sama. Variasikan rumus pembuka (jangan terus memakai "Kemarin kita bahas").
 
