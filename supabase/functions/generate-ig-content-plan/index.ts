@@ -31,9 +31,11 @@
 //                                //       wajib dihindari supaya tema yang kembali tahun depan memakai sudut baru
 //     konteksPekan?: string,     // BARU: hari lain di pekan yang SUDAH jadi ("Senin 2026-10-12 | tema | hook"),
 //                                //       supaya hari yang dibuat/diulang tetap menyambung
-//     slots?: [{ tanggal, hari, peran?, pilar, tipe_konten }]
+//     slots?: [{ tanggal, hari, peran?, pilar, tipe_konten, catatan? }]
 //                                // slot yang HARUS diisi (1 ide per slot). Tanggal/pilar/tipe_konten dipaksa mengikuti slot.
-//                                // peran (Rasakan..Renungkan) opsional, hanya diteruskan ke AI sebagai konteks.
+//                                // peran (Rasakan..Renungkan, atau peran varian pekan hari besar/penjualan: Sambut, Kenali, Amalkan,
+//                                // Tanya Jawab, Rencanakan, Hitung, Pertimbangkan) opsional, hanya diteruskan ke AI sebagai konteks.
+//                                // catatan (maks 240 karakter) = arahan singkat peran varian, diteruskan ke AI apa adanya.
 //   }
 //   Header: Authorization: Bearer <access_token sesi login dashboard> (admin/user). Anon key saja DITOLAK (401).
 //   Response: { items: [{ tanggal, tema, tipe_konten, pilar, teks_gambar, draft_caption }, ...], ditolak?: ["tgl: alasan"], perbaikan: number, versi: 5 }
@@ -208,6 +210,7 @@ POLA 7 HARI (peran tiap hari, pilar & tipe_konten ikut slot):
 - SABTU = Storytelling, carousel, TERINSPIRASI: SATU cerita manusiawi yang selesai dalam 5 slide (sisi manusiawi: pertama kali, orang tua, pasangan, rindu setelah pulang, doa yang dititipkan). Berbentuk ilustrasi/umum ("banyak jamaah bercerita..."), BUKAN klaim kejadian nyata dan tanpa nama/kutipan karangan. Tutup dengan teaser Minggu (renungan makna).
 - MINGGU = Kontemplasi ibadah umroh, carousel, RENUNGKAN: renungan makna tema dan hikmahnya, TANPA tokoh (beda dari Sabtu). Tutup tenang + doa singkat + teaser tema minggu depan.
 - Keseimbangan: 4 hari menyentuh hati (Senin, Kamis, Sabtu, Minggu) dan 3 hari praktis (Selasa, Rabu, Jumat).
+VARIAN PEKAN (hanya kalau sebuah slot membawa catatan): pekan hari besar dan pekan penjualan mengganti peran hari tertentu supaya 52 pekan tidak terasa seragam. Peran pengganti dan catatannya tertulis di DAFTAR SLOT; untuk slot itu ikuti peran dan catatan slot, bukan peran bawaan harinya. Arti peran pengganti: SAMBUT = suasana menyambut hari besar pekan ini; KENALI = makna umum hari besar dengan bahasa sederhana; AMALKAN = kebiasaan baik yang bisa dilakukan bersama keluarga; TANYA JAWAB = satu pertanyaan umum beserta jawaban singkat yang aman; RENCANAKAN = kapan dan bagaimana merencanakan umroh di musim itu; HITUNG = menyiapkan waktu, cuti, dan dana secara bertahap; PERTIMBANGKAN = pertanyaan yang pantas diajukan calon jamaah sebelum memutuskan. Aturan lain tidak berubah: pilar dan tipe_konten ikut slot, carousel maksimal 5 slide, tanpa hard-selling, tanpa harga, angka, ayat, atau hadis karangan, dan penutup praktis cukup CTA ringan. Hari tanpa catatan memakai peran bawaan.
 - Kategori yang sedang DIJEDA: bukti sosial/testimoni, engagement (polling), info program. JANGAN membuatnya kecuali ARAHAN TAMBAHAN memintanya.
 
 KATEGORI & FORMAT GAMBAR:
@@ -569,7 +572,7 @@ function stripJsonFence(text: string): string {
 }
 
 // ===== Pipeline: susun pesan -> panggil Gemini -> olah & validasi -> perbaikan terarah =====
-interface Slot { tanggal: string; hari: string; peran: string; pilar: string; tipe_konten: string }
+interface Slot { tanggal: string; hari: string; peran: string; pilar: string; tipe_konten: string; catatan: string }
 interface Diterima {
   tanggal: string; tema: string; tipe_konten: string; pilar: string | null;
   teks_gambar: string; draft_caption: string; sudut: string; jembatan: string;
@@ -591,7 +594,7 @@ function susunPesan(c: Konteks, slots: Slot[], jumlah: number, konteksPekan: str
 
 ${c.tema ? `TEMA MINGGU: ${c.tema}` : "TEMA MINGGU: (tidak diisi, pilih sendiri satu tema yang belum ada di riwayat)"}
 ${c.temaDepan ? `TEMA PEKAN DEPAN (untuk teaser penutup Minggu): ${c.temaDepan}` : ""}
-${slots.length ? `\nDAFTAR SLOT TANGGAL (isi TEPAT 1 ide per slot, tanggal persis sama, ikuti pilar & tipe_konten-nya):\n${slots.map((s) => `- ${s.tanggal}${s.hari ? ` (${s.hari})` : ""}${s.peran ? ` | peran: ${s.peran}` : ""} | pilar: ${s.pilar} | tipe_konten: ${s.tipe_konten}`).join("\n")}` : ""}
+${slots.length ? `\nDAFTAR SLOT TANGGAL (isi TEPAT 1 ide per slot, tanggal persis sama, ikuti pilar & tipe_konten-nya):\n${slots.map((s) => `- ${s.tanggal}${s.hari ? ` (${s.hari})` : ""}${s.peran ? ` | peran: ${s.peran}` : ""} | pilar: ${s.pilar} | tipe_konten: ${s.tipe_konten}${s.catatan ? ` | catatan: ${s.catatan}` : ""}`).join("\n")}` : ""}
 ${konteksPekan ? `\nKONTEKS PEKAN (hari lain di pekan ini yang sudah jadi; sambungkan, jangan ulangi sudutnya):\n${konteksPekan}` : ""}
 ${c.arahan && String(c.arahan).trim() ? `\nARAHAN TAMBAHAN DARI ADMIN:\n${String(c.arahan).slice(0, 1500)}` : ""}
 
@@ -769,9 +772,10 @@ Deno.serve(async (req: Request) => {
             s && isRealDate(String(s.tanggal)) && String(s.tanggal) >= String(tanggalMulai) && String(s.tanggal) <= String(tanggalAkhir) &&
             VALID_PILARS.has(String(s.pilar)) && VALID_TYPES.has(String(s.tipe_konten)))
           .slice(0, 60)
-          .map((s: { tanggal: string; hari?: string; peran?: string; pilar: string; tipe_konten: string }) => ({
+          .map((s: { tanggal: string; hari?: string; peran?: string; pilar: string; tipe_konten: string; catatan?: string }) => ({
             tanggal: String(s.tanggal), hari: String(s.hari || ""), peran: String(s.peran || "").slice(0, 30),
             pilar: String(s.pilar), tipe_konten: String(s.tipe_konten),
+            catatan: String(s.catatan || "").replace(/\s+/g, " ").trim().slice(0, 240), // varian pekan hari besar / penjualan (opsional)
           }))
       : [];
 

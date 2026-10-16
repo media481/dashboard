@@ -60,6 +60,18 @@ Urutan perjalanan hati calon jamaah: **rasakan → pahami → siapkan → bayang
 - **Sabtu:** satu cerita manusiawi yang selesai dalam 5 slide. Berbentuk ilustrasi/umum ("banyak jamaah bercerita..."), bukan klaim kejadian nyata.
 - **Minggu (kontemplasi)** beda dari Sabtu: tanpa tokoh, murni renungan makna.
 
+### Varian pekan (hari besar dan penjualan)
+Supaya 52 pekan tidak terasa seragam, dua jenis pekan mengganti peran dan format di beberapa hari. Kamis, Sabtu, dan Minggu tidak berubah, jadi nuansa hati dan teaser pekan depan tetap terjaga.
+
+| Jenis pekan | Senin | Selasa | Rabu | Jumat |
+|---|---|---|---|---|
+| Hari besar (ada peristiwa Hijriah di pekan itu) | Sambut (single) | Kenali (single) | Amalkan (carousel) | Tanya Jawab (single) |
+| Penjualan (tema pekan = tema penjualan musiman) | Rasakan | Rencanakan (single) | Hitung (carousel) | Pertimbangkan (carousel) |
+
+Tiap peran pengganti membawa catatan singkat untuk AI. Aturan lain tidak berubah: carousel maksimal 5 slide, tanpa hard-selling, tanpa harga, angka, ayat, atau hadis karangan. Pekan hari besar didahulukan atas pekan penjualan.
+
+**Jeda pekan musiman.** Tema musiman biasa (penjualan atau bulan Hijriah, bukan hari besar) tidak dipasang tepat sebelum atau sesudah pekan yang sudah bertema musiman. Tema hari besar dikecualikan karena tanggalnya tetap. Tema musiman yang tertunda tetap menjadi pilihan cadangan terakhir.
+
 ### Contoh satu minggu: tema Talbiyah
 
 | Hari | Hook |

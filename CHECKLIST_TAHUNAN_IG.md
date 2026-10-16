@@ -22,6 +22,8 @@ Letakkan file ini di root repo bersama `pola-konten.md`.
    - Hari besar ber-`hijriRentang`: tidak perlu diubah.
    - Tema penjualan per bulan Masehi (libur sekolah, libur akhir tahun): cocokkan dengan kalender sekolah dan kebijakan musim umroh tahun itu.
    - Tema penjualan tetap tayang 2-3 bulan sebelum musimnya.
+   - Varian peran pekan hari besar dan penjualan ada di `IG_POLA_VARIAN` (`js/app.js`). Peran baru harus ikut ditambahkan ke `IG_AWALAN_PERAN` dan ke paragraf VARIAN PEKAN di `IG_PLAN_PROMPT_SISTEM` serta `CONTENT_PLAN_SYSTEM_PROMPT` (dua teks itu harus identik).
+   - Jeda pekan musiman otomatis (`igPerluJedaMusim`). Kalau menambah tema musiman baru, cek di peta 52 pekan bahwa tidak ada dua pekan musiman biasa yang berurutan.
 
 3. **`IG_RIWAYAT_AWAL`**
    - Isinya riwayat per 11 Okt 2026 dan tidak memblokir apa pun setelah 12 April 2027.

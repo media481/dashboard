@@ -281,6 +281,23 @@ await test('Selasa ditolak (terlalu pendek) -> putaran perbaikan hanya untuk Sel
   assert.ok(m.includes('KONTEKS PEKAN') && m.includes('Senin 2026-10-12') && m.includes('caption ditutup:') && m.includes('Semoga hatimu lapang'), 'Senin jadi penyambung');
   assert.ok(m.includes('janji ke hari berikutnya: Besok kita bahas tata caranya'));
 });
+await test('slot varian pekan: peran pengganti + catatan diteruskan ke pesan AI (dipangkas 240 karakter, spasi dirapikan)', async () => {
+  const sv = { tanggal: '2026-10-12', hari: 'Senin', peran: 'Sambut', pilar: 'storytelling', tipe_konten: 'image', catatan: 'Suasana   menyambut hari besar.\n' + 'x'.repeat(400) };
+  const { calls } = await panggilBerurutan([[item({ draft_caption: captionAwal('Subuh yang lengang') })]], body({ slots: [sv] }));
+  const m = calls[0].msg;
+  assert.ok(m.includes('- 2026-10-12 (Senin) | peran: Sambut | pilar: storytelling | tipe_konten: image | catatan: Suasana menyambut hari besar.'), m.slice(0, 600));
+  const baris = m.split('\n').find(l => l.includes('| catatan:'));
+  assert.ok(baris.length < 400, 'catatan harus dipangkas: ' + baris.length);
+});
+await test('slot tanpa catatan: tidak ada bagian catatan di daftar slot', async () => {
+  const { calls } = await panggilBerurutan([[item({ draft_caption: captionAwal('Subuh yang lengang') })]], body());
+  assert.ok(!calls[0].msg.includes('| catatan:'));
+});
+await test('prompt sistem memuat aturan VARIAN PEKAN dan semua peran pengganti', async () => {
+  const { calls } = await panggilBerurutan([[item({ draft_caption: captionAwal('Subuh yang lengang') })]], body());
+  const sys = calls[0].body.system_instruction.parts[0].text;
+  for (const k of ['VARIAN PEKAN', 'SAMBUT', 'KENALI', 'AMALKAN', 'TANYA JAWAB', 'RENCANAKAN', 'HITUNG', 'PERTIMBANGKAN']) assert.ok(sys.includes(k), k);
+});
 await test('hasil perbaikan untuk tanggal yang sudah lolos diabaikan (tidak menimpa hari yang sudah jadi)', async () => {
   const { json } = await panggilBerurutan([
     [item({ tema: 'Senin ASLI', draft_caption: captionAwal('Subuh yang lengang') }), itemSel({ draft_caption: 'pendek' })],

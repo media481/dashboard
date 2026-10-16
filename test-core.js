@@ -76,7 +76,7 @@ const code = fs.readFileSync(APP_PATH, 'utf8');
 const context = vm.createContext(sandbox);
 // Tambahkan penangkap: deklarasikan fungsi sebagai property di sandbox
 // dengan meng-append kode yang menaruh fungsi ke globalThis
-const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah, igBangunKonteksRegenHari, igFormatBarisPekan, igRegenerasiHariPlan, igSusunPromptEksternal, igSalinPromptPlan, IG_PLAN_PROMPT_SISTEM, igHijriMonth, igKandidatTemaMinggu, igPetaTemaSetahun, IG_TEMA_ALUR, IG_TEMA_MUSIM, IG_ALUR_GRUP, IG_ALUR_JENDELA, igAlurGrupIdx, igRtBankAlurGrup };';
+const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah, igBangunKonteksRegenHari, igFormatBarisPekan, igRegenerasiHariPlan, igSusunPromptEksternal, igSalinPromptPlan, IG_PLAN_PROMPT_SISTEM, igHijriMonth, igKandidatTemaMinggu, igPetaTemaSetahun, IG_TEMA_ALUR, IG_TEMA_MUSIM, IG_ALUR_GRUP, IG_ALUR_JENDELA, igAlurGrupIdx, igRtBankAlurGrup, igJenisPekan, igPolaHari, igBuildSlotPekan, igPerluJedaMusim, igTemaHariBesar, igTemaMusiman, igPeristiwaPekan, IG_POLA_VARIAN, igChipTopik };';
 vm.runInContext(wrapped, context, { filename: 'app.js' });
 const T = sandbox.__T;
 
@@ -234,6 +234,61 @@ test('Rencana Setahun AI: bankAlurGrup memuat semua fase beserta bobot dan membu
   assert.ok(!sisa.some(g => g.tema.some(t => blok.has(t))));
   const habis = new Set(T.IG_ALUR_GRUP[2].tema); // satu fase habis terblokir -> fase itu dibuang dari payload
   assert.ok(!T.igRtBankAlurGrup(habis).some(g => g.id === T.IG_ALUR_GRUP[2].id));
+});
+// ---- Tahap 2: pola 7 hari dinamis + jeda pekan musiman ----
+const seninList = (dari, n) => Array.from({ length: n }, (_, i) => { const [y, m, d] = dari.split('-').map(Number); const t = new Date(y, m - 1, d + 7 * i); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; });
+const PEKAN_52 = seninList('2026-10-19', 52);
+test('jenis pekan: ada peristiwa Hijriah -> hari_besar; tema penjualan -> penjualan; selain itu biasa', () => {
+  const hb = PEKAN_52.filter(sn => T.igPeristiwaPekan(sn));
+  assert.ok(hb.length >= 3, 'setahun harus memuat beberapa pekan hari besar: ' + hb.length);
+  hb.forEach(sn => assert.strictEqual(T.igJenisPekan(sn, 'Persiapan Fisik'), 'hari_besar'));
+  const biasa = PEKAN_52.find(sn => !T.igPeristiwaPekan(sn));
+  assert.strictEqual(T.igJenisPekan(biasa, 'Umroh di Libur Sekolah'), 'penjualan');
+  assert.strictEqual(T.igJenisPekan(biasa, 'Persiapan Fisik'), 'biasa');
+  assert.strictEqual(T.igJenisPekan(biasa, ''), 'biasa');
+});
+test('slot pekan biasa = pola bawaan tanpa catatan; pekan penjualan mengganti Selasa, Rabu, Jumat', () => {
+  const biasa = PEKAN_52.find(sn => !T.igPeristiwaPekan(sn));
+  const dasar = T.igBuildSlotPekan(biasa, new Set(), null, 'Persiapan Fisik');
+  assert.deepStrictEqual([...dasar.map(x => x.peran)], ['Rasakan', 'Pahami', 'Siapkan', 'Bayangkan', 'Hindari', 'Terinspirasi', 'Renungkan']);
+  assert.ok(dasar.every(x => !('catatan' in x)));
+  const jual = T.igBuildSlotPekan(biasa, new Set(), null, 'Umroh di Libur Sekolah');
+  assert.deepStrictEqual([...jual.map(x => x.peran)], ['Rasakan', 'Rencanakan', 'Hitung', 'Bayangkan', 'Pertimbangkan', 'Terinspirasi', 'Renungkan']);
+  assert.deepStrictEqual([...jual.map(x => x.tipe_konten)], ['image', 'image', 'carousel', 'carousel', 'carousel', 'carousel', 'carousel']);
+  assert.strictEqual(jual.filter(x => x.catatan).length, 3);
+});
+test('slot pekan hari besar: Senin, Selasa, Rabu, Jumat berganti peran dan format; Kamis, Sabtu, Minggu tetap', () => {
+  const hb = PEKAN_52.find(sn => T.igPeristiwaPekan(sn));
+  const sl = T.igBuildSlotPekan(hb, new Set(), null, '');
+  assert.deepStrictEqual([...sl.map(x => x.peran)], ['Sambut', 'Kenali', 'Amalkan', 'Bayangkan', 'Tanya Jawab', 'Terinspirasi', 'Renungkan']);
+  assert.strictEqual(sl[4].tipe_konten, 'image'); // Jumat dasar = carousel
+  sl.forEach(x => { assert.ok(['storytelling', 'edukasi', 'manasik', 'kontemplasi'].includes(x.pilar)); assert.ok(['image', 'carousel'].includes(x.tipe_konten)); });
+});
+test('variasi 52 pekan: tidak semua pekan sama, tiap varian punya peran unik yang dikenali chip kalender', () => {
+  const pola = PEKAN_52.map(sn => T.igBuildSlotPekan(sn, new Set(), null, '').map(x => x.peran + x.tipe_konten).join('|'));
+  assert.ok(new Set(pola).size >= 2);
+  Object.values(T.IG_POLA_VARIAN).forEach(g => Object.values(g).forEach(v => {
+    assert.strictEqual(T.igChipTopik(v.peran + ': Judul ide'), 'Judul ide', v.peran);
+    assert.ok(v.catatan.length > 20 && v.catatan.length <= 240, v.peran);
+  }));
+});
+test('jeda musim: tema musiman biasa ditunda kalau pekan sebelah musiman; hari besar dan tema alur tidak terpengaruh', () => {
+  assert.strictEqual(T.igPerluJedaMusim('Umroh di Libur Sekolah', ['Rencanakan Umroh di Bulan Ramadhan']), true);
+  assert.strictEqual(T.igPerluJedaMusim('Umroh di Libur Sekolah', ['Persiapan Fisik']), false);
+  assert.strictEqual(T.igPerluJedaMusim('Umroh di Libur Sekolah', []), false);
+  assert.strictEqual(T.igPerluJedaMusim('Cinta Rasulullah dan Rindu Madinah', ['Umroh di Libur Sekolah']), false); // hari besar tidak ditunda
+  assert.strictEqual(T.igPerluJedaMusim('Persiapan Fisik', ['Umroh di Libur Sekolah']), false);
+  assert.strictEqual(T.igTemaHariBesar('Isra Miraj dan Makna Shalat'), true);
+  assert.strictEqual(T.igTemaHariBesar('Umroh di Libur Sekolah'), false);
+});
+test('peta 52 pekan: tidak ada dua pekan berturut-turut bertema musiman biasa (hari besar dikecualikan)', () => {
+  const peta = T.igPetaTemaSetahun('2026-10-19', [], 52, null, []);
+  assert.strictEqual(peta.length, 52);
+  for (let i = 1; i < peta.length; i++) {
+    const a = peta[i - 1].tema, b = peta[i].tema;
+    const kembar = T.igTemaMusiman(a) && T.igTemaMusiman(b) && !T.igTemaHariBesar(a) && !T.igTemaHariBesar(b);
+    assert.ok(!kembar, `pekan ${i} dan ${i + 1} sama-sama musiman biasa: ${a} / ${b}`);
+  }
 });
 test('pekan yang sudah punya tema -> tema itu saja (generate sebagian tidak ganti tema)', () => {
   const k = T.igKandidatTemaMinggu('2026-10-12', [tp('2026-10-14', 'Talbiyah')], 5);
@@ -893,6 +948,24 @@ testAsync('rencana setahun: tema AI yang mirip riwayat ditolak lalu HANYA pekan 
   assert.ok(ulang, 'pekan yang ditolak diulang sendirian');
   assert.ok(ulang.riwayatTema.includes('Persiapan Fisik Jamaah'), 'tema yang ditolak ikut riwayat supaya tidak diajukan lagi');
   assert.ok(log.upsert.some(r => r.senin === target) && !log.upsert.some(r => r.tema === 'Persiapan Fisik Jamaah'));
+});
+testAsync('rencana setahun: dua pekan musiman berurutan -> pekan kedua ditolak, diulang dengan arahan WAJIB alur, temanya tidak diblokir selamanya', async () => {
+  const log = siapkanRt({
+    ai: (payload, nomor) => payload.pekan.map((w, i) => {
+      const musim = nomor === 1 && i < 2;
+      return { senin: w.senin, tema: musim ? ['Umroh di Libur Sekolah', 'Bersiap Menyambut Musim Haji'][i] : temaUnik(), alasan: 'a', fokus_program: '' };
+    })
+  });
+  await run('igRtSusunAI()');
+  const [p0, p1] = log.panggilan[0].pekan;
+  const ulang = log.panggilan.find((c, i) => i > 0 && c.pekan.length === 1 && c.pekan[0].senin === p1.senin);
+  assert.ok(ulang, 'pekan kedua diulang sendirian');
+  assert.ok(ulang.arahan.includes('WAJIB bertema alur') && ulang.arahan.includes(p1.senin), ulang.arahan);
+  assert.ok(!ulang.riwayatTema.includes('Bersiap Menyambut Musim Haji'), 'ditolak karena jeda, bukan karena mirip: tidak masuk riwayat');
+  const urut = [...log.upsert].sort((a, b) => a.senin.localeCompare(b.senin));
+  const r0 = urut.find(r => r.senin === p0.senin), r1 = urut.find(r => r.senin === p1.senin);
+  assert.strictEqual(r0.tema, 'Umroh di Libur Sekolah');
+  assert.ok(r1 && r1.tema !== 'Bersiap Menyambut Musim Haji' && !T.igTemaMusiman(r1.tema));
 });
 testAsync('rencana setahun: tabel belum ada (migrasi belum jalan) -> tidak memanggil AI sama sekali', async () => {
   const log = siapkanRt({ ready: false });

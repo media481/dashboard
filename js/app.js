@@ -14861,7 +14861,7 @@ function igChipText(text, fallback) {
 // Awalan peran Pola 7 Hari di judul ide ("Rasakan: ...", "Siapkan (carousel) — ..."). Perannya sudah ditentukan hari
 // dalam pekan, jadi di chip kalender awalan ini hanya memakan tempat; yang membedakan ide adalah topiknya.
 // Teks lengkap tetap ada di tooltip chip dan di panel/modal.
-const IG_AWALAN_PERAN = /^(?:rasakan|pahami|siapkan|bayangkan|hindari|terinspirasi|renungkan)\b(?:\s*\([^)]*\))?\s*[:\u2014\u2013-]\s*/i;
+const IG_AWALAN_PERAN = /^(?:rasakan|pahami|siapkan|bayangkan|hindari|terinspirasi|renungkan|sambut|kenali|amalkan|tanya jawab|rencanakan|hitung|pertimbangkan)\b(?:\s*\([^)]*\))?\s*[:\u2014\u2013-]\s*/i;
 function igChipTopik(teks) {
     const t = String(teks || '');
     const sisa = t.replace(IG_AWALAN_PERAN, '').trim();
@@ -16097,7 +16097,7 @@ function igBuildKonteksSeri(planId) {
     const plan = planId ? igContentPlan.find(pl => pl.id === planId) : null;
     if (!plan || !plan.tanggal) return '';
     const [y, m, d] = plan.tanggal.split('-').map(Number);
-    const pola = IG_POLA_AMIRU[new Date(y, m - 1, d).getDay()];
+    const pola = igPolaHari(plan.tanggal, plan.tema_minggu);
     const tetangga = selisih => {
         const key = igLocalDateKey(new Date(y, m - 1, d + selisih));
         const t = igContentPlan.find(pl => pl.tanggal === key && pl.status !== 'dilewati' && pl.id !== plan.id
@@ -16106,7 +16106,7 @@ function igBuildKonteksSeri(planId) {
     };
     const teksGambar = String(plan.teks_gambar || '').split('\n').filter(l => !/^Label gambar:/i.test(l)).join('\n').trim();
     const baris = [];
-    if (pola) baris.push(`Hari: ${pola.hari} (${pola.urutan}/7), peran: ${pola.peran}`);
+    if (pola) baris.push(`Hari: ${pola.hari} (${pola.urutan}/7), peran: ${pola.peran}${pola.catatan ? ` (${pola.catatan})` : ''}`);
     if (plan.tema_minggu) baris.push(`Tema Minggu: ${plan.tema_minggu}`);
     if (plan.tema) baris.push(`Judul ide: ${plan.tema}`);
     if (teksGambar) baris.push(`Teks di gambar (caption adalah lanjutannya):\n${teksGambar}`);
@@ -16819,6 +16819,18 @@ Keseimbangan: 4 hari menyentuh hati (Senin, Kamis, Sabtu, Minggu) dan 3 hari pra
 - Penutup caption memancing hari berikutnya.
 - Label kecil di pojok gambar, misalnya "Seri Talbiyah · 3/7". Ditambahkan otomatis oleh sistem di akhir teks gambar.
 
+**Varian pekan (hari besar dan penjualan)**
+Supaya 52 pekan tidak terasa seragam, dua jenis pekan mengganti peran dan format di beberapa hari. Kamis, Sabtu, dan Minggu tidak berubah, jadi nuansa hati dan teaser pekan depan tetap terjaga.
+
+| Jenis pekan | Senin | Selasa | Rabu | Jumat |
+|---|---|---|---|---|
+| Hari besar (ada peristiwa Hijriah di pekan itu) | Sambut (single) | Kenali (single) | Amalkan (carousel) | Tanya Jawab (single) |
+| Penjualan (tema pekan = tema penjualan musiman) | Rasakan | Rencanakan (single) | Hitung (carousel) | Pertimbangkan (carousel) |
+
+Tiap peran pengganti membawa catatan singkat untuk AI. Aturan lain tidak berubah: carousel maksimal 5 slide, tanpa hard-selling, tanpa harga, angka, ayat, atau hadis karangan. Pekan hari besar didahulukan atas pekan penjualan.
+
+**Jeda pekan musiman.** Tema musiman biasa (penjualan atau bulan Hijriah, bukan hari besar) tidak dipasang tepat sebelum atau sesudah pekan yang sudah bertema musiman. Tema hari besar dikecualikan karena tanggalnya tetap. Tema musiman yang tertunda tetap menjadi pilihan cadangan terakhir.
+
 **Membedakan hari-hari storytelling**
 - Senin: momen ibadah di satu lokasi atau peristiwa.
 - Kamis (bertahap): alur waktu atau perjalanan dipecah per slide (pagi ke malam, hari pertama ke terakhir).
@@ -16965,6 +16977,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 | 10 | 15 Oktober 2026 | Siklus tahunan: tema musiman memakai jeda 300 hari (bukan 365) supaya kembali tiap tahun dan tidak bergeser atau hilang; riwayat tema untuk Rencana Setahun AI kini bertanggal dan berjendela, bukan seluruh sejarah. Diuji lewat simulasi 10 tahun (520 pekan): tanpa tema kembar non-musiman dalam 364 hari, tanpa pekan fallback, semua tema musiman tayang di musimnya. Aturan konten tidak berubah |
 | 11 | 16 Oktober 2026 | Alur tema seimbang: bank alur dikelompokkan per fase dengan bobot jatah dan tiap pekan dipilih dari fase yang paling kurang dari jatahnya (dulu alur lurus, Madinah dan umroh bersama siapa baru muncul tahun ke-2). Simulasi 52 pekan: semua fase tayang, tanpa fase yang hilang lebih dari 12 pekan. Aturan konten harian tidak berubah |
 | 12 | 16 Oktober 2026 | Rencana Setahun AI seimbang: bank alur dikirim ke edge function per fase beserta bobotnya, batas 80 entri dinaikkan menjadi 160, prompt diberi aturan komposisi (jatah per fase, fase kecil tetap tayang rutin, tidak lebih dari dua pekan beruntun dari fase sama), dan hasil membawa label fase. Perlu deploy ulang generate-ig-year-plan. Aturan konten harian tidak berubah |
+| 13 | 16 Oktober 2026 | Pola 7 hari dinamis: pekan hari besar dan pekan penjualan memakai varian peran dan format (Sambut, Kenali, Amalkan, Tanya Jawab, Rencanakan, Hitung, Pertimbangkan) supaya 52 pekan tidak seragam, dan tema musiman biasa diberi jeda agar tidak menempati pekan berurutan (Rencana Setahun AI ikut menolak dan mengulang pekan yang melanggar). Aturan konten harian tidak berubah |
 `;
 
 // Petunjuk yang ikut tersalin di depan dokumen supaya Claude mengembalikan dokumen dalam format yang bisa dipakai lagi.
@@ -17815,6 +17828,12 @@ async function igRtSusunAI() {
             return [...set];
         };
 
+        // JEDA PEKAN MUSIMAN: tema musiman biasa tidak boleh menempel dengan pekan musiman lain (hari besar dikecualikan).
+        // Tetangga = pekan 7 hari sebelum/sesudah yang sudah punya tema (dipertahankan atau sudah diterima di proses ini).
+        const temaTetanggaMusim = senin => [...dipertahankan.map(w => ({ senin: w.senin, tema: w.tema })), ...diterima]
+            .filter(x => Math.abs(hariAntara(x.senin, senin) - 7) < 0.5).map(x => x.tema);
+        const jedaDitolak = new Set(); // senin yang ditolak karena jeda (bukan karena mirip): temanya TIDAK boleh masuk riwayat
+
         const infoPekan = w => {
             const kamis = igRkParseKey(w.senin); kamis.setDate(kamis.getDate() + 3);
             const hm = igHijriMonth(kamis);
@@ -17836,6 +17855,10 @@ async function igRtSusunAI() {
                 igRtStatus(`Menyusun tema (${bi + 1}/${batches.length})${putaran ? `, mengulang ${sisa.length} pekan yang mirip` : ''}...`);
                 const sekitar = [...dipertahankan.map(w => ({ senin: w.senin, tema: w.tema })), ...diterima]
                     .sort((a, b) => a.senin.localeCompare(b.senin)).map(x => `${x.senin} | ${x.tema}`).join('\n');
+                const wajibAlur = sisa.filter(w => jedaDitolak.has(w.senin)).map(w => w.senin);
+                const arahanPutaran = wajibAlur.length
+                    ? `Pekan berikut WAJIB bertema alur (bukan musiman atau penjualan) karena pekan di sebelahnya sudah musiman: ${wajibAlur.join(', ')}.${arahan ? '\n' + arahan : ''}`.slice(0, 800)
+                    : arahan;
                 const data = await igRtPanggilAI({
                     pekan: sisa.map(infoPekan),
                     konteksProgram,
@@ -17844,20 +17867,22 @@ async function igRtSusunAI() {
                     bankAlurGrup: igRtBankAlurGrup(alurTerblokir),
                     bankAlur: IG_TEMA_ALUR.filter(a => !alurTerblokir.has(a)), // cadangan untuk function lama yang belum di-deploy ulang
                     bankMusim: igRtBahanMusim(),
-                    arahan
+                    arahan: arahanPutaran
                 });
                 if (data.versi < 2) functionLama = true;
                 const sisaSet = new Set(sisa.map(w => w.senin));
                 (data.items || []).forEach(it => {
                     if (!sisaSet.has(it.senin) || !it.tema) return;
                     if (cekMirip(it.tema, it.senin)) return; // mirip tema lain: pekan ini diulang di putaran berikutnya
+                    if (igPerluJedaMusim(it.tema, temaTetanggaMusim(it.senin))) { jedaDitolak.add(it.senin); return; } // jeda pekan musiman
+                    jedaDitolak.delete(it.senin);
                     diterima.push({ senin: it.senin, tema: it.tema });
                     lolosBatch.push(it);
                 });
                 const lolosSet = new Set(lolosBatch.map(x => x.senin));
                 sisa = sisa.filter(w => !lolosSet.has(w.senin));
                 // Tema yang ditolak karena mirip ikut masuk riwayat putaran berikutnya supaya tidak diajukan lagi.
-                (data.items || []).filter(it => it.tema && !lolosSet.has(it.senin)).forEach(it => tambahRiwayat(it.tema, ''));
+                (data.items || []).filter(it => it.tema && !lolosSet.has(it.senin) && !jedaDitolak.has(it.senin)).forEach(it => tambahRiwayat(it.tema, ''));
             }
             gagal += sisa.length;
 
@@ -17889,7 +17914,7 @@ async function igRtSusunAI() {
         igRtStatus(tersimpan ? `Berhenti di tengah jalan: ${tersimpan} pekan sudah tersimpan. ${errMsg}` : errMsg, true);
         showToast('Rencana setahun gagal sebagian: ' + errMsg, 'error');
     } else if (gagal) {
-        igRtStatus(`${tersimpan} pekan tersimpan. ${gagal} pekan belum terisi (tema yang diusulkan AI mirip tema lain); klik Susun dengan AI lagi untuk mencoba pekan itu.`);
+        igRtStatus(`${tersimpan} pekan tersimpan. ${gagal} pekan belum terisi (tema yang diusulkan AI mirip tema lain atau menempel dengan pekan musiman lain); klik Susun dengan AI lagi untuk mencoba pekan itu.`);
         showToast(`${tersimpan} pekan disimpan, ${gagal} pekan belum terisi`, 'info');
     } else {
         igRtStatus(`Selesai: ${tersimpan} pekan tersimpan. Periksa temanya, edit yang kurang pas (otomatis terkunci).`
@@ -17968,14 +17993,16 @@ function igRefreshPlanPreview() {
     igPerbaruiSaranTema();
     const senin = document.getElementById('igPlanWeek')?.value;
     if (!senin) { el.textContent = ''; return; }
-    const slots = igBuildSlotPekan(senin, igTanggalTerisiSet(), igLocalDateKey(new Date()));
+    const slots = igBuildSlotPekan(senin, igTanggalTerisiSet(), igLocalDateKey(new Date()), (document.getElementById('igPlanTema')?.value || '').trim());
     if (!slots.length) {
         el.innerHTML = '<i class="bi bi-info-circle"></i> Tidak ada hari kosong di pekan ini (sudah lewat atau sudah terisi semua).';
         return;
     }
     const carousel = slots.filter(s => s.tipe_konten === 'carousel').length;
+    const varian = slots.filter(s => s.catatan).length;
     el.innerHTML = `<i class="bi bi-calendar-check"></i> <strong>${slots.length}</strong> ide akan dibuat: ` +
-        `${slots.map(s => s.hari.slice(0, 3)).join(', ')} (${slots.length - carousel} image · ${carousel} carousel)`;
+        `${slots.map(s => s.hari.slice(0, 3)).join(', ')} (${slots.length - carousel} image · ${carousel} carousel)` +
+        (varian ? ` · pola pekan khusus: ${slots.filter(s => s.catatan).map(s => s.hari.slice(0, 3) + ' ' + s.peran).join(', ')}` : '');
 }
 
 // ============================================================
@@ -18143,6 +18170,21 @@ function igTemaMusiman(tema) {
     return IG_TEMA_MUSIM.some(e => igIsSimilarText(t, igTokenSet(e.tema)));
 }
 
+// Apakah tema ini tema HARI BESAR (entri IG_TEMA_MUSIM ber-hijriRentang)? Tema hari besar waktunya tidak bisa digeser,
+// jadi tidak pernah ditunda oleh jeda pekan musiman.
+function igTemaHariBesar(tema) {
+    const t = igTokenSet(String(tema || ''));
+    return IG_TEMA_MUSIM.some(e => e.hijriRentang && igIsSimilarText(t, igTokenSet(e.tema)));
+}
+// JEDA PEKAN MUSIMAN: tema musiman biasa (penjualan atau bulan Hijriah, bukan hari besar) tidak dipasang tepat sebelum atau
+// sesudah pekan yang sudah bertema musiman, supaya pekan beruntun (mis. 22 dan 23) tidak semuanya jualan atau serba musim.
+// Dulu musim yang bulannya bersebelahan bisa menempati pekan berturut-turut. Hari besar dikecualikan (tanggalnya tetap).
+// temaTetangga = tema pekan sebelum dan sesudah pekan yang dicek (boleh kosong).
+function igPerluJedaMusim(tema, temaTetangga) {
+    if (!igTemaMusiman(tema) || igTemaHariBesar(tema)) return false;
+    return (temaTetangga || []).some(t => t && igTemaMusiman(t));
+}
+
 // Daftar tema yang cocok untuk pekan yang dimulai seninKey, urut dari yang paling disarankan (fungsi murni).
 // plans = igContentPlan (butuh kolom tema_minggu). Return [{ tema, alasan, tetap? }], paling banyak `maks`.
 function igKandidatTemaMinggu(seninKey, plans, maks, rencana = igRencanaTahun) {
@@ -18173,6 +18215,16 @@ function igKandidatTemaMinggu(seninKey, plans, maks, rencana = igRencanaTahun) {
     const sudahMusim = tema => { const t = igTokenSet(tema); return terpakaiMusim.some(u => igIsSimilarText(t, u)); };
     const batas = Math.max(1, maks || 6);
     const hasil = [];
+    // Tema pekan sebelum/sesudah (dari isi harian atau Rencana Setahun): dasar jeda pekan musiman (igPerluJedaMusim).
+    const temaPekanLain = off => {
+        const a = kunci(off), b = kunci(off + 6);
+        const dr = berTema.find(pl => pl.tanggal >= a && pl.tanggal <= b);
+        if (dr) return dr.tema_minggu;
+        const rc = (rencana || []).find(x => x.senin === a);
+        return rc ? rc.tema : '';
+    };
+    const temaTetangga = [temaPekanLain(-7), temaPekanLain(7)].filter(Boolean);
+    const musimTunda = []; // tema musiman yang ditunda karena jeda; dipakai hanya kalau alur tidak cukup mengisi daftar
 
     const kamis = new Date(y, m - 1, d + 3); // Kamis = tengah pekan
     const bulanH = igHijriMonth(kamis);
@@ -18185,7 +18237,9 @@ function igKandidatTemaMinggu(seninKey, plans, maks, rencana = igRencanaTahun) {
         .sort((a, b) => bobotMusim(b) - bobotMusim(a))
         .forEach(e => {
             if (hasil.length < batas && !sudahMusim(e.tema)) {
-                hasil.push({ tema: e.tema, alasan: e.alasan || `Musim ${IG_NAMA_HIJRI[bulanH - 1]}`, jual: !!e.jual });
+                const item = { tema: e.tema, alasan: e.alasan || `Musim ${IG_NAMA_HIJRI[bulanH - 1]}`, jual: !!e.jual };
+                if (!e.hijriRentang && igPerluJedaMusim(e.tema, temaTetangga)) musimTunda.push(item);
+                else hasil.push(item);
             }
         });
 
@@ -18232,6 +18286,8 @@ function igKandidatTemaMinggu(seninKey, plans, maks, rencana = igRencanaTahun) {
         }
         if (!ada) break;
     }
+    // Tema musiman yang ditunda (pekan sebelah sudah musiman) tetap jadi pilihan terakhir, bukan hilang.
+    musimTunda.forEach(it => { if (hasil.length < batas) hasil.push({ ...it, alasan: `${it.alasan} (pekan sebelah sudah tema musiman, jadi cadangan)` }); });
     // Semua tema alur sudah dipakai dalam setahun: ulang dari lanjutan alur, jangan sampai kosong.
     if (!hasil.length) {
         const i = riwayatAlur.length ? IG_TEMA_ALUR.findIndex(a => igIsSimilarText(a, riwayatAlur[0].tema)) : -1;
@@ -18718,15 +18774,18 @@ function igBuildSlotBulan(year, month, tanggalTerisi, mulaiDari) {
 // Slot 1 pekan Senin-Minggu mengikuti Pola 7 Hari (pola-konten.md bagian 3). seninKey = "YYYY-MM-DD" hari Senin.
 // tanggalTerisi: Set tanggal yang sudah punya ide/post (dilewati). mulaiDari: tanggal sebelum ini tidak diisi.
 // Tiap slot membawa `urutan` (1-7) & `peran` (Rasakan..Renungkan) untuk label seri dan konteks AI.
-function igBuildSlotPekan(seninKey, tanggalTerisi, mulaiDari) {
+// temaMinggu (opsional) menentukan jenis pekan: pekan hari besar / penjualan memakai varian peran dan format (IG_POLA_VARIAN);
+// hari yang memakai varian membawa `catatan` untuk AI. Tanpa temaMinggu, pekan hari besar tetap terdeteksi dari tanggalnya.
+function igBuildSlotPekan(seninKey, tanggalTerisi, mulaiDari, temaMinggu) {
     const [y, m, d] = String(seninKey).split('-').map(Number);
     const slots = [];
     IG_URUTAN_PEKAN.forEach((dow, i) => {
-        const pola = IG_POLA_AMIRU[dow];
         const tanggal = igLocalDateKey(new Date(y, m - 1, d + i));
         if (mulaiDari && tanggal < mulaiDari) return;
         if (tanggalTerisi && tanggalTerisi.has(tanggal)) return;
-        slots.push({ tanggal, hari: pola.hari, pilar: pola.pilar, tipe_konten: pola.tipe, urutan: pola.urutan, peran: pola.peran });
+        const pola = igPolaHari(tanggal, temaMinggu);
+        slots.push({ tanggal, hari: pola.hari, pilar: pola.pilar, tipe_konten: pola.tipe, urutan: pola.urutan, peran: pola.peran,
+            ...(pola.catatan ? { catatan: pola.catatan } : {}) });
     });
     return slots;
 }
@@ -18776,9 +18835,8 @@ function igPickEvenly(arr, n) {
 
 // Satu baris konteks pekan untuk AI: "Senin 2026-10-12 | Rasakan | tema | hook: ... | caption dibuka: ...".
 // Dipakai generate pekan (hari yang sudah jadi) dan generate ulang satu hari.
-function igFormatBarisPekan(tgl, tema, teksGambar, caption) {
-    const [yy, mm, dd] = String(tgl).split('-').map(Number);
-    const pola = IG_POLA_AMIRU[new Date(yy, mm - 1, dd).getDay()];
+function igFormatBarisPekan(tgl, tema, teksGambar, caption, temaMinggu) {
+    const pola = igPolaHari(tgl, temaMinggu);
     const hook = igFirstLine(teksGambar).slice(0, 90);
     const buka = igFirstLine(caption).slice(0, 90);
     return `${pola ? pola.hari + ' ' : ''}${tgl} | ${pola ? pola.peran + ' | ' : ''}${String(tema).slice(0, 90)}${hook ? ' | hook: ' + hook : ''}${buka ? ' | caption dibuka: ' + buka : ''}`;
@@ -18870,7 +18928,7 @@ async function igGeneratePlanForSlots(year, month, slots, arahan, onProgress, op
 
     // Hari-hari yang sudah jadi di pekan ini (dari rencana tersimpan + hasil putaran ini): jadi konteks penyambung.
     const barisPekan = [];
-    const catatPekan = (tgl, tema, teksGambar, caption) => barisPekan.push(igFormatBarisPekan(tgl, tema, teksGambar, caption));
+    const catatPekan = (tgl, tema, teksGambar, caption) => barisPekan.push(igFormatBarisPekan(tgl, tema, teksGambar, caption, temaMinggu));
     if (pekan) {
         igContentPlan
             .filter(pl => pl.tanggal && pl.tanggal >= tanggalMulai && pl.tanggal <= tanggalAkhir && pl.status !== 'dilewati' && pl.draft_caption)
@@ -18997,7 +19055,7 @@ async function generateIgContentPlanAI() {
     const arahan = (document.getElementById('igPlanArahan')?.value || '').trim();
 
     const hariIni = igLocalDateKey(new Date());
-    const slots = igBuildSlotPekan(senin, igTanggalTerisiSet(), hariIni);
+    const slots = igBuildSlotPekan(senin, igTanggalTerisiSet(), hariIni, temaMinggu);
     if (!slots.length) {
         showToast('Tidak ada hari kosong yang tersisa di pekan ini (sudah lewat atau sudah terisi semua)', 'info');
         return;
@@ -19050,8 +19108,7 @@ function igBangunKonteksRegenHari(plans, planId) {
     const plan = (plans || []).find(pl => pl.id === planId);
     if (!plan || !plan.tanggal || plan.status !== 'idea') return null;
     const [y, m, d] = plan.tanggal.split('-').map(Number);
-    const pola = IG_POLA_AMIRU[new Date(y, m - 1, d).getDay()];
-    if (!pola) return null;
+    if (!IG_POLA_AMIRU[new Date(y, m - 1, d).getDay()]) return null;
     const mundur = (new Date(y, m - 1, d).getDay() + 6) % 7; // jarak ke Senin (Senin = 0)
     const senin = igLocalDateKey(new Date(y, m - 1, d - mundur));
     const minggu = igLocalDateKey(new Date(y, m - 1, d - mundur + 6));
@@ -19059,11 +19116,12 @@ function igBangunKonteksRegenHari(plans, planId) {
     const lain = (plans || []).filter(pl => pl.id !== plan.id && pl.tanggal && pl.tanggal >= senin && pl.tanggal <= minggu && pl.status !== 'dilewati');
     // Tema Minggu: milik rencana ini; kalau kosong (data lama), pinjam dari hari lain di pekan yang sama.
     const temaMinggu = plan.tema_minggu || (lain.find(pl => pl.tema_minggu) || {}).tema_minggu || '';
+    const pola = igPolaHari(plan.tanggal, temaMinggu); // peran hari ini ikut varian pekan hari besar / penjualan
     // Hanya hari dari seri yang sama yang jadi penyambung (kalau seri diketahui); tanpa seri: semua hari di pekan itu.
     const barisPekan = lain
         .filter(pl => pl.draft_caption && (!temaMinggu || pl.tema_minggu === temaMinggu))
         .sort((a, b) => a.tanggal.localeCompare(b.tanggal))
-        .map(pl => igFormatBarisPekan(pl.tanggal, pl.tema, pl.teks_gambar, pl.draft_caption));
+        .map(pl => igFormatBarisPekan(pl.tanggal, pl.tema, pl.teks_gambar, pl.draft_caption, temaMinggu));
 
     // Teaser penutup hanya relevan untuk Minggu: ambil Tema Minggu terdekat sesudah pekan ini yang beda dari tema sekarang.
     let temaMingguDepan = '';
@@ -19079,7 +19137,8 @@ function igBangunKonteksRegenHari(plans, planId) {
     const pilar = (plan.pilar && IG_PILLARS[plan.pilar]) ? plan.pilar : pola.pilar;
     return {
         plan, tanggal: plan.tanggal, senin, minggu, temaMinggu, temaMingguDepan, barisPekan, pola,
-        slot: { tanggal: plan.tanggal, hari: pola.hari, pilar, tipe_konten: tipe, urutan: pola.urutan, peran: pola.peran }
+        slot: { tanggal: plan.tanggal, hari: pola.hari, pilar, tipe_konten: tipe, urutan: pola.urutan, peran: pola.peran,
+            ...(pola.catatan ? { catatan: pola.catatan } : {}) }
     };
 }
 
@@ -19237,6 +19296,7 @@ POLA 7 HARI (peran tiap hari, pilar & tipe_konten ikut slot):
 - SABTU = Storytelling, carousel, TERINSPIRASI: SATU cerita manusiawi yang selesai dalam 5 slide (sisi manusiawi: pertama kali, orang tua, pasangan, rindu setelah pulang, doa yang dititipkan). Berbentuk ilustrasi/umum ("banyak jamaah bercerita..."), BUKAN klaim kejadian nyata dan tanpa nama/kutipan karangan. Tutup dengan teaser Minggu (renungan makna).
 - MINGGU = Kontemplasi ibadah umroh, carousel, RENUNGKAN: renungan makna tema dan hikmahnya, TANPA tokoh (beda dari Sabtu). Tutup tenang + doa singkat + teaser tema minggu depan.
 - Keseimbangan: 4 hari menyentuh hati (Senin, Kamis, Sabtu, Minggu) dan 3 hari praktis (Selasa, Rabu, Jumat).
+VARIAN PEKAN (hanya kalau sebuah slot membawa catatan): pekan hari besar dan pekan penjualan mengganti peran hari tertentu supaya 52 pekan tidak terasa seragam. Peran pengganti dan catatannya tertulis di DAFTAR SLOT; untuk slot itu ikuti peran dan catatan slot, bukan peran bawaan harinya. Arti peran pengganti: SAMBUT = suasana menyambut hari besar pekan ini; KENALI = makna umum hari besar dengan bahasa sederhana; AMALKAN = kebiasaan baik yang bisa dilakukan bersama keluarga; TANYA JAWAB = satu pertanyaan umum beserta jawaban singkat yang aman; RENCANAKAN = kapan dan bagaimana merencanakan umroh di musim itu; HITUNG = menyiapkan waktu, cuti, dan dana secara bertahap; PERTIMBANGKAN = pertanyaan yang pantas diajukan calon jamaah sebelum memutuskan. Aturan lain tidak berubah: pilar dan tipe_konten ikut slot, carousel maksimal 5 slide, tanpa hard-selling, tanpa harga, angka, ayat, atau hadis karangan, dan penutup praktis cukup CTA ringan. Hari tanpa catatan memakai peran bawaan.
 - Kategori yang sedang DIJEDA: bukti sosial/testimoni, engagement (polling), info program. JANGAN membuatnya kecuali ARAHAN TAMBAHAN memintanya.
 
 KATEGORI & FORMAT GAMBAR:
@@ -19340,7 +19400,7 @@ function igSusunPromptEksternal(f) {
     ];
     if (slots.length) {
         bagian.push('DAFTAR SLOT TANGGAL (isi TEPAT 1 ide per slot, tanggal persis sama, ikuti pilar & tipe_konten-nya):\n'
-            + slots.map(s => `- ${s.tanggal}${s.hari ? ` (${s.hari})` : ''}${s.peran ? ` | peran: ${s.peran}` : ''} | pilar: ${s.pilar} | tipe_konten: ${s.tipe_konten}`).join('\n'));
+            + slots.map(s => `- ${s.tanggal}${s.hari ? ` (${s.hari})` : ''}${s.peran ? ` | peran: ${s.peran}` : ''} | pilar: ${s.pilar} | tipe_konten: ${s.tipe_konten}${s.catatan ? ` | catatan: ${s.catatan}` : ''}`).join('\n'));
     }
     if (f.konteksPekan && String(f.konteksPekan).trim()) {
         bagian.push('KONTEKS PEKAN (hari lain di pekan ini yang sudah jadi; sambungkan, jangan ulangi sudutnya):\n' + String(f.konteksPekan).trim().slice(0, 3000));
@@ -19398,7 +19458,7 @@ async function igSalinPromptPlan() {
         if (temaEl) temaEl.focus();
         return;
     }
-    const slots = igBuildSlotPekan(senin, igTanggalTerisiSet(), igLocalDateKey(new Date()));
+    const slots = igBuildSlotPekan(senin, igTanggalTerisiSet(), igLocalDateKey(new Date()), temaMinggu);
     if (!slots.length) {
         showToast('Tidak ada hari kosong yang tersisa di pekan ini (sudah lewat atau sudah terisi semua)', 'info');
         return;
@@ -19415,7 +19475,7 @@ async function igSalinPromptPlan() {
         const konteksPekan = igContentPlan
             .filter(pl => pl.tanggal && pl.tanggal >= senin && pl.tanggal <= minggu && pl.status !== 'dilewati' && pl.draft_caption)
             .sort((a, b) => a.tanggal.localeCompare(b.tanggal))
-            .map(pl => igFormatBarisPekan(pl.tanggal, pl.tema, pl.teks_gambar, pl.draft_caption))
+            .map(pl => igFormatBarisPekan(pl.tanggal, pl.tema, pl.teks_gambar, pl.draft_caption, temaMinggu))
             .join('\n');
         const prompt = igSusunPromptEksternal({
             bulanLabel: `${namaBulan[sm - 1]} ${sy}`, tanggalMulai: senin, tanggalAkhir: minggu,
@@ -19757,6 +19817,50 @@ const IG_POLA_AMIRU = {
     }
 };
 const IG_URUTAN_PEKAN = [1, 2, 3, 4, 5, 6, 0]; // Senin..Minggu (nilai getDay())
+
+// VARIAN POLA 7 HARI. Pekan hari besar dan pekan penjualan mengganti peran (dan format) di beberapa hari supaya 52 pekan
+// tidak terasa seragam. Kunci = getDay() (1 Senin ... 0 Minggu). Hari yang tidak tercantum memakai IG_POLA_AMIRU apa adanya.
+// Kamis, Sabtu, dan Minggu sengaja tidak diubah: tiga hari itu menjaga nuansa hati dan jembatan ke tema pekan depan.
+// `catatan` ikut dikirim ke AI sebagai bagian slot. Aturan konten lain (carousel maks 5 slide, tanpa hard-selling, tanpa
+// angka/harga/ayat/hadis karangan) tetap berlaku. Peran baru harus ditambahkan juga ke IG_AWALAN_PERAN (chip kalender).
+const IG_POLA_VARIAN = {
+    hari_besar: {
+        1: { peran: 'Sambut', pilar: 'storytelling', tipe: 'image', catatan: 'Suasana menyambut hari besar pekan ini, hangat dan membumi, tanpa mengarang kejadian atau kutipan.' },
+        2: { peran: 'Kenali', pilar: 'edukasi', tipe: 'image', catatan: 'Makna hari besar secara umum dengan bahasa sederhana, tanpa ayat, hadis, atau tata cara rinci (cek pembimbing).' },
+        3: { peran: 'Amalkan', pilar: 'edukasi', tipe: 'carousel', catatan: 'Kebiasaan baik yang bisa dilakukan bersama keluarga pekan ini, tanpa klaim pahala berangka, dikaitkan halus dengan rindu Tanah Suci.' },
+        5: { peran: 'Tanya Jawab', pilar: 'edukasi', tipe: 'image', catatan: 'Satu pertanyaan umum seputar hari besar ini beserta jawaban singkat yang aman; kalau ragu, arahkan ke pembimbing.' }
+    },
+    penjualan: {
+        2: { peran: 'Rencanakan', pilar: 'edukasi', tipe: 'image', catatan: 'Kapan dan bagaimana merencanakan umroh di musim ini, tanpa harga dan tanpa angka karangan.' },
+        3: { peran: 'Hitung', pilar: 'edukasi', tipe: 'carousel', catatan: 'Menyiapkan waktu, cuti, dan dana secara bertahap, tanpa menyebut harga atau angka karangan.' },
+        5: { peran: 'Pertimbangkan', pilar: 'edukasi', tipe: 'carousel', catatan: 'Pertanyaan yang pantas diajukan calon jamaah sebelum memutuskan; penutup cukup CTA ringan, bukan hard-selling.' }
+    }
+};
+
+// Jenis pekan: 'hari_besar' (ada peristiwa Hijriah di pekan itu, dihitung dari tanggal), 'penjualan' (tema pekan = tema
+// penjualan di IG_TEMA_MUSIM, jual:true), atau 'biasa'. Hari besar didahulukan karena waktunya tidak bisa digeser.
+function igJenisPekan(seninKey, tema) {
+    if (igPeristiwaPekan(seninKey)) return 'hari_besar';
+    const t = String(tema || '').trim();
+    if (t) {
+        const tok = igTokenSet(t);
+        if (IG_TEMA_MUSIM.some(e => e.jual && (e.tema.toLowerCase() === t.toLowerCase() || igIsSimilarText(tok, igTokenSet(e.tema))))) return 'penjualan';
+    }
+    return 'biasa';
+}
+
+// Pola satu hari (IG_POLA_AMIRU) setelah varian jenis pekan diterapkan. tanggalKey = 'YYYY-MM-DD'.
+// Hasil: salinan pola dengan peran/pilar/tipe yang mungkin berganti, plus `varian` dan `catatan` (kosong kalau pola bawaan).
+function igPolaHari(tanggalKey, temaMinggu) {
+    const [y, m, d] = String(tanggalKey).split('-').map(Number);
+    const dow = new Date(y, m - 1, d).getDay();
+    const dasar = IG_POLA_AMIRU[dow];
+    if (!dasar) return null;
+    const senin = igLocalDateKey(new Date(y, m - 1, d - ((dow + 6) % 7)));
+    const jenis = igJenisPekan(senin, temaMinggu);
+    const v = (IG_POLA_VARIAN[jenis] || {})[dow];
+    return v ? { ...dasar, peran: v.peran, pilar: v.pilar, tipe: v.tipe, varian: jenis, catatan: v.catatan } : { ...dasar, varian: '', catatan: '' };
+}
 
 // Susun baris rencana untuk 1 bulan dari pola (fungsi murni -- mudah dites).
 // existingDates: Set tanggal "YYYY-MM-DD" yang sudah punya ide aktif (dilewati supaya tidak menumpuk).
