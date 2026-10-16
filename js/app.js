@@ -2100,15 +2100,17 @@ function renderProgramLinkBtn(url, label, iconClass) {
 // Ambil ID 3 program dengan tanggal keberangkatan paling dekat (yang belum
 // lewat / masih tersedia). Dihitung dari seluruh dataUmroh yang aktif, jadi
 // hasilnya tetap konsisten meski tabel sedang di-search/di-sort ulang oleh user.
+// Mengembalikan Map id -> peringkat (0 = paling dekat, 1, 2, ...). Tetap bisa dipakai
+// lewat .has(), sedangkan .get() dipakai untuk gradasi warna baris (makin dekat makin gelap).
 function getNearestDepartureIds(count = 3) {
     const now = new Date();
-    return new Set(
-        dataUmroh
-            .filter(p => p.is_active !== false && p.dateObj && p.dateObj >= now)
-            .sort((a, b) => a.dateObj - b.dateObj)
-            .slice(0, count)
-            .map(p => String(p.id))
-    );
+    const ranks = new Map();
+    dataUmroh
+        .filter(p => p.is_active !== false && p.dateObj && p.dateObj >= now)
+        .sort((a, b) => a.dateObj - b.dateObj)
+        .slice(0, count)
+        .forEach((p, i) => ranks.set(String(p.id), i));
+    return ranks;
 }
 
 // Hitung estimasi waktu menuju tanggal keberangkatan dalam Bahasa Indonesia.
@@ -2154,6 +2156,7 @@ function buildProgramRowHTML(item, now, nearestIds) {
     else if (isPenuh) { statusClass = 'full'; statusLabel = `${terisi}/${kuota} Penuh`; }
     else { statusClass = 'available'; statusLabel = `${terisi}/${kuota} Tersedia`; }
     const isNearest = nearestIds.has(String(item.id));
+    const nearestRank = isNearest ? Math.min(nearestIds.get(String(item.id)) + 1, 3) : 0; // 1 = paling dekat
 
     const hasPosterHover = !!item.link_poster;
     const posterHoverAttrs = hasPosterHover
@@ -2179,13 +2182,13 @@ function buildProgramRowHTML(item, now, nearestIds) {
         ? ` <span class="new-badge" title="Ditambahkan dalam 3 hari terakhir"><i class="bi bi-stars"></i> Program Baru</span>`
         : '';
 
-    return `<tr class="${isNearest ? 'row-nearest-departure' : ''}">
+    return `<tr class="${isNearest ? 'row-nearest-departure nearest-rank-' + nearestRank : ''}">
             <td title="${hasPosterHover?'Hover untuk preview poster — ':''}${escapeHtml(item.nama||'')}"><strong${posterHoverAttrs}>${escapeHtml(item.nama||'')}</strong>${verifiedBadge}${newBadge}</td>
             <td>${escapeHtml(hitungEstimasi(item.dateObj, now))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_quad || item.harga_quint))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_triple))}</td>
             <td>${escapeHtml(formatRupiah(item.harga_double))}</td>
-            <td>${escapeHtml(item.tgl||'-')}${isNearest ? ` <span class="nearest-badge" title="Salah satu dari 3 keberangkatan terdekat"><i class="bi bi-lightning-charge-fill"></i> Terdekat</span>` : ''}</td>
+            <td>${escapeHtml(item.tgl||'-')}${isNearest ? ` <span class="nearest-badge nearest-badge-${nearestRank}" title="${nearestRank === 1 ? 'Keberangkatan paling dekat' : 'Salah satu dari 3 keberangkatan terdekat'}"><i class="bi bi-lightning-charge-fill"></i> Terdekat</span>` : ''}</td>
             <td>${escapeHtml(item.durasi||'-')}</td>
             <td>${escapeHtml(item.maskapai||'-')}</td>
             <td>
