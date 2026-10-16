@@ -6415,3 +6415,21 @@ button.btn-homepage { cursor: pointer; }
 .ig-kes-chip.warn { color: var(--warn); border-color: var(--warn); background: var(--warn-tint); }
 .ig-kes-chip.danger { color: var(--danger); border-color: var(--danger); background: var(--danger-tint); }
 @media (max-width: 700px) { .ig-kes-grid { grid-template-columns: 1fr; } }
+
+/* ===== Topbar: tombol aksi (Tambah Cepat, Share Katalog, Katalog, Share Flipbook, Flipbook)
+   selalu 1 baris. Kalau tidak muat di sebelah judul & pencarian, seluruh grup tombol
+   pindah utuh ke baris sendiri (rata kanan), tidak pernah pecah jadi 2 baris. ===== */
+.topbar-actions {
+    flex-wrap: nowrap;
+    flex: 0 0 auto;
+    gap: 8px;
+    max-width: 100%;
+    margin-left: auto;
+}
+.topbar-actions .btn-homepage { padding: 7px 12px; flex: 0 0 auto; }
+.topbar-actions .btn-tambah-cepat { flex: 0 0 auto; white-space: nowrap; }
+/* Layar sedang: tombol share/katalog jadi ikon saja supaya 5 tombol tetap 1 baris */
+@media (max-width: 860px) {
+    .topbar-actions .btn-share-katalog span { display: none; }
+    .topbar-actions .btn-share-katalog { padding: 7px 11px; }
+}
