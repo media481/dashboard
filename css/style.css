@@ -6433,3 +6433,7 @@ button.btn-homepage { cursor: pointer; }
     .topbar-actions .btn-share-katalog span { display: none; }
     .topbar-actions .btn-share-katalog { padding: 7px 11px; }
 }
+
+/* Tombol Share Katalog: ikon saja di semua ukuran layar (label tetap ada di title/aria-label) */
+#btnShareKatalog span { display: none; }
+#btnShareKatalog { padding: 7px 11px; }
