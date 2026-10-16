@@ -269,6 +269,6 @@ Deploy ulang (urutan bebas): `supabase functions deploy generate-ig-content-plan
 - Hari yang ditolak **ditulis ulang sendiri** (maksimal 2 putaran) dengan alasan penolakan dan hari yang sudah lolos sebagai penyambung; hari yang sudah lolos tidak dibuang. Dulu satu hari ditolak berarti hari-hari sesudahnya ikut dibuang dan dibuat ulang.
 - Opsional: secret `IG_PLAN_THINKING_LEVEL` (`low`, `medium`, atau `high`) menyalakan tingkat berpikir model untuk hasil lebih rapi, dengan waktu dan biaya lebih besar. Default mati.
 
-Tema Minggu otomatis (tema musiman, alur perjalanan 95 tema dalam 5 fase yang bergiliran menurut bobot jatah supaya setahun penuh seimbang, jeda 365 hari, tema musiman 300 hari agar kembali tiap tahun) dan **Rencana Setahun AI** (tema 12 bulan disimpan per pekan, bisa diedit dan dikunci) dijelaskan di About Planner bagian 7 dan 9.
+Tema Minggu otomatis (tema musiman, alur perjalanan 111 tema dalam 5 fase yang bergiliran menurut bobot jatah supaya setahun penuh seimbang, jeda 365 hari, tema musiman 300 hari agar kembali tiap tahun) dan **Rencana Setahun AI** (tema 12 bulan disimpan per pekan, bisa diedit dan dikunci) dijelaskan di About Planner bagian 7 dan 9.
 
 Yang belum otomatis: tabel **Riwayat topik** (bagian 6) masih disalin manual dari "TOPIK MINGGU INI"; dashboard sudah membaca riwayat dari rencana & post tersimpan sehingga AI tetap menghindari topik lama.

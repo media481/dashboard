@@ -76,7 +76,7 @@ const code = fs.readFileSync(APP_PATH, 'utf8');
 const context = vm.createContext(sandbox);
 // Tambahkan penangkap: deklarasikan fungsi sebagai property di sandbox
 // dengan meng-append kode yang menaruh fungsi ke globalThis
-const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah, igBangunKonteksRegenHari, igFormatBarisPekan, igRegenerasiHariPlan, igSusunPromptEksternal, igSalinPromptPlan, IG_PLAN_PROMPT_SISTEM, igHijriMonth, igKandidatTemaMinggu, igPetaTemaSetahun, IG_TEMA_ALUR, IG_TEMA_MUSIM, IG_ALUR_GRUP, IG_ALUR_JENDELA, igAlurGrupIdx, igRtBankAlurGrup, igJenisPekan, igPolaHari, igBuildSlotPekan, igPerluJedaMusim, igTemaHariBesar, igTemaMusiman, igPeristiwaPekan, IG_POLA_VARIAN, igChipTopik };';
+const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah, igBangunKonteksRegenHari, igFormatBarisPekan, igRegenerasiHariPlan, igSusunPromptEksternal, igSalinPromptPlan, IG_PLAN_PROMPT_SISTEM, igHijriMonth, igKandidatTemaMinggu, igPetaTemaSetahun, IG_TEMA_ALUR, IG_TEMA_MUSIM, IG_ALUR_GRUP, IG_ALUR_JENDELA, igAlurGrupIdx, igRtBankAlurGrup, igJenisPekan, igPolaHari, igBuildSlotPekan, igPerluJedaMusim, igTemaHariBesar, igTemaMusiman, igPeristiwaPekan, IG_POLA_VARIAN, igChipTopik, igJenisTema, igRtKesehatan, IG_TEMA_PRAKTIS, IG_RASIO_HATI };';
 vm.runInContext(wrapped, context, { filename: 'app.js' });
 const T = sandbox.__T;
 
@@ -881,6 +881,102 @@ test('rekap: pekan mendatang dengan rencana -> status "rencana" (bukan "saran"),
   assert.strictEqual(dengan.ringkas.rencana, 1);
   const tanpa = cari(rekap([]));
   assert.strictEqual(tanpa.status, 'saran'); assert.strictEqual(tanpa.terkunci, false);
+});
+
+// ---- Tahap 3: panel Kesehatan Rencana + tema baru Madinah dan "umroh bersama siapa" ----
+const mg = (senin, tema) => ({ senin, minggu: run('igLocalDateKey')(new Date(Number(senin.slice(0, 4)), Number(senin.slice(5, 7)) - 1, Number(senin.slice(8)) + 6)), tema });
+const HARI_KES = '2026-10-19';
+test('tema baru: Madinah >= 19 dan "umroh bersama siapa" >= 17, tidak ada tema kembar antar fase', () => {
+  const g = id => T.IG_ALUR_GRUP.find(x => x.id === id);
+  assert.ok(g('madinah').tema.length >= 19, 'madinah ' + g('madinah').tema.length);
+  assert.ok(g('bersama').tema.length >= 17, 'bersama ' + g('bersama').tema.length);
+  const norm = T.IG_TEMA_ALUR.map(x => x.toLowerCase());
+  assert.strictEqual(new Set(norm).size, norm.length);
+});
+test('tema baru tidak kembar (kemiripan kata >= 75%) dengan tema lain di fase yang sama', () => {
+  const sim = run('igIsSimilarText');
+  T.IG_ALUR_GRUP.forEach(g => g.tema.forEach((a, i) => g.tema.forEach((b, j) => {
+    if (i < j) assert.ok(!sim(a, b), `mirip: "${a}" ~ "${b}"`);
+  })));
+});
+test('tema alur tidak dianggap kembar dengan tema musiman (supaya tidak salah masuk fase)', () => {
+  const sim = run('igIsSimilarText');
+  T.IG_TEMA_ALUR.forEach(a => T.IG_TEMA_MUSIM.forEach(m => assert.ok(!sim(a, m.tema), `alur "${a}" mirip musiman "${m.tema}"`)));
+});
+test('IG_TEMA_PRAKTIS: setiap entri benar-benar ada di bank alur (tidak salah ketik)', () => {
+  const semua = new Set(T.IG_TEMA_ALUR.map(x => x.toLowerCase()));
+  [...T.IG_TEMA_PRAKTIS].forEach(x => assert.ok(semua.has(x), 'tidak ada di bank: ' + x));
+});
+test('igJenisTema: praktis, hati, musiman penjualan = praktis, musiman biasa = hati, ketikan sendiri = lain', () => {
+  assert.strictEqual(T.igJenisTema('Dokumen dan Administrasi'), 'praktis');
+  assert.strictEqual(T.igJenisTema('Pertama Melihat Kabah'), 'hati');
+  assert.strictEqual(T.igJenisTema('Rencanakan Umroh di Bulan Ramadhan'), 'praktis');
+  assert.strictEqual(T.igJenisTema('Menyambut Ramadhan'), 'hati');
+  assert.strictEqual(T.igJenisTema('xq zv'), 'lain');
+  assert.strictEqual(T.igJenisTema(''), 'lain');
+});
+test('kesehatan: peta 52 pekan bank sekarang -> semua fase tayang, tidak ada fase hilang/berlebih, stok tidak menipis', () => {
+  const peta = T.igPetaTemaSetahun('2026-10-19', [], 52);
+  const k = T.igRtKesehatan(peta, HARI_KES);
+  assert.strictEqual(k.pekan, 52);
+  k.fase.forEach(f => {
+    assert.ok(f.jumlah > 0, 'fase tidak tayang: ' + f.id);
+    assert.ok(!f.tanda.includes('absen'), 'absen: ' + f.id + ' ' + f.tanda);
+    assert.ok(!f.tanda.includes('stok-menipis') && !f.tanda.includes('stok-kurang'), f.id + ' stok ' + f.stok + '/' + f.perlu);
+  });
+  assert.strictEqual(k.alurN + k.musimN + k.lainN, 52);
+});
+test('kesehatan: rasio hati-praktis dari peta setahun masuk batas sehat', () => {
+  const k = T.igRtKesehatan(T.igPetaTemaSetahun('2026-10-19', [], 52), HARI_KES);
+  assert.ok(k.hati + k.praktis > 20);
+  assert.ok(k.hatiPersen >= T.IG_RASIO_HATI[0] * 100 && k.hatiPersen <= T.IG_RASIO_HATI[1] * 100, 'hati ' + k.hatiPersen + '%');
+  assert.strictEqual(k.rasio, 'seimbang');
+});
+test('kesehatan: hanya satu fase 20 pekan beruntun -> fase lain ditandai hilang, fase itu berlebih', () => {
+  const siap = T.IG_ALUR_GRUP[0].tema;
+  const minggu = seninList(HARI_KES, 20).map((s, i) => mg(s, siap[i % siap.length]));
+  const k = T.igRtKesehatan(minggu, HARI_KES);
+  assert.ok(k.fase[0].tanda.includes('berlebih'));
+  [1, 2, 3, 4].forEach(i => assert.ok(k.fase[i].tanda.includes('absen'), k.fase[i].id));
+  assert.ok(k.catatan.some(c => /Madinah/.test(c) && /tidak tayang/.test(c)));
+});
+test('kesehatan: semua tema hati -> "hati-dominan"; semua praktis -> "praktis-dominan"; sangat sedikit -> tidak divonis', () => {
+  const hati = ['Niat dan Panggilan', 'Restu dan Doa Keluarga', 'Pertama Melihat Kabah', 'Raudhah', 'Rindu Tanah Suci', 'Kebersamaan Rombongan', 'Ikhlas dalam Ibadah', 'Bersyukur atas Kesempatan'];
+  const prak = ['Dokumen dan Administrasi', 'Perlengkapan Perjalanan', 'Persiapan Fisik', 'Miqat dan Ihram', 'Thawaf', 'Tahallul', 'Menjaga Kesehatan', 'Belajar Manasik'];
+  const dari = list => seninList(HARI_KES, list.length).map((s, i) => mg(s, list[i]));
+  assert.strictEqual(T.igRtKesehatan(dari(hati), HARI_KES).rasio, 'hati-dominan');
+  assert.strictEqual(T.igRtKesehatan(dari(prak), HARI_KES).rasio, 'praktis-dominan');
+  assert.strictEqual(T.igRtKesehatan(dari(hati.slice(0, 3)), HARI_KES).rasio, 'sedikit');
+  assert.strictEqual(T.igRtKesehatan([], HARI_KES).rasio, 'kosong');
+});
+test('kesehatan: pekan yang sudah lewat tidak dihitung; rentang pendek (<12 pekan) tidak memvonis fase hilang', () => {
+  const lama = [mg('2026-01-05', 'Niat dan Panggilan')];
+  const k = T.igRtKesehatan(lama.concat(seninList(HARI_KES, 6).map(s => mg(s, 'Thawaf'))), HARI_KES);
+  assert.strictEqual(k.pekan, 6);
+  assert.ok(k.fase.every(f => !f.tanda.includes('absen')));
+});
+test('kesehatan: stok menipis terdeteksi untuk bank kecil (simulasi bank lama: Madinah 11, bersama 9 tema)', () => {
+  const g = T.IG_ALUR_GRUP;
+  const asli = [g[2].tema, g[3].tema]; const lama = [g[2].tema.slice(0, 11), g[3].tema.slice(0, 9)];
+  try {
+    g[2].tema = lama[0]; g[3].tema = lama[1];
+    const k = T.igRtKesehatan(seninList(HARI_KES, 52).map(s => mg(s, 'Thawaf')), HARI_KES);
+    assert.ok(k.fase[3].tanda.some(t => /^stok-/.test(t)), 'bersama 9 tema harus ditandai: ' + k.fase[3].rasioStok);
+    assert.ok(k.catatan.some(c => /Umroh bersama siapa/.test(c) && /menipis|kurang/.test(c)));
+  } finally { g[2].tema = asli[0]; g[3].tema = asli[1]; }
+});
+test('rekap markdown memuat bagian Kesehatan rencana', () => {
+  run("igContentPlan = []; igRkProgram = []; igRencanaTahun = []; { const n = new Date(); igRkData = igRkSusun(n.getFullYear(), n.getMonth(), [], []); }");
+  const md = run('igRkMarkdown')();
+  assert.ok(/## Kesehatan rencana/.test(md));
+  assert.ok(/Hati \d+ pekan, praktis \d+ pekan/.test(md));
+});
+test('panel kesehatan: render HTML tanpa error dan memuat semua fase', () => {
+  run("igContentPlan = []; igRkProgram = []; igRencanaTahun = []; igKesBuka = null; { const n = new Date(); igRkData = igRkSusun(n.getFullYear(), n.getMonth(), [], []); }");
+  const html = run('igRkKesehatanHtml')();
+  assert.ok(/Kesehatan rencana/.test(html));
+  T.IG_ALUR_GRUP.forEach(g => assert.ok(html.includes(g.label), g.label));
+  assert.ok(/Hati dan praktis/.test(html));
 });
 
 // ---- Alur susun lewat AI (igRtSusunAI) dengan function & Supabase tiruan ----

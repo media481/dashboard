@@ -16772,7 +16772,7 @@ function closeIgContentPlanModal() {
 // Baris "Versi:" dan "Diperbarui:" dibaca otomatis untuk header modal, jadi format dua baris itu jangan diubah.
 // ============================================================
 const ABOUT_PLANNER_MD = `# About Planner: Konsep Perencanaan Konten Instagram Amiru Tour
-Versi: 11
+Versi: 14
 Diperbarui: 16 Oktober 2026
 Status: disepakati Oktober 2026. Uji coba alur mingguan yang menyambung dimulai pekan Senin, 12 Oktober 2026. Ejaan resmi: "Umroh" (bukan "Umrah"), termasuk di hashtag.
 
@@ -16917,7 +16917,7 @@ Dashboard menyarankan Tema Minggu tanpa AI, dengan tiga sumber dalam urutan prio
 
 1. **Tema yang sudah dipakai di pekan itu** (kalau pekan sudah pernah digenerate sebagian) tetap dipertahankan.
 2. **Tema musiman** menurut bulan Hijriah/Masehi pekan itu (Maulid, Isra Miraj, Ramadhan, musim haji, libur sekolah, dan seterusnya). Tema musiman yang mengarah ke penjualan sengaja tayang 2-3 bulan sebelum musimnya, karena calon jamaah memesan jauh hari, dan didahulukan atas tema musiman biasa.
-3. **Alur perjalanan jamaah yang bergiliran antar fase**, supaya setahun penuh seimbang dan tetap terasa satu cerita. Bank alur berisi 95 tema dalam lima fase: sebelum berangkat (24 tema), ibadah di Makkah (36), Madinah (11), umroh bersama siapa (9), dan pulang serta sesudahnya (15). Tiap fase punya bobot jatah (3, 3, 2, 2, 2). Fase yang paling kurang dari jatahnya dalam 8 pekan terakhir mendapat giliran berikutnya, tema musiman tidak ikut dihitung. Di dalam satu fase urutan tema tetap menyambung dari tema terakhir fase itu. Dulu alur berjalan lurus dari awal sampai akhir, sehingga di tahun pertama Madinah, umroh bersama siapa, dan pulang hampir tidak pernah tayang.
+3. **Alur perjalanan jamaah yang bergiliran antar fase**, supaya setahun penuh seimbang dan tetap terasa satu cerita. Bank alur berisi 111 tema dalam lima fase: sebelum berangkat (24 tema), ibadah di Makkah (36), Madinah (19), umroh bersama siapa (17), dan pulang serta sesudahnya (15). Tiap fase punya bobot jatah (3, 3, 2, 2, 2). Fase yang paling kurang dari jatahnya dalam 8 pekan terakhir mendapat giliran berikutnya, tema musiman tidak ikut dihitung. Di dalam satu fase urutan tema tetap menyambung dari tema terakhir fase itu. Dulu alur berjalan lurus dari awal sampai akhir, sehingga di tahun pertama Madinah, umroh bersama siapa, dan pulang hampir tidak pernah tayang.
 
 Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati. Tema musiman memakai jeda lebih pendek, 300 hari, karena musim yang sama kembali tiap sekitar 354 hari (Hijriah) atau 364 hari (pekan yang sama tahun depan); tanpa ini tema musiman akan bergeser atau hilang di tahun berikutnya. Dengan begitu sistem dapat berjalan berulang tiap tahun. Admin tetap bisa mengetik Tema Minggu sendiri, dan mengisi Tema pekan depan (opsional) untuk teaser penutup Minggu.
 
@@ -16978,6 +16978,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 | 11 | 16 Oktober 2026 | Alur tema seimbang: bank alur dikelompokkan per fase dengan bobot jatah dan tiap pekan dipilih dari fase yang paling kurang dari jatahnya (dulu alur lurus, Madinah dan umroh bersama siapa baru muncul tahun ke-2). Simulasi 52 pekan: semua fase tayang, tanpa fase yang hilang lebih dari 12 pekan. Aturan konten harian tidak berubah |
 | 12 | 16 Oktober 2026 | Rencana Setahun AI seimbang: bank alur dikirim ke edge function per fase beserta bobotnya, batas 80 entri dinaikkan menjadi 160, prompt diberi aturan komposisi (jatah per fase, fase kecil tetap tayang rutin, tidak lebih dari dua pekan beruntun dari fase sama), dan hasil membawa label fase. Perlu deploy ulang generate-ig-year-plan. Aturan konten harian tidak berubah |
 | 13 | 16 Oktober 2026 | Pola 7 hari dinamis: pekan hari besar dan pekan penjualan memakai varian peran dan format (Sambut, Kenali, Amalkan, Tanya Jawab, Rencanakan, Hitung, Pertimbangkan) supaya 52 pekan tidak seragam, dan tema musiman biasa diberi jeda agar tidak menempati pekan berurutan (Rencana Setahun AI ikut menolak dan mengulang pekan yang melanggar). Aturan konten harian tidak berubah |
+| 14 | 16 Oktober 2026 | Kesehatan Rencana: panel di modal Rencana Konten dan bagian di rekap salinan/unduhan yang menghitung pekan ke depan (komposisi per fase terhadap jatah bobot, fase yang hilang atau berlebih, stok tema per fase terhadap kebutuhan setahun, rasio tema hati dan praktis dengan batas sehat 40-65% hati). Bank alur ditambah 16 tema: Madinah 11 menjadi 19 dan umroh bersama siapa 9 menjadi 17 (total 111). Hanya laporan, tidak mengubah pemilihan tema. Aturan konten harian tidak berubah |
 `;
 
 // Petunjuk yang ikut tersalin di depan dokumen supaya Claude mengembalikan dokumen dalam format yang bisa dipakai lagi.
@@ -17411,6 +17412,48 @@ function igRkSusun(y, m0, plans, programs, rencana = igRencanaTahun) {
 function igRkLabelPilar(k) { return (typeof IG_PILLARS !== 'undefined' && IG_PILLARS[k]) ? IG_PILLARS[k].label : k; }
 const IG_RK_LABEL_STATUS = { disusun: 'Disusun', 'tanpa-tema': 'Tanpa tema', rencana: 'Rencana AI', saran: 'Saran', kosong: 'Kosong' };
 
+let igKesBuka = null; // null = otomatis (terbuka kalau ada catatan); true/false = pilihan admin lewat panel
+
+// Kesehatan Rencana untuk rentang yang tampil (hanya pekan dari hari ini ke depan).
+function igRkKesehatan() {
+    if (!igRkData) return null;
+    return igRtKesehatan(igRkData.bulan.flatMap(b => b.minggu), igLocalDateKey(new Date()));
+}
+const IG_KES_TANDA = {
+    'absen': ['Hilang', 'danger'], 'kurang-tayang': ['Kurang tayang', 'warn'], 'berlebih': ['Berlebih', 'warn'],
+    'stok-kurang': ['Tema kurang', 'danger'], 'stok-menipis': ['Tema menipis', 'warn']
+};
+function igRkKesehatanHtml() {
+    const k = igRkKesehatan();
+    if (!k || !k.pekan) return '';
+    const buka = igKesBuka === null ? k.catatan.length > 0 : igKesBuka;
+    const rasioLabel = { seimbang: ['Seimbang', 'ok'], 'hati-dominan': ['Terlalu hati', 'warn'], 'praktis-dominan': ['Terlalu praktis', 'warn'], sedikit: ['Data masih sedikit', ''], kosong: ['Belum ada data', ''] }[k.rasio];
+    const fase = k.fase.map(f => {
+        const chips = f.tanda.map(t => `<span class="ig-kes-chip ${IG_KES_TANDA[t][1]}">${IG_KES_TANDA[t][0]}</span>`).join('');
+        const tayang = f.jedaPertama === null ? 'belum tayang' : (f.jedaPertama === 0 ? 'tayang pekan ini' : `tayang ${f.jedaPertama} pekan lagi`);
+        return `<div class="ig-kes-fase"><div class="ig-kes-nama">${escapeHtml(f.label)}${chips}</div>`
+            + `<div class="ig-kes-bar" title="Porsi ${f.persen}% dari pekan alur, target ${f.targetPersen}%"><i style="width:${Math.min(100, f.persen)}%"></i><b style="left:${Math.min(100, f.targetPersen)}%"></b></div>`
+            + `<div class="ig-kes-info">${f.jumlah} pekan (jatah sekitar ${f.jatah}) · ${tayang} · stok ${f.stok} tema, ${f.sisa} belum tayang, butuh sekitar ${f.perlu} per tahun</div></div>`;
+    }).join('');
+    const terkls = k.hati + k.praktis;
+    const hatiP = terkls ? k.hatiPersen : 0;
+    const lain = k.musimN + k.lainN;
+    const catatan = k.catatan.length
+        ? `<ul class="ig-kes-catatan">${k.catatan.map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ul>`
+        : '<p class="ig-kes-ok"><i class="bi bi-check-circle"></i> Komposisi fase, rasio hati dan praktis, serta stok tema tampak sehat.</p>';
+    return `<details class="ig-kes" id="igKes"${buka ? ' open' : ''} ontoggle="igKesBuka = this.open">`
+        + `<summary><span><i class="bi bi-heart-pulse"></i> Kesehatan rencana</span>`
+        + `<small>${k.pekan} pekan ke depan · ${k.catatan.length ? k.catatan.length + ' catatan' : 'tidak ada catatan'}</small></summary>`
+        + catatan
+        + `<div class="ig-kes-grid"><div><h4>Komposisi fase</h4>${fase}`
+        + (lain ? `<div class="ig-kes-info">Di luar fase: ${k.musimN} pekan tema musiman${k.lainN ? `, ${k.lainN} tema ketikan sendiri` : ''}.</div>` : '') + `</div>`
+        + `<div><h4>Hati dan praktis</h4>`
+        + `<div class="ig-kes-rasio" title="Hati ${hatiP}%, praktis ${terkls ? 100 - hatiP : 0}%"><i style="width:${hatiP}%"></i></div>`
+        + `<div class="ig-kes-info">Hati ${k.hati} pekan (${hatiP}%) · praktis ${k.praktis} pekan (${terkls ? 100 - hatiP : 0}%)</div>`
+        + `<div class="ig-kes-info"><span class="ig-kes-chip ${rasioLabel[1]}">${rasioLabel[0]}</span> batas sehat hati ${Math.round(IG_RASIO_HATI[0] * 100)}-${Math.round(IG_RASIO_HATI[1] * 100)}%</div>`
+        + `</div></div></details>`;
+}
+
 function igRkRender() {
     const input = document.getElementById('igRkMulai');
     const body = document.getElementById('igRkBody');
@@ -17430,6 +17473,7 @@ function igRkRender() {
     const pct = r.total ? Math.round(r.post / r.total * 100) : 0;
     const stat = (n, l) => `<div class="ig-rk-stat"><strong>${n}</strong><span>${l}</span></div>`;
     let html = `<div class="ig-rk-stats">${stat(r.disusun + '/' + r.minggu, 'pekan disusun')}${r.rencana ? stat(r.rencana, 'pekan rencana AI') : ''}${stat(r.total, 'total ide')}${stat(r.post, 'jadi post (' + pct + '%)')}${stat(r.lewat, 'dilewati')}${stat(r.kosong, 'pekan lewat kosong')}</div>`;
+    html += igRkKesehatanHtml();
     html += d.bulan.map((b, i) => {
         const pBulan = b.total ? Math.round(b.post / b.total * 100) : 0;
         const pil = Object.entries(b.pilar).sort((a, c) => c[1] - a[1]).map(([k, n]) => {
@@ -17521,6 +17565,15 @@ function igRkMarkdown() {
     L.push(`- Pekan sudah disusun: ${r.disusun} dari ${r.minggu}`);
     L.push(`- Total ide: ${r.total} (jadi post: ${r.post}, dilewati: ${r.lewat})`);
     L.push(`- Pekan lewat tanpa isi: ${r.kosong}`, '');
+    const kes = igRkKesehatan();
+    if (kes && kes.pekan) {
+        L.push('## Kesehatan rencana (' + kes.pekan + ' pekan ke depan)');
+        kes.fase.forEach(f => L.push(`- ${f.label}: ${f.jumlah} pekan (jatah sekitar ${f.jatah}), stok ${f.stok} tema dari kebutuhan sekitar ${f.perlu} per tahun${f.tanda.length ? ' [' + f.tanda.map(t => IG_KES_TANDA[t][0]).join(', ') + ']' : ''}`));
+        L.push(`- Hati ${kes.hati} pekan, praktis ${kes.praktis} pekan (hati ${kes.hatiPersen}%, batas sehat ${Math.round(IG_RASIO_HATI[0] * 100)}-${Math.round(IG_RASIO_HATI[1] * 100)}%)`);
+        if (kes.musimN || kes.lainN) L.push(`- Di luar fase: ${kes.musimN} pekan musiman, ${kes.lainN} ketikan sendiri`);
+        kes.catatan.forEach(c => L.push('- Catatan: ' + c));
+        L.push('');
+    }
     d.bulan.forEach(b => {
         L.push(`## ${IG_NAMA_BULAN[b.m]} ${b.y}`);
         L.push(`Ide: ${b.total} | Jadi post: ${b.post} | Dilewati: ${b.lewat}` + (Object.keys(b.pilar).length
@@ -18043,12 +18096,18 @@ const IG_ALUR_GRUP = [
     { id: 'madinah', label: 'Madinah', bobot: 2, tema: [
         'Perjalanan ke Madinah', 'Masjid Nabawi', 'Raudhah', 'Ziarah di Madinah', 'Doa Titipan', 'Doa untuk Diri Sendiri',
         'Sedekah dan Berbagi',
-        'Suasana Malam di Madinah', 'Antre Shalat Berjamaah di Madinah', 'Sejarah Hijrah ke Madinah', 'Masjid Quba'
+        'Suasana Malam di Madinah', 'Antre Shalat Berjamaah di Madinah', 'Sejarah Hijrah ke Madinah', 'Masjid Quba',
+        'Adab Berziarah ke Makam Rasulullah', 'Mengenal Jabal Uhud dan Perjuangan Para Sahabat', 'Masjid Qiblatain dan Perpindahan Kiblat',
+        'Meneladani Akhlak Rasulullah', 'Menjaga Stamina di Madinah', 'Pasar Kurma dan Oleh-oleh Madinah',
+        'Ketenangan Hati di Kota Nabi', 'Bersiap Meninggalkan Madinah'
     ] },
     { id: 'bersama', label: 'Umroh bersama siapa', bobot: 2, tema: [
         'Umroh Bersama Orang Tua', 'Umroh Bersama Pasangan', 'Umroh Bersama Keluarga', 'Umroh Bersama Anak', 'Umroh Bersama Sahabat',
         'Umroh untuk Lansia',
-        'Umroh Sendirian', 'Umroh Bersama Saudara', 'Umroh dengan Kursi Roda dan Pendamping'
+        'Umroh Sendirian', 'Umroh Bersama Saudara', 'Umroh dengan Kursi Roda dan Pendamping',
+        'Umroh Bersama Ibu', 'Umroh Bersama Mertua', 'Umroh untuk Pengantin Baru', 'Umroh Setelah Pensiun',
+        'Mengajak Remaja Mengenal Tanah Suci', 'Umroh Bersama Teman Pengajian', 'Umroh sebagai Hadiah untuk Orang Tercinta',
+        'Umroh Rombongan Kecil yang Akrab'
     ] },
     { id: 'pulang', label: 'Pulang dan sesudahnya', bobot: 2, tema: [
         'Thawaf Wada', 'Hari Terakhir di Makkah', 'Pulang dan Oleh-oleh Hati', 'Bersyukur atas Kesempatan', 'Menjaga Kemabruran',
@@ -18069,6 +18128,100 @@ function igAlurGrupIdx(tema) {
     if (persis >= 0) return persis;
     return IG_ALUR_GRUP.findIndex(g => g.tema.some(a => igIsSimilarText(a, tema)));
 }
+// Jenis tema untuk panel Kesehatan Rencana: PRAKTIS = tata cara, persiapan, perlengkapan, logistik (sisi akal);
+// selain itu tema alur dihitung HATI (kisah, rasa, renungan). Tema musiman: yang `jual:true` dihitung praktis
+// (merencanakan waktu dan dana), sisanya hati. Ketikan sendiri yang tidak dikenal = 'lain' (tidak dihitung).
+// Hanya untuk laporan, tidak memengaruhi pemilihan tema. Menambah tema praktis: tulis namanya persis seperti di IG_ALUR_GRUP.
+const IG_TEMA_PRAKTIS = new Set([
+    'Memilih Waktu yang Tepat untuk Berangkat', 'Dokumen dan Administrasi', 'Menyelesaikan Urusan Sebelum Berangkat', 'Anggaran dan Keuangan Perjalanan',
+    'Menabung Niat', 'Persiapan Fisik', 'Menjaga Kesehatan', 'Perlengkapan Perjalanan', 'Cuaca dan Pakaian di Tanah Suci', 'Mengenal Rombongan dan Pembimbing',
+    'Belajar Manasik', 'Membiasakan Jalan Kaki Jauh', 'Obat dan Perlengkapan Kesehatan Pribadi', 'Mengatur Barang Bawaan di Koper', 'Hari Keberangkatan dan Suasana Bandara',
+    'Miqat dan Ihram', 'Larangan Ihram', 'Talbiyah', 'Tiba di Tanah Suci', 'Thawaf', 'Air Zamzam', 'Hajar Aswad dan Rukun Yamani', 'Tahallul', 'Adab di Masjidil Haram',
+    'Menjaga Stamina Selama di Tanah Suci', 'Istirahat yang Cukup di Sela Ibadah', 'Makanan dan Kebiasaan Makan di Tanah Suci', 'Mengabadikan Momen dengan Bijak',
+    'Berkabar dengan Keluarga di Rumah', 'Mengisi Waktu di Tanah Suci', 'Ziarah di Makkah', 'Menjaga Wudhu dan Kebersihan',
+    'Perjalanan ke Madinah', 'Ziarah di Madinah', 'Adab Berziarah ke Makam Rasulullah', 'Menjaga Stamina di Madinah', 'Pasar Kurma dan Oleh-oleh Madinah', 'Bersiap Meninggalkan Madinah',
+    'Umroh Bersama Anak', 'Umroh untuk Lansia', 'Umroh dengan Kursi Roda dan Pendamping', 'Umroh Setelah Pensiun',
+    'Thawaf Wada', 'Merencanakan Kembali ke Tanah Suci'
+].map(t => t.toLowerCase()));
+function igJenisTema(tema) {
+    const s = String(tema || '').trim().toLowerCase();
+    if (!s) return 'lain';
+    if (IG_TEMA_PRAKTIS.has(s)) return 'praktis';
+    if (igAlurGrupIdx(tema) >= 0) return 'hati';
+    if (igTemaMusiman(tema)) {
+        const t = igTokenSet(tema);
+        const e = IG_TEMA_MUSIM.find(x => igIsSimilarText(t, igTokenSet(x.tema)));
+        return e && e.jual ? 'praktis' : 'hati';
+    }
+    return 'lain';
+}
+// Batas sehat porsi tema HATI dari seluruh tema alur+musiman yang terklasifikasi (pola-konten.md: 4 hari hati, 3 hari praktis per pekan).
+const IG_RASIO_HATI = [0.4, 0.65];
+// Fase dianggap hilang kalau tidak tayang selama sekian pekan ke depan (sama dengan aturan di edge function generate-ig-year-plan).
+const IG_KES_ABSEN_PEKAN = 12;
+// Perkiraan porsi pekan alur (sisanya tema musiman) untuk menakar kebutuhan tema setahun.
+const IG_KES_PORSI_ALUR = 0.8;
+
+// Kesehatan Rencana (fungsi murni): minggu = pekan hasil igRkSusun [{ senin, minggu, tema }], hariIni = 'YYYY-MM-DD'.
+// Yang dihitung hanya pekan dari hariIni ke depan. Return { pekan, alurN, musimN, lainN, fase[], hati, praktis,
+// hatiPersen, rasio: 'seimbang'|'hati-dominan'|'praktis-dominan'|'kosong', catatan[] }.
+function igRtKesehatan(minggu, hariIni) {
+    const depan = (minggu || []).filter(w => w && w.tema && w.minggu >= hariIni);
+    const totalBobot = IG_ALUR_GRUP.reduce((t, g) => t + g.bobot, 0);
+    const fase = IG_ALUR_GRUP.map(g => ({ id: g.id, label: g.label, bobot: g.bobot, jumlah: 0, jatah: 0, stok: g.tema.length, perlu: 0, rasioStok: 0, sisa: 0, jedaPertama: null, status: 'ok', tanda: [] }));
+    let musimN = 0, lainN = 0, hati = 0, praktis = 0;
+    const terpakai = IG_ALUR_GRUP.map(() => new Set());
+    depan.forEach((w, k) => {
+        const gi = igAlurGrupIdx(w.tema);
+        if (gi >= 0) {
+            fase[gi].jumlah++;
+            if (fase[gi].jedaPertama === null) fase[gi].jedaPertama = k;
+            const persis = IG_ALUR_GRUP[gi].tema.find(a => a.toLowerCase() === String(w.tema).trim().toLowerCase());
+            if (persis) terpakai[gi].add(persis);
+        } else if (igTemaMusiman(w.tema)) musimN++;
+        else lainN++;
+        const j = igJenisTema(w.tema);
+        if (j === 'hati') hati++; else if (j === 'praktis') praktis++;
+    });
+    const alurN = depan.length - musimN - lainN;
+    const porsi = depan.length ? Math.max(0.3, Math.min(1, alurN / depan.length)) : IG_KES_PORSI_ALUR;
+    fase.forEach((f, i) => {
+        f.jatah = alurN ? Math.round(alurN * f.bobot / totalBobot) : 0;
+        f.persen = alurN ? Math.round(f.jumlah / alurN * 100) : 0;
+        f.targetPersen = Math.round(f.bobot / totalBobot * 100);
+        f.perlu = Math.max(1, Math.ceil(52 * porsi * f.bobot / totalBobot)); // tema unik yang dibutuhkan untuk 12 bulan
+        f.rasioStok = Math.round(f.stok / f.perlu * 10) / 10;
+        f.sisa = Math.max(0, f.stok - terpakai[i].size);
+        // Hanya tandai kalau rentang cukup panjang untuk menilai.
+        if (depan.length >= IG_KES_ABSEN_PEKAN) {
+            if (f.jumlah === 0 || (f.jedaPertama !== null && f.jedaPertama >= IG_KES_ABSEN_PEKAN)) f.tanda.push('absen');
+            else if (f.jatah >= 2 && f.jumlah <= f.jatah - 2) f.tanda.push('kurang-tayang');
+            else if (f.jumlah >= f.jatah + 3 && f.jatah > 0) f.tanda.push('berlebih');
+        }
+        if (f.rasioStok < 1) f.tanda.push('stok-kurang');
+        else if (f.rasioStok < 1.5) f.tanda.push('stok-menipis');
+    });
+    const terklasifikasi = hati + praktis;
+    const hatiPersen = terklasifikasi ? Math.round(hati / terklasifikasi * 100) : 0;
+    let rasio = 'kosong';
+    if (terklasifikasi >= 6) {
+        const p = hati / terklasifikasi;
+        rasio = p < IG_RASIO_HATI[0] ? 'praktis-dominan' : (p > IG_RASIO_HATI[1] ? 'hati-dominan' : 'seimbang');
+    } else if (terklasifikasi) rasio = 'sedikit';
+    const catatan = [];
+    fase.forEach(f => {
+        if (f.tanda.includes('absen')) catatan.push(`Fase "${f.label}" tidak tayang dalam ${IG_KES_ABSEN_PEKAN} pekan ke depan.`);
+        if (f.tanda.includes('kurang-tayang')) catatan.push(`Fase "${f.label}" baru ${f.jumlah} pekan, jatahnya sekitar ${f.jatah}.`);
+        if (f.tanda.includes('berlebih')) catatan.push(`Fase "${f.label}" ${f.jumlah} pekan, melebihi jatah sekitar ${f.jatah}.`);
+        if (f.tanda.includes('stok-kurang')) catatan.push(`Tema fase "${f.label}" kurang: ${f.stok} tema untuk sekitar ${f.perlu} pekan per tahun. Tambahkan di IG_ALUR_GRUP.`);
+        else if (f.tanda.includes('stok-menipis')) catatan.push(`Tema fase "${f.label}" mulai menipis: ${f.stok} tema untuk sekitar ${f.perlu} pekan per tahun.`);
+    });
+    if (rasio === 'hati-dominan') catatan.push(`Tema hati ${hatiPersen}% (batas sehat ${Math.round(IG_RASIO_HATI[0] * 100)}-${Math.round(IG_RASIO_HATI[1] * 100)}%): tambah tema praktis.`);
+    if (rasio === 'praktis-dominan') catatan.push(`Tema praktis ${100 - hatiPersen}%, tema hati hanya ${hatiPersen}% (batas sehat ${Math.round(IG_RASIO_HATI[0] * 100)}-${Math.round(IG_RASIO_HATI[1] * 100)}%): tambah tema hati.`);
+    if (musimN + lainN > 0 && alurN > 0 && musimN / depan.length > 0.4) catatan.push(`Tema musiman ${musimN} dari ${depan.length} pekan: terlalu padat, alur perjalanan jamaah terpotong.`);
+    return { pekan: depan.length, alurN, musimN, lainN, fase, hati, praktis, hatiPersen, rasio, catatan };
+}
+
 // Riwayat topik awal (sebelum pola mingguan dimulai 12 Okt 2026): SATU sumber data untuk (a) deteksi ide kembar
 // (igBuildRiwayat), (b) saran Tema Minggu (igKandidatTemaMinggu), dan (c) Rencana Setahun AI (igRtSusunAI).
 // Jeda 6 bulan (IG_JEDA_TOPIK_BULAN) dari tgl ini = tidak diulang sebelum 12 April 2027 (tgl sengaja 11 Okt supaya

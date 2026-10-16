@@ -6390,3 +6390,27 @@ main { padding-bottom: 0; }
     .an-table td[data-label="Dicetak oleh"]::before { content: "Dicetak oleh"; display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); }
     .an-table .us-actions { position: absolute; top: 10px; right: 10px; width: auto; }
 }
+
+
+/* ---- Kesehatan Rencana (modal Rencana Konten, js/app.js igRkKesehatanHtml) ---- */
+.ig-kes { border: 1px solid var(--line); border-radius: 10px; background: var(--bg); margin: 0 0 14px; }
+.ig-kes > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 9px 12px; cursor: pointer; font-weight: 700; font-size: 13px; list-style: none; }
+.ig-kes > summary::-webkit-details-marker { display: none; }
+.ig-kes > summary small { font-weight: 500; color: var(--ink-soft); font-size: 11.5px; }
+.ig-kes-catatan { margin: 0; padding: 0 12px 6px 28px; font-size: 12px; color: var(--ink); line-height: 1.5; }
+.ig-kes-catatan li::marker { color: var(--warn); }
+.ig-kes-ok { margin: 0; padding: 0 12px 6px; font-size: 12px; color: var(--success); }
+.ig-kes-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 14px; padding: 4px 12px 12px; }
+.ig-kes-grid h4 { margin: 0 0 6px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); }
+.ig-kes-fase { margin-bottom: 8px; }
+.ig-kes-nama { font-size: 12.5px; font-weight: 600; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.ig-kes-bar, .ig-kes-rasio { position: relative; height: 7px; border-radius: 99px; background: var(--brand-tint); margin: 4px 0 3px; overflow: visible; }
+.ig-kes-bar > i, .ig-kes-rasio > i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: var(--brand); }
+.ig-kes-rasio > i { background: var(--brand); }
+.ig-kes-bar > b { position: absolute; top: -3px; width: 2px; height: 13px; background: var(--ink); opacity: .55; transform: translateX(-1px); }
+.ig-kes-info { font-size: 11.5px; color: var(--ink-soft); line-height: 1.45; margin-top: 3px; }
+.ig-kes-chip { display: inline-block; padding: 0 7px; border-radius: 99px; font-size: 10.5px; font-weight: 700; border: 1px solid var(--line); color: var(--ink-soft); }
+.ig-kes-chip.ok { color: var(--success); border-color: var(--success); background: var(--success-tint); }
+.ig-kes-chip.warn { color: var(--warn); border-color: var(--warn); background: var(--warn-tint); }
+.ig-kes-chip.danger { color: var(--danger); border-color: var(--danger); background: var(--danger-tint); }
+@media (max-width: 700px) { .ig-kes-grid { grid-template-columns: 1fr; } }
