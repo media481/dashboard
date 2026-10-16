@@ -5744,8 +5744,9 @@ main { padding-bottom: 0; }
 }
 .btn-homepage:hover { background: var(--brand); color: #fff; transform: translateY(-1px); box-shadow: var(--shadow); }
 .btn-homepage:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-/* Tombol Share Katalog (link ke katalog.html): pakai gaya .btn-homepage; hanya ikon di layar
-   sempit supaya topbar tidak melebar. */
+button.btn-homepage { cursor: pointer; }
+/* Tombol Share Katalog (salin link) & Katalog (buka katalog.html): pakai gaya .btn-homepage;
+   hanya ikon di layar sempit supaya topbar tidak melebar. */
 @media (max-width: 480px) {
     .btn-share-katalog span { display: none; }
     .btn-share-katalog { padding: 7px 11px; }

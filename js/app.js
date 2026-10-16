@@ -9170,6 +9170,35 @@ function copyAuditKode(kode) {
 }
 window.copyAuditKode = copyAuditKode;
 
+// Salin link katalog publik (katalog.html) ke clipboard — dipakai tombol "Share Katalog" di topbar.
+function getKatalogUrl() {
+    return new URL('katalog.html', window.location.href).href; // buang query/hash, ikut domain aktif
+}
+async function copyKatalogLink() {
+    const url = getKatalogUrl();
+    try {
+        await navigator.clipboard.writeText(url);
+        showToast('Link katalog disalin: ' + url);
+    } catch (err) {
+        // Fallback untuk browser/lingkungan tanpa Clipboard API (mis. HTTP non-secure)
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.setAttribute('readonly', 'readonly');
+        ta.style.cssText = 'position:fixed;top:-1000px;opacity:0;';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            showToast('Link katalog disalin: ' + url);
+        } catch (err2) {
+            showToast('Gagal menyalin. Link katalog: ' + url, 'error');
+        } finally {
+            document.body.removeChild(ta);
+        }
+    }
+}
+window.copyKatalogLink = copyKatalogLink;
+
 // Ringkasan jumlah log per jenis (query count saja, tidak menarik baris).
 async function loadNotaAuditStats() {
     if (currentRole !== 'admin' && currentRole !== 'user') return;

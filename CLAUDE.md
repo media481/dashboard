@@ -32,9 +32,10 @@ katalog.html          ← halaman marketing publik MANDIRI (CSS+JS inline, tidak
                         `programs` via REST dengan anon key, filter sama seperti `isProgramVisibleOnDashboard`
                         (aktif, belum expired, punya poster). Sisa seat tidak ditampilkan karena `kb_jamaah`
                         tidak publik. Isi `WA_NUMBER` di bagian konfigurasi untuk tombol WhatsApp. Kalau logika
-                        filter/parse tanggal di app.js berubah, sesuaikan juga di sini. Tombol "Share Katalog"
-                        (`#btnShareKatalog`, topbar di samping Homepage) hanya link `href="katalog.html"`
-                        yang membuka halaman ini di tab baru; tidak ada logika JS
+                        filter/parse tanggal di app.js berubah, sesuaikan juga di sini. Di topbar ada 2 tombol:
+                        "Share Katalog" (`#btnShareKatalog`, `copyKatalogLink()` di app.js) menyalin URL
+                        katalog.html ke clipboard, dan "Katalog" (`#btnLihatKatalog`) link `href="katalog.html"`
+                        yang membuka halaman ini di tab baru
 css/style.css        ← SATU-SATUNYA CSS aktif (semua styling, CSS custom
                         properties di :root untuk warna brand). **PENTING:**
                         ada file `/style.css` lepas di root project yang
