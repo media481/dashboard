@@ -148,6 +148,25 @@ footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px 
 .price small{font-size:clamp(9px,.85vw,12px)}
 .btn{font-size:clamp(10px,1vw,14px);padding:clamp(6px,.8vw,11px) 4px}
 .badge{font-size:clamp(8px,.85vw,11.5px);padding:3px clamp(5px,.6vw,9px)}
+/* ---- Optimasi UI katalog: kartu ringkas, pil estimasi di poster, filter bulan ---- */
+.poster img{transition:transform .35s ease}
+@media(hover:hover){.card:hover .poster img{transform:scale(1.03)}}
+.poster:focus-visible,.btn:focus-visible,.mchip:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.eta{position:absolute;left:clamp(6px,.7vw,10px);bottom:clamp(6px,.7vw,10px);z-index:1;display:inline-flex;align-items:center;gap:.4em;max-width:calc(100% - 16px);font:600 clamp(8.5px,.85vw,11.5px)/1.2 Inter,sans-serif;color:#fff;background:rgba(15,33,56,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:.4em .85em;border-radius:999px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.eta svg{width:1.25em;height:1.25em;flex:none}
+.facts .wide{grid-column:1/-1}
+.price strong em{font-style:normal;font:500 .5em Inter,sans-serif;color:var(--ink-soft);margin-left:.25em}
+.actions .btn{display:inline-flex;align-items:center;justify-content:center;gap:.45em;white-space:nowrap}
+.actions .btn svg{width:1.25em;height:1.25em;flex:none}
+.mchips{max-width:none;margin:14px auto 0;padding:0 20px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.mchips::-webkit-scrollbar{display:none}
+.mchips:empty{display:none}
+.mchips+.meta{margin-top:10px}
+.mchip{flex:none;font:600 13px Inter,sans-serif;color:var(--brand);background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background .15s,color .15s,border-color .15s}
+.mchip small{font-size:11px;font-weight:600;background:var(--brand-tint);color:var(--brand);border-radius:999px;padding:1px 7px}
+@media(hover:hover){.mchip:hover{border-color:var(--brand)}}
+.mchip[aria-pressed=true]{background:var(--brand);border-color:var(--brand);color:#fff}
+.mchip[aria-pressed=true] small{background:rgba(255,255,255,.2);color:#fff}
 /* ================= TABLET & HP ================= */
 .zoomhint{display:none}
 .zoomhint svg{width:16px;height:16px;flex:none}
@@ -185,8 +204,13 @@ footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px 
   .facts div:first-child{grid-column:1/-1}
   .facts div:nth-child(4){display:none}
   .price{padding-top:8px}.price strong{font-size:16px}
-  .actions{flex-direction:column;gap:6px}
+  .actions{gap:6px}
+  .actions .btn{padding:10px 4px;font-size:13px}
+  .actions .btn.wa svg{display:none}
   .actions .btn:not(.primary):not(.wa){display:none}
+  .mchips{padding:0 12px;margin-top:12px}
+  .mchip{padding:9px 14px;min-height:40px}
+  #ssBtn{display:none}   /* slideshow untuk monitor pameran; di HP beri ruang lebih untuk kolom cari */
   .poster{aspect-ratio:4/5}
   /* header HP: sticky dengan top negatif -> baris brand tergulung keluar layar, baris cari/urut tetap menempel
      (top:-54px = padding atas 12 + logo 40 + jarak 10 - 8 napas; inset notch ikut tertutup latar header) */
@@ -319,6 +343,7 @@ button.flipbtn{border:0;cursor:pointer}
     <button type="button" class="flipbtn" id="ssBtn" title="Tampilkan slideshow layar penuh (untuk monitor pameran)" aria-label="Slideshow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8.5v3l3-1.5zM8 20h8M12 16v4"/></svg><span>Slideshow</span></button>
   </div>
 </div></header>
+<nav class="mchips" id="mchips" aria-label="Filter bulan keberangkatan"></nav>
 <div class="meta" id="meta" aria-live="polite"></div>
 <main class="grid" id="grid" aria-busy="true"><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div></main>
 <footer>Harga dan jadwal dapat berubah sewaktu-waktu mengikuti ketentuan Saudi, maskapai, dan kurs. Hubungi kami untuk informasi terbaru.</footer>
@@ -441,6 +466,24 @@ async function muat() {
   }
 }
 
+let bulanAktif = '';   // '' = semua; selain itu 'YYYY-M' (bulan keberangkatan)
+const BLN_PENDEK = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const kunciBulan = d => d.getFullYear() + '-' + d.getMonth();
+function renderChips() {   // filter cepat per bulan keberangkatan, dibuat dari data yang ada
+  const box = document.getElementById('mchips');
+  const peta = new Map();
+  semua.forEach(p => { if (p.dateObj) { const k = kunciBulan(p.dateObj); const e = peta.get(k) || { k, t: +new Date(p.dateObj.getFullYear(), p.dateObj.getMonth(), 1), lbl: BLN_PENDEK[p.dateObj.getMonth()] + ' ' + p.dateObj.getFullYear(), n: 0 }; e.n++; peta.set(k, e); } });
+  const list = [...peta.values()].sort((a, b) => a.t - b.t);
+  if (bulanAktif && !peta.has(bulanAktif)) bulanAktif = '';
+  if (list.length < 2) { box.innerHTML = ''; bulanAktif = ''; return; }   // 1 bulan saja: filter tidak berguna
+  const chip = (k, lbl, n) => `<button type="button" class="mchip" data-b="${k}" aria-pressed="${bulanAktif === k}">${esc(lbl)} <small>${n}</small></button>`;
+  box.innerHTML = chip('', 'Semua', semua.length) + list.map(e => chip(e.k, e.lbl, e.n)).join('');
+}
+document.getElementById('mchips').addEventListener('click', e => {
+  const b = e.target.closest('.mchip'); if (!b) return;
+  bulanAktif = b.dataset.b; renderChips(); render();
+  const a = document.querySelector('.mchip[aria-pressed=true]'); if (a && a.scrollIntoView) a.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+});
 function olah(rows) {
   {
     const now = new Date(); now.setHours(0,0,0,0);
@@ -453,6 +496,7 @@ function olah(rows) {
     const terdekat = new Set([...semua].filter(p => p.dateObj).sort((a,b) => a.dateObj - b.dateObj).slice(0,3).map(p => String(p.id)));
     semua.forEach(p => { p._near = terdekat.has(String(p.id)); const c = new Date(p.created_at); p._baru = !isNaN(c) && (Date.now() - c) < BARU_HARI * 864e5; });
     document.getElementById('grid').setAttribute('aria-busy', 'false');
+    renderChips();
     render();
     if (ssOpen) ssRebuild(); else if (ssAuto && semua.length) { ssAuto = false; mulaiSS(); }   // slideshow: ikut data terbaru / mulai otomatis via ?slideshow
   }
@@ -461,14 +505,14 @@ function olah(rows) {
 function render() {
   const q = document.getElementById('q').value.trim().toLowerCase();
   const mode = document.getElementById('sort').value;
-  tampil = semua.filter(p => !q || [p.nama, p.maskapai, p.hotel_makkah, p.hotel_madinah, p.tgl].join(' ').toLowerCase().includes(q));
+  tampil = semua.filter(p => (!bulanAktif || (p.dateObj && kunciBulan(p.dateObj) === bulanAktif)) && (!q || [p.nama, p.maskapai, p.hotel_makkah, p.hotel_madinah, p.tgl].join(' ').toLowerCase().includes(q)));
   tampil.sort((a, b) => mode === 'low' ? (hargaUtama(a) || 1e12) - (hargaUtama(b) || 1e12)
                       : mode === 'high' ? hargaUtama(b) - hargaUtama(a)
                       : (a.dateObj ? +a.dateObj : 8.64e15) - (b.dateObj ? +b.dateObj : 8.64e15));
-  document.getElementById('meta').textContent = tampil.length ? tampil.length + ' program tersedia' : '';
+  document.getElementById('meta').textContent = tampil.length ? (tampil.length === semua.length ? tampil.length + ' program tersedia' : tampil.length + ' dari ' + semua.length + ' program') : '';
   const grid = document.getElementById('grid');
   if (!tampil.length) {
-    grid.innerHTML = '<div class="state" style="grid-column:1/-1"><p><b>' + (semua.length ? 'Tidak ada program yang cocok.' : 'Belum ada program tersedia saat ini.') + '</b></p>' + (q ? '<p style="margin-top:14px"><button class="btn primary" style="flex:none;padding:10px 22px" onclick="var i=document.getElementById(\'q\');i.value=\'\';render();i.focus()">Hapus pencarian</button></p>' : '') + '</div>';
+    grid.innerHTML = '<div class="state" style="grid-column:1/-1"><p><b>' + (semua.length ? 'Tidak ada program yang cocok.' : 'Belum ada program tersedia saat ini.') + '</b></p>' + ((q || bulanAktif) ? '<p style="margin-top:14px"><button class="btn primary" style="flex:none;padding:10px 22px" onclick="var i=document.getElementById(\'q\');i.value=\'\';bulanAktif=\'\';renderChips();render();i.focus()">Reset filter</button></p>' : '') + '</div>';
     return;
   }
   grid.innerHTML = tampil.map((p, i) => {
@@ -480,19 +524,19 @@ function render() {
       <button class="poster" data-i="${i}" aria-label="Lihat detail ${esc(p.nama)}">
         <img src="${esc(posterSrc(p.link_poster, 400))}"${isDrive(p.link_poster) ? ` srcset="${[320, 480, 640].map(w => esc(posterSrc(p.link_poster, w)) + ' ' + w + 'w').join(', ')}" sizes="(max-width:699px) 50vw, (max-width:899px) 33vw, (max-width:1099px) 25vw, 20vw"` : ''} width="400" height="500" alt="Poster ${esc(p.nama)}" ${i < 5 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async" referrerpolicy="no-referrer" data-nama="${esc(p.nama)}">
         <div class="badges">${p._near ? '<span class="badge near">Terdekat</span>' : ''}${p._baru ? '<span class="badge new">Baru</span>' : ''}</div>
+        ${p.dateObj ? `<span class="eta">${IC.clock}${esc(estimasi(p.dateObj))}</span>` : ''}
       </button>
       <div class="body">
         <h3>${esc(p.nama)}</h3>
         <div class="facts">
-          <div><small>Berangkat</small><b>${esc(p.tgl || '-')}</b></div>
+          <div class="wide"><small>Berangkat</small><b>${esc(p.tgl || '-')}</b></div>
           <div><small>Durasi</small><b>${esc(p.durasi || '-')}</b></div>
           <div><small>Maskapai</small><b>${esc(p.maskapai || '-')}</b></div>
-          <div><small>Estimasi</small><b>${p.dateObj ? esc(estimasi(p.dateObj)) : '-'}</b></div>
         </div>
-        ${harga ? `<div class="price"><small>${lbl}</small><strong>${esc(harga)}</strong></div>` : ''}
+        ${harga ? `<div class="price"><small>${lbl}</small><strong>${esc(harga)}<em>/orang</em></strong></div>` : ''}
         <div class="actions">
           <button class="btn primary" data-i="${i}">Detail</button>
-          ${WA_NUMBER ? `<a class="btn wa" target="_blank" rel="noopener" href="${waLink(p)}">Chat CS via WA</a>` : (iti ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(iti)}">Itinerary</a>` : '')}
+          ${WA_NUMBER ? `<a class="btn wa" target="_blank" rel="noopener" href="${waLink(p)}" aria-label="Chat CS via WhatsApp tentang ${esc(p.nama)}">${IC.wa}<span>Chat WA</span></a>` : (iti ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(iti)}">Itinerary</a>` : '')}
         </div>
       </div></article>`;
   }).join('');
