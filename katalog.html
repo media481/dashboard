@@ -167,6 +167,20 @@ footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px 
 @media(hover:hover){.mchip:hover{border-color:var(--brand)}}
 .mchip[aria-pressed=true]{background:var(--brand);border-color:var(--brand);color:#fff}
 .mchip[aria-pressed=true] small{background:rgba(255,255,255,.2);color:#fff}
+/* ---- Modal detail: geser antar program (drag pointer, scroll horizontal, panah) ---- */
+.mnav{display:flex;align-items:center;gap:8px;flex:none}
+.mnav .x{display:grid;place-items:center;padding:0}
+.mnav .x svg{width:18px;height:18px}
+.mnav .x:disabled{opacity:.35;cursor:default}
+.mnav[hidden]{display:none}
+#mCount{font:600 12.5px Inter,sans-serif;opacity:.8;min-width:3.6em;text-align:center;white-space:nowrap}
+#mCount:empty{display:none}
+#modal .sheet,#modal .sheet *{touch-action:pan-y pinch-zoom}   /* geser horizontal ditangani JS, scroll vertikal tetap normal */
+.sheet img.big{-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
+.sheet.drag{cursor:grabbing;user-select:none;-webkit-user-select:none}
+.sheet.drag *{cursor:grabbing!important}
+@media(min-width:1000px){.pwrap{cursor:grab}}
+@media(max-width:699px){#mPrev,#mNext{display:none}}
 /* ================= TABLET & HP ================= */
 .zoomhint{display:none}
 .zoomhint svg{width:16px;height:16px;flex:none}
@@ -349,7 +363,7 @@ button.flipbtn{border:0;cursor:pointer}
 <footer>Harga dan jadwal dapat berubah sewaktu-waktu mengikuti ketentuan Saudi, maskapai, dan kurs. Hubungi kami untuk informasi terbaru.</footer>
 
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="sheet">
-  <header><div class="htitle"><h2 id="mTitle"></h2><div class="mbadges" id="mBadges"></div></div><button class="x" id="mClose" aria-label="Tutup">&times;</button></header>
+  <header><div class="htitle"><h2 id="mTitle"></h2><div class="mbadges" id="mBadges"></div></div><div class="mnav"><button type="button" class="x" id="mPrev" aria-label="Program sebelumnya" title="Sebelumnya (←)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button><span id="mCount" aria-live="polite"></span><button type="button" class="x" id="mNext" aria-label="Program berikutnya" title="Berikutnya (→)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button><button class="x" id="mClose" aria-label="Tutup">&times;</button></div></header>
   <div class="in" id="mBody"></div>
   <div class="mfoot" id="mFoot"></div>
 </div></div>
@@ -560,8 +574,15 @@ const IC = {
   map: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>'
 };
 
+let mIdx = -1, mAnim = false;   // indeks program di modal & status animasi geser
 function buka(i) {
   const p = tampil[i]; if (!p) return;
+  const modal = document.getElementById('modal'), sudahBuka = modal.classList.contains('open');
+  mIdx = i;
+  document.getElementById('mCount').textContent = tampil.length > 1 ? (i + 1) + ' / ' + tampil.length : '';
+  document.querySelector('.mnav').hidden = tampil.length < 2;
+  document.getElementById('mPrev').disabled = i <= 0;
+  document.getElementById('mNext').disabled = i >= tampil.length - 1;
   document.getElementById('mTitle').textContent = p.nama || '';
   document.getElementById('mBadges').innerHTML = (p._near ? '<span class="badge near">Terdekat</span>' : '') + (p._baru ? '<span class="badge new">Baru</span>' : '');
   const kamar = [['Quint', p.harga_quint], ['Quad', p.harga_quad], ['Triple', p.harga_triple], ['Double', p.harga_double]].filter(k => rupiah(k[1]));
@@ -586,8 +607,8 @@ function buka(i) {
   document.getElementById('mFoot').innerHTML =
     (iti ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(iti)}">${IC.map}Lihat Itinerary</a>` : '') +
     (WA_NUMBER ? `<a class="btn wa" target="_blank" rel="noopener" href="${waLink(p)}">${IC.wa}Chat CS via WhatsApp</a>` : '');
-  document.getElementById('modal').classList.add('open');
-  history.pushState({ k: 'm' }, '');   // tombol Back HP menutup modal, bukan keluar dari katalog
+  modal.classList.add('open');
+  if (!sudahBuka) history.pushState({ k: 'm' }, '');   // tombol Back HP menutup modal, bukan keluar dari katalog (pindah program tidak menambah riwayat)
   document.body.style.overflow = 'hidden';
   document.querySelector('#modal .sheet').scrollTop = 0;
   const im = document.querySelector('#mBody img.big');
@@ -595,7 +616,8 @@ function buka(i) {
   const zb = document.getElementById('zoomBtn'); if (zb) zb.onclick = () => bukaLb(p);
   if (im) { im.addEventListener('load', fitPoster); if (im.complete) fitPoster(); }
   fitPoster();
-  document.getElementById('mClose').focus();
+  if (!sudahBuka) document.getElementById('mClose').focus();
+  [tampil[i - 1], tampil[i + 1]].forEach(q => q && preloadPoster(q));   // tetangga siap -> geser terasa instan
 }
 // Desktop: lebar kolom poster = (tinggi area) x (rasio gambar), dibatasi maks 58% lebar modal
 function fitPoster() {
@@ -639,8 +661,102 @@ if (history.state && history.state.k) history.replaceState(null, '');   // reloa
 }, { passive: true }));
 document.getElementById('grid').addEventListener('click', e => { const t = e.target.closest('[data-i]'); if (t) buka(+t.dataset.i); });
 document.getElementById('mClose').addEventListener('click', tutup);
+// ===== Geser antar program di modal =====
+const mSheet = document.querySelector('#modal .sheet');
+const mSleep = ms => new Promise(r => setTimeout(r, ms));
+async function geser(step) {
+  const to = mIdx + step;
+  if (mAnim || mIdx < 0) return;
+  if (to < 0 || to >= tampil.length) {   // ujung daftar: pantulan kecil
+    if (mSheet.animate) mSheet.animate([{ transform: 'none' }, { transform: `translateX(${-step * 18}px)` }, { transform: 'none' }], { duration: 260, easing: 'ease-out' });
+    return;
+  }
+  mAnim = true;
+  const w = mSheet.offsetWidth || 600;
+  mSheet.style.transition = 'transform .16s ease-in, opacity .16s ease-in';
+  mSheet.style.transform = `translateX(${-step * w * .3}px)`; mSheet.style.opacity = '0';
+  await mSleep(170);
+  buka(to);
+  mSheet.style.transition = 'none';
+  mSheet.style.transform = `translateX(${step * w * .3}px)`; mSheet.style.opacity = '0';
+  void mSheet.offsetWidth;   // paksa reflow supaya posisi awal tercatat
+  mSheet.style.transition = 'transform .28s cubic-bezier(.2,.8,.2,1), opacity .28s ease-out';
+  mSheet.style.transform = ''; mSheet.style.opacity = '';
+  await mSleep(300);
+  mSheet.style.transition = '';
+  mAnim = false;
+}
+document.getElementById('mPrev').addEventListener('click', () => geser(-1));
+document.getElementById('mNext').addEventListener('click', () => geser(1));
+// Drag pointer (mouse / sentuh / pen): ikuti jari, lepas melewati ambang atau cukup cepat -> pindah program
+let gX = 0, gY = 0, gT = 0, gId = null, gDrag = false, gIgnore = false, gDx = 0, gSuppress = false;
+mSheet.addEventListener('pointerdown', e => {
+  if (mAnim || (e.pointerType === 'mouse' && e.button !== 0) || !e.isPrimary) return;
+  gId = e.pointerId; gX = e.clientX; gY = e.clientY; gT = performance.now(); gDrag = false; gIgnore = false; gDx = 0;
+});
+mSheet.addEventListener('pointermove', e => {
+  if (e.pointerId !== gId || gIgnore) return;
+  const dx = e.clientX - gX, dy = e.clientY - gY;
+  if (!gDrag) {
+    if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx)) { gIgnore = true; return; }   // gerak vertikal = scroll biasa
+    if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
+    gDrag = true; mSheet.classList.add('drag');
+    try { mSheet.setPointerCapture(e.pointerId); } catch {}
+    try { getSelection().removeAllRanges(); } catch {}
+  }
+  const ujung = (dx > 0 && mIdx <= 0) || (dx < 0 && mIdx >= tampil.length - 1);
+  gDx = ujung ? dx * .25 : dx;   // di ujung daftar terasa "berat"
+  mSheet.style.transition = 'none';
+  mSheet.style.transform = `translateX(${gDx}px)`;
+  mSheet.style.opacity = String(Math.max(.45, 1 - Math.abs(gDx) / (mSheet.offsetWidth * 1.2)));
+});
+function gSelesai(e, batal) {
+  if (e.pointerId !== gId) return;
+  gId = null;
+  if (!gDrag) return;
+  gDrag = false; mSheet.classList.remove('drag');
+  gSuppress = true; setTimeout(() => { gSuppress = false; }, 120);   // klik susulan setelah drag jangan memicu poster/tombol
+  const dx = e.clientX - gX, dt = Math.max(1, performance.now() - gT);
+  const lolos = !batal && (Math.abs(dx) > Math.min(110, mSheet.offsetWidth * .18) || (Math.abs(dx) > 40 && Math.abs(dx) / dt > .5));
+  if (lolos) {
+    const w = mSheet.offsetWidth, step = dx < 0 ? 1 : -1, to = mIdx + step;
+    if (to >= 0 && to < tampil.length) {
+      mSheet.style.transition = 'transform .12s ease-in, opacity .12s'; mSheet.style.transform = `translateX(${-step * w * .3}px)`; mSheet.style.opacity = '0';
+      mAnim = true;
+      setTimeout(async () => {
+        buka(to);
+        mSheet.style.transition = 'none'; mSheet.style.transform = `translateX(${step * w * .3}px)`; mSheet.style.opacity = '0';
+        void mSheet.offsetWidth;
+        mSheet.style.transition = 'transform .28s cubic-bezier(.2,.8,.2,1), opacity .28s ease-out'; mSheet.style.transform = ''; mSheet.style.opacity = '';
+        await mSleep(300); mSheet.style.transition = ''; mAnim = false;
+      }, 125);
+      return;
+    }
+  }
+  mSheet.style.transition = 'transform .25s cubic-bezier(.2,.8,.2,1), opacity .25s'; mSheet.style.transform = ''; mSheet.style.opacity = '';   // batal / ujung: kembali ke posisi
+  setTimeout(() => { if (!mAnim) mSheet.style.transition = ''; }, 270);
+}
+mSheet.addEventListener('pointerup', e => gSelesai(e, false));
+mSheet.addEventListener('pointercancel', e => gSelesai(e, true));
+mSheet.addEventListener('click', e => { if (gSuppress) { e.preventDefault(); e.stopPropagation(); } }, true);
+mSheet.addEventListener('dragstart', e => e.preventDefault());   // cegah drag native gambar poster
+// Scroll horizontal (trackpad dua jari / Shift + roda mouse): satu gestur = satu program; scroll vertikal tetap menggulir isi modal
+let wAcc = 0, wT = 0, wLock = 0;
+mSheet.addEventListener('wheel', e => {
+  const geserH = Math.abs(e.deltaX) > Math.abs(e.deltaY) || (e.shiftKey && e.deltaY);
+  if (!geserH) return;
+  e.preventDefault();
+  const now = performance.now(), d = (e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX) * (e.deltaMode === 1 ? 16 : 1);
+  if (now < wLock) { wLock = Math.max(wLock, now + 90); wAcc = 0; return; }   // abaikan inertia trackpad setelah pindah
+  if (now - wT > 200) wAcc = 0;
+  wT = now; wAcc += d;
+  if (Math.abs(wAcc) > 70) { const st = wAcc > 0 ? 1 : -1; wAcc = 0; wLock = now + 350; geser(st); }
+}, { passive: false });
 document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') tutup(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (lb.classList.contains('open')) tutupLbUI(); else tutup(); } });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if (lb.classList.contains('open')) tutupLbUI(); else tutup(); }
+  else if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && document.getElementById('modal').classList.contains('open') && !lb.classList.contains('open') && !e.altKey && !e.ctrlKey && !e.metaKey) { e.preventDefault(); geser(e.key === 'ArrowRight' ? 1 : -1); }
+});
 // Poster gagal dimuat -> ganti dengan placeholder nama program (aman untuk nama berapostrof)
 document.getElementById('grid').addEventListener('error', e => {
   const im = e.target;
