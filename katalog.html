@@ -213,6 +213,66 @@ footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px 
 }
 @keyframes up{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}
 @media(max-width:380px){.facts{font-size:11.5px}.price strong{font-size:15px}.chips{grid-template-columns:1fr}.chip{flex-direction:row;align-items:center}}
+/* ================= SLIDESHOW (layar pameran / monitor display) ================= */
+button.flipbtn{border:0;cursor:pointer}
+.ss{position:fixed;inset:0;z-index:70;display:none;background:radial-gradient(120% 120% at 15% 10%,#27508a 0%,#1a355b 45%,#0b1a2e 100%);color:#fff;font-size:min(1.1vw,1.9vh);cursor:none;overflow:hidden;user-select:none;-webkit-user-select:none}
+.ss.open{display:block}
+.ss.ctl{cursor:default}
+.ss-stage{position:absolute;inset:0;padding:3.2em 3.6em 3.4em;transition:opacity .35s ease}
+.ss-stage.out{opacity:0}
+.ss-slide{height:100%;display:flex;gap:3.2em;align-items:stretch;animation:ssIn .7s cubic-bezier(.2,.8,.2,1) both}
+@keyframes ssIn{from{opacity:0;transform:translateY(1.2em)}to{opacity:1;transform:none}}
+.ss-poster{flex:0 1 44%;min-width:0;position:relative}
+.ss-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 1.2em 2.4em rgba(0,0,0,.5))}
+.ss-ph{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:2em;font:700 2em/1.2 "Space Grotesk",Inter,sans-serif;background:rgba(255,255,255,.1);border-radius:1em}
+.ss-info{flex:1 1 56%;min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:1.4em}
+.ss-top{display:flex;justify-content:space-between;align-items:center;gap:1em}
+.ss-brand{display:flex;align-items:center;gap:.9em;min-width:0}
+.ss-brand img{width:3em;height:3em;border-radius:.7em;background:#fff;padding:.25em;object-fit:contain;flex:none}
+.ss-brand b{display:block;font:700 1.15em/1.2 "Space Grotesk",Inter,sans-serif}
+.ss-brand span{display:block;font-size:.75em;opacity:.7}
+.ss-count{flex:none;font:600 .95em Inter,sans-serif;background:rgba(255,255,255,.14);padding:.35em 1em;border-radius:999px}
+.ss-badges{display:flex;gap:.6em;flex-wrap:wrap}
+.ss-badges:empty{display:none}
+.ss-badges .badge{font-size:.85em;padding:.35em 1em;box-shadow:none}
+.ss-info h2{font:700 3em/1.1 "Space Grotesk",Inter,sans-serif;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ss-chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.9em}
+.ss-chip{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);border-radius:1em;padding:.8em 1em;min-width:0}
+.ss-chip small{display:flex;align-items:center;gap:.5em;font-size:.65em;text-transform:uppercase;letter-spacing:.08em;opacity:.75}
+.ss-chip small svg{width:1.5em;height:1.5em;flex:none}
+.ss-chip b{display:block;font-size:1.25em;line-height:1.25;margin-top:.25em}
+.ss-hero{background:#fff;color:var(--brand);border-radius:1.2em;padding:1em 1.4em;display:flex;align-items:flex-end;justify-content:space-between;gap:1em;flex-wrap:wrap}
+.ss-hero small{display:block;font-size:.8em;color:var(--ink-soft)}
+.ss-hero strong{display:block;font:700 3.4em/1.05 "Space Grotesk",Inter,sans-serif}
+.ss-hero em{font-style:normal;font-weight:700;font-size:1em;background:var(--brand-tint);padding:.4em 1em;border-radius:999px;white-space:nowrap}
+.ss-prices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.7em}
+.ss-prices div{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);border-radius:.9em;padding:.6em .9em;min-width:0}
+.ss-prices div.best{background:rgba(255,255,255,.22);border-color:#fff}
+.ss-prices small{display:block;font-size:.65em;text-transform:uppercase;letter-spacing:.08em;opacity:.8}
+.ss-prices b{display:block;font-size:1.15em;white-space:nowrap}
+.ss-hotels{display:grid;gap:.5em}
+.ss-hotel{display:flex;gap:.8em;align-items:center;min-width:0}
+.ss-hotel span{flex:none;min-width:6em;text-align:center;font-size:.7em;font-weight:700;background:rgba(255,255,255,.16);padding:.35em .9em;border-radius:999px}
+.ss-hotel p{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.ss-cta{display:flex;align-items:center;gap:.8em;font-size:1.15em;font-weight:600}
+.ss-cta svg{width:1.6em;height:1.6em;color:#25D366;flex:none}
+.ss-note{font-size:.7em;opacity:.55}
+.ss-bar{position:absolute;left:0;right:0;bottom:0;height:.4em;background:rgba(255,255,255,.12)}
+.ss-bar i{display:block;height:100%;background:#fff;transform-origin:left center;transform:scaleX(0)}
+.ss-ctl{position:absolute;left:50%;bottom:1.6em;transform:translateX(-50%);display:flex;align-items:center;gap:.5em;background:rgba(8,18,32,.8);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);padding:.5em;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .3s}
+.ss.ctl .ss-ctl{opacity:1;pointer-events:auto}
+.ss-ctl button,.ss-ctl select{height:2.8em;min-width:2.8em;border:0;border-radius:999px;background:rgba(255,255,255,.14);color:#fff;font:600 .9em Inter,sans-serif;cursor:pointer;padding:0 .9em;display:inline-flex;align-items:center;justify-content:center}
+.ss-ctl select option{color:#111}
+.ss-ctl button svg{width:1.4em;height:1.4em}
+@media(hover:hover){.ss-ctl button:hover,.ss-ctl select:hover{background:rgba(255,255,255,.26)}}
+.ss.paused .ic-pause,.ss:not(.paused) .ic-play{display:none}
+@media(orientation:portrait){
+  .ss{font-size:min(2.3vw,1.3vh)}
+  .ss-stage{padding:2.4em 2.4em 3em}
+  .ss-slide{flex-direction:column;gap:2em}
+  .ss-poster{flex:0 0 40%}
+  .ss-info{flex:1 1 auto;justify-content:flex-start;gap:1.2em}
+}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -223,6 +283,7 @@ footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px 
     <input id="q" type="search" placeholder="Cari program/hotel" aria-label="Cari program" autocomplete="off" enterkeyhint="search">
     <select id="sort" aria-label="Urutkan"><option value="date">Terdekat</option><option value="low">Termurah</option><option value="high">Termahal</option></select>
     <a class="flipbtn" href="katalog-flip.html" title="Lihat katalog versi flipbook" aria-label="Katalog flipbook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6.5C10.4 5.3 8.2 4.7 4 4.7v13c4.2 0 6.4.6 8 1.8 1.6-1.2 3.8-1.8 8-1.8v-13c-4.2 0-6.4.6-8 1.8zM12 6.5v13"/></svg><span>Flipbook</span></a>
+    <button type="button" class="flipbtn" id="ssBtn" title="Tampilkan slideshow layar penuh (untuk monitor pameran)" aria-label="Slideshow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M10 8.5v3l3-1.5zM8 20h8M12 16v4"/></svg><span>Slideshow</span></button>
   </div>
 </div></header>
 <div class="meta" id="meta" aria-live="polite"></div>
@@ -241,6 +302,19 @@ footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px 
   <div class="lbhint" id="lbHint">Ketuk gambar untuk zoom</div>
 </div>
 
+<div class="ss" id="ss" role="dialog" aria-modal="true" aria-label="Slideshow program Umroh">
+  <div class="ss-stage" id="ssStage"></div>
+  <div class="ss-bar"><i id="ssProg"></i></div>
+  <div class="ss-ctl" id="ssCtl">
+    <button type="button" id="ssPrev" title="Sebelumnya (←)" aria-label="Slide sebelumnya"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg></button>
+    <button type="button" id="ssPlay" title="Jeda / putar (Spasi)" aria-label="Jeda atau putar"><svg class="ic-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg><svg class="ic-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+    <button type="button" id="ssNext" title="Berikutnya (→)" aria-label="Slide berikutnya"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
+    <select id="ssDetik" aria-label="Durasi tiap slide"><option value="5">5 detik</option><option value="8">8 detik</option><option value="10">10 detik</option><option value="15">15 detik</option><option value="20">20 detik</option><option value="30">30 detik</option></select>
+    <button type="button" id="ssFull" title="Layar penuh (F)" aria-label="Layar penuh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button type="button" id="ssClose" title="Tutup (Esc)" aria-label="Tutup slideshow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+</div>
+
 <script>
 // ===== KONFIGURASI =====
 const SUPABASE_URL = "https://vlrizloxsjejcfuxuyju.supabase.co";
@@ -251,6 +325,7 @@ const BARU_HARI = 3;    // badge "Baru" tampil selama N hari sejak program dibua
 const BULAN = {Januari:0,Februari:1,Maret:2,April:3,Mei:4,Juni:5,Juli:6,Agustus:7,September:8,Oktober:9,November:10,Desember:11};
 let semua = [], tampil = [];
 const CACHE_KEY = 'katalog_programs_v1', CACHE_MAX_UMUR = 24 * 3600e3;   // cache daftar program maks 24 jam
+const SEL_PROGRAM = 'id,nama,tgl,durasi,maskapai,harga_quint,link_itinerary,link_poster,created_at,is_active,admin_data_lengkap';   // dipakai muat() & penyegaran slideshow
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const safeUrl = u => { u = String(u || '').trim(); return /^https?:\/\//i.test(u) ? u : ''; };
@@ -312,7 +387,7 @@ function hargaUtama(p) { const h = hargaPilih(p); return h ? h.n : 0; }
 async function muat() {
   const grid = document.getElementById('grid');
   try {
-    const sel = 'id,nama,tgl,durasi,maskapai,harga_quint,link_itinerary,link_poster,created_at,is_active,admin_data_lengkap';
+    const sel = SEL_PROGRAM;
     // Kunjungan ulang: tampilkan daftar dari cache dulu (instan, gambar langsung mulai dimuat), lalu segarkan di belakang layar
     let cached = null;
     try { cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch {}
@@ -346,6 +421,7 @@ function olah(rows) {
     semua.forEach(p => { p._near = terdekat.has(String(p.id)); const c = new Date(p.created_at); p._baru = !isNaN(c) && (Date.now() - c) < BARU_HARI * 864e5; });
     document.getElementById('grid').setAttribute('aria-busy', 'false');
     render();
+    if (ssOpen) ssRebuild(); else if (ssAuto && semua.length) { ssAuto = false; mulaiSS(); }   // slideshow: ikut data terbaru / mulai otomatis via ?slideshow
   }
 }
 
@@ -499,6 +575,162 @@ let tmrCari;   // debounce: kartu tidak dirender ulang di setiap ketukan keyboar
 document.getElementById('q').addEventListener('input', () => { clearTimeout(tmrCari); tmrCari = setTimeout(render, 180); });
 document.getElementById('q').addEventListener('keydown', e => { if (e.key === 'Enter') { clearTimeout(tmrCari); render(); e.target.blur(); } });   // Enter = tutup keyboard
 document.getElementById('sort').addEventListener('change', render);
+// ===== Slideshow layar pameran =====
+// Dibuka lewat tombol "Slideshow" di header, atau otomatis lewat katalog.html?slideshow (opsional &detik=15).
+// Urutan: semua program tersedia, tanggal berangkat terdekat dulu. Data disegarkan otomatis tiap 10 menit.
+const ss = document.getElementById('ss'), ssStage = document.getElementById('ssStage'), ssProg = document.getElementById('ssProg');
+const ssQs = new URLSearchParams(location.search);
+let ssAuto = ssQs.has('slideshow');
+let ssList = [], ssIdx = 0, ssOpen = false, ssPaused = false, ssElapsed = 0, ssLast = 0, ssRaf = 0;
+let ssSwapT, ssHideT, ssRefreshT, ssLock = null;
+let ssDur = (parseInt(ssQs.get('detik'), 10) || parseInt((() => { try { return localStorage.getItem('katalog_ss_detik'); } catch { return ''; } })(), 10) || 10) * 1000;
+const ssSel = document.getElementById('ssDetik');
+if (![...ssSel.options].some(o => +o.value * 1000 === ssDur)) ssSel.add(new Option((ssDur / 1000) + ' detik', ssDur / 1000));
+ssSel.value = String(ssDur / 1000);
+
+function fmtTelp(n) {
+  n = String(n).replace(/\D/g, '');
+  if (n.startsWith('62')) n = '0' + n.slice(2);
+  return n.replace(/^(\d{4})(\d{4})(\d+)$/, '$1-$2-$3');
+}
+function ssBuildList() {
+  ssList = [...semua].sort((a, b) => (a.dateObj ? +a.dateObj : 8.64e15) - (b.dateObj ? +b.dateObj : 8.64e15));
+}
+function ssRebuild() {   // data berubah saat slideshow jalan: perbarui daftar tanpa mengganggu slide yang sedang tampil
+  const cur = ssList[ssIdx] ? String(ssList[ssIdx].id) : null;
+  ssBuildList();
+  if (!ssList.length) { tutupSSUI(); return; }
+  const k = cur ? ssList.findIndex(p => String(p.id) === cur) : -1;
+  ssIdx = k >= 0 ? k : Math.min(ssIdx, ssList.length - 1);
+}
+function ssSlideHTML(p, i, n) {
+  const kamar = [['Quint', p.harga_quint], ['Quad', p.harga_quad], ['Triple', p.harga_triple], ['Double', p.harga_double]].filter(k => rupiah(k[1]));
+  const best = hargaPilih(p);
+  const hotel = [['Makkah', p.hotel_makkah], ['Madinah', p.hotel_madinah], [p.hotel_3_kota || 'Hotel 3', p.hotel_3], [p.hotel_4_kota || 'Hotel 4', p.hotel_4]].filter(h => h[1]);
+  const chip = (ic, lbl, val) => `<div class="ss-chip"><small>${IC[ic]}${lbl}</small><b>${esc(val || '-')}</b></div>`;
+  const wa = WA_NUMBER ? fmtTelp(WA_NUMBER) : '';
+  return `<div class="ss-slide">
+    <div class="ss-poster"><img class="ss-img" src="${esc(posterSrc(p.link_poster, 1600))}" alt="Poster ${esc(p.nama)}" referrerpolicy="no-referrer"></div>
+    <div class="ss-info">
+      <div class="ss-top">
+        <div class="ss-brand"><img src="assets/logo-amirutour.png" alt="" onerror="this.style.display='none'"><div><b>Amiru Tour</b><span>PT Amiru Haramain Indonesia</span></div></div>
+        <div class="ss-count">${i + 1} / ${n}</div>
+      </div>
+      <div class="ss-badges">${p._near ? '<span class="badge near">Terdekat</span>' : ''}${p._baru ? '<span class="badge new">Baru</span>' : ''}</div>
+      <h2>${esc(p.nama)}</h2>
+      <div class="ss-chips">${chip('cal', 'Berangkat', p.tgl)}${chip('clock', 'Durasi', p.durasi)}${chip('plane', 'Maskapai', p.maskapai)}</div>
+      ${best ? `<div class="ss-hero"><div><small>Mulai dari (${esc(best.k.toLowerCase())}) / orang</small><strong>${esc(rupiah(best.v))}</strong></div>${p.dateObj ? `<em>${esc(estimasi(p.dateObj))}</em>` : ''}</div>` : ''}
+      ${kamar.length > 1 ? `<div class="ss-prices">${kamar.map(k => `<div class="${best && best.k === k[0] ? 'best' : ''}"><small>${k[0]}</small><b>${esc(rupiah(k[1]))}</b></div>`).join('')}</div>` : ''}
+      ${hotel.length ? `<div class="ss-hotels">${hotel.map(h => `<div class="ss-hotel"><span>${esc(h[0])}</span><p>${esc(h[1])}</p></div>`).join('')}</div>` : ''}
+      ${wa ? `<div class="ss-cta">${IC.wa}<span>Info &amp; pendaftaran: WhatsApp ${esc(wa)}</span></div>` : ''}
+      <div class="ss-note">Harga dan jadwal dapat berubah sewaktu-waktu.</div>
+    </div>
+  </div>`;
+}
+function ssBar(v) { ssProg.style.transform = 'scaleX(' + Math.min(1, Math.max(0, v)) + ')'; }
+function ssShow(i, instant) {
+  const n = ssList.length; if (!n) return;
+  ssIdx = ((i % n) + n) % n;
+  const draw = () => {
+    const p = ssList[ssIdx]; if (!p) return;
+    ssStage.innerHTML = ssSlideHTML(p, ssIdx, ssList.length);
+    ssStage.classList.remove('out');
+    ssBar(0);
+    const nx = ssList[(ssIdx + 1) % ssList.length]; if (nx) preloadPosterBesar(nx);   // siapkan poster slide berikutnya
+  };
+  clearTimeout(ssSwapT);
+  if (instant) { ssElapsed = 0; draw(); }
+  else { ssElapsed = -350; ssBar(0); ssStage.classList.add('out'); ssSwapT = setTimeout(draw, 350); }
+}
+function preloadPosterBesar(p) {
+  const src = posterSrc(p.link_poster, 1600);
+  if (!src || preloaded.has(src)) return;
+  preloaded.add(src); const im = new Image(); im.referrerPolicy = 'no-referrer'; im.src = src;
+}
+function ssTick(ts) {
+  if (!ssOpen) return;
+  if (!ssLast) ssLast = ts;
+  const dt = Math.min(ts - ssLast, 250); ssLast = ts;
+  if (!ssPaused) {
+    ssElapsed += dt;
+    if (ssElapsed >= ssDur) ssShow(ssIdx + 1); else ssBar(ssElapsed / ssDur);
+  }
+  ssRaf = requestAnimationFrame(ssTick);
+}
+function ssWake() {   // tampilkan kontrol & kursor, sembunyikan lagi setelah 3,5 detik tanpa gerakan
+  ss.classList.add('ctl'); clearTimeout(ssHideT);
+  ssHideT = setTimeout(() => ss.classList.remove('ctl'), 3500);
+}
+async function ssLockOn() { try { if ('wakeLock' in navigator) ssLock = await navigator.wakeLock.request('screen'); } catch {} }   // layar monitor tidak mati
+function ssLockOff() { try { if (ssLock) ssLock.release(); } catch {} ssLock = null; }
+function ssFull() {
+  try {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (ss.requestFullscreen) { const r = ss.requestFullscreen(); if (r && r.catch) r.catch(() => {}); }
+  } catch {}
+}
+async function ssRefresh() {   // data program dipakai berhari-hari di monitor pameran: segarkan berkala
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/programs?select=${SEL_PROGRAM}&order=created_at.asc`, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY } });
+    if (!r.ok) return;
+    const rows = await r.json();
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), rows })); } catch {}
+    olah(rows);
+  } catch {}
+}
+function mulaiSS() {
+  if (ssOpen || !semua.length) return;
+  ssBuildList();
+  ssOpen = true; ssPaused = false; ssLast = 0;
+  ss.classList.remove('paused'); ss.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  history.pushState({ k: 's' }, '');   // tombol Back menutup slideshow
+  ssShow(0, true);
+  ssWake();
+  cancelAnimationFrame(ssRaf); ssRaf = requestAnimationFrame(ssTick);
+  clearInterval(ssRefreshT); ssRefreshT = setInterval(ssRefresh, 10 * 60e3);
+  try { if (!document.fullscreenElement && ss.requestFullscreen) { const r = ss.requestFullscreen(); if (r && r.catch) r.catch(() => {}); } } catch {}
+  ssLockOn();
+}
+function tutupSS() {
+  if (!ssOpen) return;
+  ssOpen = false;
+  ss.classList.remove('open', 'ctl');
+  cancelAnimationFrame(ssRaf); clearInterval(ssRefreshT); clearTimeout(ssSwapT); clearTimeout(ssHideT);
+  ssStage.innerHTML = '';
+  document.body.style.overflow = '';
+  try { if (document.fullscreenElement) document.exitFullscreen(); } catch {}
+  ssLockOff();
+}
+function tutupSSUI() { if (history.state && history.state.k === 's') history.back(); else tutupSS(); }
+addEventListener('popstate', () => { if (ssOpen) tutupSS(); });
+document.addEventListener('visibilitychange', () => { if (ssOpen && document.visibilityState === 'visible') ssLockOn(); });
+document.getElementById('ssBtn').addEventListener('click', mulaiSS);
+document.getElementById('ssClose').addEventListener('click', tutupSSUI);
+document.getElementById('ssPrev').addEventListener('click', () => ssShow(ssIdx - 1, true));
+document.getElementById('ssNext').addEventListener('click', () => ssShow(ssIdx + 1, true));
+document.getElementById('ssPlay').addEventListener('click', () => { ssPaused = !ssPaused; ss.classList.toggle('paused', ssPaused); });
+document.getElementById('ssFull').addEventListener('click', ssFull);
+ssSel.addEventListener('change', () => { ssDur = +ssSel.value * 1000; try { localStorage.setItem('katalog_ss_detik', ssSel.value); } catch {} });
+ss.addEventListener('mousemove', ssWake);
+ss.addEventListener('touchstart', ssWake, { passive: true });
+ss.addEventListener('click', e => { if (!e.target.closest('.ss-ctl')) ssWake(); });
+document.addEventListener('keydown', e => {
+  if (!ssOpen) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown') { ssShow(ssIdx + 1, true); ssWake(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { ssShow(ssIdx - 1, true); ssWake(); }
+  else if (e.key === ' ') { e.preventDefault(); ssPaused = !ssPaused; ss.classList.toggle('paused', ssPaused); ssWake(); }
+  else if (e.key === 'f' || e.key === 'F') ssFull();
+  else if (e.key === 'Escape') tutupSSUI();
+});
+// Poster gagal dimuat -> tampilkan nama program sebagai pengganti
+ssStage.addEventListener('error', e => {
+  const im = e.target;
+  if (!im || im.tagName !== 'IMG' || !im.classList.contains('ss-img')) return;
+  const d = document.createElement('div'); d.className = 'ss-ph'; d.textContent = (ssList[ssIdx] && ssList[ssIdx].nama) || '';
+  im.replaceWith(d);
+}, true);
+
 muat();
 </script>
 </body>
