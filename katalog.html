@@ -32,6 +32,10 @@ h1,h2,h3{font-family:"Space Grotesk",Inter,system-ui,sans-serif}
 .tools input{flex:1 1 220px;padding-left:44px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='none' stroke='%2364758A' stroke-width='2' stroke-linecap='round' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 15px center}
 .tools select{flex:0 0 150px}
 .tools input:focus,.tools select:focus{outline:2px solid #fff;outline-offset:2px}
+.flipbtn{flex:none;height:46px;display:inline-flex;align-items:center;gap:8px;padding:0 16px;border-radius:12px;background:rgba(255,255,255,.14);color:#fff;font:600 14.5px Inter,sans-serif;text-decoration:none;white-space:nowrap}
+.flipbtn svg{width:18px;height:18px;flex:none}
+@media(hover:hover){.flipbtn:hover{background:rgba(255,255,255,.24)}}
+.flipbtn:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .wrap{max-width:none;margin:0 auto;padding:0 28px}
 .meta{max-width:none;margin:16px auto 0;padding:0 20px;color:var(--ink-soft);font-size:13px}
 .grid{max-width:none;margin:14px auto 40px;padding:0 20px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(8px,1.2vw,18px)}
@@ -194,6 +198,7 @@ footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px 
   .tools input,.tools select{height:44px;font-size:16px}   /* 16px: cegah auto-zoom iOS saat fokus */
   .tools input{padding-left:40px;background-position:13px center}
   .tools select{flex:0 0 118px;padding:0 10px}
+  .flipbtn{height:44px;padding:0 12px}.flipbtn span{display:none}
   .modal{align-items:flex-end;padding:0}
   .sheet{max-height:94dvh;border-radius:20px 20px 0 0}
   .modal.open .sheet{animation:up .26s cubic-bezier(.2,.8,.2,1)}
@@ -217,6 +222,7 @@ footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:10px 20px 
   <div class="tools">
     <input id="q" type="search" placeholder="Cari program/hotel" aria-label="Cari program" autocomplete="off" enterkeyhint="search">
     <select id="sort" aria-label="Urutkan"><option value="date">Terdekat</option><option value="low">Termurah</option><option value="high">Termahal</option></select>
+    <a class="flipbtn" href="katalog-flip.html" title="Lihat katalog versi flipbook" aria-label="Katalog flipbook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6.5C10.4 5.3 8.2 4.7 4 4.7v13c4.2 0 6.4.6 8 1.8 1.6-1.2 3.8-1.8 8-1.8v-13c-4.2 0-6.4.6-8 1.8zM12 6.5v13"/></svg><span>Flipbook</span></a>
   </div>
 </div></header>
 <div class="meta" id="meta" aria-live="polite"></div>

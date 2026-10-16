@@ -36,6 +36,15 @@ katalog.html          ← halaman marketing publik MANDIRI (CSS+JS inline, tidak
                         "Share Katalog" (`#btnShareKatalog`, `copyKatalogLink()` di app.js) menyalin URL
                         katalog.html ke clipboard, dan "Katalog" (`#btnLihatKatalog`) link `href="katalog.html"`
                         yang membuka halaman ini di tab baru
+katalog-flip.html     ← versi FLIPBOOK dari katalog publik, juga MANDIRI (CSS+JS inline). Data dan filter program SAMA
+                        dengan katalog.html (tabel `programs`, anon key, cache localStorage `katalog_programs_v1`
+                        dipakai bersama), jadi kalau logika filter/parse tanggal berubah, sesuaikan di KETIGA tempat
+                        (app.js, katalog.html, katalog-flip.html). Halaman buku 4:5 (500x625 logis): sampul, daftar isi
+                        (`PER_HALAMAN_DAFTAR` baris per halaman), sambutan, lalu per program sepasang halaman
+                        (detail di kiri/indeks ganjil, poster di kanan/indeks genap), sampul belakang. Jumlah halaman
+                        harus selalu genap (diatur `buildPages()`). Poster dimuat lazy hanya di sekitar halaman aktif
+                        (`hydrate()`). Isi `WA_NUMBER` dan `WA_TAMPIL` di bagian konfigurasi. Deep link `katalog-flip.html#p5`.
+                        Dibuka dari tombol "Flipbook" di topbar (`#btnLihatFlipbook`) dan tombol Flipbook di katalog.html
 css/style.css        ← SATU-SATUNYA CSS aktif (semua styling, CSS custom
                         properties di :root untuk warna brand). **PENTING:**
                         ada file `/style.css` lepas di root project yang
