@@ -29,7 +29,7 @@ Hanya **3 kategori**, semuanya berbasis **gambar** (tanpa video/Reels/live):
 | Carousel | **Maksimal 5 slide** |
 | Story | Dipakai bila dibutuhkan; belum masuk pola mingguan saat ini |
 
-Sedang **dijeda**: bukti sosial/testimoni, engagement (polling/pertanyaan), dan info program. Aktifkan lagi hanya bila diminta (mis. ada keberangkatan yang perlu dipromosikan).
+Sedang **dijeda**: bukti sosial/testimoni, engagement (polling/pertanyaan), dan info program. Info program otomatis muncul (1-2 hari praktis: Selasa, Rabu, atau Jumat) hanya pada pekan yang punya fase promosi program; selebihnya aktifkan bila diminta.
 
 ---
 
@@ -206,7 +206,7 @@ Bertindaklah sebagai copywriter media sosial untuk biro umroh "Amiru Tour" (PT A
 4. HASHTAG: tepat 5 hashtag di BARIS TERAKHIR caption, langsung tanpa tulisan "Hashtag:". #UmrohBersamaAmiru dan #AmiruTour selalu ada, 3 lainnya relevan dengan topik.
 
 === KATEGORI KONTEN ===
-Hanya 3: Single Post, Carousel, Story. SEMUA berbasis GAMBAR. Jangan membuat ide video, Reels, atau live. Bukti sosial/testimoni, engagement (polling), dan info program sedang DIJEDA; jangan dimasukkan kecuali diminta.
+Hanya 3: Single Post, Carousel, Story. SEMUA berbasis GAMBAR. Jangan membuat ide video, Reels, atau live. Bukti sosial/testimoni, engagement (polling), dan info program sedang DIJEDA; jangan dimasukkan kecuali diminta, atau kecuali pekan itu membawa FASE PROMOSI PROGRAM (maksimal 1-2 hari praktis).
 
 === POLA 7 HARI (satu tema mingguan, alur menyambung) ===
 Urutan perjalanan hati calon jamaah: rasakan > pahami > siapkan > bayangkan > hindari kesalahan > terinspirasi > renungkan.
@@ -258,7 +258,7 @@ Yang berubah:
 - Anti-duplikat tetap berjalan (riwayat rencana + caption post, plus daftar topik awal di bagian 6). Kata tema minggu diabaikan saat membandingkan, supaya ide satu pekan tidak saling dianggap kembar.
 - Caption dirapikan di server: ejaan "Umroh", tepat 5 hashtag (`#UmrohBersamaAmiru` dan `#AmiruTour` selalu ada), maksimal 2200 karakter.
 - Generator caption manual (modal post) punya tujuan **Manasik** dan **Kontemplasi**; tombol "Jadikan Post" memilih tujuan sesuai pilar rencana dan mengirim konteks seri (hari/peran, Tema Minggu, teks di gambar, tema kemarin & besok) supaya caption yang digenerate ulang tetap menyambung.
-- Bukti sosial, engagement, dan info program tetap **dijeda**. Info program hanya muncul bila **Arahan tambahan** memintanya.
+- Bukti sosial dan engagement tetap **dijeda**. Info program muncul bila **Arahan tambahan** memintanya, atau otomatis 1-2 hari praktis pada pekan yang punya fase promosi program.
 
 Deploy ulang (urutan bebas): `supabase functions deploy generate-ig-content-plan --no-verify-jwt` dan `supabase functions deploy generate-ig-caption --no-verify-jwt`. Frontend menolak function lama (butuh `versi >= 4`), jadi lupa deploy akan muncul sebagai pesan error yang jelas.
 

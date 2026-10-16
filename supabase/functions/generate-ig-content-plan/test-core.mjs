@@ -211,6 +211,20 @@ await test('kata kaku ala brosur ("silakan", "tersedia") ditolak', async () => {
   const { json } = await panggil([item({ draft_caption: captionOk(' Silakan daftar via WA.') })], body());
   assert.strictEqual(json.items.length, 0); assert.ok(json.ditolak[0].includes('kata kaku'));
 });
+await test('fase promosi program: pekan dengan blok FASE PROMOSI boleh memuat angka dan kata "tersedia" tanpa arahan; tanpa blok tetap ditolak', async () => {
+  const ctxFase = '- Umroh Desember | Berangkat: 10 Des 2026 | Sisa seat: 8 dari 45\n\nFASE PROMOSI PROGRAM PEKAN INI (promosi aktif):\n- Umroh Desember: fase "Seat menipis"';
+  const a = await panggil([item({ draft_caption: captionOk(' Sisa 8 seat lagi, masih tersedia.') })], body({ konteksProgram: ctxFase }));
+  assert.strictEqual(a.json.items.length, 1, JSON.stringify(a.json.ditolak));
+  const b = await panggil([item({ draft_caption: captionOk(' Sisa 8 seat lagi, masih tersedia.') })], body({ konteksProgram: '- Umroh Desember | Berangkat: 10 Des 2026' }));
+  assert.strictEqual(b.json.items.length, 0);
+});
+await test('prompt: aturan promosi otomatis (blok FASE PROMOSI, 1-2 hari praktis) tertulis di instruksi sistem dan konteks program', async () => {
+  const { calls } = await panggil([item()], body({ konteksProgram: 'FASE PROMOSI PROGRAM PEKAN INI:\n- X' }));
+  const teks = JSON.stringify(calls[0].body);
+  assert.ok(/FASE PROMOSI PROGRAM PEKAN INI/.test(teks));
+  assert.ok(/Selasa, Rabu, atau Jumat/.test(teks), 'hari praktis untuk promosi');
+  assert.ok(!/hanya dipakai kalau ARAHAN/.test(teks), 'aturan lama yang mengabaikan konteks program tanpa arahan masih ada');
+});
 await test('terasa buatan AI: pola "bukan sekadar X, tapi Y", frasa klise, >2 tanda tanya, >1 emoji ditolak', async () => {
   const kasus = [
     [' Umroh bukan sekadar perjalanan, tapi panggilan jiwa.', 'bukan sekadar'],

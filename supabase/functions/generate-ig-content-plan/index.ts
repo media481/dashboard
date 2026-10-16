@@ -53,7 +53,7 @@
 //   - Validator server (selain hashtag/ejaan/panjang): tolak teks Arab, janji berlebihan, kutipan/atribusi ayat atau hadis,
 //     placeholder [isi ...], statistik/klaim jumlah jamaah, kata kaku (silakan/hubungi kami/tersedia), format teks gambar yang
 //     tidak cocok dengan tipe (carousel = "Slide n:" berurutan 3-5; single post = tanpa "Slide"), caption yang menyalin teks
-//     gambar, dan rumus pembuka caption kembar antarhari. Angka & kata "tersedia" boleh kalau ARAHAN meminta info program.
+//     gambar, dan rumus pembuka caption kembar antarhari. Angka & kata "tersedia" boleh kalau ARAHAN meminta info program atau pekan membawa blok FASE PROMOSI PROGRAM PEKAN INI.
 //   - Perbaikan terarah (maks. 2 putaran, dibatasi anggaran waktu): hari yang ditolak ditulis ulang SENDIRI dengan alasan
 //     penolakan + hari yang sudah lolos sebagai penyambung; hari yang sudah lolos tidak disentuh.
 //   - Opsional: secret IG_PLAN_THINKING_LEVEL=low|medium|high menyalakan tingkat berpikir model (default mati).
@@ -211,7 +211,7 @@ POLA 7 HARI (peran tiap hari, pilar & tipe_konten ikut slot):
 - MINGGU = Kontemplasi ibadah umroh, carousel, RENUNGKAN: renungan makna tema dan hikmahnya, TANPA tokoh (beda dari Sabtu). Tutup tenang + doa singkat + teaser tema minggu depan.
 - Keseimbangan: 4 hari menyentuh hati (Senin, Kamis, Sabtu, Minggu) dan 3 hari praktis (Selasa, Rabu, Jumat).
 VARIAN PEKAN (hanya kalau sebuah slot membawa catatan): pekan hari besar dan pekan penjualan mengganti peran hari tertentu supaya 52 pekan tidak terasa seragam. Peran pengganti dan catatannya tertulis di DAFTAR SLOT; untuk slot itu ikuti peran dan catatan slot, bukan peran bawaan harinya. Arti peran pengganti: SAMBUT = suasana menyambut hari besar pekan ini; KENALI = makna umum hari besar dengan bahasa sederhana; AMALKAN = kebiasaan baik yang bisa dilakukan bersama keluarga; TANYA JAWAB = satu pertanyaan umum beserta jawaban singkat yang aman; RENCANAKAN = kapan dan bagaimana merencanakan umroh di musim itu; HITUNG = menyiapkan waktu, cuti, dan dana secara bertahap; PERTIMBANGKAN = pertanyaan yang pantas diajukan calon jamaah sebelum memutuskan. Aturan lain tidak berubah: pilar dan tipe_konten ikut slot, carousel maksimal 5 slide, tanpa hard-selling, tanpa harga, angka, ayat, atau hadis karangan, dan penutup praktis cukup CTA ringan. Hari tanpa catatan memakai peran bawaan.
-- Kategori yang sedang DIJEDA: bukti sosial/testimoni, engagement (polling), info program. JANGAN membuatnya kecuali ARAHAN TAMBAHAN memintanya.
+- Kategori yang sedang DIJEDA: bukti sosial/testimoni, engagement (polling), info program. JANGAN membuatnya kecuali ARAHAN TAMBAHAN memintanya, atau kecuali KONTEKS PROGRAM memuat blok FASE PROMOSI PROGRAM PEKAN INI (aturan di bagian KONTEKS PROGRAM di bawah).
 
 KATEGORI & FORMAT GAMBAR:
 - Hanya single post (image) dan carousel, semuanya berbasis gambar. Carousel MAKSIMAL 5 SLIDE.
@@ -298,7 +298,7 @@ KEJUJURAN & KEHATI-HATIAN:
 - JANGAN mengarang testimoni, nama jamaah, angka, harga, tanggal, hotel, atau fasilitas. Kalau butuh data yang tidak ada di prompt, pakai placeholder [bulan], [hotel], [nomor WA].
 - Cerita Sabtu dan renungan Minggu bersifat ilustrasi/umum, bukan klaim kejadian nyata.
 - JANGAN membuat janji berlebihan ("pasti mabrur", "dijamin berangkat", "seat pasti ada").
-- KONTEKS PROGRAM hanya dipakai kalau ARAHAN TAMBAHAN meminta menyelipkan info program; kalau dipakai, sebut tanggal/harga/sisa seat PERSIS seperti di konteks, utamakan keberangkatan yang masih jauh, jangan menawarkan program yang sudah berangkat atau penuh (sisa 0), dan jangan menulis "seat tinggal sedikit" kecuali sisa seat <= 10.`;
+- KONTEKS PROGRAM dipakai dalam dua keadaan: (a) ARAHAN TAMBAHAN meminta menyelipkan info program, atau (b) konteks memuat blok FASE PROMOSI PROGRAM PEKAN INI. Pada (b) sisipkan promosi hanya di 1 sampai 2 hari, pilih hari praktis (Selasa, Rabu, atau Jumat) dan tulis sesuai fase program itu; Senin, Kamis, Sabtu, dan Minggu tetap mengikuti tema pekan supaya cerita dan renungan terjaga. Kalau DAFTAR SLOT hanya berisi satu hari, sisipkan promosi hanya bila hari itu praktis dan KONTEKS PEKAN belum memuat dua hari promosi. Tanpa blok fase dan tanpa arahan, abaikan konteks program. Saat dipakai, sebut tanggal/harga/sisa seat PERSIS seperti di konteks, utamakan keberangkatan yang masih jauh, jangan menawarkan program yang sudah berangkat atau penuh (sisa 0), dan jangan menulis "seat tinggal sedikit" kecuali sisa seat <= 10.`;
 
 interface PlanItem {
   tanggal: string;
@@ -598,7 +598,7 @@ ${slots.length ? `\nDAFTAR SLOT TANGGAL (isi TEPAT 1 ide per slot, tanggal persi
 ${konteksPekan ? `\nKONTEKS PEKAN (hari lain di pekan ini yang sudah jadi; sambungkan, jangan ulangi sudutnya):\n${konteksPekan}` : ""}
 ${c.arahan && String(c.arahan).trim() ? `\nARAHAN TAMBAHAN DARI ADMIN:\n${String(c.arahan).slice(0, 1500)}` : ""}
 
-KONTEKS PROGRAM (hanya dipakai kalau ARAHAN TAMBAHAN meminta info program):
+KONTEKS PROGRAM (dipakai kalau ARAHAN TAMBAHAN meminta info program, atau kalau ada blok FASE PROMOSI PROGRAM PEKAN INI di dalamnya):
 ${c.programCtx}
 ${c.ideSudahAda && String(c.ideSudahAda).trim() ? `\nIDE YANG SUDAH ADA (jangan diulang):\n${String(c.ideSudahAda).slice(0, 4000)}` : ""}
 ${c.riwayatTema && String(c.riwayatTema).trim() ? `\nRIWAYAT TEMA, SUDAH PERNAH DIBUAT (jangan diulang & jangan dibuat mirip):\n${String(c.riwayatTema).slice(0, 20000)}` : ""}
@@ -792,8 +792,9 @@ Deno.serve(async (req: Request) => {
       riwayatTemaIni: clip(riwayatTemaIni, 4000),
     };
     const pekanCtx = clip(konteksPekan, 3000);
-    // Angka/kata "tersedia" wajar kalau admin memang meminta info program lewat arahan.
-    const opsi: CekOpsi = { bolehProgram: /program|seat|harga|keberangkatan|promo/i.test(String(arahan || "")) };
+    // Angka/kata "tersedia" wajar kalau admin meminta info program lewat arahan, atau pekan ini membawa fase promosi program.
+    const adaFasePromosi = /FASE PROMOSI PROGRAM PEKAN INI/.test(String(konteksProgram || ""));
+    const opsi: CekOpsi = { bolehProgram: /program|seat|harga|keberangkatan|promo/i.test(String(arahan || "")) || adaFasePromosi };
 
     // ---- Putaran 0: generate semua slot ----
     const items0 = await panggilItems(susunPesan(konteks, slotList, jumlah, pekanCtx, ""));

@@ -979,6 +979,15 @@ test('panel kesehatan: render HTML tanpa error dan memuat semua fase', () => {
   assert.ok(/Hati dan praktis/.test(html));
 });
 
+test('promosi program otomatis: prompt klien menyebut blok FASE PROMOSI, hari praktis, dan tidak lagi mengabaikan konteks program tanpa arahan', () => {
+  const p = T.IG_PLAN_PROMPT_SISTEM;
+  assert.ok(/FASE PROMOSI PROGRAM PEKAN INI/.test(p));
+  assert.ok(/Selasa, Rabu, atau Jumat/.test(p));
+  assert.ok(!/hanya dipakai kalau ARAHAN/.test(p));
+  const src = fs.readFileSync(APP_PATH, 'utf8');
+  assert.ok(!/hanya dipakai kalau ARAHAN TAMBAHAN meminta info program/.test(src), 'label konteks program lama masih ada');
+  assert.ok(/promosi aktif tanpa perlu arahan: sisipkan 1-2 hari praktis/.test(src));
+});
 // ---- Alur susun lewat AI (igRtSusunAI) dengan function & Supabase tiruan ----
 let rtCounter = 0;
 const temaUnik = () => { rtCounter++; return `xa${rtCounter}k xb${rtCounter}k`; };

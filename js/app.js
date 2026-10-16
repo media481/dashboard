@@ -16772,7 +16772,7 @@ function closeIgContentPlanModal() {
 // Baris "Versi:" dan "Diperbarui:" dibaca otomatis untuk header modal, jadi format dua baris itu jangan diubah.
 // ============================================================
 const ABOUT_PLANNER_MD = `# About Planner: Konsep Perencanaan Konten Instagram Amiru Tour
-Versi: 14
+Versi: 15
 Diperbarui: 16 Oktober 2026
 Status: disepakati Oktober 2026. Uji coba alur mingguan yang menyambung dimulai pekan Senin, 12 Oktober 2026. Ejaan resmi: "Umroh" (bukan "Umrah"), termasuk di hashtag.
 
@@ -16796,7 +16796,7 @@ Hanya 3 kategori, semuanya berbasis gambar (tanpa video, Reels, atau live).
 | Carousel | Maksimal 5 slide |
 | Story | Dipakai bila dibutuhkan; belum masuk pola mingguan saat ini |
 
-Sedang dijeda: bukti sosial/testimoni, engagement (polling/pertanyaan), dan info program. Aktifkan lagi hanya bila diminta (misalnya ada keberangkatan yang perlu dipromosikan). Info program hanya muncul bila Arahan tambahan di modal Perencanaan Konten memintanya.
+Sedang dijeda: bukti sosial/testimoni, engagement (polling/pertanyaan), dan info program. Aktifkan lagi hanya bila diminta (misalnya ada keberangkatan yang perlu dipromosikan). Info program muncul bila Arahan tambahan di modal Perencanaan Konten memintanya, atau otomatis (1-2 hari praktis: Selasa, Rabu, atau Jumat) pada pekan yang punya fase promosi program.
 
 ## 3. Pola 7 Hari (satu tema mingguan)
 
@@ -16956,7 +16956,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 
 ## 11. Yang Dijeda dan Belum Otomatis
 
-- Dijeda: bukti sosial/testimoni, engagement (polling), info program, dan Story dalam pola mingguan.
+- Dijeda: bukti sosial/testimoni, engagement (polling), dan Story dalam pola mingguan. Info program ikut dijeda kecuali pada pekan yang punya fase promosi program (otomatis 1-2 hari praktis) atau bila diminta lewat Arahan tambahan.
 - Riwayat topik awal (bagian 6) sekarang juga tersimpan sebagai data (IG_RIWAYAT_AWAL di js/app.js): dipakai untuk menolak ide kembar, melewati tema alur yang bentrok pada saran Tema Minggu, dan Rencana Setahun AI. Menambah topik ke daftar ini masih manual, dan salinan teksnya (tabel bagian 6, prompt) harus disamakan. Selebihnya riwayat dibaca dari rencana dan post tersimpan.
 - Bank topik per hari (bagian 6) belum berupa data: ia hanya arahan di prompt yang ditafsirkan AI, dijaga oleh pengecekan duplikat. Hanya Tema Minggu yang dikelola kode (bank alur dan tema musim).
 - Desain gambar dan pengecekan ke pembimbing/ustaz dilakukan manusia.
@@ -16979,6 +16979,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 | 12 | 16 Oktober 2026 | Rencana Setahun AI seimbang: bank alur dikirim ke edge function per fase beserta bobotnya, batas 80 entri dinaikkan menjadi 160, prompt diberi aturan komposisi (jatah per fase, fase kecil tetap tayang rutin, tidak lebih dari dua pekan beruntun dari fase sama), dan hasil membawa label fase. Perlu deploy ulang generate-ig-year-plan. Aturan konten harian tidak berubah |
 | 13 | 16 Oktober 2026 | Pola 7 hari dinamis: pekan hari besar dan pekan penjualan memakai varian peran dan format (Sambut, Kenali, Amalkan, Tanya Jawab, Rencanakan, Hitung, Pertimbangkan) supaya 52 pekan tidak seragam, dan tema musiman biasa diberi jeda agar tidak menempati pekan berurutan (Rencana Setahun AI ikut menolak dan mengulang pekan yang melanggar). Aturan konten harian tidak berubah |
 | 14 | 16 Oktober 2026 | Kesehatan Rencana: panel di modal Rencana Konten dan bagian di rekap salinan/unduhan yang menghitung pekan ke depan (komposisi per fase terhadap jatah bobot, fase yang hilang atau berlebih, stok tema per fase terhadap kebutuhan setahun, rasio tema hati dan praktis dengan batas sehat 40-65% hati). Bank alur ditambah 16 tema: Madinah 11 menjadi 19 dan umroh bersama siapa 9 menjadi 17 (total 111). Hanya laporan, tidak mengubah pemilihan tema. Aturan konten harian tidak berubah |
+| 15 | 16 Oktober 2026 | Promosi program otomatis: pekan yang punya fase promosi (Kenalkan, Isi paket, Seat menipis, Penutupan) kini menyisipkan 1-2 hari praktis (Selasa, Rabu, atau Jumat) yang mengarah ke program tanpa perlu Arahan tambahan. Dulu fase hanya menjadi label di rekap karena prompt dan pemeriksa server mengabaikan konteks program tanpa arahan. Pemeriksa server melonggarkan larangan angka dan kata "tersedia" pada pekan itu. Perlu deploy ulang generate-ig-content-plan. Pause bukti sosial, polling, dan Story tidak berubah |
 `;
 
 // Petunjuk yang ikut tersalin di depan dokumen supaya Claude mengembalikan dokumen dalam format yang bisa dipakai lagi.
@@ -18658,7 +18659,7 @@ async function buildIgPlanProgramContext(year, month, tglAcuan, semuaMendatang) 
             const baris = relevant.map(({ p, d }) => ({ p, f: igFaseProgram(senin, d) })).filter(x => x.f)
                 .map(({ p, f }) => `- ${p.nama} (berangkat ${p.tgl}): fase "${f.label}" -> ${f.arahan}`);
             if (baris.length) {
-                fase = '\n\nFASE PROMOSI PROGRAM PEKAN INI (jadikan jangkar: sisipkan 1-2 hari yang mengarah ke program ini sesuai fasenya, sisanya tetap mengikuti tema pekan; jangan memaksa jualan di semua hari, jangan mengarang data di luar daftar program):\n' + baris.join('\n');
+                fase = '\n\nFASE PROMOSI PROGRAM PEKAN INI (promosi aktif tanpa perlu arahan: sisipkan 1-2 hari praktis, yaitu Selasa, Rabu, atau Jumat, yang mengarah ke program ini sesuai fasenya, sisanya tetap mengikuti tema pekan; jangan jualan di semua hari, jangan mengarang data di luar daftar program):\n' + baris.join('\n');
             }
         }
         return daftar + fase;
@@ -19450,7 +19451,7 @@ POLA 7 HARI (peran tiap hari, pilar & tipe_konten ikut slot):
 - MINGGU = Kontemplasi ibadah umroh, carousel, RENUNGKAN: renungan makna tema dan hikmahnya, TANPA tokoh (beda dari Sabtu). Tutup tenang + doa singkat + teaser tema minggu depan.
 - Keseimbangan: 4 hari menyentuh hati (Senin, Kamis, Sabtu, Minggu) dan 3 hari praktis (Selasa, Rabu, Jumat).
 VARIAN PEKAN (hanya kalau sebuah slot membawa catatan): pekan hari besar dan pekan penjualan mengganti peran hari tertentu supaya 52 pekan tidak terasa seragam. Peran pengganti dan catatannya tertulis di DAFTAR SLOT; untuk slot itu ikuti peran dan catatan slot, bukan peran bawaan harinya. Arti peran pengganti: SAMBUT = suasana menyambut hari besar pekan ini; KENALI = makna umum hari besar dengan bahasa sederhana; AMALKAN = kebiasaan baik yang bisa dilakukan bersama keluarga; TANYA JAWAB = satu pertanyaan umum beserta jawaban singkat yang aman; RENCANAKAN = kapan dan bagaimana merencanakan umroh di musim itu; HITUNG = menyiapkan waktu, cuti, dan dana secara bertahap; PERTIMBANGKAN = pertanyaan yang pantas diajukan calon jamaah sebelum memutuskan. Aturan lain tidak berubah: pilar dan tipe_konten ikut slot, carousel maksimal 5 slide, tanpa hard-selling, tanpa harga, angka, ayat, atau hadis karangan, dan penutup praktis cukup CTA ringan. Hari tanpa catatan memakai peran bawaan.
-- Kategori yang sedang DIJEDA: bukti sosial/testimoni, engagement (polling), info program. JANGAN membuatnya kecuali ARAHAN TAMBAHAN memintanya.
+- Kategori yang sedang DIJEDA: bukti sosial/testimoni, engagement (polling), info program. JANGAN membuatnya kecuali ARAHAN TAMBAHAN memintanya, atau kecuali KONTEKS PROGRAM memuat blok FASE PROMOSI PROGRAM PEKAN INI (aturan di bagian KONTEKS PROGRAM di bawah).
 
 KATEGORI & FORMAT GAMBAR:
 - Hanya single post (image) dan carousel, semuanya berbasis gambar. Carousel MAKSIMAL 5 SLIDE.
@@ -19537,7 +19538,7 @@ KEJUJURAN & KEHATI-HATIAN:
 - JANGAN mengarang testimoni, nama jamaah, angka, harga, tanggal, hotel, atau fasilitas. Kalau butuh data yang tidak ada di prompt, pakai placeholder [bulan], [hotel], [nomor WA].
 - Cerita Sabtu dan renungan Minggu bersifat ilustrasi/umum, bukan klaim kejadian nyata.
 - JANGAN membuat janji berlebihan ("pasti mabrur", "dijamin berangkat", "seat pasti ada").
-- KONTEKS PROGRAM hanya dipakai kalau ARAHAN TAMBAHAN meminta menyelipkan info program; kalau dipakai, sebut tanggal/harga/sisa seat PERSIS seperti di konteks, utamakan keberangkatan yang masih jauh, jangan menawarkan program yang sudah berangkat atau penuh (sisa 0), dan jangan menulis "seat tinggal sedikit" kecuali sisa seat <= 10.`;
+- KONTEKS PROGRAM dipakai dalam dua keadaan: (a) ARAHAN TAMBAHAN meminta menyelipkan info program, atau (b) konteks memuat blok FASE PROMOSI PROGRAM PEKAN INI. Pada (b) sisipkan promosi hanya di 1 sampai 2 hari, pilih hari praktis (Selasa, Rabu, atau Jumat) dan tulis sesuai fase program itu; Senin, Kamis, Sabtu, dan Minggu tetap mengikuti tema pekan supaya cerita dan renungan terjaga. Kalau DAFTAR SLOT hanya berisi satu hari, sisipkan promosi hanya bila hari itu praktis dan KONTEKS PEKAN belum memuat dua hari promosi. Tanpa blok fase dan tanpa arahan, abaikan konteks program. Saat dipakai, sebut tanggal/harga/sisa seat PERSIS seperti di konteks, utamakan keberangkatan yang masih jauh, jangan menawarkan program yang sudah berangkat atau penuh (sisa 0), dan jangan menulis "seat tinggal sedikit" kecuali sisa seat <= 10.`;
 
 // Susun satu teks prompt utuh yang bisa ditempel ke ChatGPT / Claude / AI lain. Fungsi murni (mudah dites):
 // bagian "permintaan" mengikuti susunan userMsg di edge function, bagian kosong dibuang.
@@ -19559,7 +19560,7 @@ function igSusunPromptEksternal(f) {
         bagian.push('KONTEKS PEKAN (hari lain di pekan ini yang sudah jadi; sambungkan, jangan ulangi sudutnya):\n' + String(f.konteksPekan).trim().slice(0, 3000));
     }
     if (f.arahan && String(f.arahan).trim()) bagian.push('ARAHAN TAMBAHAN DARI ADMIN:\n' + String(f.arahan).trim().slice(0, 1500));
-    bagian.push('KONTEKS PROGRAM (hanya dipakai kalau ARAHAN TAMBAHAN meminta info program):\n'
+    bagian.push('KONTEKS PROGRAM (dipakai kalau ARAHAN TAMBAHAN meminta info program, atau kalau ada blok FASE PROMOSI PROGRAM PEKAN INI di dalamnya):\n'
         + (f.konteksProgram && String(f.konteksProgram).trim() ? String(f.konteksProgram) : '(tidak ada data program spesifik untuk periode ini)'));
     if (f.riwayatTema && String(f.riwayatTema).trim()) {
         bagian.push('RIWAYAT TEMA, SUDAH PERNAH DIBUAT (jangan diulang & jangan dibuat mirip):\n' + String(f.riwayatTema).slice(0, 20000));
