@@ -22,12 +22,6 @@
 
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
-    <!-- jsPDF, html2canvas & XLSX SENGAJA TIDAK dimuat di sini lagi -- ketiganya
-         cukup besar tapi cuma dipakai saat export Nota (PDF/JPEG) atau Excel.
-         Sekarang di-lazy-load dari js/app.js (lihat ensureLibLoaded()) pas
-         benar-benar dipakai, supaya load awal dashboard lebih ringan. Preconnect
-         ke cdnjs.cloudflare.com sudah ada di atas (buat bootstrap-icons), jadi
-         request lazy-load ketiganya nanti tetap ikut kebagian koneksi cepat. -->
 
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -476,7 +470,6 @@
         </div>
         <div class="admin-page-body">
             <div class="ig-scheduler-tab">
-                <!-- IG Account Status -->
                 <div class="ig-account-status" id="igAccountStatus" style="display:none;">
                     <div class="ig-account-info">
                         <i class="bi bi-instagram"></i>
@@ -486,7 +479,6 @@
                     <span class="ig-account-expiry" id="igAccountExpiry"></span>
                 </div>
 
-                <!-- Calendar + Komentar (split layar utama) -->
                 <div class="ig-cal-summary-wrap" id="igCalSummary"></div>
 
                 <div class="ig-scheduler-split">
@@ -555,7 +547,6 @@
                     </div>
                 </div>
 
-                <!-- Post List -->
                 <div class="ig-post-list-container">
                     <table class="ig-post-table">
                         <thead>
@@ -975,7 +966,6 @@
         </div>
         <div class="modal-body pd-body">
             <div class="pd-layout">
-                <!-- Kolom kiri: poster memenuhi tinggi modal (klik untuk buka ukuran penuh) -->
                 <aside class="pd-poster-col" id="pd_poster_col">
                     <a class="pd-poster-frame" id="pd_poster_link" href="#" target="_blank" rel="noopener" title="Klik untuk buka poster ukuran penuh">
                         <div class="pd-poster-state" id="pd_poster_loading"><i class="bi bi-hourglass-split"></i><span>Memuat poster…</span></div>
@@ -986,7 +976,6 @@
                     <a class="pd-poster-open" id="pd_poster_open" href="#" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> Buka poster</a>
                 </aside>
 
-                <!-- Kolom kanan: info program + teks WA (scroll di dalam panel) -->
                 <div class="pd-info-col">
                     <div class="pd-chip-row">
                         <span class="pd-chip"><i class="bi bi-calendar-event-fill"></i> <span id="pd_tgl">-</span></span>
@@ -1334,7 +1323,6 @@
     </div>
 </div>
 
-<!-- IG Upload/Edit Post Modal -->
 <div class="modal-overlay" id="igUploadModal">
     <div class="modal-content" style="max-width:680px;">
         <div class="modal-header">
@@ -1345,7 +1333,6 @@
             <form id="igUploadForm" onsubmit="saveIgPost(event)">
                 <input type="hidden" id="ig_post_id">
 
-                <!-- Account Selector -->
                 <div class="form-group" id="igAccountPickerWrap" style="display:none;">
                     <label>Akun Instagram</label>
                     <select id="ig_account_id" onchange="onIgAccountChange()">
@@ -1353,7 +1340,6 @@
                     </select>
                 </div>
 
-                <!-- Media Type -->
                 <div class="form-group">
                     <label>Tipe Post</label>
                     <select id="ig_media_type" onchange="onIgMediaTypeChange()">
@@ -1363,7 +1349,6 @@
                     </select>
                 </div>
 
-                <!-- File Upload: image/video tunggal -->
                 <div class="form-group" id="igSingleMediaWrap">
                     <label>Media <span style="color:var(--danger);">*</span></label>
                     <div class="ig-file-input-wrap">
@@ -1378,7 +1363,6 @@
                     <div id="igMediaPreview" class="ig-media-preview"></div>
                 </div>
 
-                <!-- File Upload: carousel (multi media) -->
                 <div class="form-group" id="igCarouselMediaWrap" style="display:none;">
                     <label>Media Carousel <span style="color:var(--danger);">*</span> <span style="font-weight:400;color:var(--ink-soft);">(min 2, maks 10, urutan sesuai tampilan)</span></label>
                     <div class="ig-file-input-wrap">
@@ -1392,7 +1376,6 @@
                     <div id="igCarouselGrid" class="ig-carousel-grid"></div>
                 </div>
 
-                <!-- Caption -->
                 <div class="form-group">
                     <label>Ide/Konsep Singkat <span style="font-weight:400;color:var(--ink-soft);">(opsional, buat bahan AI)</span></label>
                     <textarea id="ig_caption_idea" placeholder="Contoh: Umroh 9 hari berangkat 12 Januari, harga mulai 28 juta, hotel dekat Masjidil Haram, kuota terbatas..." rows="2"></textarea>
@@ -1423,7 +1406,6 @@
                     </div>
                 </div>
 
-                <!-- Schedule -->
                 <div class="form-group">
                     <label>Jadwal <span style="color:var(--danger);">*</span></label>
                     <div class="form-row">
@@ -1447,7 +1429,6 @@
     </div>
 </div>
 
-<!-- IG Post Actions Modal (Retry / Delete) -->
 <div class="modal-overlay" id="igActionModal">
     <div class="modal-content" style="max-width:480px;">
         <div class="modal-header">
@@ -1455,7 +1436,6 @@
             <button class="modal-close" onclick="closeIgActionModal()">&times;</button>
         </div>
         <div class="modal-body" id="igActionBody">
-            <!-- Diisi oleh JS -->
         </div>
     </div>
 </div>
@@ -1494,7 +1474,7 @@
             <input type="hidden" id="igQuickPlanTahap" value="ide">
         </div>
 
-        <div class="ig-dm-body" id="igDayModalBody"><!-- Diisi oleh JS --></div>
+        <div class="ig-dm-body" id="igDayModalBody"></div>
 
         <div class="ig-dm-footer">
             <button type="button" class="ig-dm-linkbtn" id="igDayModalAddBtn" onclick="igAddPostFromDayModal()">Draft post dengan media</button>
@@ -1503,7 +1483,6 @@
     </div>
 </div>
 
-<!-- Modal: Perencanaan Konten (satu pekan, satu tema) -->
 <div class="modal-overlay" id="igContentPlanModal">
     <div class="modal-content ig-plan-modal">
         <div class="modal-header">
@@ -1604,14 +1583,12 @@
                     </button>
                 </div>
                 <div class="ig-plan-result-list" id="igPlanResultList">
-                    <!-- Diisi oleh JS -->
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal: About Planner (konsep perencanaan konten; sumber teks = ABOUT_PLANNER_MD di js/app.js) -->
 <div class="modal-overlay" id="igAboutPlannerModal">
     <div class="modal-content ig-plan-modal ig-about-modal">
         <div class="modal-header">
@@ -1635,7 +1612,6 @@
     </div>
 </div>
 
-<!-- Modal: Tasklist mingguan (kartu "Tasklist"; logika di js/app.js section 24g) -->
 <div class="modal-overlay" id="igTaskModal">
     <div class="modal-content ig-plan-modal ig-about-modal ig-task-modal">
         <div class="modal-header">
@@ -1650,7 +1626,6 @@
     </div>
 </div>
 
-<!-- Modal: Rencana Konten (rekap 12 bulan untuk evaluasi; dirender dari ig_content_plan + saran tema di js/app.js section 24f) -->
 <div class="modal-overlay" id="igRencanaKontenModal">
     <div class="modal-content ig-plan-modal ig-about-modal ig-rk-modal">
         <div class="modal-header">
