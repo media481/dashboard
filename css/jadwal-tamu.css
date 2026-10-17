@@ -1,0 +1,28 @@
+/* ============================================================
+   JADWAL TAMU  (modul CSS terpisah dari style.css)
+   Prefix: .jadwal-status-pill  (pill status di tabel Jadwal Tamu: .today / .upcoming / .past)
+   Di-load SETELAH style.css dan SEBELUM ig-scheduler.css (urutan kaskade terhadap
+   modul lain tidak berubah). Gaya baru untuk bagian ini -> taruh di sini.
+   ============================================================ */
+
+/* ===== JADWAL TAMU: status pill dipakai di tabel jadwal ===== */
+
+.jadwal-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            flex: none;
+            font-size: var(--fs-xs);
+            font-weight: 600;
+            padding: 2px 9px;
+            border-radius: var(--r-lg);
+            color: var(--ink-soft);
+            background: var(--bg);
+            white-space: nowrap;
+        }
+
+.jadwal-status-pill.today { color: var(--brand); background: var(--brand-tint); }
+
+.jadwal-status-pill.upcoming { color: var(--ink-soft); background: var(--bg); }
+
+.jadwal-status-pill.past { color: var(--success); background: var(--success-tint); }

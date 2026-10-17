@@ -32,7 +32,7 @@ Akses menu sidebar untuk `user` dan `guest` bisa diatur per role dan per akun le
 ## Arsitektur
 
 ```
-Browser (PWA: index.html + js/app.js + css/style.css + css/rekap-infografis.css + css/hotel.css + css/kepulangan.css + css/ig-scheduler.css + css/user-akses.css + css/keuangan.css + css/crosscheck.css)
+Browser (PWA: index.html + js/app.js + css/style.css + css/rekap-infografis.css + css/snapshot.css + css/jadwal-tamu.css + css/assets.css + css/hotel.css + css/detail-program.css + css/telegram.css + css/kepulangan.css + css/rooming.css + css/ig-scheduler.css + css/user-akses.css + css/keuangan.css + css/crosscheck.css)
    │  supabase-js (anon key + JWT login)        fetch() ke Edge Function
    ▼                                                    ▼
 Supabase: Postgres + RLS + Auth + Storage      Supabase Edge Functions (Deno)
@@ -49,13 +49,19 @@ Detail Edge Function ada di [`supabase/functions/README.md`](supabase/functions/
 ## Struktur repo
 
 ```
-index.html              Struktur HTML; memuat css/style.css, css/rekap-infografis.css, css/hotel.css, css/kepulangan.css, css/ig-scheduler.css, css/user-akses.css, css/keuangan.css, css/crosscheck.css, dan js/app.js
+index.html              Struktur HTML; memuat css/style.css, css/rekap-infografis.css, css/snapshot.css, css/jadwal-tamu.css, css/assets.css, css/hotel.css, css/detail-program.css, css/telegram.css, css/kepulangan.css, css/rooming.css, css/ig-scheduler.css, css/user-akses.css, css/keuangan.css, css/crosscheck.css, dan js/app.js
 js/app.js               SATU-SATUNYA file JS aktif (seluruh logic + koneksi Supabase)
 css/style.css           CSS inti (warna brand via CSS custom properties, layout, komponen umum)
 css/rekap-infografis.css Modul CSS Rekap Program & Infografis (.rekap-*, .infografis-*, .poster-popup*, .poster-missing-badge, .metric-clickable)
+css/snapshot.css        Modul CSS Snapshot/Backup (.snap-*)
+css/jadwal-tamu.css     Modul CSS Jadwal Tamu (.jadwal-status-pill)
+css/assets.css          Modul CSS Assets (.asset-*, .assets-inner-*; tab dalam juga dipakai Pengaturan User)
 css/hotel.css           Modul CSS Hotel Saudi Arabia (.hotel-*, hint hotel di form Program, #btnAddHotelExtra)
+css/detail-program.css  Modul CSS modal Detail Program / Teks WA (.pd-*)
+css/telegram.css        Modul CSS Telegram (.tg-*)
 css/kepulangan.css      Modul CSS Status Kepulangan (.kp-*)
-css/ig-scheduler.css    Modul CSS IG Scheduler (dimuat setelah style.css; modul lain menyusul bertahap)
+css/rooming.css         Modul CSS Rooming List (.rm-*)
+css/ig-scheduler.css    Modul CSS IG Scheduler (dimuat setelah style.css dan modul-modul di atas)
 css/user-akses.css      Modul CSS User & Akses Menu (.us-*, .rma-*)
 css/keuangan.css        Modul CSS Keuangan (.pb-*, .cicilan-*, .nota-*, .kuitansi-*, .an-* Audit Nota)
 css/crosscheck.css      Modul CSS Crosscheck OCR poster (.cx-*, @keyframes cxFieldFlash)

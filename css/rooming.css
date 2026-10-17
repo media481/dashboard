@@ -1,0 +1,138 @@
+/* ============================================================
+   ROOMING LIST  (modul CSS terpisah dari style.css)
+   Prefix: .rm-*  (modal Rooming List: toolbar sticky, search, legend, stats, kartu kamar,
+                avatar, tombol pindah kamar, panel belum dapat kamar)
+   Aturan target sentuh (@media pointer: coarse / max-width) yang tadinya berupa satu daftar selector
+   bersama banyak modul dipecah: bagian selector modul ini ada di @media di file ini, sisanya tetap
+   di style.css.
+   Di-load SETELAH style.css dan SEBELUM ig-scheduler.css (urutan kaskade terhadap
+   modul lain tidak berubah). Gaya baru untuk bagian ini -> taruh di sini.
+   ============================================================ */
+
+/* ============================================================
+   ROOMING LIST — redesign tampilan (kartu kamar, avatar inisial,
+   indikator kapasitas, legend & stats bar). Lihat js/app.js ->
+   renderRoomingListBody() untuk markup yang dihasilkan.
+   ============================================================ */
+
+/* Toolbar (search + aksi + legend + stats) dibikin sticky di atas
+           #roomingListBody biar tetap kelihatan pas daftar jamaah panjang
+           discroll -- ini bagian utama yang bikin modal lama terasa padat
+           & gampang "kehilangan" konteks progres pembagian kamar. */
+
+.rm-toolbar { position: sticky; top: -24px; z-index: 5; background: var(--surface); margin: -24px -24px 16px; padding: 16px 24px 14px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+
+.rm-toolbar-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+
+.rm-toolbar-actions { display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+
+.rm-search { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--line); padding: 7px 12px; border-radius: var(--r-md); flex: 1 1 220px; max-width: 320px; }
+
+.rm-search i { color: var(--ink-soft); font-size: var(--fs-md); flex-shrink: 0; }
+
+.rm-search input { border: none; outline: none; background: transparent; font-size: var(--fs-sm); color: var(--ink); width: 100%; font-family: 'Inter', sans-serif; }
+
+.rm-search input::placeholder { color: var(--ink-soft); }
+
+.rm-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+
+.rm-legend-item { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-xs); color: var(--ink-soft); font-weight: 600; white-space: nowrap; }
+
+.rm-legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+.rm-legend-note { font-size: var(--fs-xs); color: var(--ink-soft); font-style: italic; }
+
+.rm-stats { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.rm-stat { flex: 1 1 150px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 8px 12px; display: flex; align-items: center; gap: 10px; }
+
+.rm-stat.is-attention { border-color: var(--warn); }
+
+.rm-stat-icon { width: 30px; height: 30px; border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; font-size: var(--fs-md); flex-shrink: 0; }
+
+.rm-stat-num { font-size: 16px; font-weight: 800; color: var(--ink); line-height: 1.15; font-family: 'Space Grotesk', sans-serif; }
+
+.rm-stat-label { font-size: var(--fs-xs); color: var(--ink-soft); font-weight: 600; }
+
+.rm-section { margin-bottom: 26px; }
+
+.rm-section:last-child { margin-bottom: 0; }
+
+.rm-section-head { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; position: sticky; top: 84px; z-index: 4; background: var(--surface); padding: 4px 0; }
+
+.rm-section-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+.rm-section-title { font-size: var(--fs-md); font-weight: 700; color: var(--ink); }
+
+.rm-section-count { font-size: var(--fs-xs); color: var(--ink-soft); font-weight: 700; background: var(--bg); padding: 2px 9px; border-radius: var(--r-pill); }
+
+.rm-room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; }
+
+.rm-room-card { background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--r-lg); padding: 12px 14px; transition: box-shadow .15s, border-color .15s; }
+
+.rm-room-card:hover { box-shadow: var(--shadow); }
+
+.rm-room-card.is-over { border-color: var(--danger); background: var(--danger-tint); }
+
+.rm-room-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+
+.rm-room-num { font-size: var(--fs-md); font-weight: 700; color: var(--ink); }
+
+.rm-room-badge { font-size: var(--fs-xs); font-weight: 700; padding: 2px 8px; border-radius: var(--r-pill); white-space: nowrap; }
+
+.rm-slot-empty { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-top: 1px dashed var(--line); font-size: var(--fs-sm); color: var(--ink-soft); font-style: italic; }
+
+.rm-slot-empty i { font-size: var(--fs-sm); opacity: .7; }
+
+.rm-occupant { display: flex; align-items: center; flex-wrap: wrap; row-gap: 4px; gap: 8px; padding: 6px 0; border-top: 1px dashed var(--line); }
+
+.rm-occupant:first-child { border-top: none; padding-top: 0; }
+
+.rm-avatar { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: var(--fs-xs); font-weight: 700; color: var(--surface); flex-shrink: 0; font-family: 'Space Grotesk', sans-serif; }
+
+.rm-occupant-name { flex: 1 1 90px; min-width: 60px; font-size: var(--fs-sm); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Tombol "Pindah kamar" -- select native dibungkus label & dikasih
+           ikon + gaya chip supaya jelas ini AKSI (bukan cuma label statis
+           kamar), dengan target sentuh lebih besar dibanding <select> polos
+           sebelumnya. */
+
+.rm-move { position: relative; display: inline-flex; align-items: center; gap: 5px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 5px 10px 5px 9px; flex-shrink: 0; cursor: pointer; transition: border-color .15s, background .15s; }
+
+.rm-move:hover { border-color: var(--brand); background: var(--brand-tint); }
+
+.rm-move i { font-size: var(--fs-xs); color: var(--ink-soft); pointer-events: none; }
+
+.rm-move:hover i { color: var(--brand); }
+
+.rm-move select { appearance: none; -webkit-appearance: none; border: none; outline: none; background: transparent; font-size: var(--fs-xs); font-weight: 600; color: var(--ink); cursor: pointer; width: auto; max-width: 130px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+
+.rm-unassigned .rm-move { border-color: var(--warn); background: var(--surface); }
+
+.rm-unassigned .rm-move:hover { background: var(--warn-tint); }
+
+.rm-unassigned { border: 1.5px dashed var(--warn); border-radius: var(--r-lg); background: var(--warn-tint); padding: 14px 16px; margin-bottom: 12px; }
+
+.rm-unassigned-head { display: flex; align-items: center; gap: 7px; font-size: var(--fs-sm); font-weight: 700; color: #9C6A1F; margin-bottom: 10px; }
+
+.rm-unassigned-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 16px; }
+
+.rm-unassigned .rm-occupant { border-top: none; background: var(--surface); border-radius: var(--r-md); padding: 6px 8px; }
+
+.rm-unassigned .rm-occupant:first-child { padding-top: 6px; }
+
+.rm-empty { text-align: center; padding: 44px 20px; color: var(--ink-soft); font-size: var(--fs-sm); }
+
+.rm-empty i { font-size: 28px; display: block; margin-bottom: 10px; opacity: .6; }
+
+@media (max-width: 640px) {
+  .rm-toolbar { top: -16px; margin: -16px -16px 14px; padding: 12px 16px 12px; }
+  .rm-toolbar-row { flex-direction: column; align-items: stretch; }
+  .rm-search { max-width: none; }
+  .rm-toolbar-actions button { flex: 1 1 auto; }
+  .rm-section-head { top: 128px; }
+  .rm-stats { gap: 8px; }
+  .rm-stat { flex: 1 1 100%; }
+  .rm-room-grid, .rm-unassigned-grid { grid-template-columns: 1fr; }
+  .rm-occupant-name { white-space: normal; }
+}
