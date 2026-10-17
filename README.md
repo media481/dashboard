@@ -32,7 +32,7 @@ Akses menu sidebar untuk `user` dan `guest` bisa diatur per role dan per akun le
 ## Arsitektur
 
 ```
-Browser (PWA: index.html + js/app.js + css/style.css)
+Browser (PWA: index.html + js/app.js + css/style.css + css/ig-scheduler.css)
    │  supabase-js (anon key + JWT login)        fetch() ke Edge Function
    ▼                                                    ▼
 Supabase: Postgres + RLS + Auth + Storage      Supabase Edge Functions (Deno)
@@ -49,9 +49,10 @@ Detail Edge Function ada di [`supabase/functions/README.md`](supabase/functions/
 ## Struktur repo
 
 ```
-index.html              Struktur HTML; memuat css/style.css dan js/app.js
+index.html              Struktur HTML; memuat css/style.css, css/ig-scheduler.css, dan js/app.js
 js/app.js               SATU-SATUNYA file JS aktif (seluruh logic + koneksi Supabase)
-css/style.css           SATU-SATUNYA CSS aktif (warna brand via CSS custom properties)
+css/style.css           CSS inti (warna brand via CSS custom properties, layout, komponen umum)
+css/ig-scheduler.css    Modul CSS IG Scheduler (dimuat setelah style.css; modul lain menyusul bertahap)
 manifest.json           Konfigurasi PWA
 service-worker.js       Precache + network-first; CACHE_NAME dinaikkan tiap rilis
 icons/, assets/         Ikon PWA dan logo
@@ -66,7 +67,7 @@ wrangler.jsonc          Konfigurasi deploy frontend ke Cloudflare
 .assetsignore           Daftar file yang TIDAK boleh ikut terpublish (wajib ada)
 ```
 
-> Hanya `js/app.js` yang dimuat `index.html`. File `.js` lepas lain di root atau `js/` (`utils.js`, `test-core.js`, `js/index.html`, dan sejenisnya) adalah sisa lama. Cek dulu apakah direferensikan sebelum diedit. Begitu juga `style.css` lepas di root: yang aktif selalu `css/style.css`.
+> Hanya `js/app.js` yang dimuat `index.html`. File `.js` lepas lain di root atau `js/` (`utils.js`, `test-core.js`, `js/index.html`, dan sejenisnya) adalah sisa lama. Cek dulu apakah direferensikan sebelum diedit. Begitu juga `style.css` lepas di root: yang aktif selalu `css/style.css` (+ modul di `css/`).
 
 ## Mulai dari nol
 

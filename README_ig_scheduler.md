@@ -407,6 +407,6 @@ Di modal **Rencana Konten**, tombol **Rencana Setahun AI** menyusun TEMA tiap pe
 **Pasang (urutan bebas, tapi function dulu baru frontend):**
 1. Jalankan `sql/48_tambah_ig_rencana_tahunan.sql` di Supabase SQL Editor (idempotent).
 2. `supabase functions deploy generate-ig-year-plan --no-verify-jwt` (memakai secret Gemini yang sama dengan function AI lain).
-3. Frontend: unggah `index.html`, `js/app.js`, `css/style.css` yang baru.
+3. Frontend: unggah `index.html`, `js/app.js`, `css/style.css`, dan `css/ig-scheduler.css` yang baru.
 
 Tanpa langkah 1, dashboard tetap jalan normal; panel Rencana Setahun hanya menampilkan petunjuk menjalankan SQL.

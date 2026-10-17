@@ -27,7 +27,7 @@ Bahasa UI & komentar kode: **Bahasa Indonesia**. Ikuti gaya ini saat menambah fi
 ## Struktur file AKTIF (yang benar-benar di-load browser)
 
 ```
-index.html          ← struktur HTML saja, load css/style.css + js/app.js
+index.html          ← struktur HTML saja, load css/style.css + css/ig-scheduler.css + js/app.js
 katalog.html          ← halaman marketing publik MANDIRI (CSS+JS inline, tidak memakai app.js/style.css). Baca tabel
                         `programs` via REST dengan anon key, filter sama seperti `isProgramVisibleOnDashboard`
                         (aktif, belum expired, punya poster). Sisa seat tidak ditampilkan karena `kb_jamaah`
@@ -47,13 +47,16 @@ katalog-flip.html     ← versi FLIPBOOK dari katalog publik, juga MANDIRI (CSS+
                         Dibuka dari tombol "Flipbook" di topbar (`#btnLihatFlipbook`) dan tombol Flipbook di katalog.html;
                         tombol "Share Flipbook" (`#btnShareFlipbook`, `copyFlipbookLink()` di app.js) menyalin URL-nya.
                         `copyKatalogLink()` dan `copyFlipbookLink()` sama-sama memakai `salinLinkPublik(url, nama)`
-css/style.css        ← SATU-SATUNYA CSS aktif (semua styling, CSS custom
-                        properties di :root untuk warna brand). **PENTING:**
-                        ada file `/style.css` lepas di root project yang
-                        BASI/tidak dipakai (sisa restrukturisasi lama, index.html
-                        tidak meng-load-nya) — jangan pernah edit file itu,
-                        selalu edit `css/style.css`. Cek dulu dengan
-                        `grep "style.css" index.html` kalau ragu file mana yang aktif.
+css/style.css        ← CSS INTI (variabel :root warna brand, layout, sidebar, topbar, tombol, modal, tabel,
+                        form, utilitas, dan modul yang belum dipecah). **PENTING:** ada file `/style.css`
+                        lepas di root project yang BASI/tidak dipakai (sisa restrukturisasi lama,
+                        index.html tidak meng-load-nya) — jangan pernah edit file itu, selalu edit
+                        `css/style.css`. Cek dulu dengan `grep "style.css" index.html` kalau ragu.
+css/ig-scheduler.css ← MODUL IG Scheduler (semua `.ig-*`, `#ig*`, variabel `--ig-*`, `@keyframes ig-plan-spin`).
+                        Di-load SETELAH style.css. Gaya IG baru -> taruh di sini, bukan di style.css.
+                        Pemecahan CSS dilakukan bertahap per modul (berikutnya: user/akses, keuangan, dst.);
+                        modul baru WAJIB ditambah `<link>` di index.html (setelah style.css) dan di daftar
+                        APP_SHELL `service-worker.js`, lalu naikkan `CACHE_NAME`.
 js/app.js            ← SATU-SATUNYA file JS, berisi SEMUA logic + koneksi Supabase
 manifest.json         ← config PWA (name, theme_color, icons)
 service-worker.js     ← precache list, HARUS disinkronkan manual kalau nama file berubah.
