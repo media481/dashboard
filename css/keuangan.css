@@ -691,7 +691,7 @@
 .pb-income-empty { grid-column: 1 / -1; text-align: center; padding: 20px; color: var(--ink-soft); font-size: var(--fs-sm); background: var(--surface); border: 1px dashed var(--line); border-radius: var(--r-lg); }
 
 /* Dipakai bersama: Pembayaran (#pbStatsBar) dan Crosscheck (#cxStatsBar).
-   Chip-nya (.cx-stat-chip*) milik modul Crosscheck. */
+   Chip-nya (.cx-stat-chip*) milik modul Crosscheck (css/crosscheck.css). */
 .cx-stats-bar { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
 
 @media (min-width: 601px) and (max-width: 1194px) {

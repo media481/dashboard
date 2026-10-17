@@ -1,0 +1,286 @@
+/* ============================================================
+   CROSSCHECK  (modul CSS terpisah dari style.css)
+   Prefix: .cx-*  (Crosscheck OCR poster vs data teks: layout sidebar + detail,
+                   pill cocok/tidak cocok, status bar, banner & flash autofill
+                   di form program, @keyframes cxFieldFlash)
+   PENGECUALIAN: .cx-stats-bar ada di keuangan.css karena DIPAKAI BERSAMA halaman
+   Pembayaran (#pbStatsBar) dan Crosscheck (#cxStatsBar). Chip-nya (.cx-stat-chip*)
+   tetap di sini.
+   Di-load SETELAH keuangan.css. Gaya Crosscheck baru -> taruh di sini.
+   ============================================================ */
+
+/* ---- Badge referensi hotel di panel Crosscheck ---- */
+
+.cx-ref-line {
+            grid-column: 1 / -1; font-size: var(--fs-xs); color: var(--ink-soft); margin-top: 6px;
+            padding-top: 8px; border-top: 1px dashed var(--line);
+            display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+        }
+
+.cx-ref-chip { font-weight: 700; padding: 1.5px 8px; border-radius: var(--r-md); font-size: var(--fs-xs); }
+
+.cx-ref-chip.ok { background: var(--success-tint); color: var(--success); }
+
+.cx-ref-chip.warn { background: var(--warn-tint); color: var(--warn); }
+
+/* [AUTO-FILL] Highlight kuning untuk field yang baru terisi otomatis
+           dari hasil OCR poster & belum "disentuh"/dikonfirmasi admin. Hilang
+           begitu admin mengetik di field tsb, atau begitu form disimpan
+           (lihat cxApplyAutofillHighlight & cxClearAutofillHighlight di app.js). */
+
+.form-group input.cx-autofill-pending,
+        .form-group select.cx-autofill-pending,
+        .form-group textarea.cx-autofill-pending {
+            border-color: var(--warn);
+            background: var(--warn-tint);
+        }
+
+.cx-autofill-note {
+            display: block;
+            font-size: var(--fs-xs);
+            font-weight: 600;
+            color: var(--warn);
+            margin-top: 4px;
+        }
+
+.cx-autofill-note i { margin-right: 3px; }
+
+/* [CROSSCHECK] Flash sesaat di field form saat admin klik baris "data
+           tidak cocok" di panel Crosscheck & diarahkan langsung ke field itu —
+           supaya kelihatan jelas field mana yang dimaksud sebelum flash-nya
+           hilang sendiri (lihat cxGoToEditField di app.js). */
+
+@keyframes cxFieldFlash {
+            0%, 100% { box-shadow: 0 0 0 3px var(--danger-tint); border-color: var(--danger); }
+            50% { box-shadow: 0 0 0 5px var(--danger-tint); border-color: var(--danger); }
+        }
+
+.form-group input.cx-field-flash,
+        .form-group select.cx-field-flash {
+            animation: cxFieldFlash 0.6s ease-in-out 2;
+            border-color: var(--danger);
+        }
+
+/* ===== CROSSCHECK ===== */
+
+.cx-label-sm { font-size: var(--fs-sm); font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
+
+/* Layout 2 kolom: sidebar (stats + pencarian + daftar program) di kiri,
+           kartu detail perbandingan di kanan. Struktur & id di dalamnya tidak
+           berubah -- hanya wrapper visual baru (lihat renderAdminPanel/js). */
+
+.cx-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 18px; align-items: start; }
+
+.cx-sidebar {
+            background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+            padding: 16px; position: sticky; top: 16px;
+        }
+
+.cx-detail-card {
+            background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+            padding: 18px 20px; min-height: 220px;
+        }
+
+.cx-stat-chip { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); font-weight: 700; padding: 8px 12px; border-radius: var(--r-md); }
+
+.cx-stat-chip.ok { background: var(--success-tint); color: var(--success-ink); }
+
+.cx-stat-chip.warn { background: var(--warn-tint); color: var(--warn-ink); }
+
+.cx-stat-chip.missing { background: var(--bg); color: var(--ink-soft); border: 1px solid var(--line); }
+
+.cx-stat-chip.noposter { background: var(--bg); color: var(--warn-ink); border: 1px dashed var(--warn); }
+
+.cx-search-wrap { position: relative; margin-bottom: 12px; }
+
+.cx-search-wrap > i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: var(--fs-sm); color: var(--ink-soft); pointer-events: none; }
+
+.cx-search-input { width: 100%; box-sizing: border-box; padding: 8px 12px 8px 32px; border: 1px solid var(--line); border-radius: var(--r-md); font-size: var(--fs-sm); background: var(--bg); color: var(--ink); }
+
+.cx-search-input:focus { outline: none; border-color: var(--brand); background: var(--surface); }
+
+/* [Sembunyikan indikator scroll] samakan dengan pola scrollbar-hidden
+           yang sudah dipakai di .sidebar/.modal-content/.table-container dst
+           -- konten tetap bisa discroll, cuma indikator visual scrollbar-nya
+           yang disembunyikan. */
+
+.cx-program-selector { display: flex; flex-direction: column; gap: 5px; max-height: 480px; overflow-y: auto; padding-right: 2px; margin-bottom: 0; scrollbar-width: none; -ms-overflow-style: none; }
+
+.cx-program-selector::-webkit-scrollbar { display: none; }
+
+.cx-program-pill {
+            border: 1px solid var(--line); background: var(--bg); border-radius: var(--r-md); padding: 9px 12px;
+            font-size: var(--fs-sm); font-weight: 600; color: var(--ink); cursor: pointer; display: flex; align-items: center; gap: 6px;
+            width: 100%; text-align: left; transition: background .12s, border-color .12s;
+        }
+
+.cx-program-pill:hover { background: var(--surface); }
+
+.cx-program-pill.active { background: var(--brand-tint); border-color: var(--brand); color: var(--brand-deep); }
+
+.cx-program-pill.has-warning { border-color: var(--warn); }
+
+.cx-pill-noposter { color: #a86414; font-size: var(--fs-sm); flex-shrink: 0; }
+
+.cx-pill-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.cx-pill-warn { color: var(--warn); font-size: var(--fs-xs); flex-shrink: 0; }
+
+.cx-empty { text-align: center; padding: 40px 20px; color: var(--ink-soft); }
+
+.cx-empty i { font-size: 28px; display: block; margin-bottom: 10px; opacity: .5; }
+
+.cx-status-bar { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-radius: var(--r-md); font-size: var(--fs-md); margin-bottom: 16px; }
+
+.cx-status-bar.ok { background: var(--success-tint); color: var(--success-ink); }
+
+.cx-status-bar.warn { background: var(--warn-tint); color: var(--warn-ink); }
+
+.cx-status-bar.missing { background: var(--bg); color: var(--ink-soft); border: 1px solid var(--line); }
+
+.cx-status-bar.scanning { background: var(--brand-tint); color: var(--brand-deep); }
+
+.cx-ocr-progress-wrap { background: rgba(0,0,0,0.08); border-radius: var(--r-sm); height: 5px; margin-top: 8px; overflow: hidden; }
+
+.cx-ocr-progress-bar { background: var(--brand); height: 100%; transition: width .3s ease; }
+
+.cx-mismatch-count { background: var(--danger-tint); color: var(--danger); font-size: var(--fs-sm); font-weight: 700; padding: 4px 10px; border-radius: var(--r-lg); display: inline-flex; align-items: center; gap: 5px; }
+
+.cx-source-tag { font-size: var(--fs-xs); font-weight: 700; padding: 2px 8px; border-radius: var(--r-lg); margin-left: 8px; }
+
+.cx-source-tag.ocr { background: var(--brand-tint); color: var(--brand-deep); }
+
+.cx-source-tag.manual { background: var(--warn-tint); color: var(--warn-ink); }
+
+.cx-parse-btn { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-md); padding: 6px 12px; font-size: var(--fs-sm); font-weight: 600; color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: border-color .12s, color .12s; }
+
+.cx-parse-btn:hover { border-color: var(--brand); color: var(--brand); }
+
+.cx-parse-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.cx-section-title { font-size: var(--fs-md); font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+
+/* Baris perbandingan Teks vs Poster: format ala tabel dengan header
+           sekali di atas (.cx-compare-head), supaya baris yang "cocok" tampil
+           tenang/netral dan baris yang beda/perlu perhatian (mismatch/warning)
+           yang justru menonjol -- lebih mudah dipindai saat field-nya banyak. */
+
+.cx-compare-head {
+            display: grid; grid-template-columns: 160px 1fr 1fr 96px; gap: 14px; align-items: center;
+            padding: 0 14px 6px; margin-top: 4px;
+            font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; color: var(--ink-soft); letter-spacing: .4px;
+        }
+
+.cx-compare-head > div { display: flex; align-items: center; gap: 4px; }
+
+.cx-compare-head-status { justify-content: flex-end; }
+
+.cx-compare-row {
+            display: grid; grid-template-columns: 160px 1fr 1fr 96px; gap: 14px; align-items: center;
+            padding: 10px 14px; border-radius: var(--r-md); margin-bottom: 6px;
+            background: var(--surface); border: 1px solid var(--line);
+            transition: filter .12s, border-color .12s;
+        }
+
+.cx-compare-row.cx-match { border-color: var(--line); }
+
+.cx-compare-row.cx-mismatch { border-color: var(--danger); background: var(--danger-tint); cursor: pointer; }
+
+.cx-compare-row.cx-mismatch:hover { filter: brightness(0.97); }
+
+.cx-compare-row.cx-match-warn { border-color: var(--warn); background: var(--warn-tint); }
+
+.cx-compare-field { font-size: var(--fs-sm); font-weight: 700; color: var(--ink); }
+
+.cx-compare-col { min-width: 0; }
+
+.cx-compare-col-poster { border-left: 1px solid var(--line); padding-left: 14px; }
+
+.cx-mobile-tag { display: none; }
+
+.cx-compare-val { font-size: var(--fs-sm); font-weight: 600; color: var(--ink); word-break: break-word; }
+
+.cx-compare-val.empty { color: var(--ink-soft); font-style: italic; font-weight: 400; }
+
+.cx-compare-status { display: flex; justify-content: flex-end; }
+
+.cx-match-pill { font-size: var(--fs-xs); font-weight: 700; padding: 3px 10px; border-radius: var(--r-lg); white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+
+.cx-match-pill.ok { background: transparent; color: var(--success); border: 1px solid var(--success); }
+
+.cx-match-pill.no { background: var(--danger); color: var(--surface); }
+
+.cx-match-pill.warn { background: var(--warn); color: var(--surface); }
+
+.cx-match-pill.skip { background: var(--line); color: var(--ink-soft); }
+
+.cx-value.empty { color: var(--ink-soft); font-style: italic; }
+
+@media (max-width: 760px) {
+  .cx-compare-row { grid-template-columns: 1fr; }
+  .cx-compare-head { display: none; }
+  .cx-compare-col-poster { border-left: none; padding-left: 0; margin-top: 6px; }
+  .cx-compare-status { justify-content: flex-start; margin-top: 6px; }
+  .cx-mobile-tag { display: flex; align-items: center; gap: 4px; font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; color: var(--ink-soft); letter-spacing: .3px; margin-bottom: 3px; }
+  .cx-layout { grid-template-columns: 1fr; }
+  .cx-sidebar { position: static; }
+  .cx-program-selector { max-height: 280px; }
+}
+
+@media (min-width: 901px) and (max-width: 1194px) {
+  .cx-layout { grid-template-columns: 270px minmax(0, 1fr); gap: 14px; }
+}
+
+@media (pointer: coarse) and (min-width: 601px) {
+  .cx-parse-btn {
+          min-height: 40px;
+          display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      }
+}
+
+/* -- Banner "N field terisi otomatis dari poster" ----------------------- */
+
+#adminFormContainer .cx-autofill-note {
+    margin: 0;
+    padding: 7px 20px;
+    font-size: var(--fs-sm); line-height: 1.45; font-weight: 600;
+    color: #9a4f12;
+    background: var(--warn-tint);
+    border-top: 1px solid #f3d7b8;
+}
+
+#adminFormContainer .cx-autofill-note i { margin-right: 6px; }
+
+/* Field hasil auto-isi poster (belum diperiksa). Pakai background-color --
+   bukan shorthand "background" -- supaya panah dropdown <select> tidak hilang. */
+
+#adminFormContainer .form-group input.cx-autofill-pending,
+#adminFormContainer .form-group select.cx-autofill-pending,
+#adminFormContainer .form-group textarea.cx-autofill-pending {
+    border-color: var(--warn);
+    background-color: var(--warn-tint);
+    box-shadow: 0 0 0 3px rgba(224,123,46,.12);
+}
+
+#adminFormContainer .form-group input.cx-field-flash,
+#adminFormContainer .form-group select.cx-field-flash { border-color: var(--danger); }
+
+@media (max-width: 560px) {
+  #adminFormContainer .cx-autofill-note { padding-left: 14px; padding-right: 14px; }
+}
+
+/* -- [CROSSCHECK] Daftar Fasilitas Termasuk / Tidak Termasuk di panel bandingan:
+      satu chip per item; item yang tidak berpasangan di sisi lain = merah -- */
+
+.cx-li-list { list-style: none; display: flex; flex-wrap: wrap; gap: 5px 6px; margin: 0; padding: 0; }
+
+.cx-li-list li {
+    font-size: var(--fs-sm); font-weight: 600; line-height: 1.4;
+    padding: 2px 9px; border-radius: var(--r-sm);
+    background: rgba(15,33,56,.06); color: var(--ink);
+}
+
+.cx-li-list li.cx-li-bad {
+    background: var(--danger); color: var(--surface); font-weight: 700;
+    box-shadow: 0 0 0 1px var(--danger);
+}

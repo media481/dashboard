@@ -32,7 +32,7 @@ Akses menu sidebar untuk `user` dan `guest` bisa diatur per role dan per akun le
 ## Arsitektur
 
 ```
-Browser (PWA: index.html + js/app.js + css/style.css + css/ig-scheduler.css + css/user-akses.css + css/keuangan.css)
+Browser (PWA: index.html + js/app.js + css/style.css + css/ig-scheduler.css + css/user-akses.css + css/keuangan.css + css/crosscheck.css)
    │  supabase-js (anon key + JWT login)        fetch() ke Edge Function
    ▼                                                    ▼
 Supabase: Postgres + RLS + Auth + Storage      Supabase Edge Functions (Deno)
@@ -49,12 +49,13 @@ Detail Edge Function ada di [`supabase/functions/README.md`](supabase/functions/
 ## Struktur repo
 
 ```
-index.html              Struktur HTML; memuat css/style.css, css/ig-scheduler.css, css/user-akses.css, css/keuangan.css, dan js/app.js
+index.html              Struktur HTML; memuat css/style.css, css/ig-scheduler.css, css/user-akses.css, css/keuangan.css, css/crosscheck.css, dan js/app.js
 js/app.js               SATU-SATUNYA file JS aktif (seluruh logic + koneksi Supabase)
 css/style.css           CSS inti (warna brand via CSS custom properties, layout, komponen umum)
 css/ig-scheduler.css    Modul CSS IG Scheduler (dimuat setelah style.css; modul lain menyusul bertahap)
 css/user-akses.css      Modul CSS User & Akses Menu (.us-*, .rma-*)
 css/keuangan.css        Modul CSS Keuangan (.pb-*, .cicilan-*, .nota-*, .kuitansi-*, .an-* Audit Nota)
+css/crosscheck.css      Modul CSS Crosscheck OCR poster (.cx-*, @keyframes cxFieldFlash)
 manifest.json           Konfigurasi PWA
 service-worker.js       Precache + network-first; CACHE_NAME dinaikkan tiap rilis
 icons/, assets/         Ikon PWA dan logo
