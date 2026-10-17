@@ -53,8 +53,8 @@ index.html              Struktur HTML; memuat css/style.css, css/ig-scheduler.cs
 js/app.js               SATU-SATUNYA file JS aktif (seluruh logic + koneksi Supabase)
 css/style.css           CSS inti (warna brand via CSS custom properties, layout, komponen umum)
 css/ig-scheduler.css    Modul CSS IG Scheduler (dimuat setelah style.css; modul lain menyusul bertahap)
-css/user-akses.css      Modul CSS User & Akses Menu (.us-*, .rma-*, .an-*)
-css/keuangan.css        Modul CSS Keuangan (.pb-*, .cicilan-*, .nota-*, .kuitansi-*)
+css/user-akses.css      Modul CSS User & Akses Menu (.us-*, .rma-*)
+css/keuangan.css        Modul CSS Keuangan (.pb-*, .cicilan-*, .nota-*, .kuitansi-*, .an-* Audit Nota)
 manifest.json           Konfigurasi PWA
 service-worker.js       Precache + network-first; CACHE_NAME dinaikkan tiap rilis
 icons/, assets/         Ikon PWA dan logo

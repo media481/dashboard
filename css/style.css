@@ -84,8 +84,8 @@ body {
         }
 
 @media (min-width: 769px) {
-            .app.sidebar-collapsed { grid-template-columns: 46px 1fr; }
-        }
+  .app.sidebar-collapsed { grid-template-columns: 46px 1fr; }
+}
 
 /* ===== SIDEBAR =====
            Spacing dibuat lebih rapat (padding/margin dikecilkan) dari versi
@@ -179,17 +179,17 @@ body {
 .sidebar-vtext { display: none; }
 
 @media (min-width: 769px) {
-            .sidebar.collapsed.is-guest .sidebar-vtext {
-                display: block; flex: 1 1 auto; min-height: 0; align-self: center;
-                margin: 10px 0; overflow: hidden;
-                writing-mode: vertical-rl; transform: rotate(180deg);
-                white-space: nowrap; text-overflow: ellipsis; text-align: center;   /* di mode vertikal = rata tengah atas-bawah */
-                font-family: 'Space Grotesk', 'Inter', sans-serif;
-                font-size: var(--fs-sm); font-weight: 600; letter-spacing: .22em; line-height: 1;
-                color: rgba(201, 214, 227, .6);
-                user-select: none; -webkit-user-select: none; pointer-events: none;
-            }
-        }
+  .sidebar.collapsed.is-guest .sidebar-vtext {
+                  display: block; flex: 1 1 auto; min-height: 0; align-self: center;
+                  margin: 10px 0; overflow: hidden;
+                  writing-mode: vertical-rl; transform: rotate(180deg);
+                  white-space: nowrap; text-overflow: ellipsis; text-align: center;   /* di mode vertikal = rata tengah atas-bawah */
+                  font-family: 'Space Grotesk', 'Inter', sans-serif;
+                  font-size: var(--fs-sm); font-weight: 600; letter-spacing: .22em; line-height: 1;
+                  color: rgba(201, 214, 227, .6);
+                  user-select: none; -webkit-user-select: none; pointer-events: none;
+              }
+}
 
 /* ---- Hover-to-expand: saat sidebar dalam mode ciut (desktop), arahkan
            mouse ke atasnya supaya melebar sementara (overlay, tidak mendorong
@@ -211,49 +211,49 @@ body {
               diklik ikonnya seperti biasa, tanpa flyout hover. ---- */
 
 @media (min-width: 769px) {
-            .sidebar.collapsed {
-                width: 46px;
-                transition: width .25s ease, padding .2s ease, box-shadow .25s ease;
-            }
-        }
+  .sidebar.collapsed {
+                  width: 46px;
+                  transition: width .25s ease, padding .2s ease, box-shadow .25s ease;
+              }
+}
 
 /* Efek flyout-saat-hover HANYA untuk perangkat dengan mouse asli
            (bukan touchscreen) -- lihat catatan di atas kenapa ini dipisah. */
 
 @media (min-width: 769px) and (hover: hover) and (pointer: fine) {
-            .sidebar.collapsed {
-                /* position dipaksa fixed dari awal (bukan cuma pas :hover)
-                   supaya tidak ada perpindahan sticky<->fixed di tengah
-                   animasi lebar -- itu penyebab tombol menu "meleset". */
-                position: fixed;
-                top: 0;
-                left: 0;
-                height: 100vh;
-            }
-            .sidebar.collapsed:hover {
-                width: 200px;
-                padding: 26px 16px;
-                box-shadow: 14px 0 34px rgba(0,0,0,.22);
-                z-index: 200;
-            }
-            .sidebar.collapsed:hover .sidebar-top { flex-direction: row; gap: 8px; }
-            .sidebar.collapsed:hover .sidebar-collapse-btn { transform: rotate(180deg); }
-            .sidebar.collapsed:hover .brand { justify-content: flex-start; }
-            .sidebar.collapsed:hover .brand-text,
-            .sidebar.collapsed:hover .nav-label,
-            .sidebar.collapsed:hover .nav-item .nav-text,
-            .sidebar.collapsed:hover .sidebar-foot-text {
-                display: block;
-            }
-            .sidebar.collapsed:hover .nav-item {
-                justify-content: flex-start;
-                gap: 10px;
-                padding: 9px 10px;
-            }
-            .sidebar.collapsed:hover .nav-item i { width: 16px; font-size: var(--fs-md); }
-            .sidebar.collapsed:hover .sidebar-foot { justify-content: flex-start; }
-            .sidebar.collapsed.is-guest:hover .sidebar-vtext { display: none; }
-        }
+  .sidebar.collapsed {
+                  /* position dipaksa fixed dari awal (bukan cuma pas :hover)
+                     supaya tidak ada perpindahan sticky<->fixed di tengah
+                     animasi lebar -- itu penyebab tombol menu "meleset". */
+                  position: fixed;
+                  top: 0;
+                  left: 0;
+                  height: 100vh;
+              }
+  .sidebar.collapsed:hover {
+                  width: 200px;
+                  padding: 26px 16px;
+                  box-shadow: 14px 0 34px rgba(0,0,0,.22);
+                  z-index: 200;
+              }
+  .sidebar.collapsed:hover .sidebar-top { flex-direction: row; gap: 8px; }
+  .sidebar.collapsed:hover .sidebar-collapse-btn { transform: rotate(180deg); }
+  .sidebar.collapsed:hover .brand { justify-content: flex-start; }
+  .sidebar.collapsed:hover .brand-text,
+              .sidebar.collapsed:hover .nav-label,
+              .sidebar.collapsed:hover .nav-item .nav-text,
+              .sidebar.collapsed:hover .sidebar-foot-text {
+                  display: block;
+              }
+  .sidebar.collapsed:hover .nav-item {
+                  justify-content: flex-start;
+                  gap: 10px;
+                  padding: 9px 10px;
+              }
+  .sidebar.collapsed:hover .nav-item i { width: 16px; font-size: var(--fs-md); }
+  .sidebar.collapsed:hover .sidebar-foot { justify-content: flex-start; }
+  .sidebar.collapsed.is-guest:hover .sidebar-vtext { display: none; }
+}
 
 .brand {
             display: flex;
@@ -412,18 +412,18 @@ nav { display: flex; flex-direction: column; gap: 1px; flex: 1; }
            menu admin yang lengkap (~18 item) tetap muat tanpa scroll. ---- */
 
 @media (max-height: 760px) {
-            .sidebar { padding: 10px 12px; }
-            .sidebar-top { margin-bottom: 6px; padding-bottom: 6px; }
-            .nav-label { margin: 8px 10px 2px; }
-            .nav-item { padding: 5px 10px; font-size: var(--fs-sm); }
-            .nav-login-area { padding-top: 6px; }
-        }
+  .sidebar { padding: 10px 12px; }
+  .sidebar-top { margin-bottom: 6px; padding-bottom: 6px; }
+  .nav-label { margin: 8px 10px 2px; }
+  .nav-item { padding: 5px 10px; font-size: var(--fs-sm); }
+  .nav-login-area { padding-top: 6px; }
+}
 
 @media (max-height: 660px) {
-            .nav-label { font-size: var(--fs-xs); margin: 6px 10px 2px; }
-            .nav-item { padding: 4px 10px; font-size: var(--fs-sm); }
-            .nav-item i { width: 14px; font-size: var(--fs-sm); }
-        }
+  .nav-label { font-size: var(--fs-xs); margin: 6px 10px 2px; }
+  .nav-item { padding: 4px 10px; font-size: var(--fs-sm); }
+  .nav-item i { width: 14px; font-size: var(--fs-sm); }
+}
 
 /* ===== MAIN ===== */
 
@@ -846,16 +846,16 @@ main {
 .rekap-tile-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--surface); box-shadow: 0 0 0 3px rgba(255,255,255,.3); }
 
 @media (hover: hover) {
-            .rekap-tile:not(.is-empty)::after {
-                content: 'Lihat poster'; position: absolute; left: 50%; top: 50%;
-                transform: translate(-50%, -40%); opacity: 0; pointer-events: none;
-                padding: 8px 16px; border-radius: var(--r-pill); white-space: nowrap;
-                font-size: var(--fs-sm); font-weight: 600; color: var(--brand-deep);
-                background: rgba(255,255,255,.94); box-shadow: 0 8px 20px rgba(0,0,0,.22);
-                transition: opacity .2s ease, transform .2s ease;
-            }
-            .rekap-tile:not(.is-empty):hover::after { opacity: 1; transform: translate(-50%, -50%); }
-        }
+  .rekap-tile:not(.is-empty)::after {
+                  content: 'Lihat poster'; position: absolute; left: 50%; top: 50%;
+                  transform: translate(-50%, -40%); opacity: 0; pointer-events: none;
+                  padding: 8px 16px; border-radius: var(--r-pill); white-space: nowrap;
+                  font-size: var(--fs-sm); font-weight: 600; color: var(--brand-deep);
+                  background: rgba(255,255,255,.94); box-shadow: 0 8px 20px rgba(0,0,0,.22);
+                  transition: opacity .2s ease, transform .2s ease;
+              }
+  .rekap-tile:not(.is-empty):hover::after { opacity: 1; transform: translate(-50%, -50%); }
+}
 
 /* Kanvas kosong: bentuknya sama dengan tile berisi, tapi tenang (tanpa shimmer) */
 
@@ -1004,47 +1004,57 @@ main {
            cqw = lebar isi .modal-body; tinggi baris = lebar kolom x 5/4. */
 
 @media (min-width: 1101px) {
-            .rekap-ratio-45 .rekap-gallery-modal .modal-body {
-                container-type: inline-size; flex: 0 1 auto;
-                max-height: calc(2 * (100cqw - 4 * 16px) / 5 * 1.25 + 16px + 44px);
-            }
-        }
+  .rekap-ratio-45 .rekap-gallery-modal .modal-body {
+                  container-type: inline-size; flex: 0 1 auto;
+                  max-height: calc(2 * (100cqw - 4 * 16px) / 5 * 1.25 + 16px + 44px);
+              }
+}
 
-@media (max-width: 1100px) { .rekap-ratio-45 .rekap-gallery-grid { grid-template-columns: repeat(4, 1fr); } }
-
-@media (max-width: 900px) { .rekap-ratio-45 .rekap-gallery-grid { grid-template-columns: repeat(3, 1fr); } }
-
-@media (max-width: 700px) { .rekap-ratio-45 .rekap-gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
+@media (max-width: 1100px) {
+  .rekap-ratio-45 .rekap-gallery-grid { grid-template-columns: repeat(4, 1fr); }
+}
 
 @media (max-width: 900px) {
-            .rekap-gallery-grid { grid-template-columns: repeat(3, 1fr); }
-        }
+  .rekap-ratio-45 .rekap-gallery-grid { grid-template-columns: repeat(3, 1fr); }
+}
 
 @media (max-width: 700px) {
-            /* HP: tampil sebagai bottom sheet */
-            #rekapProgramModal.modal-overlay { align-items: flex-end; padding: 0; }
-            .modal-content.rekap-gallery-modal {
-                max-width: 100%; max-height: 92vh; border-radius: var(--r-lg) var(--r-lg) 0 0;
-                animation: rekapSheetUp .28s cubic-bezier(.2,.8,.3,1);
-            }
-            @supports (height: 100dvh) { .modal-content.rekap-gallery-modal { max-height: 92dvh; } }
-            .rekap-gallery-modal .modal-header.rekap-head { padding: 16px 16px 16px 18px; }
-            .rekap-head-icon { width: 38px; height: 38px; font-size: 17px; border-radius: var(--r-lg); }
-            .rekap-gallery-modal .rekap-head h2 { font-size: 17px; }
-            .rekap-head-sub { display: none; }
-            .rekap-gallery-modal .modal-body { padding: 16px 14px calc(18px + var(--safe-bottom)); }
-            .rekap-gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-            .rekap-lb-arrow { display: none; }   /* di HP: geser kiri/kanan */
-            .rekap-lb-side { display: none; }    /* HP: tidak ada ruang untuk poster samping */
-        }
+  .rekap-ratio-45 .rekap-gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+}
+
+@media (max-width: 900px) {
+  .rekap-gallery-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 700px) {
+  /* HP: tampil sebagai bottom sheet */
+  #rekapProgramModal.modal-overlay { align-items: flex-end; padding: 0; }
+  .modal-content.rekap-gallery-modal {
+                  max-width: 100%; max-height: 92vh; border-radius: var(--r-lg) var(--r-lg) 0 0;
+                  animation: rekapSheetUp .28s cubic-bezier(.2,.8,.3,1);
+              }
+  @supports (height: 100dvh) {
+    .modal-content.rekap-gallery-modal { max-height: 92dvh; }
+  }
+  .rekap-gallery-modal .modal-header.rekap-head { padding: 16px 16px 16px 18px; }
+  .rekap-head-icon { width: 38px; height: 38px; font-size: 17px; border-radius: var(--r-lg); }
+  .rekap-gallery-modal .rekap-head h2 { font-size: 17px; }
+  .rekap-head-sub { display: none; }
+  .rekap-gallery-modal .modal-body { padding: 16px 14px calc(18px + var(--safe-bottom)); }
+  .rekap-gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .rekap-lb-arrow { display: none; }
+  /* di HP: geser kiri/kanan */
+  .rekap-lb-side { display: none; }
+  /* HP: tidak ada ruang untuk poster samping */
+}
 
 @keyframes rekapSheetUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-            .rekap-lb-img.slide-next, .rekap-lb-img.slide-prev, .rekap-lb-side.swap { animation: none !important; }
-            .rekap-tile, .rekap-tile img, .rekap-gallery-modal .modal-content { animation: none !important; transition: none !important; }
-            .modal-content.rekap-gallery-modal { animation: none !important; }
-        }
+  .rekap-lb-img.slide-next, .rekap-lb-img.slide-prev, .rekap-lb-side.swap { animation: none !important; }
+  .rekap-tile, .rekap-tile img, .rekap-gallery-modal .modal-content { animation: none !important; transition: none !important; }
+  .modal-content.rekap-gallery-modal { animation: none !important; }
+}
 
 .icon-brand { background: var(--brand-tint); color: var(--brand); }
 
@@ -1328,7 +1338,10 @@ main {
 
 .btn-submit-sm span { display: inline; }
 
-@media (max-width: 480px) { .btn-submit-sm span { display: none; } .btn-submit-sm { padding: 8px 10px; } }
+@media (max-width: 480px) {
+  .btn-submit-sm span { display: none; }
+  .btn-submit-sm { padding: 8px 10px; }
+}
 
 .admin-form-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--ink-soft); width: 28px; height: 28px; border-radius: var(--r-md); transition: all .15s; line-height: 1; }
 
@@ -1382,7 +1395,9 @@ main {
 
 .wa-compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 
-@media (max-width: 700px) { .wa-compare-grid { grid-template-columns: 1fr; } }
+@media (max-width: 700px) {
+  .wa-compare-grid { grid-template-columns: 1fr; }
+}
 
 .wa-compare-col label { font-size: var(--fs-md); font-weight: 700; color: var(--ink); margin-bottom: 6px; display: block; }
 
@@ -1416,7 +1431,9 @@ main {
             margin-bottom: 10px;
         }
 
-@media (max-width: 700px) { .cp-rekening-row { grid-template-columns: 1fr; } }
+@media (max-width: 700px) {
+  .cp-rekening-row { grid-template-columns: 1fr; }
+}
 
 .cp-rekening-field label {
             display: block;
@@ -1500,7 +1517,10 @@ main {
 
 .btn-footer-action.danger:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-tint); }
 
-@media (max-width: 640px) { .admin-table-foot-actions { flex-direction: column; align-items: stretch; } .admin-table-foot-btns { margin-left: 0; justify-content: flex-start; flex-wrap: wrap; } }
+@media (max-width: 640px) {
+  .admin-table-foot-actions { flex-direction: column; align-items: stretch; }
+  .admin-table-foot-btns { margin-left: 0; justify-content: flex-start; flex-wrap: wrap; }
+}
 
 .admin-table-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--line); }
 
@@ -2421,7 +2441,9 @@ main {
             display: flex; flex-direction: column; overflow: hidden;
         }
 
-@supports (height: 100dvh) { .modal-content.pd-modal { --pd-h: min(92dvh, 880px); } }
+@supports (height: 100dvh) {
+  .modal-content.pd-modal { --pd-h: min(92dvh, 880px); }
+}
 
 .pd-modal .modal-header { flex: 0 0 var(--pd-head); height: var(--pd-head); padding: 0 12px 0 24px; }
 
@@ -2435,7 +2457,9 @@ main {
 
 .pd-added-date i { color: var(--brand); font-size: var(--fs-md); }
 
-@media (max-width: 600px) { .pd-added-label { display: none; } }
+@media (max-width: 600px) {
+  .pd-added-label { display: none; }
+}
 
 .pd-body { flex: 1 1 auto; min-height: 0; padding: 0; }
 
@@ -2567,20 +2591,20 @@ main {
         }
 
 @media (max-width: 860px) {
-            .modal-content.pd-modal { height: auto; max-height: 95vh; overflow-y: auto; display: block; }
-            .pd-modal .modal-header { position: sticky; top: 0; z-index: 3; background: var(--surface); }
-            .pd-body { overflow: visible; }
-            .pd-layout { display: block; height: auto; }
-            .pd-poster-col { width: 100%; padding: 14px; border-right: none; border-bottom: 1px solid var(--line); }
-            .pd-poster-frame { position: relative; inset: auto; width: min(100%, calc(62vh * 0.8)); margin: 0 auto; aspect-ratio: 1080 / 1350; }
-            .pd-poster-open { top: 24px; right: 24px; }
-            .pd-info-col { padding: 16px; }
-            .pd-price-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-            .pd-price { padding: 8px 9px; }
-            .pd-price-value { font-size: var(--fs-sm); }
-            .pd-wa { flex: none; }
-            .pd-wa-body { height: 340px; }
-        }
+  .modal-content.pd-modal { height: auto; max-height: 95vh; overflow-y: auto; display: block; }
+  .pd-modal .modal-header { position: sticky; top: 0; z-index: 3; background: var(--surface); }
+  .pd-body { overflow: visible; }
+  .pd-layout { display: block; height: auto; }
+  .pd-poster-col { width: 100%; padding: 14px; border-right: none; border-bottom: 1px solid var(--line); }
+  .pd-poster-frame { position: relative; inset: auto; width: min(100%, calc(62vh * 0.8)); margin: 0 auto; aspect-ratio: 1080 / 1350; }
+  .pd-poster-open { top: 24px; right: 24px; }
+  .pd-info-col { padding: 16px; }
+  .pd-price-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .pd-price { padding: 8px 9px; }
+  .pd-price-value { font-size: var(--fs-sm); }
+  .pd-wa { flex: none; }
+  .pd-wa-body { height: 340px; }
+}
 
 .form-group { margin-bottom: 16px; }
 
@@ -2723,9 +2747,13 @@ select:not(.cs-native-select):disabled {
 
 .form-row-4 { grid-template-columns: repeat(4, 1fr); }
 
-@media (max-width: 700px) { .form-row-4 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 700px) {
+  .form-row-4 { grid-template-columns: 1fr 1fr; }
+}
 
-@media (max-width: 560px) { .form-row, .form-row-4 { grid-template-columns: 1fr; gap: 12px; } }
+@media (max-width: 560px) {
+  .form-row, .form-row-4 { grid-template-columns: 1fr; gap: 12px; }
+}
 
 /* [HARGA SEBARIS] Form Tambah/Edit Program: kolom harga menyesuaikan lebar
            (minimal muat "Rp 000.000.000" sebaris), dan isi input tidak pernah
@@ -2733,7 +2761,9 @@ select:not(.cs-native-select):disabled {
 
 .form-row-harga { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 
-@media (max-width: 560px) { .form-row-harga { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) {
+  .form-row-harga { grid-template-columns: 1fr 1fr; }
+}
 
 .form-group input.input-rupiah { white-space: nowrap; font-variant-numeric: tabular-nums; padding-left: 12px; padding-right: 10px; min-width: 0; }
 
@@ -2786,8 +2816,8 @@ select:not(.cs-native-select):disabled {
 .btn-nota-riwayat:disabled { opacity: .6; cursor: default; }
 
 @media (max-width: 520px) {
-            .form-actions { flex-wrap: wrap; }
-        }
+  .form-actions { flex-wrap: wrap; }
+}
 
 /* ===== TABLE ROW ACTIONS (Bayar + Edit/Hapus, dst) ===== */
 
@@ -3063,32 +3093,32 @@ select:not(.cs-native-select):disabled {
 /* ===== RESPONSIVE ===== */
 
 @media (max-width: 1024px) {
-            .metrics { grid-template-columns: repeat(2, 1fr); }
-        }
+  .metrics { grid-template-columns: repeat(2, 1fr); }
+}
 
 @media (max-width: 768px) {
-            .app { grid-template-columns: 1fr; }
-            .sidebar { display: none; }
-            .sidebar-collapse-btn { display: none; }
-            main { padding: 14px; grid-column: 1; }
-            .topbar { flex-direction: column; align-items: flex-start; }
-            .topbar-left { flex-direction: column; gap: 2px; }
-            .topbar-center { width: 100%; }
-            .topbar-actions { width: 100%; }
-            .search-box { width: 100%; max-width: none; }
-            .metrics { grid-template-columns: 1fr 1fr; gap: 10px; }
-            .tabs-bar { padding: 8px 12px 0; gap: 2px; }
-            .tab-btn { padding: 8px 12px; font-size: var(--fs-sm); }
-            .tab-btn span { display: none; }
-            .hamburger-toggle { display: block; }
-            .modal-content { margin: 10px; max-height: 95vh; }
-        }
+  .app { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .sidebar-collapse-btn { display: none; }
+  main { padding: 14px; grid-column: 1; }
+  .topbar { flex-direction: column; align-items: flex-start; }
+  .topbar-left { flex-direction: column; gap: 2px; }
+  .topbar-center { width: 100%; }
+  .topbar-actions { width: 100%; }
+  .search-box { width: 100%; max-width: none; }
+  .metrics { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tabs-bar { padding: 8px 12px 0; gap: 2px; }
+  .tab-btn { padding: 8px 12px; font-size: var(--fs-sm); }
+  .tab-btn span { display: none; }
+  .hamburger-toggle { display: block; }
+  .modal-content { margin: 10px; max-height: 95vh; }
+}
 
 @media (max-width: 480px) {
-            .metrics { grid-template-columns: 1fr 1fr; gap: 8px; }
-            .tab-btn { padding: 6px 10px; font-size: var(--fs-xs); }
-            .tab-btn i { font-size: var(--fs-md); }
-        }
+  .metrics { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tab-btn { padding: 6px 10px; font-size: var(--fs-xs); }
+  .tab-btn i { font-size: var(--fs-md); }
+}
 
 /* ===== SKELETON ===== */
 
@@ -3355,16 +3385,16 @@ select:not(.cs-native-select):disabled {
 .tg-notif-log p.err { color: var(--danger); margin: 2px 0; }
 
 @media (max-width: 760px) {
-            .tg-settings-grid { grid-template-columns: 1fr; }
-            .cx-compare-row { grid-template-columns: 1fr; }
-            .cx-compare-head { display: none; }
-            .cx-compare-col-poster { border-left: none; padding-left: 0; margin-top: 6px; }
-            .cx-compare-status { justify-content: flex-start; margin-top: 6px; }
-            .cx-mobile-tag { display: flex; align-items: center; gap: 4px; font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; color: var(--ink-soft); letter-spacing: .3px; margin-bottom: 3px; }
-            .cx-layout { grid-template-columns: 1fr; }
-            .cx-sidebar { position: static; }
-            .cx-program-selector { max-height: 280px; }
-        }
+  .tg-settings-grid { grid-template-columns: 1fr; }
+  .cx-compare-row { grid-template-columns: 1fr; }
+  .cx-compare-head { display: none; }
+  .cx-compare-col-poster { border-left: none; padding-left: 0; margin-top: 6px; }
+  .cx-compare-status { justify-content: flex-start; margin-top: 6px; }
+  .cx-mobile-tag { display: flex; align-items: center; gap: 4px; font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; color: var(--ink-soft); letter-spacing: .3px; margin-bottom: 3px; }
+  .cx-layout { grid-template-columns: 1fr; }
+  .cx-sidebar { position: static; }
+  .cx-program-selector { max-height: 280px; }
+}
 
 /* ===== INFOGRAFIS GALLERY ===== */
 
@@ -3424,7 +3454,7 @@ select:not(.cs-native-select):disabled {
 }
 
 @media (max-width: 640px) {
-    .infografis-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .infografis-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
 }
 
 /* ===== POSTER HOVER POPUP ===== */
@@ -4041,16 +4071,16 @@ select:not(.cs-native-select):disabled {
 .rm-empty i { font-size: 28px; display: block; margin-bottom: 10px; opacity: .6; }
 
 @media (max-width: 640px) {
-            .rm-toolbar { top: -16px; margin: -16px -16px 14px; padding: 12px 16px 12px; }
-            .rm-toolbar-row { flex-direction: column; align-items: stretch; }
-            .rm-search { max-width: none; }
-            .rm-toolbar-actions button { flex: 1 1 auto; }
-            .rm-section-head { top: 128px; }
-            .rm-stats { gap: 8px; }
-            .rm-stat { flex: 1 1 100%; }
-            .rm-room-grid, .rm-unassigned-grid { grid-template-columns: 1fr; }
-            .rm-occupant-name { white-space: normal; }
-        }
+  .rm-toolbar { top: -16px; margin: -16px -16px 14px; padding: 12px 16px 12px; }
+  .rm-toolbar-row { flex-direction: column; align-items: stretch; }
+  .rm-search { max-width: none; }
+  .rm-toolbar-actions button { flex: 1 1 auto; }
+  .rm-section-head { top: 128px; }
+  .rm-stats { gap: 8px; }
+  .rm-stat { flex: 1 1 100%; }
+  .rm-room-grid, .rm-unassigned-grid { grid-template-columns: 1fr; }
+  .rm-occupant-name { white-space: normal; }
+}
 
 .form-note { font-size: var(--fs-sm); color: var(--ink-soft); margin-top: 4px; }
 
@@ -4069,7 +4099,7 @@ select:not(.cs-native-select):disabled {
    supaya tampilan desktop yang sudah rapat tidak berubah. */
 
 @media (max-width: 768px) {
-    input, select, textarea { font-size: 16px !important; }
+  input, select, textarea { font-size: 16px !important; }
 }
 
 /* ============================================================
@@ -4095,72 +4125,66 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* ---- Jarak aman kiri/kanan (iPad landscape di mode PWA/fullscreen) ---- */
 
 @media (min-width: 601px) {
-    main {
-        padding-left: max(20px, calc(var(--safe-left) + 12px));
-        padding-right: max(20px, calc(var(--safe-right) + 12px));
-    }
+  main {
+          padding-left: max(20px, calc(var(--safe-left) + 12px));
+          padding-right: max(20px, calc(var(--safe-right) + 12px));
+      }
 }
 
 /* ============ 1) PORTRAIT TABLET: 601px - 900px ============ */
 
 @media (min-width: 601px) and (max-width: 900px) {
-    /* Sidebar tetap -> drawer. Aturan 769-900 belum ada di CSS lama
-       (breakpoint lama berhenti di 768), jadi diulang di sini. */
-    .app,
-    .app.sidebar-collapsed { grid-template-columns: 1fr; }
-    .app .sidebar { display: none; }
-    main { grid-column: 1; }
-    .hamburger-toggle { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; font-size: 26px; }
-
-    /* Topbar: judul | pencarian | aksi dalam satu baris (lebar cukup) */
-    .topbar { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 12px 16px; margin-bottom: 16px; }
-    .topbar-left { flex-direction: row; align-items: baseline; flex: 1 1 200px; gap: 10px; }
-    .topbar-center { width: auto; flex: 2 1 280px; }
-    .topbar-actions { width: auto; flex: 0 0 auto; flex-wrap: nowrap; }
-    .search-box { max-width: none; }
-
-    /* Label tab dikembalikan (di ponsel disembunyikan, di tablet muat) */
-    .tabs-bar { padding: 10px 16px 0; gap: 4px; }
-    .tab-btn { padding: 10px 14px; font-size: var(--fs-md); }
-    .tab-btn span { display: inline; }
-    .tab-panels { padding: 16px; }
-
-    /* Metrik: 2 kolom di 601-819, 4 kolom mulai 820 (iPad 10/Air/Pro) */
-    .metrics { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-
-    /* Drawer navigasi lebih lebar & lega untuk jari */
-    .mobile-sidebar-overlay .mobile-sidebar { width: 320px; padding-left: calc(20px + var(--safe-left)); padding-right: 20px; }
-    .mobile-sidebar .close-btn { min-width: 44px; min-height: 44px; font-size: 22px; }
-    .mobile-sidebar nav .nav-item { min-height: 46px; padding: 10px 12px; font-size: var(--fs-lg); gap: 12px; }
-    .mobile-sidebar nav .nav-item i { width: 20px; font-size: 15px; }
-    .mobile-sidebar .nav-label { font-size: var(--fs-xs); margin: 16px 12px 4px; }
-
-    /* Modal: sisakan margin tipis, jangan menempel ke tepi */
-    .modal-overlay { padding: calc(16px + var(--safe-top)) calc(16px + var(--safe-right)) calc(16px + var(--safe-bottom)) calc(16px + var(--safe-left)); }
-    .modal-content { margin: 0; }
+  /* Sidebar tetap -> drawer. Aturan 769-900 belum ada di CSS lama
+         (breakpoint lama berhenti di 768), jadi diulang di sini. */
+  .app,
+      .app.sidebar-collapsed { grid-template-columns: 1fr; }
+  .app .sidebar { display: none; }
+  main { grid-column: 1; }
+  .hamburger-toggle { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; font-size: 26px; }
+  /* Topbar: judul | pencarian | aksi dalam satu baris (lebar cukup) */
+  .topbar { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 12px 16px; margin-bottom: 16px; }
+  .topbar-left { flex-direction: row; align-items: baseline; flex: 1 1 200px; gap: 10px; }
+  .topbar-center { width: auto; flex: 2 1 280px; }
+  .topbar-actions { width: auto; flex: 0 0 auto; flex-wrap: nowrap; }
+  .search-box { max-width: none; }
+  /* Label tab dikembalikan (di ponsel disembunyikan, di tablet muat) */
+  .tabs-bar { padding: 10px 16px 0; gap: 4px; }
+  .tab-btn { padding: 10px 14px; font-size: var(--fs-md); }
+  .tab-btn span { display: inline; }
+  .tab-panels { padding: 16px; }
+  /* Metrik: 2 kolom di 601-819, 4 kolom mulai 820 (iPad 10/Air/Pro) */
+  .metrics { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  /* Drawer navigasi lebih lebar & lega untuk jari */
+  .mobile-sidebar-overlay .mobile-sidebar { width: 320px; padding-left: calc(20px + var(--safe-left)); padding-right: 20px; }
+  .mobile-sidebar .close-btn { min-width: 44px; min-height: 44px; font-size: 22px; }
+  .mobile-sidebar nav .nav-item { min-height: 46px; padding: 10px 12px; font-size: var(--fs-lg); gap: 12px; }
+  .mobile-sidebar nav .nav-item i { width: 20px; font-size: 15px; }
+  .mobile-sidebar .nav-label { font-size: var(--fs-xs); margin: 16px 12px 4px; }
+  /* Modal: sisakan margin tipis, jangan menempel ke tepi */
+  .modal-overlay { padding: calc(16px + var(--safe-top)) calc(16px + var(--safe-right)) calc(16px + var(--safe-bottom)) calc(16px + var(--safe-left)); }
+  .modal-content { margin: 0; }
 }
 
 @media (min-width: 820px) and (max-width: 900px) {
-    .metrics { grid-template-columns: repeat(4, 1fr); gap: 10px; }
-    .metric-card { padding: 12px; gap: 10px; }
+  .metrics { grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .metric-card { padding: 12px; gap: 10px; }
 }
 
 /* Drawer yang tertinggal terbuka saat tablet diputar ke landscape -> tutup */
 
 @media (min-width: 901px) {
-    .mobile-sidebar-overlay { display: none !important; }
+  .mobile-sidebar-overlay { display: none !important; }
 }
 
 /* ============ 2) LANDSCAPE TABLET: 901px - 1194px ============ */
 
 @media (min-width: 901px) and (max-width: 1194px) {
-    /* Metrik 4 kolom (CSS lama jatuh ke 2 kolom di <=1024) */
-    .metrics { grid-template-columns: repeat(4, 1fr); gap: 10px; }
-    .metric-card { padding: 12px; gap: 10px; }
-    .metric-card .m-value { font-size: 17px; }
-
-    .tab-panels { padding: 16px; }
-    .cx-layout { grid-template-columns: 270px minmax(0, 1fr); gap: 14px; }
+  /* Metrik 4 kolom (CSS lama jatuh ke 2 kolom di <=1024) */
+  .metrics { grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .metric-card { padding: 12px; gap: 10px; }
+  .metric-card .m-value { font-size: 17px; }
+  .tab-panels { padding: 16px; }
+  .cx-layout { grid-template-columns: 270px minmax(0, 1fr); gap: 14px; }
 }
 
 /* ============ 3) TABEL: tablet portrait & landscape ============
@@ -4168,14 +4192,14 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
    digeser di tablet. Dirapatkan supaya hampir muat tanpa geser. */
 
 @media (min-width: 601px) and (max-width: 1194px) {
-    .table-container { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
-    .table-container table { min-width: 860px; }
-    .table-container th,
-    .table-container td { padding: 12px 12px; }
-    .table-container th:first-child,
-    .table-container td:first-child { width: 230px; max-width: 230px; }
-    .table-container th:last-child,
-    .table-container td:last-child { padding-right: 16px; min-width: 104px; }
+  .table-container { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+  .table-container table { min-width: 860px; }
+  .table-container th,
+      .table-container td { padding: 12px 12px; }
+  .table-container th:first-child,
+      .table-container td:first-child { width: 230px; max-width: 230px; }
+  .table-container th:last-child,
+      .table-container td:last-child { padding-right: 16px; min-width: 104px; }
 }
 
 /* ============ 4) MODAL: tinggi pakai dvh (iPad Safari) ============ */
@@ -4183,8 +4207,8 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 @media (min-width: 601px) and (max-width: 1194px) {
   .modal-content { max-height: 90vh; }
   @supports (height: 100dvh) {
-          .modal-content { max-height: 92dvh; }
-      }
+    .modal-content { max-height: 92dvh; }
+  }
   .modal-body { padding: 20px; }
 }
 
@@ -4306,7 +4330,9 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 .form-actions .btn-hotel-import-confirm:disabled { opacity: .5; cursor: not-allowed; }
 
-@media (max-width: 480px) { .hotel-import-stats { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) {
+  .hotel-import-stats { grid-template-columns: repeat(2, 1fr); }
+}
 
 /* ============================================================
    Tooltip kustom (pengganti hint bawaan browser / atribut title)
@@ -4344,7 +4370,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .amiru-tip[data-pos="right"]::after { left: -3px; top: calc(var(--arrow-y, 50%) - 4px); }
 
 @media (prefers-reduced-motion: reduce) {
-    .amiru-tip, .amiru-tip.show, .amiru-tip.glide { transition: none; transform: none; }
+  .amiru-tip, .amiru-tip.show, .amiru-tip.glide { transition: none; transform: none; }
 }
 
 /* ============================================================
@@ -4375,7 +4401,9 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 .app-footer { box-sizing: border-box; }
 
-@media print { .app-footer { display: none; } }
+@media print {
+  .app-footer { display: none; }
+}
 
 /* Padding bawah <main> harus 0 di semua ukuran layar (override media query
    di atas yang memakai padding: 14px) supaya footer benar-benar menempel di dasar. */
@@ -4407,8 +4435,8 @@ button.btn-homepage { cursor: pointer; }
    hanya ikon di layar sempit supaya topbar tidak melebar. */
 
 @media (max-width: 480px) {
-    .btn-share-katalog span { display: none; }
-    .btn-share-katalog { padding: 7px 11px; }
+  .btn-share-katalog span { display: none; }
+  .btn-share-katalog { padding: 7px 11px; }
 }
 
 /* Ponsel (<=600px): topbar bersusun kolom, jadi flex-basis (220/320/220px dari
@@ -4416,8 +4444,8 @@ button.btn-homepage { cursor: pointer; }
    ke ukuran sesuai isi agar tombol Homepage & hamburger tidak terdorong ke bawah. */
 
 @media (max-width: 600px) {
-    .topbar-left, .topbar-center, .topbar-actions { flex: 0 0 auto; }
-    .topbar-actions { justify-content: flex-end; }
+  .topbar-left, .topbar-center, .topbar-actions { flex: 0 0 auto; }
+  .topbar-actions { justify-content: flex-end; }
 }
 
 /* ============================================================
@@ -4441,7 +4469,7 @@ button.btn-homepage { cursor: pointer; }
 /* -- (1) Sticky fix: scroll-container palsu dimatikan ------------------- */
 
 @supports (overflow: clip) {
-    main:has(#adminFormContainer) { overflow-x: clip; }
+  main:has(#adminFormContainer) { overflow-x: clip; }
 }
 
 /* -- (6) Toolbar kosong (tidak ada tombol batch caption) tidak perlu makan ruang -- */
@@ -4702,16 +4730,16 @@ button.btn-homepage { cursor: pointer; }
 #adminFormContainer #af-info .form-row:nth-child(2) .form-group:first-child { grid-column: span 8; }
 
 @media (max-width: 900px) {
-    #adminFormContainer #af-info { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    #adminFormContainer #af-info .form-group,
-    #adminFormContainer #af-info .form-row:nth-child(2) .form-group:first-child { grid-column: span 1; }
-    #adminFormContainer #af-info .form-row:nth-child(2) .form-group:first-child { grid-column: 1 / -1; }
+  #adminFormContainer #af-info { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #adminFormContainer #af-info .form-group,
+      #adminFormContainer #af-info .form-row:nth-child(2) .form-group:first-child { grid-column: span 1; }
+  #adminFormContainer #af-info .form-row:nth-child(2) .form-group:first-child { grid-column: 1 / -1; }
 }
 
 @media (max-width: 560px) {
-    #adminFormContainer #af-info { grid-template-columns: 1fr; }
-    #adminFormContainer #af-info .form-group,
-    #adminFormContainer #af-info .form-row:nth-child(2) .form-group:first-child { grid-column: 1 / -1; }
+  #adminFormContainer #af-info { grid-template-columns: 1fr; }
+  #adminFormContainer #af-info .form-group,
+      #adminFormContainer #af-info .form-row:nth-child(2) .form-group:first-child { grid-column: 1 / -1; }
 }
 
 /* -- Harga per kamar ---------------------------------------------------- */
@@ -4791,18 +4819,18 @@ button.btn-homepage { cursor: pointer; }
 /* -- Layar sempit / sentuh ---------------------------------------------- */
 
 @media (max-width: 720px), (hover: none) {
-    #adminFormContainer .admin-form-footer::before { display: none; }
+  #adminFormContainer .admin-form-footer::before { display: none; }
 }
 
 @media (max-width: 560px) {
-    #adminFormContainer .admin-form-head,
-    #adminFormContainer .cx-autofill-note { padding-left: 14px; padding-right: 14px; }
-    #adminFormContainer .admin-form-anchor-nav { padding-left: 14px; padding-right: 14px; }
-    #adminFormContainer .admin-form-body { padding: 12px 12px 16px; gap: 12px; }
-    #adminFormContainer .admin-fieldset { padding: 14px 14px 2px; }
-    #adminFormContainer #af-konten { padding-bottom: 14px; }
-    #adminFormContainer .admin-form-footer { padding-left: 14px; padding-right: 14px; }
-    #adminFormContainer .admin-form-footer button { flex: 1; }
+  #adminFormContainer .admin-form-head,
+      #adminFormContainer .cx-autofill-note { padding-left: 14px; padding-right: 14px; }
+  #adminFormContainer .admin-form-anchor-nav { padding-left: 14px; padding-right: 14px; }
+  #adminFormContainer .admin-form-body { padding: 12px 12px 16px; gap: 12px; }
+  #adminFormContainer .admin-fieldset { padding: 14px 14px 2px; }
+  #adminFormContainer #af-konten { padding-bottom: 14px; }
+  #adminFormContainer .admin-form-footer { padding-left: 14px; padding-right: 14px; }
+  #adminFormContainer .admin-form-footer button { flex: 1; }
 }
 
 /* -- [REDESIGN] Konten Tambahan: Termasuk | Tidak Termasuk berdampingan,
@@ -4837,7 +4865,7 @@ button.btn-homepage { cursor: pointer; }
 #adminFormContainer #admin_catatan_cx { min-height: 64px; }
 
 @media (max-width: 720px) {
-    #adminFormContainer #af-konten { grid-template-columns: 1fr; }
+  #adminFormContainer #af-konten { grid-template-columns: 1fr; }
 }
 
 /* -- [CROSSCHECK] Daftar Fasilitas Termasuk / Tidak Termasuk di panel bandingan:
@@ -4891,8 +4919,8 @@ button.btn-homepage { cursor: pointer; }
 /* Layar sedang: tombol share/katalog jadi ikon saja supaya 5 tombol tetap 1 baris */
 
 @media (max-width: 860px) {
-    .topbar-actions .btn-share-katalog span { display: none; }
-    .topbar-actions .btn-share-katalog { padding: 7px 11px; }
+  .topbar-actions .btn-share-katalog span { display: none; }
+  .topbar-actions .btn-share-katalog { padding: 7px 11px; }
 }
 
 /* Tombol Share Katalog: ikon saja di semua ukuran layar (label tetap ada di title/aria-label) */

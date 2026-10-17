@@ -57,19 +57,20 @@ css/ig-scheduler.css ← MODUL IG Scheduler (semua `.ig-*`, `#ig*`, variabel `--
                         Pemecahan CSS dilakukan bertahap per modul (berikutnya: crosscheck, rekap/infografis, dst.);
                         modul baru WAJIB ditambah `<link>` di index.html (setelah style.css) dan di daftar
                         APP_SHELL `service-worker.js`, lalu naikkan `CACHE_NAME`.
-css/user-akses.css   ← MODUL User & Akses Menu (semua `.us-*`, `.rma-*`, `.an-*`). Di-load setelah ig-scheduler.css.
-                        `.us-*` juga dipakai di luar halaman user (mis. `.us-stat` di Audit Nota), jadi file ini
+css/user-akses.css   ← MODUL User & Akses Menu (semua `.us-*`, `.rma-*`). Di-load setelah ig-scheduler.css.
+                        `.us-*` juga dipakai di luar halaman user (mis. `.us-stat` di Audit Nota, gayanya `.an-*` di keuangan.css), jadi file ini
                         tidak boleh dilepas. `.ms-*` (komponen modal bersama) dan `.cs-*` (custom select) SENGAJA
                         tetap di style.css karena bukan bagian user/akses.
 css/keuangan.css     ← MODUL Keuangan (`.pb-*` halaman Pembayaran, `.cicilan-*` modal Kelola Cicilan, `.nota-*`
-                        preview/lightbox nota, `.kuitansi-*`). Di-load setelah user-akses.css. PENGECUALIAN:
+                        preview/lightbox nota, `.kuitansi-*`, `.an-*` Audit Nota). Di-load setelah user-akses.css (WAJIB: `.an-*`
+                        dibangun di atas komponen `.us-*`, jadi urutan link: user-akses -> keuangan). PENGECUALIAN:
                         `.cx-stats-bar` ikut di file ini tapi DIPAKAI BERSAMA Crosscheck (`#cxStatsBar`) dan
                         Pembayaran (`#pbStatsBar`); chip-nya (`.cx-stat-chip*`) tetap milik Crosscheck. Jangan
                         hapus aturan itu saat memecah modul Crosscheck.
 js/app.js            ← SATU-SATUNYA file JS, berisi SEMUA logic + koneksi Supabase
 manifest.json         ← config PWA (name, theme_color, icons)
 service-worker.js     ← precache list, HARUS disinkronkan manual kalau nama file berubah.
-                        `CACHE_NAME` (saat ini `amiru-repo-cache-v128`) dinaikkan tiap rilis
+                        `CACHE_NAME` (saat ini `amiru-repo-cache-v129`) dinaikkan tiap rilis
 icons/                ← 9 file ikon PWA sesuai daftar di manifest.json
 sql/                  ← skema & migrasi bernomor 00-56. `00_SETUP_LENGKAP_SATU_FILE.sql` = gabungan
                         semuanya (idempoten, bebas urutan) untuk project baru. Untuk project yang SUDAH

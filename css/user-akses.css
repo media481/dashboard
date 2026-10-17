@@ -2,10 +2,10 @@
    USER & AKSES MENU  (modul CSS terpisah dari style.css)
    Prefix: .us-*  (Pengaturan User, kartu/tabel/switch/stat bersama halaman admin)
            .rma-* (checkbox matriks akses menu per role)
-           .an-*  (Audit Nota -- memakai komponen .us-* sebagai dasar)
    Di-load SETELAH style.css. Gaya baru untuk user/akses -> taruh di sini.
-   Catatan: komponen .us-* juga dipakai halaman lain (mis. .us-stat di Audit Nota),
-   jadi file ini wajib tetap ter-load di index.html & APP_SHELL service worker.
+   Catatan: komponen .us-* juga dipakai halaman lain (mis. .us-stat di Audit Nota,
+   yang gayanya ada di keuangan.css), jadi file ini wajib tetap ter-load di
+   index.html & APP_SHELL service worker.
    ============================================================ */
 
 /* ============================================================
@@ -249,69 +249,4 @@
 .us-pass .btn-cancel:hover,
 .us-savebar .btn-cancel:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-tint); }
 
-/* ============================================================
-   Audit Nota -- tampilan baru (memakai komponen .us- dari Manajemen User)
-   ============================================================ */
-
-.an-j-pay { --rc: #279E70; --rt: #E1F5EC; }
-
-.an-j-hist { --rc: #1a355b; --rt: #dbe4ee; }
-
-.an-j-kwt { --rc: #B8581A; --rt: #FBEBD9; }
-
-.an-lock { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--r-pill); background: var(--success-tint); color: var(--success); font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; cursor: help; }
-
 .us-badge-sm { padding: 2px 8px; font-size: var(--fs-xs); text-transform: capitalize; }
-
-.an-table th { padding: 10px 16px; }
-
-.an-table td { padding: 11px 16px; vertical-align: middle; }
-
-.an-table tbody tr.an-day:hover { background: transparent; }
-
-.an-table tr.an-day td { padding: 9px 16px; background: var(--bg); border-top: 1px solid var(--line); font-size: var(--fs-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); }
-
-.an-time { white-space: nowrap; }
-
-.an-time b { display: block; font-size: var(--fs-md); font-weight: 600; color: var(--ink); }
-
-.an-time span { display: block; font-size: var(--fs-xs); color: var(--ink-soft); }
-
-.an-nota { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
-
-.an-nota code { font-family: 'IBM Plex Mono', monospace; font-size: var(--fs-sm); color: var(--ink); white-space: nowrap; }
-
-.an-jenis { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: var(--r-pill); background: var(--rt); color: var(--rc); font-size: var(--fs-xs); font-weight: 700; }
-
-.an-jenis i { font-size: var(--fs-xs); }
-
-.an-amount { text-align: right; white-space: nowrap; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
-
-.an-none { color: var(--ink-soft); font-weight: 400; }
-
-.an-code { display: inline-flex; align-items: center; gap: 7px; padding: 4px 9px; border: 1px dashed var(--line); border-radius: var(--r-md); background: var(--bg); color: var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: var(--fs-sm); letter-spacing: .02em; cursor: pointer; transition: all .15s; }
-
-.an-code i { font-size: var(--fs-xs); color: var(--ink-soft); }
-
-.an-code:hover { border-color: var(--brand); border-style: solid; background: var(--brand-tint); color: var(--brand); }
-
-.an-code:hover i { color: var(--brand); }
-
-.an-code:disabled { cursor: default; opacity: .6; }
-
-.an-more { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); font: inherit; font-size: var(--fs-md); font-weight: 600; cursor: pointer; transition: all .15s; }
-
-.an-more:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-tint); }
-
-@media (max-width: 760px) {
-  .an-table thead { display: none; }
-  .an-table, .an-table tbody, .an-table tr, .an-table td { display: block; width: 100%; }
-  .an-table tbody tr:not(.an-day) { position: relative; padding: 12px 14px; border-top: 1px solid var(--line); }
-  .an-table tr.an-day td { padding: 8px 14px; }
-  .an-table td { padding: 3px 0; border: 0; text-align: left; }
-  .an-table .an-time { display: flex; gap: 8px; align-items: baseline; }
-  .an-table .an-time b, .an-table .an-time span { display: inline; }
-  .an-table .an-amount { text-align: left; font-size: 15px; }
-  .an-table td[data-label="Dicetak oleh"]::before { content: "Dicetak oleh"; display: block; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); }
-  .an-table .us-actions { position: absolute; top: 10px; right: 10px; width: auto; }
-}
