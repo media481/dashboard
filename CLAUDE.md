@@ -214,12 +214,16 @@ satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
   tanpa query tambahan. Badge Kepulangan sengaja HANYA menghitung status
   `sudah_berangkat` (bukan `belum_berangkat`) karena itu yang paling butuh
   perhatian admin.
-- `SIDEBAR_MENU_REGISTRY` (dipakai panel Pengaturan User > Akses Menu
-  Sidebar) HARUS disinkronkan manual tiap kali menambah tab sidebar baru —
-  lupa menambahkannya berarti role `user`/`guest` tidak akan pernah bisa
-  diberi akses ke tab itu meski nav-item-nya sudah ada di index.html (bug ini
-  sempat terjadi untuk `kepulangan`, sudah diperbaiki, jangan diulang kalau
-  nambah tab lagi).
+- Menu sidebar desktop & drawer mobile dirender dari SATU daftar: `NAV_MENU` di `js/app.js` (section 5b).
+  Menambah menu = tambah satu baris di `NAV_MENU` (isi `reg: { group }` kalau menu itu harus bisa diatur
+  lewat Pengaturan User > Akses Menu). `SIDEBAR_MENU_REGISTRY` kini DITURUNKAN otomatis dari `NAV_MENU`,
+  tidak perlu disinkronkan manual lagi. Jangan menulis tombol menu di `index.html` (hanya `<nav id="sidebarNav">`
+  dan `<nav id="mobileSidebarNav">` kosong). Visibilitas memakai kelas `.is-hidden` (bukan `style.display`);
+  label grup bisa dilipat (state di localStorage `amiru_nav_folded`).
+- `index.html`: aksi klik sederhana memakai `data-action="namaFungsi"` + `data-args='["arg"]'` (listener
+  delegasi di `app.js`); `onclick` inline hanya untuk yang butuh `this`/`event`. Modal sudah punya
+  `role="dialog"`/`aria-modal`; perangkap fokus & Esc dikelola `initModalA11y()` di `app.js`.
+- Fungsi simpan dibungkus `withBusy()` (akhir `app.js`) -> `aria-busy` + spinner + anti klik ganda.
 
 ## Badge "Program Baru" di tabel Program Umroh (dashboard utama)
 

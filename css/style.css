@@ -4105,15 +4105,6 @@ button[aria-busy="true"]:not(:has(.bi-spin))::after {
    didesain 28-32px di layar desktop supaya rapat & rapi. Di HP, target sebesar
    itu gampang salah pencet -- jadi diperbesar jadi ~40px HANYA di layar ponsel,
    ukuran visual ikonnya tetap sama (cuma area klik yang nambah lewat padding). */
-@media (max-width: 768px) {
-    .admin-form-close,
-    .snap-card-restore,
-    .tg-remove-btn,
-    .ig-cal-nav {
-        width: 40px !important;
-        height: 40px !important;
-    }
-}
 
 
 /* ============================================================
@@ -5437,7 +5428,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* =====================================================================
    Modal About Planner (#igAboutPlannerModal): dokumen konsep yang dirender dari markdown ringan
    ===================================================================== */
-.ig-about-body { padding: 4px 24px 20px !important; font-size: var(--fs-md); line-height: 1.65; color: var(--ink); }
+.ig-plan-modal .ig-about-body { padding: 4px 24px 20px; font-size: var(--fs-md); line-height: 1.65; color: var(--ink); }
 .ig-about-body h2 { font-family: 'Space Grotesk', 'Inter', sans-serif; font-size: 16px; font-weight: 700; margin: 22px 0 8px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--ink); }
 .ig-about-body h2:first-child { border-top: 0; padding-top: 10px; margin-top: 8px; }
 .ig-about-body h3 { font-size: var(--fs-md); font-weight: 700; margin: 14px 0 6px; }
@@ -5454,7 +5445,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .ig-about-footer { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 20px; border-top: 1px solid var(--line); background: var(--bg); }
 .ig-about-hint { font-size: var(--fs-sm); color: var(--ink-soft); min-width: 0; }
 @media (max-width: 560px) {
-    .ig-about-body { padding: 4px 16px 16px !important; }
+    .ig-plan-modal .ig-about-body { padding: 4px 16px 16px; }
     .ig-about-footer { padding: 10px 16px; }
     .ig-about-footer .btn-primary { order: -1; flex: 1 1 100%; justify-content: center; }
     .ig-about-footer .btn-secondary { flex: 1 1 auto; justify-content: center; }
@@ -5519,7 +5510,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .ig-rk-controls label { color: var(--ink-soft); font-weight: 600; }
 .ig-rk-controls input[type="month"] { padding: 5px 8px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--bg); color: var(--ink); font: inherit; }
 .ig-rk-legend { margin-left: auto; font-size: var(--fs-xs); color: var(--ink-soft); }
-.ig-rk-body { padding-top: 12px !important; }
+.ig-plan-modal .ig-rk-body { padding-top: 12px; }
 .ig-rk-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin: 0 0 14px; }
 .ig-rk-stat { border: 1px solid var(--line); border-radius: var(--r-md); padding: 8px 10px; background: var(--bg); }
 .ig-rk-stat strong { display: block; font-size: 18px; line-height: 1.2; font-family: 'Space Grotesk', 'Inter', sans-serif; }
@@ -5548,8 +5539,8 @@ details.ig-rk-minggu > summary.ig-rk-row::-webkit-details-marker { display: none
 .ig-rk-b-disusun { background: var(--brand-tint); color: var(--brand); border-color: transparent; }
 .ig-rk-b-tanpa-tema { color: var(--warn); }
 .ig-rk-b-kosong { color: var(--danger); border-color: var(--danger); background: transparent; }
-.ig-rk-items { margin: 0 !important; padding: 0 8px 8px 130px !important; list-style: none; }
-.ig-rk-items li { display: grid; grid-template-columns: 78px 1fr auto; gap: 8px; padding: 4px 0 4px 8px; border-left: 3px solid var(--c, var(--line)); margin: 0 0 3px !important; font-size: var(--fs-sm); }
+.ig-about-body .ig-rk-items { margin: 0; padding: 0 8px 8px 130px; list-style: none; }
+.ig-about-body .ig-rk-items li { display: grid; grid-template-columns: 78px 1fr auto; gap: 8px; padding: 4px 0 4px 8px; border-left: 3px solid var(--c, var(--line)); margin: 0 0 3px; font-size: var(--fs-sm); }
 .ig-rk-items em { font-style: normal; font-size: var(--fs-xs); color: var(--ink-soft); }
 .ig-rk-items small, .ig-rk-hari { font-size: var(--fs-sm); color: var(--ink-soft); }
 .ig-rk-lihat { padding: 2px 14px 10px; text-align: right; }
@@ -5558,9 +5549,9 @@ details.ig-rk-minggu > summary.ig-rk-row::-webkit-details-marker { display: none
     .ig-rk-legend { margin-left: 0; flex-basis: 100%; }
     .ig-rk-row { grid-template-columns: 1fr auto; }
     .ig-rk-tgl { grid-column: 1 / -1; }
-    .ig-rk-items { padding-left: 14px !important; }
-    .ig-rk-items li { grid-template-columns: 70px 1fr; }
-    .ig-rk-items li small { grid-column: 2; }
+    .ig-about-body .ig-rk-items { padding-left: 14px; }
+    .ig-about-body .ig-rk-items li { grid-template-columns: 70px 1fr; }
+    .ig-about-body .ig-rk-items li small { grid-column: 2; }
 }
 
 /* Kartu Tasklist (di baris ringkasan) + modal Tasklist Mingguan */
@@ -5653,7 +5644,7 @@ details.ig-rk-minggu > summary.ig-rk-row::-webkit-details-marker { display: none
 #igPlanSide::-webkit-scrollbar, #igPlanSideBody::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
 /* ---- Modal Tasklist Mingguan v3: tab hari + satu panel (js/app.js igTaskRender) ---- */
-#igTaskModal .ig-tm-body { padding: 6px 24px 24px !important; display: flex; flex-direction: column; gap: 16px; }
+#igTaskModal .ig-tm-body { padding: 6px 24px 24px; display: flex; flex-direction: column; gap: 16px; }
 .ig-tm-tabs { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
 .ig-tm-tab { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px 7px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; position: relative; transition: background .15s, border-color .15s; }
 .ig-tm-tab:hover { border-color: var(--brand); }
@@ -5705,7 +5696,7 @@ details.ig-rk-minggu > summary.ig-rk-row::-webkit-details-marker { display: none
 .ig-tm-add button { flex: none; padding: 0 18px; border: 0; border-radius: var(--r-lg); background: var(--tm); color: var(--surface); font: inherit; font-size: var(--fs-md); font-weight: 700; cursor: pointer; }
 
 @media (max-width: 480px) {
-    #igTaskModal .ig-tm-body { padding: 6px 14px 18px !important; }
+    #igTaskModal .ig-tm-body { padding: 6px 14px 18px; }
     .ig-tm-tabs { gap: 4px; }
     .ig-tm-tab-n { font-size: var(--fs-xs); }
     .ig-tm-panel { padding: 16px 14px 14px; }
@@ -6298,7 +6289,7 @@ button.btn-homepage { cursor: pointer; }
 .us-matrix td { padding: 9px 16px; border-top: 1px solid var(--line); }
 .us-matrix tbody tr:hover { background: transparent; }
 .us-matrix tbody tr:not(.us-mx-group):hover { background: var(--bg); }
-.us-mx-cell { text-align: center !important; width: 1%; white-space: nowrap; }
+.us-matrix .us-mx-cell { text-align: center; width: 1%; white-space: nowrap; }
 .us-mx-label { font-size: var(--fs-md); color: var(--ink); }
 .us-mx-sub { font-size: var(--fs-xs); color: var(--ink-soft); margin-top: 1px; }
 .us-matrix tr.us-mx-group td { background: var(--bg); padding: 8px 16px; font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); }
@@ -6470,3 +6461,68 @@ mark.srch-hit { background: #FFE9A8; color: inherit; border-radius: var(--r-sm);
 .srch-via { margin-top: 3px; font-size: var(--fs-sm); font-weight: 500; color: var(--ink-soft); }
 .srch-via i { font-size: var(--fs-xs); }
 .table-container tbody tr.srch-note-row td { background: var(--warn-tint); color: #8A4B14; font-size: var(--fs-sm); padding: 8px 16px; text-align: left; }
+
+/* ===== Utilitas visibilitas & lipat grup menu sidebar ===== */
+.is-hidden { display: none !important; } /* utilitas: harus menang atas display tiap komponen */
+.nav-item.is-folded { display: none; }
+.sidebar.collapsed .nav-item.is-folded { display: flex; } /* mode ikon: jangan sembunyikan menu */
+.nav-label[data-fold] { cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; }
+.nav-label[data-fold]::after {
+    content: ''; width: 6px; height: 6px; margin-right: 4px; flex: none;
+    border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg); transition: transform .15s ease;
+}
+.nav-label[data-fold].is-folded::after { transform: rotate(-45deg); }
+.nav-label[data-fold]:hover { color: #8396AD; }
+.nav-label[data-fold]:focus-visible { outline: 2px solid #D4AF37; outline-offset: 2px; border-radius: var(--r-sm); }
+.sidebar.collapsed .nav-label[data-fold]::after { display: none; }
+
+/* ===== Kelas utilitas (pengganti style="" inline di index.html) ===== */
+.btn-compact { font-size: var(--fs-sm); padding: 6px 14px; }
+.text-danger { color: var(--danger); }
+.text-right, th.text-right, td.text-right { text-align: right; }
+.flex-1 { flex: 1; }
+.fw-600 { font-weight: 600; }
+.form-actions-flat { border-top: none; padding-top: 0; }
+.text-soft-medium { font-weight: 500; color: var(--ink-soft); }
+.field-hint { display: block; margin-top: 4px; font-size: var(--fs-xs); color: var(--ink-soft); }
+.note-soft { margin-bottom: 12px; color: var(--ink-soft); }
+.modal-content.modal-w-420 { max-width: 420px; }
+.modal-content.modal-w-450 { max-width: 450px; }
+.modal-content.modal-w-460 { max-width: 460px; }
+.modal-content.modal-w-480 { max-width: 480px; }
+.modal-content.modal-w-560 { max-width: 560px; }
+.modal-content.modal-w-680 { max-width: 680px; }
+.modal-content.modal-w-900 { max-width: 900px; }
+.modal-content.modal-w-1100 { max-width: 1100px; }
+.modal-content.modal-w-1150 { max-width: 1150px; }
+
+/* ===== Target sentuh minimal di HP / layar sentuh =====
+   Kontrol kecil (26-32px) dinaikkan ke >= 40px (ikon-saja & penutup modal 44px).
+   Ditaruh di akhir file supaya menang urutan tanpa !important. */
+@media (pointer: coarse), (max-width: 720px) {
+    .modal-close, .hamburger-toggle, .admin-back-btn, .sidebar-collapse-btn,
+    #adminFormContainer .admin-form-close {
+        min-width: 44px; min-height: 44px;
+    }
+    .btn-icon-ghost, .row-icon-btn, .cicilan-delete-btn, .cicilan-nota-btn, .snap-card-restore,
+    .tg-remove-btn, .ig-cal-nav, .ig-dm-nav, .ig-dm-iconbtn, .btn-nota-expand,
+    .pf-pagination button, .search-box .search-clear {
+        min-width: 40px; min-height: 40px;
+    }
+    .search-box .search-clear { margin: -8px; }
+    .btn-cancel, .btn-submit, .btn-danger, .btn-primary, .btn-secondary, .btn-compact,
+    .btn-download-jpeg, .btn-download-pdf, .btn-isi-sisa, .btn-nota-riwayat, .btn-ai-caption,
+    .btn-footer-action, .btn-logout, .btn-batch-caption, .btn-homepage, .btn-sm,
+    .ig-cal-today-btn, .ig-dm-today, .ig-dm-linkbtn, .ig-dm-done, .pd-copy-btn,
+    .cs-select-trigger, .asset-card-actions button, .pf-actions button, .pf-actions a,
+    #adminFormContainer .admin-broadcast-box .bc-actions button, #adminFormContainer .btn-ai-caption {
+        min-height: 40px;
+    }
+    .ig-cal-filter button, .ig-dm-seg button, .ig-dm .ig-dm-seg button, .tab-btn { min-height: 40px; }
+    .pd-poster-open { display: inline-flex; align-items: center; min-height: 40px; }
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="hidden"]),
+    select:not(.cs-native-select), textarea {
+        min-height: 40px;
+    }
+}

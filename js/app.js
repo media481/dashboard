@@ -1383,6 +1383,240 @@ function closeIgSchedulerPage() {
     saveLastView({ view: 'dashboard', tab: previousActiveTabForIg || 'umroh' });
 }
 
+// ============================================================
+// 5b. DAFTAR MENU SIDEBAR (SATU SUMBER) — dirender ke sidebar desktop DAN
+// drawer mobile. Menambah menu cukup menambah satu baris di NAV_MENU:
+//   tab    = id tab dashboard (data-tab)       | subtab = panel admin (data-subtab)
+//   reg    = { group, label? } -> ikut tampil di Pengaturan User > Akses Menu
+//            (SIDEBAR_MENU_REGISTRY diturunkan otomatis dari sini)
+//   badge  = nama badge angka (id badge<Nama>Desktop / Mobile)
+// gate: 'always' (semua), 'login' (nav-loggedin-only), 'admin' (nav-admin-only)
+// ============================================================
+const NAV_MENU = [
+    { label: 'Navigasi', gate: 'login', foldable: false, items: [
+        { tab: 'umroh', icon: 'bi-list-ul', text: 'Program Umroh', gate: 'always', active: true },
+        { tab: 'unggulan', icon: 'bi-star-fill', text: 'Unggulan' },
+        { tab: 'info', icon: 'bi-calendar-check-fill', text: 'Jadwal Tamu', reg: { group: 'Navigasi' } }
+    ]},
+    { label: 'Siklus Jamaah', gate: 'login', group: true, items: [
+        { tab: 'todocs', icon: 'bi-list-check', text: 'Reminder', reg: { group: 'Navigasi' } },
+        { tab: 'pendaftaran', icon: 'bi-clipboard-check-fill', text: 'Pendaftaran', reg: { group: 'Navigasi' } },
+        { tab: 'keberangkatan', icon: 'bi-airplane-engines-fill', text: 'Data Jamaah', reg: { group: 'Navigasi' } },
+        { tab: 'dokumen', icon: 'bi-file-earmark-check-fill', text: 'Dokumen', badge: 'Dokumen', reg: { group: 'Navigasi' } },
+        { tab: 'kepulangan', icon: 'bi-house-door-fill', text: 'Status Kepulangan', badge: 'Kepulangan', reg: { group: 'Navigasi' } }
+    ]},
+    { label: 'Social Media', gate: 'login', group: true, items: [
+        { tab: 'igScheduler', icon: 'bi-instagram', text: 'IG Scheduler', reg: { group: 'Social Media' } },
+        { tab: 'infografis', icon: 'bi-images', text: 'Infografis', reg: { group: 'Social Media' } }
+    ]},
+    { label: 'Arsip', gate: 'login', group: true, items: [
+        { tab: 'arsip', icon: 'bi-archive-fill', text: 'Arsip Jamaah', reg: { group: 'Navigasi' } }
+    ]},
+    { label: 'Manajemen', gate: 'admin', items: [
+        { subtab: 'program', icon: 'bi-moon-stars-fill', text: 'Edit Program', reg: { group: 'Manajemen' } },
+        { subtab: 'pembayaran', icon: 'bi-cash-stack', text: 'Pembayaran', reg: { group: 'Manajemen' } },
+        { subtab: 'unggulan', icon: 'bi-star-fill', text: 'Unggulan', reg: { group: 'Manajemen', label: 'Unggulan (Admin)' } },
+        { subtab: 'auditnota', icon: 'bi-file-earmark-lock2-fill', text: 'Audit Nota', reg: { group: 'Manajemen' } },
+        { subtab: 'assets', icon: 'bi-bookmark-star-fill', text: 'Assets', reg: { group: 'Manajemen' } }
+    ]},
+    { label: 'System', gate: 'admin', items: [
+        { subtab: 'systemstatus', icon: 'bi-activity', text: 'System' },
+        { subtab: 'crosscheck', icon: 'bi-graph-up-arrow', text: 'Crosscheck', reg: { group: 'System' } },
+        { subtab: 'telegram', icon: 'bi-telegram', text: 'Telegram', reg: { group: 'System' } },
+        { subtab: 'usersettings', icon: 'bi-person-gear', text: 'Pengaturan User', reg: { group: 'System' } },
+        { subtab: 'snapshot', icon: 'bi-camera2', text: 'Snapshot', title: 'Snapshot / Backup', reg: { group: 'System' } },
+        { subtab: 'profil', icon: 'bi-building', text: 'Perusahaan', reg: { group: 'System' } }
+    ]}
+];
+
+const NAV_FOLD_KEY = 'amiru_nav_folded';
+function _navGateClass(gate) {
+    return gate === 'admin' ? ' nav-admin-only is-hidden' : gate === 'login' ? ' nav-loggedin-only is-hidden' : '';
+}
+function buildNavHTML(variant) {
+    const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    let html = '';
+    NAV_MENU.forEach((sec, i) => {
+        const foldable = sec.foldable !== false && i > 0;
+        const labelCls = 'nav-label' + (sec.gate === 'admin' ? ' nav-admin-only is-hidden' : '') + (sec.group ? ' nav-group-label is-hidden' : '');
+        html += i === 0
+            ? `<div class="nav-label">${esc(sec.label)}</div>`
+            : `<div class="${labelCls}"${foldable ? ` role="button" tabindex="0" aria-expanded="true" data-fold="${esc(sec.label)}"` : ''}>${esc(sec.label)}</div>`;
+        sec.items.forEach(it => {
+            const key = it.tab ? `data-tab="${it.tab}"` : `data-subtab="${it.subtab}"`;
+            const gate = it.gate || sec.gate;
+            const badge = it.badge ? `<span class="nav-badge" id="badge${it.badge}${variant}"></span>` : '';
+            html += `<button type="button" class="nav-item${_navGateClass(gate)}${it.active ? ' active' : ''}" ${key} title="${esc(it.title || it.text)}">` +
+                `<i class="bi ${it.icon}"></i> <span class="nav-text">${esc(it.text)}</span>${badge}</button>`;
+        });
+    });
+    if (variant === 'Desktop') html += '<div class="sidebar-vtext" aria-hidden="true">PT AMIRU HARAMAIN INDONESIA</div>';
+    html += '<div class="nav-login-area">' +
+        '<button type="button" class="nav-item login-btn" data-nav-action="login" title="Login"><i class="bi bi-box-arrow-in-right"></i> <span class="nav-text">Login</span></button>' +
+        '<button type="button" class="nav-item logout-btn is-hidden" data-nav-action="logout" title="Logout"><i class="bi bi-box-arrow-right"></i> <span class="nav-text">Logout</span></button>' +
+        '</div>';
+    return html;
+}
+
+function _loadNavFolded() {
+    try { return new Set(JSON.parse(localStorage.getItem(NAV_FOLD_KEY) || '[]')); } catch (_) { return new Set(); }
+}
+function setNavFold(labelEl, folded) {
+    labelEl.setAttribute('aria-expanded', String(!folded));
+    labelEl.classList.toggle('is-folded', folded);
+    let el = labelEl.nextElementSibling;
+    while (el && !el.classList.contains('nav-label') && !el.classList.contains('nav-login-area') && !el.classList.contains('sidebar-vtext')) {
+        el.classList.toggle('is-folded', folded);
+        el = el.nextElementSibling;
+    }
+}
+function toggleNavFold(labelEl) {
+    const folded = labelEl.getAttribute('aria-expanded') === 'true';
+    const name = labelEl.dataset.fold;
+    // Kunci lipatan yang sama di desktop & mobile supaya keduanya sinkron
+    document.querySelectorAll('[data-fold]').forEach(l => { if (l.dataset.fold === name) setNavFold(l, folded); });
+    const set = _loadNavFolded();
+    if (folded) set.add(name); else set.delete(name);
+    try { localStorage.setItem(NAV_FOLD_KEY, JSON.stringify([...set])); } catch (_) {}
+}
+
+(function renderNavMenus() {
+    const targets = [['sidebarNav', 'Desktop'], ['mobileSidebarNav', 'Mobile']];
+    const folded = _loadNavFolded();
+    targets.forEach(([id, variant]) => {
+        const nav = document.getElementById(id);
+        if (!nav) return;
+        nav.innerHTML = buildNavHTML(variant);
+        const isMobile = variant === 'Mobile';
+        nav.querySelectorAll('[data-fold]').forEach(l => { if (folded.has(l.dataset.fold)) setNavFold(l, true); });
+        nav.addEventListener('click', (e) => {
+            const fold = e.target.closest('[data-fold]');
+            if (fold) { toggleNavFold(fold); return; }
+            const btn = e.target.closest('.nav-item');
+            if (!btn) return;
+            const done = () => { if (isMobile) toggleMobileSidebar(); };
+            if (btn.dataset.tab) { if (isMobile) { switchTab(btn.dataset.tab); done(); } return; } // desktop: ditangani listener .sidebar .nav-item[data-tab]
+            if (btn.dataset.subtab) { openAdminPanel(btn.dataset.subtab); done(); return; }
+            if (btn.dataset.navAction === 'login') { openAdminPanel(); done(); }
+            else if (btn.dataset.navAction === 'logout') { logoutAdmin(); done(); }
+        });
+        nav.addEventListener('keydown', (e) => {
+            const fold = e.target.closest && e.target.closest('[data-fold]');
+            if (fold && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggleNavFold(fold); }
+        });
+    });
+})();
+
+// ============================================================
+// AKSI KLIK DELEGASI — pengganti onclick="fn('arg')" inline di index.html.
+// Markup: data-action="namaFungsiGlobal" [data-args='["arg1", 2]'].
+// Pakai fase capture supaya tetap jalan walau ada handler lain yang
+// menghentikan propagasi. Handler yang butuh `this`/`event` tetap inline.
+// ============================================================
+document.addEventListener('click', (e) => {
+    const el = e.target.closest && e.target.closest('[data-action]');
+    if (!el || el.disabled) return;
+    const fn = window[el.dataset.action];
+    if (typeof fn !== 'function') { console.warn('data-action tidak dikenal:', el.dataset.action); return; }
+    let args = [];
+    if (el.dataset.args) { try { args = JSON.parse(el.dataset.args); } catch (_) { args = []; } }
+    fn.apply(el, args);
+}, true);
+
+// ============================================================
+// AKSESIBILITAS MODAL — role="dialog"/aria-modal sudah ada di index.html;
+// bagian ini melengkapi modal yang dibuat lewat JS, lalu mengelola fokus:
+// fokus pindah ke dalam modal saat dibuka, Tab berputar di dalamnya, Esc
+// menutup (lewat tombol tutup modal itu sendiri), dan fokus dikembalikan
+// ke tombol pemicu saat modal ditutup.
+// ============================================================
+(function initModalA11y() {
+    const OVERLAYS = '.modal-overlay, .mobile-sidebar-overlay';
+    const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const lastFocus = new WeakMap();
+    const wasOpen = new WeakMap();
+
+    const dialogOf = (ov) => ov.querySelector(':scope > .modal-content, :scope > .mobile-sidebar') || ov;
+    const visible = (el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+    const focusables = (ov) => [...dialogOf(ov).querySelectorAll(FOCUSABLE)].filter(visible);
+    const openOverlays = () => [...document.querySelectorAll(OVERLAYS)].filter(o => o.classList.contains('open'));
+
+    function prepare(ov) {
+        const dlg = dialogOf(ov);
+        if (!dlg.hasAttribute('role')) dlg.setAttribute('role', 'dialog');
+        dlg.setAttribute('aria-modal', 'true');
+        if (!dlg.hasAttribute('aria-labelledby') && !dlg.hasAttribute('aria-label')) {
+            const h = dlg.querySelector('h1, h2, h3');
+            if (h) {
+                if (!h.id) h.id = (ov.id || 'dlg' + Math.random().toString(36).slice(2, 7)) + '-title';
+                dlg.setAttribute('aria-labelledby', h.id);
+            }
+        }
+    }
+
+    function onOpenChange(ov) {
+        const open = ov.classList.contains('open');
+        if (open === !!wasOpen.get(ov)) return;
+        wasOpen.set(ov, open);
+        if (open) {
+            lastFocus.set(ov, document.activeElement);
+            requestAnimationFrame(() => {
+                const dlg = dialogOf(ov);
+                if (dlg.contains(document.activeElement)) return; // modal sudah memfokuskan inputnya sendiri
+                const first = focusables(ov).find(el => !el.classList.contains('modal-close') && !el.classList.contains('close-btn')) || focusables(ov)[0];
+                if (first) first.focus();
+                else { dlg.setAttribute('tabindex', '-1'); dlg.focus(); }
+            });
+        } else {
+            const back = lastFocus.get(ov);
+            lastFocus.delete(ov);
+            if (back && back.isConnected && typeof back.focus === 'function' && !openOverlays().length) back.focus();
+        }
+    }
+
+    document.querySelectorAll(OVERLAYS).forEach(ov => { prepare(ov); wasOpen.set(ov, ov.classList.contains('open')); });
+
+    new MutationObserver((muts) => {
+        for (const m of muts) {
+            if (m.type === 'attributes') {
+                if (m.target.matches && m.target.matches(OVERLAYS)) onOpenChange(m.target);
+            } else {
+                m.addedNodes.forEach(n => {
+                    if (n.nodeType !== 1) return;
+                    if (n.matches(OVERLAYS)) { prepare(n); onOpenChange(n); }
+                    n.querySelectorAll && n.querySelectorAll(OVERLAYS).forEach(ov => { prepare(ov); onOpenChange(ov); });
+                });
+            }
+        }
+    }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+
+    let escTarget = null;
+    document.addEventListener('keydown', (e) => {
+        const stack = openOverlays();
+        if (!stack.length) return;
+        const top = stack[stack.length - 1];
+        if (e.key === 'Escape') {
+            // Catat modal teratas SEBELUM handler lain jalan; kalau setelahnya
+            // modal itu masih terbuka, tutup lewat tombol tutupnya sendiri.
+            escTarget = top;
+            setTimeout(() => {
+                const t = escTarget; escTarget = null;
+                if (!t || !t.classList.contains('open')) return;
+                const closer = t.querySelector('.modal-close, .close-btn');
+                if (closer) closer.click();
+            }, 0);
+            return;
+        }
+        if (e.key !== 'Tab') return;
+        const list = focusables(top);
+        if (!list.length) { e.preventDefault(); return; }
+        const first = list[0], last = list[list.length - 1];
+        const inside = dialogOf(top).contains(document.activeElement);
+        if (e.shiftKey && (document.activeElement === first || !inside)) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && (document.activeElement === last || !inside)) { e.preventDefault(); first.focus(); }
+    }, true);
+})();
+
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
@@ -5184,27 +5418,9 @@ function applyRoleUIVisibility() {
 // Daftar semua menu sidebar yang bisa dikonfigurasi per role (role "admin"
 // tidak perlu diatur di sini karena selalu penuh). `key` HARUS sama persis
 // dengan atribut data-tab / data-subtab pada tombol nav di index.html.
-const SIDEBAR_MENU_REGISTRY = [
-    { key: 'info', label: 'Jadwal Tamu', group: 'Navigasi' },
-    { key: 'todocs', label: 'Reminder', group: 'Navigasi' },
-    { key: 'pendaftaran', label: 'Pendaftaran', group: 'Navigasi' },
-    { key: 'keberangkatan', label: 'Data Jamaah', group: 'Navigasi' },
-    { key: 'dokumen', label: 'Dokumen', group: 'Navigasi' },
-    { key: 'kepulangan', label: 'Status Kepulangan', group: 'Navigasi' },
-    { key: 'arsip', label: 'Arsip Jamaah', group: 'Navigasi' },
-    { key: 'igScheduler', label: 'IG Scheduler', group: 'Social Media' },
-    { key: 'infografis', label: 'Infografis', group: 'Social Media' },
-    { key: 'program', label: 'Edit Program', group: 'Manajemen' },
-    { key: 'pembayaran', label: 'Pembayaran', group: 'Manajemen' },
-    { key: 'unggulan', label: 'Unggulan (Admin)', group: 'Manajemen' },
-    { key: 'auditnota', label: 'Audit Nota', group: 'Manajemen' },
-    { key: 'assets', label: 'Assets', group: 'Manajemen' },
-    { key: 'crosscheck', label: 'Crosscheck', group: 'System' },
-    { key: 'telegram', label: 'Telegram', group: 'System' },
-    { key: 'usersettings', label: 'Pengaturan User', group: 'System' },
-    { key: 'snapshot', label: 'Snapshot', group: 'System' },
-    { key: 'profil', label: 'Perusahaan', group: 'System' }
-];
+const SIDEBAR_MENU_REGISTRY = NAV_MENU.flatMap(sec => sec.items
+    .filter(it => it.reg)
+    .map(it => ({ key: it.tab || it.subtab, label: it.reg.label || it.text, group: it.reg.group })));
 const SIDEBAR_MENU_CONFIGURABLE_ROLES = ['user', 'guest'];
 
 // Cache hasil baca tabel role_menu_access: { user: Set(menu_key...), guest: Set(...) }.
@@ -5307,10 +5523,12 @@ async function renderSidebarNav() {
         userOverride = await loadUserMenuAccess();
     }
 
+    const setHidden = (el, hidden) => el.classList.toggle('is-hidden', !!hidden);
+
     document.querySelectorAll('.nav-loggedin-only, .nav-admin-only').forEach(el => {
         const menuKey = el.dataset.tab || el.dataset.subtab;
-        if (!loggedIn) { el.style.display = 'none'; return; }
-        if (isAdminRole) { el.style.display = ''; return; } // admin selalu penuh
+        if (!loggedIn) { setHidden(el, true); return; }
+        if (isAdminRole) { setHidden(el, false); return; } // admin selalu penuh
         if (!menuKey) {
             // Section label ("Manajemen"/"System") -- visibilitasnya disamakan
             // lagi di bawah berdasar isi section, jangan diputuskan di sini.
@@ -5320,54 +5538,44 @@ async function renderSidebarNav() {
         // tidak ada baris utk menu_key ini, baru fallback ke allowedSet
         // (role_menu_access) -- lihat catatan di loadUserMenuAccess().
         if (userOverride && Object.prototype.hasOwnProperty.call(userOverride, menuKey)) {
-            el.style.display = userOverride[menuKey] ? '' : 'none';
+            setHidden(el, !userOverride[menuKey]);
             return;
         }
         if (allowedSet) {
-            el.style.display = allowedSet.has(menuKey) ? '' : 'none';
+            setHidden(el, !allowedSet.has(menuKey));
         } else {
             // Fallback (migrasi belum dijalankan): perilaku lama persis --
             // nav-loggedin-only tampil utk semua yg login, nav-admin-only
             // cuma admin (jadi disembunyikan di sini karena bukan admin).
-            el.style.display = el.classList.contains('nav-loggedin-only') ? '' : 'none';
+            setHidden(el, !el.classList.contains('nav-loggedin-only'));
         }
     });
 
-    // Section label "Manajemen"/"System" ikut disembunyikan kalau SEMUA
-    // tombol nav-admin-only di bawahnya (sampai label berikutnya / akhir nav)
-    // ternyata tersembunyi juga -- supaya tidak ada judul section menggantung
-    // tanpa isi.
-    document.querySelectorAll('.nav-label.nav-admin-only').forEach(labelEl => {
-        if (!loggedIn) { labelEl.style.display = 'none'; return; }
-        if (isAdminRole) { labelEl.style.display = ''; return; }
+    // Label section ikut disembunyikan kalau SEMUA tombol nav di bawahnya
+    // (sampai label berikutnya / akhir nav) tersembunyi -- supaya tidak ada
+    // judul section menggantung tanpa isi. Label admin ("Manajemen"/"System")
+    // juga digating peran admin; label grup ("Siklus Jamaah", "Arsip") berlaku
+    // untuk semua role yang login.
+    const syncLabel = (labelEl, adminGated) => {
+        if (adminGated) {
+            if (!loggedIn) { setHidden(labelEl, true); return; }
+            if (isAdminRole) { setHidden(labelEl, false); return; }
+        }
         let sibling = labelEl.nextElementSibling;
         let anyVisible = false;
         while (sibling && !sibling.classList.contains('nav-label') && !sibling.classList.contains('nav-login-area')) {
-            if (sibling.classList.contains('nav-item') && sibling.style.display !== 'none') { anyVisible = true; break; }
+            if (sibling.classList.contains('nav-item') && !sibling.classList.contains('is-hidden')) { anyVisible = true; break; }
             sibling = sibling.nextElementSibling;
         }
-        labelEl.style.display = anyVisible ? '' : 'none';
-    });
+        setHidden(labelEl, !anyVisible);
+    };
+    document.querySelectorAll('.nav-label.nav-admin-only').forEach(l => syncLabel(l, true));
+    document.querySelectorAll('.nav-label.nav-group-label').forEach(l => syncLabel(l, false));
 
-    // Label pengelompokan non-admin (mis. "Siklus Jamaah", "Arsip") --
-    // pakai logika sama seperti nav-admin-only di atas (sembunyikan kalau
-    // semua item nav di bawahnya, sampai label berikutnya, ternyata
-    // tersembunyi), tapi TANPA gating peran admin karena label ini juga
-    // dipakai role user/guest.
-    document.querySelectorAll('.nav-label.nav-group-label').forEach(labelEl => {
-        let sibling = labelEl.nextElementSibling;
-        let anyVisible = false;
-        while (sibling && !sibling.classList.contains('nav-label') && !sibling.classList.contains('nav-login-area')) {
-            if (sibling.classList.contains('nav-item') && sibling.style.display !== 'none') { anyVisible = true; break; }
-            sibling = sibling.nextElementSibling;
-        }
-        labelEl.style.display = anyVisible ? '' : 'none';
-    });
-
-    document.querySelectorAll('.login-btn').forEach(el => { el.style.display = loggedIn ? 'none' : ''; });
+    document.querySelectorAll('.login-btn').forEach(el => setHidden(el, loggedIn));
     // Tombol "Homepage" (ke website utama) hanya untuk halaman utama non-login
     document.querySelectorAll('.guest-only').forEach(el => { el.style.display = loggedIn ? 'none' : ''; });
-    document.querySelectorAll('.logout-btn').forEach(el => { el.style.display = loggedIn ? '' : 'none'; });
+    document.querySelectorAll('.logout-btn').forEach(el => setHidden(el, !loggedIn));
 
     const whoEl = document.getElementById('sidebarWho');
     const avatarEl = document.getElementById('sidebarAvatar');
