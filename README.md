@@ -32,7 +32,7 @@ Akses menu sidebar untuk `user` dan `guest` bisa diatur per role dan per akun le
 ## Arsitektur
 
 ```
-Browser (PWA: index.html + js/app.js + css/style.css + css/rekap-infografis.css + css/ig-scheduler.css + css/user-akses.css + css/keuangan.css + css/crosscheck.css)
+Browser (PWA: index.html + js/app.js + css/style.css + css/rekap-infografis.css + css/hotel.css + css/ig-scheduler.css + css/user-akses.css + css/keuangan.css + css/crosscheck.css)
    │  supabase-js (anon key + JWT login)        fetch() ke Edge Function
    ▼                                                    ▼
 Supabase: Postgres + RLS + Auth + Storage      Supabase Edge Functions (Deno)
@@ -49,10 +49,11 @@ Detail Edge Function ada di [`supabase/functions/README.md`](supabase/functions/
 ## Struktur repo
 
 ```
-index.html              Struktur HTML; memuat css/style.css, css/rekap-infografis.css, css/ig-scheduler.css, css/user-akses.css, css/keuangan.css, css/crosscheck.css, dan js/app.js
+index.html              Struktur HTML; memuat css/style.css, css/rekap-infografis.css, css/hotel.css, css/ig-scheduler.css, css/user-akses.css, css/keuangan.css, css/crosscheck.css, dan js/app.js
 js/app.js               SATU-SATUNYA file JS aktif (seluruh logic + koneksi Supabase)
 css/style.css           CSS inti (warna brand via CSS custom properties, layout, komponen umum)
 css/rekap-infografis.css Modul CSS Rekap Program & Infografis (.rekap-*, .infografis-*, .poster-popup*, .poster-missing-badge, .metric-clickable)
+css/hotel.css           Modul CSS Hotel Saudi Arabia (.hotel-*, hint hotel di form Program, #btnAddHotelExtra)
 css/ig-scheduler.css    Modul CSS IG Scheduler (dimuat setelah style.css; modul lain menyusul bertahap)
 css/user-akses.css      Modul CSS User & Akses Menu (.us-*, .rma-*)
 css/keuangan.css        Modul CSS Keuangan (.pb-*, .cicilan-*, .nota-*, .kuitansi-*, .an-* Audit Nota)

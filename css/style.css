@@ -1824,65 +1824,6 @@ main {
 
 .assets-inner-tab-btn.active { color: var(--brand); border-bottom-color: var(--brand); }
 
-/* ---- Hotel Saudi Arabia: search bar + result table ---- */
-
-.hotel-search-bar { display: flex; gap: 10px; padding: 16px 18px 0; flex-wrap: wrap; }
-
-.hotel-search-bar input[type="text"] {
-            flex: 1 1 240px; min-width: 200px; padding: 9px 12px; border: 1px solid var(--line);
-            border-radius: var(--r-md); font-size: var(--fs-md); color: var(--ink); background: var(--surface);
-        }
-
-.hotel-search-bar input[type="text"]:focus { outline: none; border-color: var(--brand); }
-
-.hotel-search-bar select {
-            padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--r-md);
-            font-size: var(--fs-sm); color: var(--ink); background: var(--surface); cursor: pointer;
-        }
-
-.hotel-result-count { padding: 12px 18px 0; font-size: var(--fs-sm); color: var(--ink-soft); }
-
-.hotel-table-wrap { padding: 10px 18px 18px; overflow-x: auto; }
-
-.hotel-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
-
-.hotel-table th {
-            text-align: left; padding: 9px 10px; color: var(--ink-soft); font-weight: 700;
-            font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .03em;
-            border-bottom: 1px solid var(--line); white-space: nowrap;
-        }
-
-.hotel-table td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
-
-.hotel-table tr:hover td { background: var(--bg); }
-
-.hotel-name-cell { font-weight: 600; color: var(--ink); white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
-
-.hotel-desc-cell {
-            color: var(--ink-soft); max-width: 360px; overflow: hidden; text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-.hotel-score-pill {
-            display: inline-block; padding: 2px 8px; border-radius: var(--r-pill);
-            background: var(--success-tint); color: var(--success); font-weight: 700; font-size: var(--fs-sm);
-        }
-
-/* ---- Hint referensi hotel di field Hotel Makkah/Madinah (form Program) ---- */
-
-.hotel-ref-hint { font-size: var(--fs-xs); margin-top: 5px; display: none; align-items: center; gap: 5px; }
-
-.hotel-ref-hint:empty { display: none; }
-
-.hotel-ref-hint.loading, .hotel-ref-hint.ok, .hotel-ref-hint.suggest, .hotel-ref-hint.unknown { display: flex; }
-
-.hotel-ref-hint.loading { color: var(--ink-soft); }
-
-.hotel-ref-hint.ok { color: var(--success); }
-
-.hotel-ref-hint.suggest { color: var(--warn); }
-
-.hotel-ref-hint.unknown { color: var(--ink-soft); }
 
 .pf-pagination {
             display: flex;
@@ -3557,43 +3498,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .btn-primary:active, .btn-success:active, .btn-danger:active { filter: brightness(.92); }
 }
 
-/* ===== Import CSV Hotel Saudi Arabia ===== */
-
-.hotel-header-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-
-.hotel-import-file { display: flex; align-items: center; gap: 8px; font-size: var(--fs-md); font-weight: 600; color: var(--ink); margin-bottom: 14px; word-break: break-all; }
-
-.hotel-import-file i { font-size: 18px; color: var(--brand); flex: 0 0 auto; }
-
-.hotel-import-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
-
-.hotel-import-stats div { background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px 8px; text-align: center; }
-
-.hotel-import-stats b { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 18px; }
-
-.hotel-import-stats span { font-size: var(--fs-xs); color: var(--ink-soft); }
-
-.hotel-import-alert { display: flex; gap: 10px; align-items: flex-start; border-radius: var(--r-md); padding: 10px 12px; font-size: var(--fs-sm); line-height: 1.5; margin-bottom: 10px; }
-
-.hotel-import-alert > i { margin-top: 2px; flex: 0 0 auto; }
-
-.hotel-import-alert ul { margin: 6px 0 0 16px; font-size: var(--fs-sm); }
-
-.hotel-import-alert.danger { background: var(--danger-tint); color: var(--danger); }
-
-.hotel-import-alert.warn { background: var(--warn-tint); color: #8a5016; }
-
-.hotel-import-note { font-size: var(--fs-sm); color: var(--ink-soft); margin-bottom: 6px; }
-
-.form-actions .btn-hotel-import-confirm { background: var(--danger); }
-
-.form-actions .btn-hotel-import-confirm:hover { background: var(--danger-ink); }
-
-.form-actions .btn-hotel-import-confirm:disabled { opacity: .5; cursor: not-allowed; }
-
-@media (max-width: 480px) {
-  .hotel-import-stats { grid-template-columns: repeat(2, 1fr); }
-}
 
 /* ============================================================
    Tooltip kustom (pengganti hint bawaan browser / atribut title)
@@ -3986,35 +3890,6 @@ button.btn-homepage { cursor: pointer; }
     color: var(--brand-deep);
 }
 
-/* -- Akomodasi: hint kecocokan hotel jadi chip -------------------------- */
-
-#adminFormContainer .hotel-ref-hint {
-    margin-top: 6px;
-    padding: 5px 10px;
-    width: fit-content; max-width: 100%;
-    border-radius: var(--r-md);
-    font-size: var(--fs-sm); line-height: 1.4;
-}
-
-#adminFormContainer .hotel-ref-hint.ok { background: var(--success-tint); color: #1c7a55; }
-
-#adminFormContainer .hotel-ref-hint.suggest { background: var(--warn-tint); color: #9a4f12; }
-
-#adminFormContainer .hotel-ref-hint.unknown,
-#adminFormContainer .hotel-ref-hint.loading { background: var(--bg); color: var(--ink-soft); }
-
-/* Tombol "Tambah Hotel 3/4" = baris tambah putus-putus */
-
-#adminFormContainer #btnAddHotelExtra {
-    width: 100%; height: 40px;
-    margin-bottom: 16px;
-    justify-content: center;
-    border: 1.5px dashed #b9c6d6;
-    background: transparent;
-    color: var(--brand);
-}
-
-#adminFormContainer #btnAddHotelExtra:hover { border-color: var(--brand); background: var(--brand-tint); }
 
 /* -- Konten: Teks WA ---------------------------------------------------- */
 
@@ -4101,21 +3976,6 @@ button.btn-homepage { cursor: pointer; }
   #adminFormContainer #af-konten { grid-template-columns: 1fr; }
 }
 
-/* -- Saran detail hotel tersimpan (pustaka hotel_detail) di bawah field hotel -- */
-
-.hotel-detail-suggest { display: none; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-top: 6px; }
-
-.hotel-detail-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 5px 10px; border-radius: var(--r-md);
-    border: 1px dashed var(--brand); background: var(--brand-tint); color: var(--brand);
-    font: 600 11.5px 'Inter', sans-serif; cursor: pointer; line-height: 1.4; text-align: left;
-    transition: background .15s, color .15s;
-}
-
-.hotel-detail-btn:hover { background: var(--brand); color: var(--surface); }
-
-.hotel-detail-note { font-size: var(--fs-xs); color: var(--ink-soft); }
 
 /* ===== Topbar: tombol aksi (Tambah Cepat, Share Katalog, Katalog, Share Flipbook, Flipbook)
    selalu 1 baris. Kalau tidak muat di sebelah judul & pencarian, seluruh grup tombol

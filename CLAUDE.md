@@ -27,7 +27,7 @@ Bahasa UI & komentar kode: **Bahasa Indonesia**. Ikuti gaya ini saat menambah fi
 ## Struktur file AKTIF (yang benar-benar di-load browser)
 
 ```
-index.html          ← struktur HTML saja, load css/style.css + css/rekap-infografis.css + css/ig-scheduler.css + css/user-akses.css + css/keuangan.css + css/crosscheck.css + js/app.js
+index.html          ← struktur HTML saja, load css/style.css + css/rekap-infografis.css + css/hotel.css + css/ig-scheduler.css + css/user-akses.css + css/keuangan.css + css/crosscheck.css + js/app.js
 katalog.html          ← halaman marketing publik MANDIRI (CSS+JS inline, tidak memakai app.js/style.css). Baca tabel
                         `programs` via REST dengan anon key, filter sama seperti `isProgramVisibleOnDashboard`
                         (aktif, belum expired, punya poster). Sisa seat tidak ditampilkan karena `kb_jamaah`
@@ -55,9 +55,12 @@ css/style.css        ← CSS INTI (variabel :root warna brand, layout, sidebar, 
 css/rekap-infografis.css ← MODUL Rekap Program & Infografis (`.rekap-*`, `@keyframes rekapSheetUp`, `.metric-clickable`,
                         `.infografis-*`, `.poster-popup*`, `.poster-missing-badge`). Di-load SETELAH style.css dan SEBELUM
                         ig-scheduler.css. `.pd-poster-*` (modal Detail Program) sengaja TIDAK di sini; itu modul Detail Program.
+css/hotel.css          ← MODUL Hotel Saudi Arabia (`.hotel-*`: search/tabel di Assets, import CSV, hint kecocokan hotel & saran
+                        detail hotel di form Program, `#adminFormContainer .hotel-ref-hint*`, `#btnAddHotelExtra`). Di-load setelah
+                        rekap-infografis.css, sebelum ig-scheduler.css. `.assets-inner-tab-*` bukan bagian modul ini (modul Assets).
 css/ig-scheduler.css ← MODUL IG Scheduler (semua `.ig-*`, `#ig*`, variabel `--ig-*`, `@keyframes ig-plan-spin`).
                         Di-load SETELAH style.css. Gaya IG baru -> taruh di sini, bukan di style.css.
-                        Pemecahan CSS dilakukan bertahap per modul (selesai: IG Scheduler, User/Akses, Keuangan, Crosscheck, Rekap/Infografis; berikutnya: hotel, kepulangan, rooming, dst.);
+                        Pemecahan CSS dilakukan bertahap per modul (selesai: IG Scheduler, User/Akses, Keuangan, Crosscheck, Rekap/Infografis, Hotel; berikutnya: kepulangan, rooming, dst.);
                         modul baru WAJIB ditambah `<link>` di index.html (setelah style.css) dan di daftar
                         APP_SHELL `service-worker.js`, lalu naikkan `CACHE_NAME`.
 css/user-akses.css   ← MODUL User & Akses Menu (semua `.us-*`, `.rma-*`). Di-load setelah ig-scheduler.css.
@@ -78,7 +81,7 @@ css/crosscheck.css   ← MODUL Crosscheck OCR poster vs data (semua `.cx-*` kecu
 js/app.js            ← SATU-SATUNYA file JS, berisi SEMUA logic + koneksi Supabase
 manifest.json         ← config PWA (name, theme_color, icons)
 service-worker.js     ← precache list, HARUS disinkronkan manual kalau nama file berubah.
-                        `CACHE_NAME` (saat ini `amiru-repo-cache-v131`) dinaikkan tiap rilis
+                        `CACHE_NAME` (saat ini `amiru-repo-cache-v132`) dinaikkan tiap rilis
 icons/                ← 9 file ikon PWA sesuai daftar di manifest.json
 sql/                  ← skema & migrasi bernomor 00-56. `00_SETUP_LENGKAP_SATU_FILE.sql` = gabungan
                         semuanya (idempoten, bebas urutan) untuk project baru. Untuk project yang SUDAH
