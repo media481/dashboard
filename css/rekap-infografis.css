@@ -1,0 +1,537 @@
+/* ============================================================
+   REKAP PROGRAM & INFOGRAFIS  (modul CSS terpisah dari style.css)
+   Prefix: .rekap-*       (galeri poster 9:16 Rekap Program: tile, lightbox,
+                           poster samping, @keyframes rekapSheetUp)
+           .metric-clickable (kartu metrik yang bisa diklik di Rekap Program)
+           .infografis-*  (galeri infografis 4:5)
+           .poster-popup* (popup hover pratinjau poster)
+           .poster-missing-badge (badge "Belum ada poster" di tabel Daftar Program)
+   PENGECUALIAN: .pd-poster-* (kolom poster di modal Detail Program) TIDAK di sini;
+   itu bagian modul Detail Program.
+   Di-load SETELAH style.css dan SEBELUM ig-scheduler.css (urutan kaskade terhadap
+   modul lain tidak berubah dari sebelum dipecah). Gaya Rekap/Infografis baru -> taruh di sini.
+   ============================================================ */
+
+/* Kartu metrik yang bisa diklik (Rekap Program) */
+
+.metric-card.metric-clickable { cursor: pointer; user-select: none; }
+
+.metric-card.metric-clickable:hover { box-shadow: var(--shadow); border-color: var(--brand); }
+
+.metric-card.metric-clickable:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* ===== Rekap Program: galeri poster 9:16 (1080 x 1920) =====
+           Desain ulang tampilan saja (HTML/CSS). Semua id, nama class yang dipakai
+           js/app.js (.rekap-tile, .is-empty, .rekap-tile-badge, .rekap-tile-label,
+           .rekap-lb-img.loaded, .rekap-lb-note.hide, .rekap-lb-arrow.empty, .open)
+           dan perilakunya tidak berubah. */
+
+.modal-content.rekap-gallery-modal {
+            max-width: 1000px; margin: 0; display: flex; flex-direction: column;
+            overflow: hidden; border-radius: var(--r-lg); background: var(--bg);
+            box-shadow: 0 30px 80px rgba(8, 20, 40, .38), 0 0 0 1px rgba(255,255,255,.06);
+        }
+
+#rekapProgramModal.modal-overlay { background: rgba(10, 20, 38, .55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+
+/* Header: putih polos */
+
+.rekap-gallery-modal .modal-header.rekap-head {
+            position: relative; flex: 0 0 auto; overflow: hidden; gap: 12px;
+            padding: 18px 22px; color: var(--ink);
+            background: var(--surface); border-bottom: 1px solid var(--line);
+        }
+
+.rekap-head-main { position: relative; z-index: 1; display: flex; align-items: center; gap: 14px; min-width: 0; }
+
+.rekap-head-icon {
+            width: 44px; height: 44px; flex-shrink: 0; border-radius: var(--r-lg);
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 20px; color: var(--brand); background: var(--brand-tint);
+        }
+
+.rekap-head-text { min-width: 0; }
+
+.rekap-gallery-modal .rekap-head h2 {
+            font-size: 19px; letter-spacing: -.01em; color: var(--ink);
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        }
+
+.rekap-head-sub { margin-top: 2px; font-size: var(--fs-sm); color: var(--ink-soft); line-height: 1.4; }
+
+.rekap-count {
+            font-family: 'IBM Plex Mono'; font-size: var(--fs-sm); font-weight: 600; letter-spacing: .01em;
+            padding: 3px 10px; border-radius: var(--r-pill); color: var(--brand);
+            background: var(--brand-tint);
+        }
+
+.rekap-count:empty { display: none; }
+
+.rekap-head-actions { position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.rekap-gallery-modal .rekap-refresh-btn {
+            font-size: var(--fs-sm); font-weight: 600; padding: 8px 14px; border-radius: var(--r-pill);
+            color: var(--ink); background: var(--surface); border: 1px solid var(--line);
+            transition: background .15s, border-color .15s, transform .15s;
+        }
+
+.rekap-gallery-modal .rekap-refresh-btn:hover { background: var(--bg); border-color: var(--brand); color: var(--brand); }
+
+.rekap-gallery-modal .rekap-refresh-btn:active { transform: scale(.97); }
+
+.rekap-gallery-modal .rekap-refresh-btn i { transition: transform .4s ease; }
+
+.rekap-gallery-modal .rekap-refresh-btn:hover i { transform: rotate(180deg); }
+
+.rekap-gallery-modal .modal-close {
+            width: 36px; height: 36px; padding: 0; border-radius: 50%; line-height: 1; font-size: 22px;
+            display: inline-flex; align-items: center; justify-content: center;
+            color: var(--ink-soft); background: var(--bg); border: none;
+            transition: background .15s, color .15s, transform .15s;
+        }
+
+.rekap-gallery-modal .modal-close:hover { background: var(--brand-tint); color: var(--brand); }
+
+.rekap-gallery-modal .modal-close:active { transform: scale(.94); }
+
+/* Body: hanya area ini yang scroll, header tetap di atas */
+
+.rekap-gallery-modal .modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 22px; }
+
+/* Status (memuat / kosong / gagal) tampil sebagai chip di tengah */
+
+.rekap-gal-note {
+            align-items: center; justify-content: center; gap: 8px;
+            width: fit-content; max-width: 100%; margin: 0 auto 18px;
+            padding: 8px 16px; border-radius: var(--r-pill);
+            font-size: var(--fs-sm); font-weight: 500; color: var(--ink-soft);
+            background: var(--surface); border: 1px solid var(--line);
+            box-shadow: 0 2px 8px rgba(20, 40, 70, .05);
+        }
+
+.rekap-gal-note:has(.bi-hourglass-split) i { animation: rekapPulse 1.2s ease-in-out infinite; color: var(--brand); }
+
+.rekap-gal-note:has(.bi-exclamation-triangle) { color: var(--danger); background: var(--danger-tint); border-color: transparent; }
+
+@keyframes rekapPulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+
+.rekap-gallery-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+.rekap-tile {
+            position: relative; display: block; width: 100%; padding: 0;
+            aspect-ratio: 9 / 16;
+            border: none; border-radius: var(--r-lg); overflow: hidden; cursor: pointer;
+            background: linear-gradient(110deg, #e6ecf4 30%, #f3f6fa 50%, #e6ecf4 70%) 0 0 / 220% 100%;
+            animation: rekapShimmer 1.4s linear infinite, rekapTileIn .35s ease backwards;
+            box-shadow: 0 1px 2px rgba(20, 40, 70, .08), 0 6px 18px rgba(20, 40, 70, .08);
+            transition: transform .22s cubic-bezier(.2,.7,.3,1), box-shadow .22s ease;
+        }
+
+.rekap-tile:nth-child(2) { animation-delay: 0s, .04s; }
+
+.rekap-tile:nth-child(3) { animation-delay: 0s, .08s; }
+
+.rekap-tile:nth-child(4) { animation-delay: 0s, .12s; }
+
+.rekap-tile:nth-child(n+5) { animation-delay: 0s, .16s; }
+
+@keyframes rekapShimmer { to { background-position: -220% 0; } }
+
+@keyframes rekapTileIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+.rekap-tile:hover { transform: translateY(-4px); box-shadow: 0 2px 4px rgba(20, 40, 70, .10), 0 18px 36px rgba(20, 40, 70, .20); }
+
+.rekap-tile:active { transform: translateY(-1px) scale(.99); }
+
+.rekap-tile:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
+
+.rekap-tile img { position: relative; width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .45s cubic-bezier(.2,.7,.3,1); }
+
+.rekap-tile:hover img { transform: scale(1.05); }
+
+.rekap-tile-label {
+            position: absolute; left: 0; right: 0; bottom: 0;
+            display: flex; align-items: center; gap: 6px;
+            padding: 34px 12px 11px; text-align: left;
+            font-size: var(--fs-sm); font-weight: 600; letter-spacing: .01em; color: var(--surface);
+            background: linear-gradient(rgba(8,16,30,0), rgba(8,16,30,.72));
+            text-shadow: 0 1px 2px rgba(0,0,0,.35);
+        }
+
+.rekap-tile-label::before { content: ''; width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: rgba(255,255,255,.85); }
+
+.rekap-tile-badge {
+            position: absolute; top: 10px; left: 10px;
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 4px 10px 4px 8px; border-radius: var(--r-pill);
+            font-size: var(--fs-xs); font-weight: 700; letter-spacing: .02em; color: var(--surface);
+            background: linear-gradient(135deg, #279E70, #1f8660);
+            box-shadow: 0 4px 10px rgba(39, 158, 112, .45);
+        }
+
+.rekap-tile-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--surface); box-shadow: 0 0 0 3px rgba(255,255,255,.3); }
+
+@media (hover: hover) {
+  .rekap-tile:not(.is-empty)::after {
+                  content: 'Lihat poster'; position: absolute; left: 50%; top: 50%;
+                  transform: translate(-50%, -40%); opacity: 0; pointer-events: none;
+                  padding: 8px 16px; border-radius: var(--r-pill); white-space: nowrap;
+                  font-size: var(--fs-sm); font-weight: 600; color: var(--brand-deep);
+                  background: rgba(255,255,255,.94); box-shadow: 0 8px 20px rgba(0,0,0,.22);
+                  transition: opacity .2s ease, transform .2s ease;
+              }
+  .rekap-tile:not(.is-empty):hover::after { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+/* Kanvas kosong: bentuknya sama dengan tile berisi, tapi tenang (tanpa shimmer) */
+
+.rekap-tile.is-empty {
+            cursor: default; background: rgba(255,255,255,.55); border: 1.5px dashed #c6d2e0;
+            box-shadow: none; animation: none;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--ink-soft); font-size: 26px;
+        }
+
+.rekap-tile.is-empty:hover { transform: none; box-shadow: none; }
+
+.rekap-tile.is-empty i { opacity: .3; }
+
+/* Pratinjau layar penuh (klik poster di galeri) */
+
+.modal-overlay.rekap-lightbox {
+            z-index: 1100; padding: 0;
+            flex-direction: column; align-items: stretch; justify-content: flex-start;
+            background: radial-gradient(120% 90% at 50% 0%, rgba(26, 53, 91, .96), rgba(6, 10, 18, .98));
+            -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+        }
+
+.rekap-lb-bar {
+            display: flex; align-items: center; gap: 12px; flex-shrink: 0; color: var(--surface);
+            padding: calc(12px + var(--safe-top)) calc(16px + var(--safe-right)) 10px calc(16px + var(--safe-left));
+        }
+
+.rekap-lb-title { display: flex; flex-direction: column; margin-right: auto; line-height: 1.3; min-width: 0; }
+
+.rekap-lb-title b { font-family: 'IBM Plex Mono'; font-size: var(--fs-lg); font-weight: 600; letter-spacing: .02em; }
+
+.rekap-lb-title span { font-size: var(--fs-sm); color: rgba(255,255,255,.62); }
+
+.rekap-lb-btn {
+            width: 40px; height: 40px; flex-shrink: 0; border: 1px solid rgba(255,255,255,.16); border-radius: 50%;
+            background: rgba(255,255,255,.10); color: var(--surface); font-size: 16px; cursor: pointer; text-decoration: none;
+            display: inline-flex; align-items: center; justify-content: center;
+            transition: background .15s, transform .15s;
+        }
+
+.rekap-lb-btn:hover { background: rgba(255,255,255,.24); }
+
+.rekap-lb-btn:active { transform: scale(.94); }
+
+.rekap-lb-stage {
+            position: relative; flex: 1; min-height: 0;
+            margin: 0 calc(14px + var(--safe-right)) calc(14px + var(--safe-bottom)) calc(14px + var(--safe-left));
+            touch-action: pan-y; user-select: none; -webkit-user-select: none;
+            container-type: size; overflow: hidden;   /* cqh/cqw dipakai untuk posisi poster samping */
+        }
+
+/* Poster sebelumnya / berikutnya: lebih kecil, blur, di kiri & kanan poster utama.
+           Lebar poster utama = min(tinggi stage x 9/16, lebar stage). */
+
+.rekap-lb-side {
+            --lb-cw: min(56.25cqh, 100cqw);
+            position: absolute; top: 50%; z-index: 1;
+            height: 70cqh; width: auto; aspect-ratio: 9 / 16; object-fit: cover;
+            border-radius: var(--r-lg); cursor: pointer;
+            filter: blur(3px) brightness(.55) saturate(.9);
+            opacity: .85; transform: translateY(-50%);
+            transition: filter .2s ease, opacity .2s ease;
+        }
+
+.rekap-lb-side:not([src]) { display: none; }
+
+.rekap-lb-side-prev { right: calc(50% + var(--lb-cw) / 2 + 18px); }
+
+.rekap-lb-side-next { left:  calc(50% + var(--lb-cw) / 2 + 18px); }
+
+.rekap-lb-side:hover { filter: blur(1.5px) brightness(.75) saturate(1); opacity: 1; }
+
+.rekap-lb-img {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            object-fit: contain; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 1;
+            filter: drop-shadow(0 18px 40px rgba(0,0,0,.55));
+        }
+
+.rekap-lb-img.loaded { opacity: 1; }
+
+.rekap-lb-img.pending { opacity: .5; }
+
+/* poster baru belum siap: gambar lama diredupkan */
+
+.rekap-lb-img { will-change: opacity, transform; }
+
+.rekap-lb-img.slide-next { animation: rekapLbInNext .32s cubic-bezier(.2,.7,.3,1); }
+
+.rekap-lb-img.slide-prev { animation: rekapLbInPrev .32s cubic-bezier(.2,.7,.3,1); }
+
+@keyframes rekapLbInNext { from { opacity: .15; transform: translateX(44px) scale(.985); } to { opacity: 1; transform: none; } }
+
+@keyframes rekapLbInPrev { from { opacity: .15; transform: translateX(-44px) scale(.985); } to { opacity: 1; transform: none; } }
+
+.rekap-lb-side.swap { animation: rekapSideIn .3s ease; }
+
+@keyframes rekapSideIn { from { opacity: 0; } to { opacity: .85; } }
+
+.rekap-lb-note {
+            position: absolute; inset: 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center;
+            font-size: var(--fs-md); color: rgba(255,255,255,.65); pointer-events: none;
+        }
+
+.rekap-lb-note i { font-size: 32px; opacity: .5; }
+
+.rekap-lb-note:has(.bi-hourglass-split) i { animation: rekapPulse 1.2s ease-in-out infinite; }
+
+.rekap-lb-note.hide { display: none; }
+
+.rekap-lb-arrow {
+            position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+            width: 48px; height: 48px; border: 1px solid rgba(255,255,255,.18); border-radius: 50%;
+            background: rgba(255,255,255,.12); color: var(--surface); font-size: 19px; cursor: pointer;
+            -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+            transition: background .15s, transform .15s;
+        }
+
+.rekap-lb-arrow:hover { background: rgba(255,255,255,.28); }
+
+.rekap-lb-prev { left: 8px; }
+
+.rekap-lb-next { right: 8px; }
+
+.rekap-lb-prev:hover { transform: translateY(-50%) translateX(-2px); }
+
+.rekap-lb-next:hover { transform: translateY(-50%) translateX(2px); }
+
+.rekap-lb-arrow.empty { visibility: hidden; }
+
+/* Infografis: poster 4:5 (1080 x 1350). Kelas ini dipasang js/app.js (openRekapGallery)
+           di #rekapProgramModal & #rekapLightbox; Rekap Program tetap 9:16. */
+
+.rekap-ratio-45 .rekap-tile { aspect-ratio: 4 / 5; }
+
+.rekap-ratio-45 .rekap-lb-side { --lb-cw: min(80cqh, 100cqw); aspect-ratio: 4 / 5; }
+
+/* Infografis: modal lebih lebar & 5 kolom (10 gambar = 5 atas + 5 bawah) */
+
+.rekap-ratio-45 .modal-content.rekap-gallery-modal { max-width: 1280px; }
+
+.rekap-ratio-45 .rekap-gallery-grid { grid-template-columns: repeat(5, 1fr); }
+
+/* Layar lebar (5 kolom): area galeri pas 2 baris = 10 gambar terlihat, sisanya di-scroll.
+           cqw = lebar isi .modal-body; tinggi baris = lebar kolom x 5/4. */
+
+@media (min-width: 1101px) {
+  .rekap-ratio-45 .rekap-gallery-modal .modal-body {
+                  container-type: inline-size; flex: 0 1 auto;
+                  max-height: calc(2 * (100cqw - 4 * 16px) / 5 * 1.25 + 16px + 44px);
+              }
+}
+
+@media (max-width: 1100px) {
+  .rekap-ratio-45 .rekap-gallery-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (max-width: 900px) {
+  .rekap-ratio-45 .rekap-gallery-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 700px) {
+  .rekap-ratio-45 .rekap-gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+}
+
+@media (max-width: 900px) {
+  .rekap-gallery-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 700px) {
+  /* HP: tampil sebagai bottom sheet */
+  #rekapProgramModal.modal-overlay { align-items: flex-end; padding: 0; }
+  .modal-content.rekap-gallery-modal {
+                  max-width: 100%; max-height: 92vh; border-radius: var(--r-lg) var(--r-lg) 0 0;
+                  animation: rekapSheetUp .28s cubic-bezier(.2,.8,.3,1);
+              }
+  @supports (height: 100dvh) {
+    .modal-content.rekap-gallery-modal { max-height: 92dvh; }
+  }
+  .rekap-gallery-modal .modal-header.rekap-head { padding: 16px 16px 16px 18px; }
+  .rekap-head-icon { width: 38px; height: 38px; font-size: 17px; border-radius: var(--r-lg); }
+  .rekap-gallery-modal .rekap-head h2 { font-size: 17px; }
+  .rekap-head-sub { display: none; }
+  .rekap-gallery-modal .modal-body { padding: 16px 14px calc(18px + var(--safe-bottom)); }
+  .rekap-gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .rekap-lb-arrow { display: none; }
+  /* di HP: geser kiri/kanan */
+  .rekap-lb-side { display: none; }
+  /* HP: tidak ada ruang untuk poster samping */
+}
+
+@keyframes rekapSheetUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .rekap-lb-img.slide-next, .rekap-lb-img.slide-prev, .rekap-lb-side.swap { animation: none !important; }
+  .rekap-tile, .rekap-tile img, .rekap-gallery-modal .modal-content { animation: none !important; transition: none !important; }
+  .modal-content.rekap-gallery-modal { animation: none !important; }
+}
+
+/* Badge "Belum ada poster" di tabel Daftar Program -- diklik langsung
+           membuka form edit program itu & fokus ke field Link Poster (lihat
+           quickAddPosterLink() di app.js), jadi tidak perlu cari manual. */
+
+.poster-missing-badge { display: inline-flex; align-items: center; gap: 5px; margin: 4px 0 0; padding: 3px 9px; font-size: var(--fs-xs); font-family: inherit; font-weight: 600; border-radius: var(--r-lg); border: none; cursor: pointer; background: var(--warn-tint); color: var(--warn-ink); transition: background .12s, transform .1s; }
+
+.poster-missing-badge i { font-size: var(--fs-xs); }
+
+.poster-missing-badge i.bi-plus-lg { font-size: var(--fs-xs); opacity: .75; }
+
+.poster-missing-badge:hover { background: #f6dcae; }
+
+.poster-missing-badge:active { transform: scale(.96); }
+
+/* ===== INFOGRAFIS GALLERY ===== */
+
+.infografis-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.infografis-count {
+    color: var(--ink-soft, #64748b);
+    font-size: var(--fs-sm);
+}
+
+.infografis-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 14px;
+}
+
+.infografis-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    border: 1px solid var(--line, #e2e8f0);
+    background: var(--bg, #f0f4f8);
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.infografis-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px rgba(0,0,0,.14);
+}
+
+.infografis-card img {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    display: block;
+}
+
+.infografis-card-name {
+    order: -1;
+    padding: 8px 10px;
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    color: var(--ink, #1e293b);
+    background: var(--card-bg, var(--surface));
+    border-bottom: 1px solid var(--line, #e2e8f0);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .infografis-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+}
+
+/* ===== POSTER HOVER POPUP ===== */
+
+.poster-popup {
+    position: fixed;
+    top: 0; left: 0;
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.96);
+    transition: opacity .15s ease, transform .15s ease, visibility .15s, left .12s ease, top .12s ease;
+    pointer-events: none;
+}
+
+.poster-popup.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+}
+
+.poster-popup-inner {
+    background: var(--surface, var(--surface));
+    border-radius: var(--r-lg);
+    box-shadow: 0 12px 40px rgba(0,0,0,.28);
+    overflow: hidden;
+    border: 1px solid var(--line, #e2e8f0);
+}
+
+.poster-popup-img-wrap {
+    position: relative;
+    background: var(--bg, #f0f4f8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.poster-popup-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    opacity: 0;
+    transition: opacity .25s ease;
+}
+
+.poster-popup-img-wrap img.loaded {
+    opacity: 1;
+}
+
+.poster-popup-loading,
+.poster-popup-error {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+    color: var(--ink-soft, #64748b);
+    font-size: var(--fs-md);
+}
+
+.poster-popup-error { display: none; }
+
+.poster-popup-loading i,
+.poster-popup-error i { font-size: 22px; }
+
+.poster-popup-name {
+    padding: 8px 14px;
+    font-size: var(--fs-md);
+    font-weight: 600;
+    color: var(--ink, #1e293b);
+    background: var(--surface, var(--surface));
+    border-top: 1px solid var(--line, #e2e8f0);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
