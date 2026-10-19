@@ -5929,20 +5929,28 @@ async function downloadProgramListPdf(btn) {
         const BLUE = [21, 101, 168], INK = [28, 28, 28], GREY = [238, 240, 242], RED = [200, 30, 30];
 
         const drawFirstHeader = () => {
-            if (logo) pdf.addImage(logo, 'PNG', M + 4, M, 14.5, 13.4);
-            pdf.setFont('helvetica', 'bold'); pdf.setFontSize(19); pdf.setTextColor(...INK);
+            // Kop: logo kiri (proporsi asli 300x278), judul + subjudul di tengah, Izin PPIU kanan, garis aksen biru di bawah
+            const LOGO_H = 17, LOGO_W = LOGO_H * 300 / 278;
+            if (logo) pdf.addImage(logo, 'PNG', M, M, LOGO_W, LOGO_H);
+            pdf.setFont('helvetica', 'bold'); pdf.setFontSize(20); pdf.setTextColor(...INK);
             pdf.text(judul, PW / 2, M + 8, { align: 'center' });
             // Subjudul: "Keberangkatan" normal + "Bandara Soetta Jakarta" tebal, dipusatkan
-            pdf.setFontSize(11.5);
+            pdf.setFontSize(11);
             pdf.setFont('helvetica', 'normal'); const a = 'Keberangkatan ';
             pdf.setFont('helvetica', 'bold');   const b = 'Bandara Soetta Jakarta';
             pdf.setFont('helvetica', 'normal'); const wa = pdf.getTextWidth(a);
             pdf.setFont('helvetica', 'bold');   const wb = pdf.getTextWidth(b);
             const sx = PW / 2 - (wa + wb) / 2;
-            pdf.setFont('helvetica', 'normal'); pdf.text(a, sx, M + 14.5);
-            pdf.setFont('helvetica', 'bold');   pdf.text(b, sx + wa, M + 14.5);
-            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7); pdf.setTextColor(60, 60, 60);
-            pdf.text(`Izin PPIU : ${JADWAL_PDF_PPIU}`, PW - M - 4, M + 12, { align: 'right' });
+            pdf.setTextColor(...BLUE);
+            pdf.setFont('helvetica', 'normal'); pdf.text(a, sx, M + 14.6);
+            pdf.setFont('helvetica', 'bold');   pdf.text(b, sx + wa, M + 14.6);
+            // Izin PPIU: label kecil di atas, nomor tebal di bawah, rata kanan
+            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7); pdf.setTextColor(110, 118, 126);
+            pdf.text('Izin PPIU', PW - M, M + 7.2, { align: 'right' });
+            pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor(...INK);
+            pdf.text(JADWAL_PDF_PPIU, PW - M, M + 12, { align: 'right' });
+            // Garis pemisah kop
+            pdf.setDrawColor(...BLUE); pdf.setLineWidth(0.6); pdf.line(M, M + 19.5, PW - M, M + 19.5);
         };
         const drawTableHead = (y) => {
             pdf.setFillColor(...BLUE); pdf.rect(M, y, PW - 2 * M, HEAD_H, 'F');
@@ -5954,7 +5962,7 @@ async function downloadProgramListPdf(btn) {
 
         const FOOT_H = 46;                       // tinggi blok keterangan (3 kartu) di bawah tabel
         const BOTTOM = PH - 6;
-        const FIRST_TOP = M + 20, NEXT_TOP = M;
+        const FIRST_TOP = M + 23, NEXT_TOP = M;
         drawFirstHeader();
         let y = drawTableHead(FIRST_TOP);
 
