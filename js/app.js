@@ -6046,6 +6046,7 @@ function ensurePlpModal() {
             '<div class="plp-body" id="plpBody"></div>' +
             '<div class="plp-foot"><span class="plp-meta" id="plpMeta"></span>' +
                 '<button type="button" class="btn-secondary" onclick="closeProgramListPreview()">Tutup</button>' +
+                '<button type="button" class="plp-wa" id="plpWa" onclick="shareProgramListWa()"><i class="bi bi-whatsapp"></i> Share WA</button>' +
                 '<button type="button" class="btn-primary" id="plpDl" onclick="downloadProgramListFromPreview()"><i class="bi bi-download"></i> Unduh PDF</button></div>' +
         '</div>';
     el.addEventListener('click', e => { if (e.target === el) closeProgramListPreview(); });
@@ -6166,6 +6167,31 @@ function closeProgramListPreview() {
     if (_plp) { clearTimeout(_plp.rt); try { if (_plp.doc) _plp.doc.destroy(); } catch (_) {} }
     _plp = null;
     const body = document.getElementById('plpBody'); if (body) body.innerHTML = '';
+}
+
+// Share ke WhatsApp. HP / browser dengan Web Share file: lembar share sistem terbuka dengan PDF terlampir (pilih WhatsApp).
+// Desktop (tidak bisa melampirkan file lewat tautan WA): PDF diunduh lalu WhatsApp dibuka dengan teks pengantar, tinggal lampirkan file-nya.
+async function shareProgramListWa() {
+    if (!_plp) return;
+    const { pdf, fileName, count } = _plp;
+    const periode = (fileName.match(/Jadwal-Umrah-(.+)\.pdf$/) || [])[1];
+    const judul = 'Jadwal Umrah' + (periode ? ' ' + periode.replace(/-/g, ' - ') : '') + ' Amiru Tour';
+    const tgl = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    const teks = `Assalamu'alaikum, berikut ${judul} (${count} program, update ${tgl}).`;
+    try {
+        const file = new File([pdf.output('blob')], fileName, { type: 'application/pdf' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: judul, text: teks });
+            showToast('Jadwal dibagikan', 'success');
+            return;
+        }
+    } catch (err) {
+        if (err && err.name === 'AbortError') return;      // user menutup lembar share: tidak perlu apa-apa
+        console.warn('Web Share gagal, pakai cara WhatsApp biasa:', err);
+    }
+    try { pdf.save(fileName); } catch (err) { showToast('Gagal membuat PDF: ' + (err.message || err), 'error'); return; }
+    window.open('https://wa.me/?text=' + encodeURIComponent(teks + '\n(File PDF "' + fileName + '" terlampir)'), '_blank', 'noopener');
+    showToast('PDF sudah diunduh. Di WhatsApp, lampirkan file tersebut ke chat.', 'success');
 }
 
 function downloadProgramListFromPreview() {
