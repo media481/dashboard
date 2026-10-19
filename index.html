@@ -122,11 +122,14 @@
                     <div class="m-label">Infografis</div>
                 </div>
             </div>
-            <div class="metric-card">
-                <div class="m-icon icon-brand"><i class="bi bi-airplane-engines-fill"></i></div>
+            <div class="metric-card metric-clickable" id="metricMicroblog" role="button" tabindex="0" style="display:none;"
+                 data-action="openMicroblogModal"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMicroblogModal();}"
+                 title="Klik untuk melihat microblog konten">
+                <div class="m-icon icon-brand"><i class="bi bi-chat-square-text-fill"></i></div>
                 <div class="m-info">
-                    <div class="m-value" id="totalKeberangkatan">0</div>
-                    <div class="m-label">Keberangkatan</div>
+                    <div class="m-value" id="totalMicroblog">–</div>
+                    <div class="m-label">Microblog</div>
                 </div>
             </div>
         </div>
@@ -779,6 +782,25 @@
         <div class="modal-body">
             <div class="rekap-gal-note" id="rekapNote" style="display:none;"></div>
             <div class="rekap-gallery-grid" id="rekapGrid"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="microblogModal" onclick="if(event.target===this)closeMicroblogModal()">
+    <div class="modal-content mb-modal" role="dialog" aria-modal="true" aria-labelledby="mbTitle">
+        <div class="modal-header mb-head">
+            <div class="mb-head-main">
+                <span class="mb-head-icon" aria-hidden="true"><i class="bi bi-chat-square-text-fill"></i></span>
+                <div>
+                    <h2 id="mbTitle">Microblog <span class="mb-count" id="mbCount"></span></h2>
+                    <p class="mb-head-sub">Konten dari Content Planner &middot; gambar masih dummy</p>
+                </div>
+            </div>
+            <button class="modal-close" data-action="closeMicroblogModal" aria-label="Tutup">&times;</button>
+        </div>
+        <div class="mb-filters" id="mbFilters"></div>
+        <div class="modal-body mb-body">
+            <div class="mb-feed" id="mbFeed"></div>
         </div>
     </div>
 </div>
