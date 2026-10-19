@@ -8,7 +8,7 @@
 //
 // Deploy:
 //   supabase functions deploy ig-comment-action
-//   (TIDAK pakai --no-verify-jwt karena wajib JWT authenticated, sama seperti ig-manual-retry)
+//   (WAJIB --no-verify-jwt supaya preflight CORS lolos; JWT + role tetap dicek di dalam kode)
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -21,8 +21,18 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-function jsonResponse(obj: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } });
+function jsonResponse(
+  obj: Record<string, unknown>,
+  status = 200,
+  cors: Record<string, string> = {},
+) {
+  // [FIX CORS] Header CORS wajib ikut di SETIAP respons (bukan hanya preflight OPTIONS),
+  // kalau tidak browser memblokir respons 401/403/404/500/200 dan dashboard hanya
+  // melihat "blocked by CORS policy".
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { "Content-Type": "application/json", ...cors },
+  });
 }
 
 Deno.serve(async (req: Request) => {
@@ -32,19 +42,20 @@ Deno.serve(async (req: Request) => {
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
   };
+  const json = (obj: Record<string, unknown>, status = 200) => jsonResponse(obj, status, CORS);
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
-  if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   // Wajib JWT valid — TIDAK ada fallback service_role_key/apikey di sini,
   // karena aksi ini selalu dipicu manusia lewat tombol dashboard.
   const authHeader = req.headers.get("authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return jsonResponse({ error: "Unauthorized — login diperlukan" }, 401);
+    return json({ error: "Unauthorized — login diperlukan" }, 401);
   }
   const token = authHeader.replace("Bearer ", "");
   const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
   if (userErr || !user) {
-    return jsonResponse({ error: "Unauthorized — JWT tidak valid" }, 401);
+    return json({ error: "Unauthorized — JWT tidak valid" }, 401);
   }
 
   // Cek role dashboard (admin/user) — guest ditolak walau JWT sah.
@@ -56,22 +67,22 @@ Deno.serve(async (req: Request) => {
     .eq("id", user.id)
     .single();
   if (!profile || !["admin", "user"].includes(profile.dashboard_role)) {
-    return jsonResponse({ error: "Akun Anda tidak punya izin untuk aksi ini" }, 403);
+    return json({ error: "Akun Anda tidak punya izin untuk aksi ini" }, 403);
   }
 
   const body = await req.json().catch(() => ({}));
   const { ig_comment_id, action, reply_text } = body;
   if (!ig_comment_id || !action) {
-    return jsonResponse({ error: "ig_comment_id dan action wajib diisi" }, 400);
+    return json({ error: "ig_comment_id dan action wajib diisi" }, 400);
   }
   if (action === "reply" && !reply_text?.trim()) {
-    return jsonResponse({ error: "reply_text wajib diisi untuk action reply" }, 400);
+    return json({ error: "reply_text wajib diisi untuk action reply" }, 400);
   }
 
   try {
     const { data: accounts } = await supabase.from("ig_accounts").select("access_token").eq("is_active", true).limit(1);
     if (!accounts || !accounts.length) {
-      return jsonResponse({ error: "Tidak ada akun IG aktif" }, 400);
+      return json({ error: "Tidak ada akun IG aktif" }, 400);
     }
     const igToken = accounts[0].access_token;
 
@@ -88,7 +99,7 @@ Deno.serve(async (req: Request) => {
         replied_at: new Date().toISOString(),
       }).eq("ig_comment_id", ig_comment_id);
 
-      return jsonResponse({ ok: true, message: "Balasan terkirim", reply_id: data.id });
+      return json({ ok: true, message: "Balasan terkirim", reply_id: data.id });
     }
 
     if (action === "hide" || action === "unhide") {
@@ -99,7 +110,7 @@ Deno.serve(async (req: Request) => {
       if (data.error) throw new Error(data.error.message || `Gagal ${action} komentar`);
 
       await supabase.from("ig_comments").update({ hidden }).eq("ig_comment_id", ig_comment_id);
-      return jsonResponse({ ok: true, message: hidden ? "Komentar disembunyikan" : "Komentar ditampilkan lagi" });
+      return json({ ok: true, message: hidden ? "Komentar disembunyikan" : "Komentar ditampilkan lagi" });
     }
 
     if (action === "delete") {
@@ -109,12 +120,12 @@ Deno.serve(async (req: Request) => {
       if (data.error) throw new Error(data.error.message || "Gagal menghapus komentar");
 
       await supabase.from("ig_comments").delete().eq("ig_comment_id", ig_comment_id);
-      return jsonResponse({ ok: true, message: "Komentar dihapus" });
+      return json({ ok: true, message: "Komentar dihapus" });
     }
 
-    return jsonResponse({ error: `Action '${action}' tidak dikenali` }, 400);
+    return json({ error: `Action '${action}' tidak dikenali` }, 400);
   } catch (err: any) {
     console.error("ig-comment-action error:", err);
-    return jsonResponse({ ok: false, error: err.message }, 500);
+    return json({ ok: false, error: err.message }, 500);
   }
 });
