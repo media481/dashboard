@@ -5866,7 +5866,8 @@ async function downloadProgramListPdf(btn) {
             else if (/awal\s+ramadhan/i.test(n)) extra.push('Awal Ramadhan');
             else if (/ramadhan/i.test(n)) extra.push('Ramadhan');
             if (/syawal/i.test(n)) extra.push('Syawal');
-            return [d || '-', ...extra].join(' ');
+            // Jangan tulis ganda kalau durasi sudah memuat keterangan yang sama (mis. "9 Hari Syawal")
+            return [d || '-', ...extra.filter(e => !d.toLowerCase().includes(e.toLowerCase()))].join(' ');
         };
         const pesawatText = (p) => {
             const n = String(p.nama || '');
@@ -5901,16 +5902,27 @@ async function downloadProgramListPdf(btn) {
         } catch (_) { /* tanpa logo */ }
 
         const cols = [
-            { h: 'TANGGAL',       w: 32,   a: 'left' },
-            { h: 'PROGRAM',       w: 38,   a: 'left' },
-            { h: 'PESAWAT',       w: 52,   a: 'left' },
-            { h: 'HOTEL MADINAH', w: 36,   a: 'left' },
-            { h: 'HOTEL MEKAH',   w: 36,   a: 'left' },
-            { h: 'BIAYA QUAD',    w: 27.7, a: 'left' },
-            { h: 'BIAYA TRIPLE',  w: 27.7, a: 'left' },
-            { h: 'BIAYA DOUBLE',  w: 27.6, a: 'left' },
-        ];
-        const PAD = 2.2, FS = 8.5, LH = 3.5, HEAD_H = 6.4;
+            { h: 'TANGGAL' }, { h: 'PROGRAM' }, { h: 'PESAWAT' }, { h: 'HOTEL MADINAH' },
+            { h: 'HOTEL MEKAH' }, { h: 'BIAYA QUAD' }, { h: 'BIAYA TRIPLE' }, { h: 'BIAYA DOUBLE' },
+        ].map(c => ({ ...c, a: 'left', w: 0 }));
+        const PAD = 2.2, HEAD_H = 6.4, TABLE_W = PW - 2 * M;
+
+        // [LEBAR KOLOM OTOMATIS] Ukur teks terpanjang di tiap kolom (termasuk judul kolom), lalu
+        // beri lebar sesuai isinya supaya semua data muat 1 baris. Kalau total melebihi lebar
+        // kertas, ukuran font diperkecil bertahap (8.5 -> 6.5 pt) sampai muat; sisa ruang
+        // dibagi proporsional ke semua kolom. Hanya kalau font minimum pun tidak cukup, teks
+        // terpanjang baru boleh turun ke baris kedua.
+        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8.5);
+        const headW = cols.map(c => pdf.getTextWidth(c.h));
+        const measure = (f) => {
+            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(f);
+            return cols.map((c, i) => Math.max(headW[i], ...rows.map(r => pdf.getTextWidth(String(r[i])))) + 2 * PAD + 0.8);
+        };
+        let FS = 8.5, natural = measure(FS);
+        while (natural.reduce((x, y2) => x + y2, 0) > TABLE_W && FS > 6.5) { FS = Math.round((FS - 0.25) * 100) / 100; natural = measure(FS); }
+        const scale = TABLE_W / natural.reduce((x, y2) => x + y2, 0);
+        cols.forEach((c, i) => { c.w = natural[i] * scale; });
+        const LH = FS * 0.41;
         const BLUE = [21, 101, 168], INK = [28, 28, 28], GREY = [238, 240, 242], RED = [200, 30, 30];
 
         const drawFirstHeader = () => {
