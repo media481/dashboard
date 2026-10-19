@@ -50,29 +50,49 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #fff;
 .stage{flex:1;min-width:0;min-height:0;overflow:auto;display:flex;position:relative;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .stage::-webkit-scrollbar{display:none}
 .scene{margin:auto;padding:20px 24px}
-.book{position:relative;perspective:2800px;height:var(--ph);width:calc(var(--pw)*2);
-  transition:transform .85s cubic-bezier(.5,.05,.2,1);cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:pan-y}
+.book{position:relative;perspective:calc(var(--pw)*3.4);height:var(--ph);width:calc(var(--pw)*2);
+  cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:pan-y}   /* posisi/geser buku diatur JS tiap frame (sinkron dengan sampul yang membuka) */
 .book.single{width:var(--pw)}
 .book.zoomed{touch-action:auto}   /* diperbesar: izinkan geser horizontal & vertikal untuk menjelajah poster */
 .book.nt,.book.nt *,.book.nt *::before,.book.nt *::after{transition:none!important}
-.sheet{position:absolute;left:50%;top:0;width:50%;height:100%;transform-origin:0 50%;transform-style:preserve-3d;
-  transition:transform .85s cubic-bezier(.5,.05,.2,1)}
-.sheet.flipped{transform:rotateY(-180deg)}
+.sheet{position:absolute;left:50%;top:0;width:50%;height:100%;transform-origin:0 50%;transform-style:preserve-3d;will-change:transform}
 .face{position:absolute;inset:0;overflow:hidden;background:var(--paper);backface-visibility:hidden;-webkit-backface-visibility:hidden}
 .sheet .front{border-radius:0 5px 5px 0;box-shadow:0 18px 40px -12px var(--shadow),0 2px 8px rgba(0,0,0,.25)}
 .sheet .back{transform:rotateY(180deg);border-radius:5px 0 0 5px;box-shadow:0 18px 40px -12px var(--shadow),0 2px 8px rgba(0,0,0,.25)}
 .sheet .front::after,.sheet .back::after{content:"";position:absolute;top:0;bottom:0;width:9%;pointer-events:none;z-index:5}
 .sheet .front::after{left:0;background:linear-gradient(90deg,rgba(0,0,0,.24),rgba(0,0,0,.06) 45%,transparent)}
 .sheet .back::after{right:0;background:linear-gradient(270deg,rgba(0,0,0,.24),rgba(0,0,0,.06) 45%,transparent)}
-.sheet .front::before,.sheet .back::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:6;transition:opacity .85s cubic-bezier(.5,.05,.2,1)}
-.sheet .front::before{background:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.38) 100%);opacity:0}
-.sheet.flipped .front::before{opacity:1}
-.sheet .back::before{background:linear-gradient(270deg,transparent 0%,rgba(0,0,0,.38) 100%);opacity:1}
-.sheet.flipped .back::before{opacity:0}
-.leaf{position:absolute;inset:0;transform-origin:0 50%;backface-visibility:hidden;-webkit-backface-visibility:hidden;
-  transition:transform .8s cubic-bezier(.5,.05,.2,1),opacity .6s ease}
+.sheet .front::before,.sheet .back::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:6}
+.sheet .front::before{background:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.38) 100%);opacity:var(--sf,0)}
+.sheet .back::before{background:linear-gradient(270deg,transparent 0%,rgba(0,0,0,.38) 100%);opacity:var(--sb,1)}
+.leaf{position:absolute;inset:0;transform-origin:0 50%;transform-style:preserve-3d;backface-visibility:hidden;-webkit-backface-visibility:hidden;will-change:transform}
 .leaf .face{border-radius:5px;box-shadow:0 18px 40px -12px var(--shadow),0 2px 8px rgba(0,0,0,.25)}
-.leaf.flipped{transform:rotateY(-98deg);opacity:0;pointer-events:none}
+
+/* ---------- kertas melengkung: rantai strip bersendi, hanya dibuat untuk lembar yang sedang dibalik ---------- */
+.rich>.face{visibility:hidden}
+.curl{position:absolute;left:0;top:0;width:100%;height:100%;transform-style:preserve-3d;pointer-events:none}
+.seg{position:absolute;top:0;height:100%;transform-origin:0 50%;transform-style:preserve-3d;will-change:transform}
+.sp{position:absolute;inset:0;overflow:hidden;background:var(--paper);backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.sp.sb{transform:rotateY(180deg)}
+.cw{position:absolute;top:0}
+.sp .sh{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none}
+.sp .gut{position:absolute;inset:0;pointer-events:none}
+/* bayangan jatuh ke halaman di bawah lembar yang sedang bergerak + tebal tumpukan halaman */
+.cast{position:absolute;top:0;height:100%;pointer-events:none;opacity:0;z-index:900;will-change:transform,opacity}
+.cast.r{left:50%;width:50%;transform-origin:0 0;background:linear-gradient(90deg,rgba(0,0,0,.5),rgba(0,0,0,.22) 55%,transparent)}
+.cast.l{left:0;width:50%;transform-origin:100% 0;background:linear-gradient(270deg,rgba(0,0,0,.5),rgba(0,0,0,.22) 55%,transparent)}
+.book.single .cast.r{left:0;width:100%}
+.book.single .cast.l,.book.single .stk{display:none}
+.stk{position:absolute;top:2px;height:100%;z-index:0;pointer-events:none;box-shadow:0 18px 40px -12px var(--shadow)}
+.stk.r{left:50%;width:calc(50% + var(--t,0px));border-radius:0 4px 4px 0;background:repeating-linear-gradient(90deg,#f4f6f9 0 1.2px,#c3cedb 1.2px 2.4px)}
+.stk.l{left:calc(0px - var(--t,0px));width:calc(50% + var(--t,0px));border-radius:4px 0 0 4px;background:repeating-linear-gradient(270deg,#f4f6f9 0 1.2px,#c3cedb 1.2px 2.4px)}
+/* sampul keras: alur engsel */
+.cover::after,.back-cover::after{content:"";position:absolute;top:0;bottom:0;width:4px;pointer-events:none}
+.cover::after{left:20px;background:linear-gradient(90deg,rgba(0,0,0,.4),rgba(255,255,255,.14) 60%,transparent)}
+.back-cover::after{right:20px;background:linear-gradient(270deg,rgba(0,0,0,.4),rgba(255,255,255,.14) 60%,transparent)}
+/* buku muncul pelan saat pertama dibuka */
+@keyframes bookIn{from{opacity:0;transform:translateY(28px) scale(.93)}to{opacity:1;transform:none}}
+.scene.intro{animation:bookIn 1s cubic-bezier(.2,.7,.2,1) backwards}
 
 /* ---------- halaman (500 x 625 px logis, diskalakan dengan --k) ---------- */
 .pg{width:500px;height:625px;position:relative;overflow:hidden;transform:scale(var(--k));transform-origin:0 0;
@@ -450,6 +470,8 @@ document.querySelectorAll('[data-ico]').forEach(b => { b.innerHTML = ico(b.getAt
 if (WA_NUMBER) { const w = $('#waTop'); w.href = waLink(null); w.hidden = false; }
 
 let pages = [], p = 0, zoom = 1, single = false, total = 0, units = [], shown = -1, zt = 0;
+let PW = 0, prog = [], raf = 0, introDone = false, stkL = null, stkR = null, castL = null, castR = null;
+const tw = new Map(), curls = new Map();   // tween aktif per lembar & 'curl' (kertas melengkung) aktif per lembar
 let soundOn = true, autoT = 0, actx = null, pendingHash = null, thumbsBuilt = false;
 const stage = $('#stage'), book = $('#book'), thumbs = $('#thumbs'), slider = $('#slider'), lbl = $('#lbl');
 const ZOOMS = [1, 1.25, 1.5, 2];
@@ -460,6 +482,7 @@ function layout() {
   let pw = single ? (W - 48) : (W - 48) / 2;
   pw = Math.min(pw, (H - 40) / 1.25);
   pw = Math.max(140, Math.floor(pw * zoom));
+  PW = pw;
   const r = document.documentElement.style;
   r.setProperty('--pw', pw + 'px'); r.setProperty('--ph', (pw * 1.25) + 'px'); r.setProperty('--k', (pw / 500).toFixed(4));
 }
@@ -469,7 +492,7 @@ const div = c => { const d = document.createElement('div'); d.className = c; ret
 function build() {
   layout();
   book.className = 'book nt ' + (single ? 'single' : 'dbl') + (zoom > 1 ? ' zoomed' : '');
-  book.innerHTML = ''; units = []; shown = -1;
+  book.innerHTML = ''; units = []; shown = -1; tw.clear(); curls.clear(); prog = [];
   const n = pages.length;
   if (single) {
     total = n - 1;
@@ -482,6 +505,8 @@ function build() {
       book.appendChild(s); units.push(s);
     }
   }
+  book.insertAdjacentHTML('beforeend', '<div class="stk l"></div><div class="stk r"></div><div class="cast l"></div><div class="cast r"></div>');
+  stkL = book.querySelector('.stk.l'); stkR = book.querySelector('.stk.r'); castL = book.querySelector('.cast.l'); castR = book.querySelector('.cast.r');
   if (p > n - 1) p = n - 1;
   if (!single && p > 0) p = 2 * curU() - 1;
   // [OPTIMASI] Strip thumbnail baru dibangun saat dibuka (dulu selalu dibangun: seluruh halaman dirender 2x
@@ -490,6 +515,7 @@ function build() {
   if (!thumbs.hidden) buildThumbs();
   slider.max = total;
   apply(false); sync(); hydrate();
+  if (!introDone) { introDone = true; const sc = document.querySelector('.scene'); sc.classList.add('intro'); sc.addEventListener('animationend', () => sc.classList.remove('intro'), { once: true }); }
   requestAnimationFrame(() => requestAnimationFrame(() => book.classList.remove('nt')));
 }
 function buildThumbs() {
@@ -528,24 +554,127 @@ function hydrate() {
 book.addEventListener('error', e => { const im = e.target; if (im && im.tagName === 'IMG' && im.classList.contains('pimg')) { im.style.display = 'none'; im.parentNode.classList.remove('ld'); } }, true);
 book.addEventListener('load', e => { const im = e.target; if (im && im.tagName === 'IMG' && im.classList.contains('pimg')) { im.parentNode.classList.remove('ld'); im.parentNode.classList.add('ok'); } }, true);
 
-function finalize() { units.forEach((el, i) => { el.style.zIndex = i < shown ? (i + 1) : (units.length - i); }); }
-function apply(anim) {
-  const u = curU(), prev = shown < 0 ? u : shown, dir = u > prev ? 1 : -1, lo = Math.min(u, prev), hi = Math.max(u, prev);
-  let maxD = 0;
-  units.forEach((el, i) => {
-    const fl = i < u, mv = anim && u !== prev && i >= lo && i < hi;
-    if (mv) {
-      const d = (dir > 0 ? i - lo : hi - 1 - i) * Math.min(70, 500 / Math.max(1, hi - lo));
-      el.style.transitionDelay = d + 'ms'; maxD = Math.max(maxD, d); el.style.zIndex = 1000 + (dir > 0 ? i : units.length - i);
-    } else el.style.transitionDelay = '0ms';
-    el.classList.toggle('flipped', fl);
+/* ---------- mesin animasi balik halaman (requestAnimationFrame) ----------
+   Tiap lembar punya progres e (0 = rata di kanan, 1 = rata di kiri). Saat dibalik, lembar diganti sementara dengan "curl":
+   rantai strip vertikal bersendi; tiap strip memegang potongan halaman (salinan), jadi kertas MELENGKUNG (tepi bebas mendahului lalu
+   tertinggal), dengan bayangan per strip, bayangan jatuh ke halaman di bawahnya, tumpukan halaman yang menipis/menebal, dan sampul
+   yang membuka sambil menggeser buku ke tengah. Lembar bisa juga diseret langsung dengan jari/mouse. */
+const BEND = 36;   // lengkung maksimum (derajat) antara pangkal dan tepi bebas
+const REDUCED = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+const easeIO = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeO = t => 1 - Math.pow(1 - t, 3);
+const smooth = (a, b, x) => { x = Math.max(0, Math.min(1, (x - a) / (b - a))); return x * x * (3 - 2 * x); };
+const shadeOf = m => { m = Math.max(0, Math.min(180, m)); return .05 + .34 * Math.pow((m <= 90 ? m : 180 - m) / 90, 1.3); };
+
+function finalize() { const u = curU(); units.forEach((el, i) => { el.style.zIndex = i < u ? (i + 1) : (units.length - i); }); }
+
+function startCurl(i, dir) {
+  let c = curls.get(i);
+  if (c) { c.dir = dir; return c; }
+  const el = units[i], N = single ? 10 : 14, pw = PW, ph = pw * 1.25, w = pw / N;
+  const fpg = el.querySelector(single ? '.face' : '.front').firstElementChild;
+  const bpg = single ? null : el.querySelector('.back').firstElementChild;
+  const root = div('curl'), segs = [], shF = [], shB = [];
+  let parent = root;
+  for (let k = 0; k < N; k++) {
+    const sg = div('seg'); sg.style.width = (k < N - 1 ? w + 1 : w).toFixed(2) + 'px'; sg.style.left = (k ? w : 0).toFixed(2) + 'px';
+    const f = div('sp sf'), b = div('sp sb');
+    const fw = div('cw'); fw.style.cssText = 'left:' + (-k * w).toFixed(2) + 'px;width:' + pw + 'px;height:' + ph + 'px'; fw.appendChild(fpg.cloneNode(true)); f.appendChild(fw);
+    if (bpg) { const bw = div('cw'); bw.style.cssText = 'left:' + (-(N - 1 - k) * w).toFixed(2) + 'px;width:' + pw + 'px;height:' + ph + 'px'; bw.appendChild(bpg.cloneNode(true)); b.appendChild(bw); }
+    const a = div('sh'), z = div('sh'); f.appendChild(a); b.appendChild(z); shF.push(a); shB.push(z);
+    if (k === 0) { const g = div('gut'); g.style.background = 'linear-gradient(90deg,rgba(0,0,0,.24),rgba(0,0,0,.06) 45%,transparent)'; f.appendChild(g);
+                   const g2 = div('gut'); g2.style.background = 'linear-gradient(270deg,rgba(0,0,0,.24),rgba(0,0,0,.06) 45%,transparent)'; b.appendChild(g2); }
+    if (k === N - 1) { f.style.borderRadius = '0 5px 5px 0'; }
+    if (k === 0) { b.style.borderRadius = '0'; }
+    sg.appendChild(f); sg.appendChild(b); parent.appendChild(sg); parent = sg; segs.push(sg);
+  }
+  el.classList.add('rich'); el.style.transform = 'none'; el.style.opacity = ''; el.appendChild(root);
+  c = { N, segs, shF, shB, root, dir }; curls.set(i, c); return c;
+}
+function endCurl(i) { const c = curls.get(i); if (!c) return; c.root.remove(); units[i].classList.remove('rich'); curls.delete(i); }
+
+function paintCurl(c, e) {
+  const N = c.N, th = (single ? 100 : 180) * e, fade = single ? smooth(.6, 1, e) : 0;
+  const lag = -c.dir * BEND * Math.sin(2 * Math.PI * e);       // paruh pertama tepi bebas mendahului (ditarik), paruh kedua tertinggal (hambatan udara)
+  const tot = Math.min(th * .8, lag), den = N * (N - 1) / 2;   // batas atas: kertas tidak boleh menembus halaman di bawahnya
+  let m = th;
+  for (let k = 0; k < N; k++) {
+    let rel;
+    if (k === 0) rel = -th; else { rel = tot * k / den; m -= rel; }   // lengkung makin kuat ke arah tepi bebas
+    c.segs[k].style.transform = 'rotateY(' + rel.toFixed(2) + 'deg)';
+    const sd = Math.max(shadeOf(m), fade).toFixed(3);
+    c.shF[k].style.opacity = sd; c.shB[k].style.opacity = sd;
+  }
+}
+function paint(i, e) {
+  prog[i] = e;
+  const el = units[i], c = curls.get(i);
+  if (c) { paintCurl(c, e); return; }
+  if (single) {
+    el.style.transform = 'rotateY(' + (-98 * e).toFixed(2) + 'deg)';
+    el.style.opacity = e < .65 ? '' : Math.max(0, 1 - (e - .65) / .3).toFixed(3);
+    el.style.pointerEvents = e > .5 ? 'none' : '';
+  } else {
+    el.style.transform = 'rotateY(' + (-180 * e).toFixed(2) + 'deg)';
+    el.style.setProperty('--sf', e.toFixed(3)); el.style.setProperty('--sb', (1 - e).toFixed(3));
+  }
+}
+// geser buku (sampul membuka -> buku pindah ke tengah) + ketebalan tumpukan halaman kiri/kanan
+function glob() {
+  if (!units.length) return;
+  if (single) book.style.transform = 'none';
+  else {
+    const sh = -0.5 * (1 - (prog[0] || 0)) + 0.5 * (prog[units.length - 1] || 0);
+    book.style.transform = Math.abs(sh) > .0005 ? 'translateX(calc(var(--pw) * ' + sh.toFixed(4) + '))' : 'none';
+  }
+  if (stkL && !single) {
+    let s = 0; for (let i = 0; i < prog.length; i++) s += prog[i] || 0;
+    stkL.style.setProperty('--t', Math.min(9, s * .42).toFixed(1) + 'px');
+    stkR.style.setProperty('--t', Math.min(9, (units.length - s) * .42).toFixed(1) + 'px');
+  }
+}
+function castPaint(lead) {
+  if (!castR) return;
+  if (!lead) { castR.style.opacity = 0; castL.style.opacity = 0; return; }
+  const ang = lead.e * (single ? 100 : 180) * Math.PI / 180, sn = Math.sin(ang), cs = Math.cos(ang), amp = single ? .8 : .9;
+  if (cs >= 0) { castR.style.transform = 'scaleX(' + Math.max(.02, cs).toFixed(3) + ')'; castR.style.opacity = (sn * amp).toFixed(3); castL.style.opacity = 0; }
+  else { castL.style.transform = 'scaleX(' + (-cs).toFixed(3) + ')'; castL.style.opacity = (sn * amp).toFixed(3); castR.style.opacity = 0; }
+}
+function tick(now) {
+  raf = 0;
+  let lead = null; const done = [];
+  tw.forEach((t, i) => {
+    let k = (now - t.t0 - t.delay) / t.dur;
+    if (k < 0) return;
+    if (!t.on) { t.on = true; units[i].style.zIndex = t.z; if (t.rich) startCurl(i, t.to > t.from ? 1 : -1); }
+    k = Math.min(1, k);
+    const e = t.from + (t.to - t.from) * t.fn(k);
+    paint(i, e);
+    if (!lead || t.delay < lead.d) lead = { e, d: t.delay };
+    if (k >= 1) done.push(i);
   });
-  shown = u;
-  if (!anim) finalize(); else { clearTimeout(zt); zt = setTimeout(finalize, 950 + maxD); }
-  if (!single) {
-    const sh = u === 0 ? -0.5 : (u === total ? 0.5 : 0);
-    book.style.transform = sh ? 'translateX(calc(var(--pw) * ' + sh + '))' : 'none';
-  } else book.style.transform = 'none';
+  done.forEach(i => { const t = tw.get(i); tw.delete(i); endCurl(i); paint(i, t.to); if (t.snd) landSound(); });
+  glob(); castPaint(lead);
+  if (tw.size) raf = requestAnimationFrame(tick); else { castPaint(null); finalize(); }
+}
+function apply(anim) {
+  const u = curU(), now = performance.now(), mv = [];
+  units.forEach((el, i) => {
+    const to = i < u ? 1 : 0, cur = prog[i] === undefined ? to : prog[i], ex = tw.get(i);
+    if (ex && ex.to === to) return;                                     // sudah menuju target yang sama
+    if (!anim || Math.abs(cur - to) < .002) { if (ex) tw.delete(i); endCurl(i); paint(i, to); return; }
+    mv.push(i);
+  });
+  if (!anim) { glob(); castPaint(null); finalize(); return; }
+  const fw = mv.filter(i => i < u), bw = mv.filter(i => i >= u).reverse();   // maju: dari lembar terdekat ke jauh; mundur: kebalikannya
+  const step = Math.min(70, 500 / Math.max(1, mv.length)), base = REDUCED ? 1 : (mv.length > 3 ? 850 : 1150);
+  [fw, bw].forEach(grp => grp.forEach((i, k) => {
+    const to = i < u ? 1 : 0, cur = prog[i] === undefined ? to : prog[i], part = cur > .002 && cur < .998;
+    const c = curls.get(i); if (c) c.dir = to > cur ? 1 : -1;
+    tw.set(i, { from: cur, to, delay: k * step, t0: now, on: false, rich: !REDUCED && k < 3, snd: k === 0,
+      dur: Math.max(REDUCED ? 1 : 380, base * Math.pow(Math.abs(to - cur), .8)), fn: part ? easeO : easeIO, z: 1000 + (to === 1 ? i : units.length - i) });
+  }));
+  if (!raf) raf = requestAnimationFrame(tick);
 }
 function label() {
   const n = pages.length;
@@ -567,7 +696,7 @@ function sync() {
 function goPage(t) {
   const n = pages.length; t = Math.max(0, Math.min(n - 1, t));
   let np; if (single) np = t; else { const u = Math.ceil(t / 2); np = u === 0 ? 0 : 2 * u - 1; }
-  if (np === p && shown === curU()) return;
+  if (np === p) return;
   const before = curU();
   p = np; apply(true); sync(); hydrate();
   if (curU() !== before) flipSound();
@@ -576,28 +705,56 @@ function next() { if (single) goPage(p + 1); else { const u = curU(); if (u < to
 function prev() { if (single) goPage(p - 1); else { const u = curU(); if (u > 0) goPage(u - 1 === 0 ? 0 : 2 * (u - 1) - 1); } }
 
 /* ---------- suara ---------- */
-function flipSound() {
+function noiseBurst(dur, freq, q, gain, decay, type) {
   if (!soundOn) return;
   try {
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     if (!actx) actx = new AC();
     if (actx.state === 'suspended') actx.resume();
-    const len = Math.floor(actx.sampleRate * 0.22), buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) { const t = i / len; d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 2.2) * (t < 0.05 ? t / 0.05 : 1); }
+    const len = Math.floor(actx.sampleRate * dur), buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) { const t = i / len; d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, decay) * (t < 0.05 ? t / 0.05 : 1); }
     const src = actx.createBufferSource(); src.buffer = buf;
-    const f = actx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2200; f.Q.value = .7;
-    const g = actx.createGain(); g.gain.value = .28;
+    const f = actx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+    const g = actx.createGain(); g.gain.value = gain;
     src.connect(f); f.connect(g); g.connect(actx.destination); src.start();
   } catch (e) {}
 }
+function flipSound() { noiseBurst(.34, 1700 + Math.random() * 900, .6, .26, 2, 'bandpass'); }   // desir kertas saat diangkat
+function landSound() { noiseBurst(.1, 520, .8, .2, 3, 'lowpass'); }                              // bunyi 'tup' saat kertas mendarat
 let tt = 0;
 function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 2600); }
 
 /* ---------- interaksi ---------- */
-let px = 0, py = 0, pid = null;
+let px = 0, py = 0, pid = null, drag = null;
 book.addEventListener('pointerdown', e => { px = e.clientX; py = e.clientY; pid = e.pointerId; });
+// seret halaman: lembar mengikuti jari/mouse (melengkung), lepas > 1/3 jalan atau dilempar cepat = lanjut membalik, selain itu kembali
+book.addEventListener('pointermove', e => {
+  if (pid === null || zoom !== 1) return;
+  const dx = e.clientX - px, dy = e.clientY - py, now = performance.now();
+  if (!drag) {
+    if (Math.abs(dx) < 14 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
+    const dir = dx < 0 ? 1 : -1, u = curU();
+    if (dir > 0 ? u >= total : u <= 0) return;
+    if (autoT) stopAuto();
+    const i = dir > 0 ? u : u - 1;
+    tw.delete(i);
+    drag = { i, dir, e: prog[i] || 0, v: 0, x: e.clientX, t: now };
+    startCurl(i, dir); units[i].style.zIndex = 1000 + (dir > 0 ? i : units.length - i);
+    try { book.setPointerCapture(e.pointerId); } catch (er) {}
+  }
+  const d = dx / (PW * 1.5);
+  drag.e = Math.max(0, Math.min(1, drag.dir > 0 ? -d : 1 - d));
+  drag.v = .6 * ((e.clientX - drag.x) / Math.max(1, now - drag.t)) + .4 * drag.v; drag.x = e.clientX; drag.t = now;
+  paint(drag.i, drag.e); glob(); castPaint({ e: drag.e });
+});
 book.addEventListener('pointerup', e => {
   if (pid === null) return; pid = null;
+  if (drag) {
+    const d = drag; drag = null;
+    const go = d.dir > 0 ? (d.e > .32 || d.v < -.45) : (d.e < .68 || d.v > .45);
+    if (go) { d.dir > 0 ? next() : prev(); } else apply(true);
+    return;
+  }
   const dx = e.clientX - px, dy = e.clientY - py;
   if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4 && zoom === 1) { dx < 0 ? next() : prev(); return; }
   if (Math.abs(dx) < 8 && Math.abs(dy) < 8) {
@@ -608,7 +765,7 @@ book.addEventListener('pointerup', e => {
     (e.clientX - r.left) > r.width / 2 ? next() : prev();
   }
 });
-book.addEventListener('pointercancel', () => { pid = null; });
+book.addEventListener('pointercancel', () => { pid = null; if (drag) { drag = null; apply(true); } });
 document.addEventListener('keydown', e => {
   if (e.target && e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
   if (e.key === 'ArrowRight' || e.key === 'PageDown') { next(); e.preventDefault(); }

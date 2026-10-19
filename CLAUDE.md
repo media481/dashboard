@@ -44,6 +44,9 @@ katalog-flip.html     ← versi FLIPBOOK dari katalog publik, juga MANDIRI (CSS+
                         (detail di kiri/indeks ganjil, poster di kanan/indeks genap), sampul belakang. Jumlah halaman
                         harus selalu genap (diatur `buildPages()`). Poster dimuat lazy hanya di sekitar halaman aktif
                         (`hydrate()`). Isi `WA_NUMBER` dan `WA_TAMPIL` di bagian konfigurasi. Deep link `katalog-flip.html#p5`.
+                        Animasi balik halaman digerakkan JS (requestAnimationFrame, BUKAN CSS transition): lembar yang sedang bergerak diganti
+                        sementara dengan `curl` (rantai strip bersendi, `startCurl()/paintCurl()`) supaya kertas melengkung; ada bayangan jatuh
+                        (`.cast`), tumpukan halaman (`.stk`), sampul membuka sambil menggeser buku, dan seret-halaman (pointermove). Konstanta `BEND`.
                         Dibuka dari tombol "Flipbook" di topbar (`#btnLihatFlipbook`) dan tombol Flipbook di katalog.html;
                         tombol "Share Flipbook" (`#btnShareFlipbook`, `copyFlipbookLink()` di app.js) menyalin URL-nya.
                         `copyKatalogLink()` dan `copyFlipbookLink()` sama-sama memakai `salinLinkPublik(url, nama)`
