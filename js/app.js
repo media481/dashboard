@@ -6060,16 +6060,31 @@ function plpFit() {
     const box = document.getElementById('plpBox'), body = document.getElementById('plpBody');
     if (!box || !body) return;
     const head = box.querySelector('.plp-head'), foot = box.querySelector('.plp-foot');
-    const gap = 10, r = _plp.ratio, n = Math.max(1, _plp.n);
+    const gap = 10, r = _plp.ratio, n = Math.max(1, _plp.n), rl = r * (_plp.trim || 1);   // rl = rasio tinggi/lebar halaman TERAKHIR (sisa kosong di bawah sudah dipotong)
     for (let pass = 0; pass < 2; pass++) {              // pass ke-2: ukur ulang header/footer setelah lebar berubah (bisa membungkus baris)
         const chrome = head.offsetHeight + foot.offsetHeight;
-        const availW = Math.min(window.innerWidth - 40, 1280);
-        const availH = window.innerHeight - 40 - chrome;
-        const w = Math.max(280, Math.floor(Math.min(availW, availH / r)));
-        const full = n * w * r + (n - 1) * gap;
+        const availW = window.innerWidth - 24;           // overlay preview hanya menyisakan 12px di tiap sisi
+        const availH = window.innerHeight - 24 - chrome;
+        const w = Math.max(280, Math.floor(Math.min(availW, availH / (n === 1 ? rl : r))));
+        const full = (n - 1) * (w * r + gap) + w * rl;
         box.style.width = w + 'px';
-        body.style.height = Math.floor(Math.min(full, Math.max(availH, w * r))) + 'px';
+        body.style.height = Math.ceil(Math.min(full, availH)) + 'px';
     }
+}
+
+// Cari baris terbawah yang masih berisi (bukan putih) di kanvas -> pecahan tinggi halaman yang perlu ditampilkan (+ margin bawah setara margin atas).
+function plpMeasureTrim(cv) {
+    try {
+        const w = cv.width, h = cv.height, d = cv.getContext('2d').getImageData(0, 0, w, h).data;
+        for (let y = h - 1; y >= 0; y--) {
+            const row = y * w * 4;
+            for (let x = 0; x < w; x += 2) {
+                const i = row + x * 4;
+                if (d[i] < 242 || d[i + 1] < 242 || d[i + 2] < 242) return Math.max(.35, Math.min(1, (y + 1) / h + .048));
+            }
+        }
+    } catch (_) {}
+    return 1;
 }
 
 async function plpRender() {
@@ -6108,7 +6123,7 @@ function plpOnResize() {
 async function openProgramListPreview(pdf, fileName, count, pages) {
     const overlay = ensurePlpModal();
     const body = document.getElementById('plpBody');
-    const st = _plp = { pdf, fileName, count, doc: null, n: pages, ratio: 210 / 297, busy: false, again: false, rt: 0 };
+    const st = _plp = { pdf, fileName, count, doc: null, n: pages, ratio: 210 / 297, trim: 1, busy: false, again: false, rt: 0 };
     document.getElementById('plpMeta').textContent = `${count} program · ${pages} halaman`;
     body.innerHTML = '<div class="plp-load"><i class="bi bi-arrow-repeat bi-spin"></i> Menyiapkan preview...</div>';
     overlay.classList.add('open');
@@ -6124,9 +6139,19 @@ async function openProgramListPreview(pdf, fileName, count, pages) {
         const doc = await lib.getDocument({ data, isEvalSupported: false }).promise;
         if (_plp !== st) { try { doc.destroy(); } catch (_) {} return; }
         st.doc = doc; st.n = doc.numPages;
-        body.innerHTML = Array.from({ length: doc.numPages }, () => '<canvas class="plp-page"></canvas>').join('');
+        body.innerHTML = Array.from({ length: doc.numPages }, () => '<div class="plp-pg"><canvas class="plp-page"></canvas></div>').join('');
         plpFit();
         await plpRender();
+        // Potong sisa kosong di bawah isi halaman terakhir, lalu lebarkan lagi sesuai layar dan render ulang supaya tajam.
+        if (_plp === st) {
+            const cvs = body.querySelectorAll('canvas'), last = cvs[cvs.length - 1];
+            st.trim = plpMeasureTrim(last);
+            if (st.trim < .98) {
+                last.parentNode.style.aspectRatio = '297 / ' + (210 * st.trim).toFixed(3);
+                plpFit();
+                await plpRender();
+            }
+        }
     } catch (err) {
         console.error('openProgramListPreview error:', err);
         if (_plp === st) body.innerHTML = '<div class="plp-load">Preview tidak bisa ditampilkan (periksa koneksi internet).<br>PDF tetap bisa diunduh lewat tombol di bawah.</div>';
