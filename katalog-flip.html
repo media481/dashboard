@@ -46,13 +46,15 @@ body{font-family:var(--f-body);background:var(--stage);color:var(--on-dark);line
 .tb svg{width:17px;height:17px;flex:none}
 a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #fff;outline-offset:2px}
 
-.stage{flex:1;min-height:0;overflow:auto;display:flex;position:relative;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.stagewrap{flex:1;min-height:0;position:relative;display:flex}
+.stage{flex:1;min-width:0;min-height:0;overflow:auto;display:flex;position:relative;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .stage::-webkit-scrollbar{display:none}
 .scene{margin:auto;padding:20px 24px}
 .book{position:relative;perspective:2800px;height:var(--ph);width:calc(var(--pw)*2);
   transition:transform .85s cubic-bezier(.5,.05,.2,1);cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:pan-y}
 .book.single{width:var(--pw)}
-.book.nt,.book.nt *{transition:none!important}
+.book.zoomed{touch-action:auto}   /* diperbesar: izinkan geser horizontal & vertikal untuk menjelajah poster */
+.book.nt,.book.nt *,.book.nt *::before,.book.nt *::after{transition:none!important}
 .sheet{position:absolute;left:50%;top:0;width:50%;height:100%;transform-origin:0 50%;transform-style:preserve-3d;
   transition:transform .85s cubic-bezier(.5,.05,.2,1)}
 .sheet.flipped{transform:rotateY(-180deg)}
@@ -62,6 +64,11 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #fff;
 .sheet .front::after,.sheet .back::after{content:"";position:absolute;top:0;bottom:0;width:9%;pointer-events:none;z-index:5}
 .sheet .front::after{left:0;background:linear-gradient(90deg,rgba(0,0,0,.24),rgba(0,0,0,.06) 45%,transparent)}
 .sheet .back::after{right:0;background:linear-gradient(270deg,rgba(0,0,0,.24),rgba(0,0,0,.06) 45%,transparent)}
+.sheet .front::before,.sheet .back::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:6;transition:opacity .85s cubic-bezier(.5,.05,.2,1)}
+.sheet .front::before{background:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.38) 100%);opacity:0}
+.sheet.flipped .front::before{opacity:1}
+.sheet .back::before{background:linear-gradient(270deg,transparent 0%,rgba(0,0,0,.38) 100%);opacity:1}
+.sheet.flipped .back::before{opacity:0}
 .leaf{position:absolute;inset:0;transform-origin:0 50%;backface-visibility:hidden;-webkit-backface-visibility:hidden;
   transition:transform .8s cubic-bezier(.5,.05,.2,1),opacity .6s ease}
 .leaf .face{border-radius:5px;box-shadow:0 18px 40px -12px var(--shadow),0 2px 8px rgba(0,0,0,.25)}
@@ -78,6 +85,10 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #fff;
 .badge.near{background:var(--warn-tint);color:#A5541A}.badge.new{background:var(--success-tint);color:var(--success)}
 
 .pg.poster{padding:0;gap:0;background:var(--brand-tint)}
+.pg.poster.ld{background:linear-gradient(110deg,var(--brand-tint) 35%,#eef3f8 50%,var(--brand-tint) 65%) 0 0/220% 100%;animation:shim 1.5s linear infinite}
+.pg.poster img.pimg{opacity:0;transition:opacity .4s ease}
+.pg.poster.ok img.pimg{opacity:1}
+@keyframes shim{to{background-position:-220% 0}}
 .pg.poster img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;-webkit-user-drag:none}
 .pg.poster .ph{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:40px;font:600 22px/1.3 var(--f-head);color:var(--brand)}
 
@@ -144,6 +155,13 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #fff;
 .back-cover .wabtn{display:inline-block;margin-top:24px;background:#25D366;color:#fff;text-decoration:none;font:600 14px/1 var(--f-body);padding:14px 22px;border-radius:12px}
 .back-cover .note{color:#fff;opacity:.6;margin-top:24px;max-width:320px}
 
+.edge{position:absolute;top:50%;transform:translateY(-50%);z-index:4;width:44px;height:76px;border:0;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;display:none;place-items:center;cursor:pointer;opacity:0;transition:opacity .2s,background .2s}
+.edge.l{left:8px}.edge.r{right:8px}
+.edge svg{width:26px;height:26px}
+.edge:hover:not(:disabled){background:rgba(255,255,255,.24)}
+.edge:disabled{opacity:0!important;pointer-events:none}
+@media(hover:hover) and (min-width:761px){.edge{display:grid}.stagewrap:hover .edge{opacity:.8}.edge:focus-visible{opacity:1}}
+
 /* ---------- strip alat ---------- */
 .thumbs{flex:none;display:flex;gap:10px;overflow-x:auto;padding-block:12px;border-top:1px solid var(--edge);background:var(--panel);
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));scrollbar-width:none}
@@ -174,8 +192,18 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #fff;
   background:#fff;color:var(--brand-deep);padding:10px 16px;border-radius:10px;font-size:13.5px;font-weight:500;max-width:min(92vw,420px);text-align:center;
   opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
-@media(max-width:600px){.lbl{order:3;flex:1 0 100%}.grp.nav{flex-basis:100%}.tb span{display:none}.tb{padding:0 12px}.brand span{display:none}}
-@media(prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}}
+@media(max-width:600px){
+  .tb span{display:none}.tb{padding:0 12px}.brand span{display:none}
+  /* bar ringkas 2 baris: [prev slider next] lalu [label | alat] -- sebelumnya 3 baris dan menyempitkan area buku */
+  .bar{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px 10px;padding-top:6px;padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))}
+  .grp.nav{grid-column:1/-1;flex:none;max-width:none}
+  .lbl{grid-column:1;min-width:0;text-align:left;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .grp.tools{grid-column:2;gap:4px}
+  .btn{width:38px;height:38px}
+  #slider{height:34px}
+  #bSnd,#bLink{display:none}   /* suara tidak berlaku di banyak HP; tautan halaman cukup lewat tombol Share di header */
+}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}.pg.poster.ld{animation:none}}
 </style>
 </head>
 <body>
@@ -188,10 +216,14 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #fff;
       <a class="tb wa" id="waTop" href="#" target="_blank" rel="noopener" hidden aria-label="Chat CS via WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2zm5.2 14.2c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.1.1.3 0 .5l-.3.4-.4.5c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.1 1 2 1.3 2.3 1.4.3.1.5.1.6-.1l.9-1.1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.8-.1 1.5z"/></svg><span>Chat CS</span></a>
     </div>
   </header>
+  <div class="stagewrap">
   <main class="stage" id="stage">
     <div class="scene"><div class="book nt" id="book" aria-label="Katalog program Umroh yang bisa dibalik"></div></div>
     <div class="state" id="state"><div><div class="spin"></div><b>Memuat katalog&hellip;</b><p>Mengambil program yang masih tersedia.</p></div></div>
   </main>
+  <button class="edge l" id="eL" type="button" data-ico="left" title="Halaman sebelumnya" aria-label="Halaman sebelumnya"></button>
+  <button class="edge r" id="eR" type="button" data-ico="right" title="Halaman berikutnya" aria-label="Halaman berikutnya"></button>
+  </div>
   <section class="thumbs" id="thumbs" hidden aria-label="Daftar halaman"></section>
   <footer class="bar">
     <div class="grp nav">
@@ -200,7 +232,7 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #fff;
       <button class="btn" id="bNext" type="button" data-ico="right" title="Halaman berikutnya" aria-label="Halaman berikutnya"></button>
     </div>
     <div class="lbl" id="lbl" aria-live="polite"></div>
-    <div class="grp">
+    <div class="grp tools">
       <button class="btn" id="bThumbs" type="button" data-ico="grid" aria-pressed="false" title="Daftar halaman" aria-label="Tampilkan daftar halaman"></button>
       <button class="btn" id="bZout" type="button" data-ico="zout" title="Perkecil" aria-label="Perkecil"></button>
       <button class="btn" id="bZin" type="button" data-ico="zin" title="Perbesar" aria-label="Perbesar"></button>
@@ -250,10 +282,14 @@ function rupiah(v) {
   const n = angka(v);
   return n ? new Intl.NumberFormat('id-ID', {style:'currency', currency:'IDR', maximumFractionDigits:0}).format(n) : '';
 }
-function posterSrc(u, w) {
+// v = programs.poster_version (tombol "Refresh Poster" di dashboard): ditempel sebagai &v=... supaya poster yang
+// diganti di Google Drive (link tetap sama) tidak tertahan di cache browser.
+function posterSrc(u, w, v) {
   u = safeUrl(u);
   const m = u.match(/drive\.google\.com\/file\/d\/([\w-]+)/) || u.match(/drive\.google\.com\/open\?id=([\w-]+)/);
-  return m ? 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w' + w : u;
+  let out = m ? 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w' + w : u;
+  if (v && out) out += (out.indexOf('?') > -1 ? '&' : '?') + 'v=' + encodeURIComponent(v);
+  return out;
 }
 function estimasi(d) {
   const t = new Date(); t.setHours(0,0,0,0);
@@ -292,15 +328,18 @@ function olah(rows) {
   $('#state').hidden = true;
   rebuildFromData();
 }
+const SEL_BASE = 'id,nama,tgl,durasi,maskapai,harga_quint,link_itinerary,link_poster,created_at,is_active,admin_data_lengkap';
+let SEL = SEL_BASE + ',poster_version';   // kolom poster_version = migrasi sql/57; kalau belum ada, otomatis turun ke SEL_BASE
 async function muat() {
-  const sel = 'id,nama,tgl,durasi,maskapai,harga_quint,link_itinerary,link_poster,created_at,is_active,admin_data_lengkap';
   let cached = null;
   try { cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch {}
   if (cached && Array.isArray(cached.rows) && Date.now() - cached.t < CACHE_MAX_UMUR) olah(cached.rows);
   try {
-    const r = await fetch(SUPABASE_URL + '/rest/v1/programs?select=' + sel + '&order=created_at.asc', {
+    const ambil = () => fetch(SUPABASE_URL + '/rest/v1/programs?select=' + SEL + '&order=created_at.asc', {
       headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY }
     });
+    let r = await ambil();
+    if (r.status === 400 && SEL !== SEL_BASE) { SEL = SEL_BASE; r = await ambil(); }   // migrasi 57 belum dijalankan
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const rows = await r.json();
     try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), rows })); } catch {}
@@ -369,7 +408,7 @@ const T = {
       (WA_NUMBER ? '<a class="wa" href="' + esc(waLink(p)) + '" target="_blank" rel="noopener">Chat CS via WA</a>' : '') + '</div>' + folio(i) + '</div>';
   },
   poster(pg, i, thumb) {
-    const p = tampil[pg.j], src = posterSrc(p.link_poster, thumb ? 200 : 1200);
+    const p = tampil[pg.j], src = posterSrc(p.link_poster, thumb ? 200 : 1200, p.poster_version);
     return '<div class="pg poster"><div class="ph">' + esc(p.nama) + '</div>' +
       (thumb ? '<img src="' + esc(src) + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">'
              : '<img class="pimg" data-i="' + i + '" data-src="' + esc(src) + '" alt="Poster ' + esc(p.nama) + '" decoding="async" referrerpolicy="no-referrer">') + '</div>';
@@ -411,7 +450,7 @@ document.querySelectorAll('[data-ico]').forEach(b => { b.innerHTML = ico(b.getAt
 if (WA_NUMBER) { const w = $('#waTop'); w.href = waLink(null); w.hidden = false; }
 
 let pages = [], p = 0, zoom = 1, single = false, total = 0, units = [], shown = -1, zt = 0;
-let soundOn = true, autoT = 0, actx = null, pendingHash = null;
+let soundOn = true, autoT = 0, actx = null, pendingHash = null, thumbsBuilt = false;
 const stage = $('#stage'), book = $('#book'), thumbs = $('#thumbs'), slider = $('#slider'), lbl = $('#lbl');
 const ZOOMS = [1, 1.25, 1.5, 2];
 
@@ -429,7 +468,7 @@ const div = c => { const d = document.createElement('div'); d.className = c; ret
 
 function build() {
   layout();
-  book.className = 'book nt ' + (single ? 'single' : 'dbl');
+  book.className = 'book nt ' + (single ? 'single' : 'dbl') + (zoom > 1 ? ' zoomed' : '');
   book.innerHTML = ''; units = []; shown = -1;
   const n = pages.length;
   if (single) {
@@ -445,15 +484,33 @@ function build() {
   }
   if (p > n - 1) p = n - 1;
   if (!single && p > 0) p = 2 * curU() - 1;
+  // [OPTIMASI] Strip thumbnail baru dibangun saat dibuka (dulu selalu dibangun: seluruh halaman dirender 2x
+  // walau strip tersembunyi -- berat kalau programnya puluhan).
+  thumbs.innerHTML = ''; thumbsBuilt = false;
+  if (!thumbs.hidden) buildThumbs();
+  slider.max = total;
+  apply(false); sync(); hydrate();
+  requestAnimationFrame(() => requestAnimationFrame(() => book.classList.remove('nt')));
+}
+function buildThumbs() {
   thumbs.innerHTML = '';
   pages.forEach((pg, i) => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'th'; b.setAttribute('aria-label', 'Buka halaman ' + (i + 1));
     b.innerHTML = renderPage(pg, i, true) + '<span class="num">' + (i + 1) + '</span>';
     b.addEventListener('click', () => goPage(i)); thumbs.appendChild(b);
   });
-  slider.max = total;
-  apply(false); sync(); hydrate();
-  requestAnimationFrame(() => requestAnimationFrame(() => book.classList.remove('nt')));
+  thumbsBuilt = true;
+}
+// Tandai thumbnail halaman yang sedang dibuka + geser strip supaya thumbnail itu tepat di tengah.
+function markThumbs() {
+  if (!thumbsBuilt) return;
+  const u = curU(), cur = single ? [p] : (u === 0 ? [0] : [2 * u - 1, 2 * u]);
+  let first = null;
+  thumbs.querySelectorAll('.th').forEach((t, i) => { const on = cur.indexOf(i) > -1; t.classList.toggle('on', on); if (on && !first) first = t; });
+  if (first && !thumbs.hidden) {
+    const left = first.getBoundingClientRect().left - thumbs.getBoundingClientRect().left + thumbs.scrollLeft - (thumbs.clientWidth - first.offsetWidth) / 2;
+    thumbs.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+  }
 }
 function rebuildFromData() {
   pages = buildPages();
@@ -465,10 +522,11 @@ function rebuildFromData() {
 function hydrate() {
   book.querySelectorAll('img.pimg[data-src]').forEach(im => {
     const i = +im.dataset.i;
-    if (i >= p - 5 && i <= p + 9) { im.src = im.dataset.src; im.removeAttribute('data-src'); }
+    if (i >= p - 5 && i <= p + 9) { im.parentNode.classList.add('ld'); im.src = im.dataset.src; im.removeAttribute('data-src'); }
   });
 }
-book.addEventListener('error', e => { const im = e.target; if (im && im.tagName === 'IMG' && im.classList.contains('pimg')) im.style.display = 'none'; }, true);
+book.addEventListener('error', e => { const im = e.target; if (im && im.tagName === 'IMG' && im.classList.contains('pimg')) { im.style.display = 'none'; im.parentNode.classList.remove('ld'); } }, true);
+book.addEventListener('load', e => { const im = e.target; if (im && im.tagName === 'IMG' && im.classList.contains('pimg')) { im.parentNode.classList.remove('ld'); im.parentNode.classList.add('ok'); } }, true);
 
 function finalize() { units.forEach((el, i) => { el.style.zIndex = i < shown ? (i + 1) : (units.length - i); }); }
 function apply(anim) {
@@ -491,7 +549,7 @@ function apply(anim) {
 }
 function label() {
   const n = pages.length;
-  if (single) return 'Halaman ' + (p + 1) + ' dari ' + n;
+  if (single) return (window.matchMedia && matchMedia('(max-width:600px)').matches ? 'Hal. ' + (p + 1) + ' / ' + n : 'Halaman ' + (p + 1) + ' dari ' + n);
   const u = curU();
   if (u === 0) return 'Sampul depan';
   if (u === total) return 'Sampul belakang';
@@ -502,8 +560,8 @@ function sync() {
   slider.value = curU();
   $('#bPrev').disabled = curU() === 0;
   $('#bNext').disabled = curU() >= total;
-  const u = curU(), cur = single ? [p] : (u === 0 ? [0] : [2 * u - 1, 2 * u]);
-  thumbs.querySelectorAll('.th').forEach((t, i) => t.classList.toggle('on', cur.indexOf(i) > -1));
+  $('#eL').disabled = $('#bPrev').disabled; $('#eR').disabled = $('#bNext').disabled;
+  markThumbs();
   try { history.replaceState(null, '', '#p' + (p + 1)); } catch (e) {}
 }
 function goPage(t) {
@@ -560,9 +618,15 @@ document.addEventListener('keydown', e => {
 });
 $('#bNext').addEventListener('click', next);
 $('#bPrev').addEventListener('click', prev);
+$('#eR').addEventListener('click', next);
+$('#eL').addEventListener('click', prev);
+document.addEventListener('visibilitychange', () => { if (document.hidden && autoT) stopAuto(); });   // jangan balik halaman diam-diam saat tab tidak terlihat
 slider.addEventListener('input', () => { const v = parseInt(slider.value, 10); goPage(single ? v : (v === 0 ? 0 : 2 * v - 1)); });
 $('#bThumbs').addEventListener('click', function () {
-  const open = thumbs.hidden; thumbs.hidden = !open; this.setAttribute('aria-pressed', String(open)); setTimeout(resize, 30);
+  const open = thumbs.hidden; thumbs.hidden = !open; this.setAttribute('aria-pressed', String(open));
+  if (open && !thumbsBuilt) buildThumbs();
+  if (open) requestAnimationFrame(markThumbs);
+  setTimeout(resize, 30);
 });
 function setZoom(d) {
   let i = ZOOMS.indexOf(zoom); i = Math.max(0, Math.min(ZOOMS.length - 1, i + d));
@@ -608,7 +672,12 @@ let rt = 0, lastW = 0, lastH = 0;
 function resize() {
   const W = stage.offsetWidth, H = stage.offsetHeight;
   if (Math.abs(W - lastW) < 3 && Math.abs(H - lastH) < 3) return;
-  lastW = W; lastH = H; if (pages.length) build();
+  lastW = W; lastH = H;
+  if (!pages.length) return;
+  // [OPTIMASI] Ukuran berubah (mis. address bar HP naik-turun, strip thumbnail dibuka) cukup menghitung ulang ukuran halaman.
+  // Buku hanya dibangun ulang kalau mode berpindah antara 1 halaman <-> 2 halaman.
+  const was = single; layout();
+  if (single !== was) build();
 }
 if (window.ResizeObserver) new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(resize, 120); }).observe(stage);
 else addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(resize, 120); });
