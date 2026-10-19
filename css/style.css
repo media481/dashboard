@@ -3566,4 +3566,21 @@ mark.srch-hit { background: #FFE9A8; color: inherit; border-radius: var(--r-sm);
 .plp-wa i { font-size: 16px; }
 .plp-foot { flex-wrap: wrap; display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--line); background: var(--surface); }
 .plp-meta { margin-right: auto; font-size: 12.5px; color: var(--ink-soft); }
+/* Seragamkan 3 tombol footer preview (Tutup / Share WA / Unduh PDF): ukuran, font, radius, dan gap sama; beda hanya warna. */
+.plp-foot > button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  box-sizing: border-box; min-height: 40px; padding: 0 18px;
+  font: 600 14px/1 var(--font-body, 'Inter', sans-serif);
+  border: 1px solid transparent; border-radius: var(--r-md, 10px);
+  cursor: pointer; white-space: nowrap; transition: filter .15s, background .15s, transform .15s;
+}
+.plp-foot > button i { font-size: 16px; line-height: 1; }
+.plp-foot > .btn-secondary { background: var(--surface); border-color: var(--line); color: var(--ink); }
+.plp-foot > .btn-secondary:hover { background: var(--bg-soft, #f1f5f9); }
+.plp-foot > .plp-wa { background: #25D366; border-color: #25D366; color: #fff; }
+.plp-foot > .plp-wa:hover { filter: brightness(.95); }
+.plp-foot > .btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.plp-foot > .btn-primary:hover { background: var(--brand-deep); border-color: var(--brand-deep); transform: none; box-shadow: none; }
+.plp-foot > button:disabled { opacity: .6; cursor: not-allowed; }
+@media (max-width: 480px) { .plp-foot > button { flex: 1 1 0; padding: 0 10px; } }
 @media (max-width: 480px) { .plp-meta { display: none; } }
