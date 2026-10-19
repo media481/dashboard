@@ -4628,9 +4628,10 @@ async function renderAdminPanel() {
         // di switchAdminSubTab() supaya hilang saat pindah ke subtab lain.
         const headerActionsEl = document.getElementById('adminPageHeaderActions');
         if (headerActionsEl) {
+            const unduhListBtn = `<button type="button" class="btn-export-subtle" onclick="downloadProgramListPdf(this)" title="Unduh daftar program (PDF A4 landscape, sama seperti tabel Program Umroh)"><i class="bi bi-file-earmark-pdf-fill"></i> Unduh Daftar Program</button>`;
             headerActionsEl.innerHTML = canEditData
-                ? `<button class="btn-primary" onclick="showAdminForm()"><i class="bi bi-plus-lg"></i> Tambah Program</button>`
-                : `<span class="admin-role-note"><i class="bi bi-eye-fill"></i> Mode lihat saja (Guest)</span>`;
+                ? `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">${unduhListBtn}<button class="btn-primary" onclick="showAdminForm()"><i class="bi bi-plus-lg"></i> Tambah Program</button></div>`
+                : `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;"><span class="admin-role-note"><i class="bi bi-eye-fill"></i> Mode lihat saja (Guest)</span></div>`;
             headerActionsEl.style.display = (adminSubTab === 'program') ? '' : 'none';
         }
 
@@ -5812,6 +5813,142 @@ async function refreshPosterProgram(id) {
     try { if (typeof renderTableWithSearch === 'function') renderTableWithSearch(); } catch (e) {}
     showToast('Poster di-refresh — memindai ulang. Kalau masih gambar lama, tunggu beberapa menit (thumbnail Google belum ter-update).', 'success');
     autoScanPosterForProgram(id);
+}
+
+// [UNDUH DAFTAR PROGRAM] Dokumen PDF A4 landscape berisi tabel yang sama dengan tab
+// "Program Umroh" (Nama Program, Estimasi, Quad, Triple, Double, Berangkat, Durasi,
+// Maskapai, Status) -- isi & urutan sama persis dengan yang tampil di dashboard
+// (program aktif, belum expired, punya poster; urut tanggal terdekat). Kolom "Detail"
+// (tombol interaktif) tidak ikut karena tidak bermakna di kertas. Teks digambar langsung
+// lewat jsPDF (bukan screenshot), jadi tajam & bisa diseleksi/dicari di PDF.
+async function downloadProgramListPdf(btn) {
+    if (!canManageProgramData()) { showToast('Unduh daftar program hanya untuk admin & user', 'error'); return; }
+    const list = sortProgramsDefault((dataUmroh || []).filter(isProgramVisibleOnDashboard));
+    if (!list.length) { showToast('Belum ada program untuk diunduh', 'error'); return; }
+
+    const oldHtml = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-arrow-repeat bi-spin"></i> Membuat PDF...'; }
+    try {
+        if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
+            try { await ensureLibLoaded('jspdf'); }
+            catch (_) { showToast('Modul PDF gagal dimuat — periksa koneksi internet lalu coba lagi', 'error'); return; }
+        }
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        const PW = 297, PH = 210, M = 10;
+        const now = new Date();
+        const nearestIds = getNearestDepartureIds(3);
+
+        // Logo (opsional -- kalau gagal dimuat dokumen tetap dibuat tanpa logo)
+        let logo = null;
+        try {
+            const blob = await (await fetch('assets/logo-amirutour.png')).blob();
+            logo = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); });
+        } catch (_) { /* tanpa logo */ }
+
+        const cols = [
+            { h: 'Nama Program', w: 60, a: 'left' },
+            { h: 'Estimasi',     w: 28, a: 'left' },
+            { h: 'Quad',         w: 25, a: 'right' },
+            { h: 'Triple',       w: 25, a: 'right' },
+            { h: 'Double',       w: 25, a: 'right' },
+            { h: 'Berangkat',    w: 36, a: 'left' },
+            { h: 'Durasi',       w: 18, a: 'left' },
+            { h: 'Maskapai',     w: 34, a: 'left' },
+            { h: 'Status',       w: 26, a: 'left' },
+        ];
+        const PAD = 1.8, FS = 8, LH = 3.7, HEAD_H = 8;
+        const BRAND = [26, 53, 91], INK = [28, 43, 58], LINE = [205, 214, 225];
+
+        const drawPageHeader = () => {
+            let x = M;
+            if (logo) { pdf.addImage(logo, 'PNG', M, M - 1, 12, 11.1); x = M + 15; }
+            pdf.setFont('helvetica', 'bold'); pdf.setFontSize(15); pdf.setTextColor(...BRAND);
+            pdf.text('Daftar Program Umroh', x, M + 5);
+            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5); pdf.setTextColor(100, 117, 138);
+            pdf.text('Amiru Tour', x, M + 9.5);
+            const dicetak = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+            pdf.text(`Per ${dicetak}  |  ${list.length} program`, PW - M, M + 5, { align: 'right' });
+        };
+        const drawTableHead = (y) => {
+            pdf.setFillColor(...BRAND); pdf.rect(M, y, PW - 2 * M, HEAD_H, 'F');
+            pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8.5); pdf.setTextColor(255, 255, 255);
+            let x = M;
+            cols.forEach(c => {
+                const tx = c.a === 'right' ? x + c.w - PAD - 2.5 : x + PAD;
+                pdf.text(c.h, tx, y + 5.3, { align: c.a });
+                x += c.w;
+            });
+            return y + HEAD_H;
+        };
+
+        const TOP = M + 16, BOTTOM = PH - 12;
+        drawPageHeader();
+        let y = drawTableHead(TOP);
+
+        list.forEach((p, idx) => {
+            const kuota = p.kuota_pax || 45;
+            const terisi = (kbJamaahList || []).filter(j => String(j.program_id) === String(p.id) && j.status !== 'batal').length;
+            const nearestRank = nearestIds.has(String(p.id)) ? Math.min(nearestIds.get(String(p.id)) + 1, 3) : 0;
+            const penuh = terisi >= kuota;
+            const cells = [
+                String(p.nama || '-'),
+                hitungEstimasi(p.dateObj, now),
+                formatRupiah(p.harga_quad || p.harga_quint),
+                formatRupiah(p.harga_triple),
+                formatRupiah(p.harga_double),
+                String(p.tgl || '-') + (nearestRank ? '\n(Terdekat)' : ''),
+                String(p.durasi || '-'),
+                String(p.maskapai || '-'),
+                `${terisi}/${kuota} ${penuh ? 'Penuh' : 'Tersedia'}`,
+            ];
+            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(FS);
+            const wrapped = cells.map((t, i) => pdf.splitTextToSize(t, cols[i].w - 2 * PAD));
+            const rowH = Math.max(...wrapped.map(l => l.length)) * LH + 2 * PAD - 0.4;
+
+            if (y + rowH > BOTTOM) {            // halaman baru + ulang header tabel
+                pdf.addPage(); drawPageHeader(); y = drawTableHead(TOP);
+            }
+            // Warna baris: 3 keberangkatan terdekat disorot biru muda (seperti di dashboard), sisanya selang-seling
+            if (nearestRank) pdf.setFillColor(220, 233, 249);
+            else if (idx % 2) pdf.setFillColor(246, 248, 251);
+            else pdf.setFillColor(255, 255, 255);
+            pdf.rect(M, y, PW - 2 * M, rowH, 'F');
+            pdf.setDrawColor(...LINE); pdf.setLineWidth(0.15);
+            pdf.line(M, y + rowH, PW - M, y + rowH);
+
+            let x = M;
+            cells.forEach((_, i) => {
+                const c = cols[i];
+                const bold = i === 0;
+                pdf.setFont('helvetica', bold ? 'bold' : 'normal');
+                if (i === 8) pdf.setTextColor(...(penuh ? [192, 57, 43] : [27, 107, 72]));
+                else pdf.setTextColor(...INK);
+                const tx = c.a === 'right' ? x + c.w - PAD - 2.5 : x + PAD;
+                pdf.text(wrapped[i], tx, y + PAD + 2.6, { align: c.a, lineHeightFactor: LH / (FS * 0.3528) });
+                x += c.w;
+            });
+            y += rowH;
+        });
+
+        // Footer + nomor halaman (setelah jumlah halaman final diketahui)
+        const total = pdf.getNumberOfPages();
+        for (let i = 1; i <= total; i++) {
+            pdf.setPage(i);
+            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.5); pdf.setTextColor(100, 117, 138);
+            pdf.text('Amiru Tour - Daftar Program Umroh', M, PH - 6);
+            pdf.text(`Halaman ${i} dari ${total}`, PW - M, PH - 6, { align: 'right' });
+        }
+
+        const stamp = now.toISOString().slice(0, 10);
+        pdf.save(`Daftar-Program-Umroh-${stamp}.pdf`);
+        showToast(`Daftar program diunduh (${list.length} program, ${total} halaman)`, 'success');
+    } catch (err) {
+        console.error('downloadProgramListPdf error:', err);
+        showToast('Gagal membuat PDF: ' + (err.message || err), 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = oldHtml; }
+    }
 }
 
 async function clearAllAdminData() {
