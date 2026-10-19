@@ -83,9 +83,9 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #fff;
 .cast.l{left:0;width:50%;transform-origin:100% 0;background:linear-gradient(270deg,rgba(0,0,0,.5),rgba(0,0,0,.22) 55%,transparent)}
 .book.single .cast.r{left:0;width:100%}
 .book.single .cast.l,.book.single .stk{display:none}
-.stk{position:absolute;top:2px;height:100%;z-index:0;pointer-events:none;box-shadow:0 18px 40px -12px var(--shadow)}
-.stk.r{left:50%;width:calc(50% + var(--t,0px));border-radius:0 4px 4px 0;background:repeating-linear-gradient(90deg,#f4f6f9 0 1.2px,#c3cedb 1.2px 2.4px)}
-.stk.l{left:calc(0px - var(--t,0px));width:calc(50% + var(--t,0px));border-radius:4px 0 0 4px;background:repeating-linear-gradient(270deg,#f4f6f9 0 1.2px,#c3cedb 1.2px 2.4px)}
+.stk{position:absolute;top:3px;height:calc(100% - 3px);width:var(--t,0px);z-index:0;pointer-events:none}
+.stk.r{left:100%;border-radius:0 3px 3px 0;background:repeating-linear-gradient(90deg,#f4f6f9 0 1.2px,#c3cedb 1.2px 2.4px)}
+.stk.l{right:100%;border-radius:3px 0 0 3px;background:repeating-linear-gradient(270deg,#f4f6f9 0 1.2px,#c3cedb 1.2px 2.4px)}
 /* sampul keras: alur engsel */
 .cover::after,.back-cover::after{content:"";position:absolute;top:0;bottom:0;width:4px;pointer-events:none}
 .cover::after{left:20px;background:linear-gradient(90deg,rgba(0,0,0,.4),rgba(255,255,255,.14) 60%,transparent)}
