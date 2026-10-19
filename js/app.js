@@ -1946,13 +1946,6 @@ function mbPostHtml(pl, todayKey) {
     const nl = (t) => escapeHtml(t).replace(/\n/g, '<br>');
     const dots = slides ? '<span class="mb-dots">' + Array.from({ length: slides }, (_, i) => '<i' + (i === 0 ? ' class="on"' : '') + '></i>').join('') + '</span>' : '';
     return `<article class="mb-post">
-        <div class="mb-post-head">
-            <img class="mb-avatar" src="assets/logo-amirutour.png" alt="Amiru Tour">
-            <div class="mb-who"><b>Amiru Tour</b><span>${tgl}${rel}</span></div>
-            ${pil ? `<span class="mb-pilar" style="--mb-c:${color}">${escapeHtml(pil.label)}</span>` : ''}
-        </div>
-        <h3 class="mb-tema">${escapeHtml(pl.tema || '(tanpa tema)')}</h3>
-        ${caption ? `<div class="mb-caption">${nl(caption)}</div>${longCap ? '<button type="button" class="mb-more" onclick="mbToggleCaption(this)">Selengkapnya</button>' : ''}` : '<div class="mb-caption mb-caption-empty">Draft caption belum diisi.</div>'}
         <div class="mb-img" style="--mb-c:${color}">
             <span class="mb-img-tag">Gambar dummy</span>
             ${slides ? `<span class="mb-img-count"><i class="bi bi-collection-fill"></i> 1/${slides}</span>` : ''}
@@ -1960,10 +1953,19 @@ function mbPostHtml(pl, todayKey) {
             <div class="mb-img-text">${nl(firstBlock)}</div>
             ${dots}
         </div>
-        <div class="mb-meta">
-            <span><i class="bi bi-${tipe === 'carousel' ? 'collection' : tipe === 'video' ? 'play-btn' : 'image'}"></i> ${escapeHtml(tipeLabel)}</span>
-            <span><i class="bi bi-flag"></i> ${escapeHtml(stage)}</span>
-            ${pl.tema_minggu ? `<span><i class="bi bi-calendar-week"></i> Seri ${escapeHtml(pl.tema_minggu)}</span>` : ''}
+        <div class="mb-side">
+            <div class="mb-post-head">
+                <img class="mb-avatar" src="assets/logo-amirutour.png" alt="Amiru Tour">
+                <div class="mb-who"><b>Amiru Tour</b><span>${tgl}${rel}</span></div>
+                ${pil ? `<span class="mb-pilar" style="--mb-c:${color}">${escapeHtml(pil.label)}</span>` : ''}
+            </div>
+            <h3 class="mb-tema">${escapeHtml(pl.tema || '(tanpa tema)')}</h3>
+            ${caption ? `<div class="mb-caption">${nl(caption)}</div>${longCap ? '<button type="button" class="mb-more" onclick="mbToggleCaption(this)">Selengkapnya</button>' : ''}` : '<div class="mb-caption mb-caption-empty">Draft caption belum diisi.</div>'}
+            <div class="mb-meta">
+                <span><i class="bi bi-${tipe === 'carousel' ? 'collection' : tipe === 'video' ? 'play-btn' : 'image'}"></i> ${escapeHtml(tipeLabel)}</span>
+                <span><i class="bi bi-flag"></i> ${escapeHtml(stage)}</span>
+                ${pl.tema_minggu ? `<span><i class="bi bi-calendar-week"></i> Seri ${escapeHtml(pl.tema_minggu)}</span>` : ''}
+            </div>
         </div>
     </article>`;
 }
