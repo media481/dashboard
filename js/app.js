@@ -184,8 +184,11 @@ function hotelNamaSingkat(str) {
 const LAZY_LIB_URLS = {
     jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
     html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
-    xlsx: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+    xlsx: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+    // pdf.js: hanya untuk PREVIEW daftar program (render halaman PDF ke canvas). jsdelivr sudah diizinkan di CSP (_headers).
+    pdfjs: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js'
 };
+const PDFJS_WORKER_URL = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 const _lazyLibPromises = {};
 
 function loadScriptOnce(src) {
@@ -205,7 +208,7 @@ function loadScriptOnce(src) {
     });
 }
 
-// key: 'jspdf' | 'html2canvas' | 'xlsx'. Aman dipanggil berkali-kali --
+// key: 'jspdf' | 'html2canvas' | 'xlsx' | 'pdfjs'. Aman dipanggil berkali-kali --
 // request CDN cuma sekali per key (di-cache di _lazyLibPromises), pemanggil
 // berikutnya cukup nebeng promise yang sama/sudah selesai.
 function ensureLibLoaded(key) {
@@ -4628,7 +4631,7 @@ async function renderAdminPanel() {
         // di switchAdminSubTab() supaya hilang saat pindah ke subtab lain.
         const headerActionsEl = document.getElementById('adminPageHeaderActions');
         if (headerActionsEl) {
-            const unduhListBtn = `<button type="button" class="btn-export-subtle" onclick="downloadProgramListPdf(this)" title="Unduh jadwal umrah (PDF A4 landscape)"><i class="bi bi-file-earmark-pdf-fill"></i> Unduh Daftar Program</button>`;
+            const unduhListBtn = `<button type="button" class="btn-export-subtle" onclick="downloadProgramListPdf(this)" title="Preview &amp; unduh jadwal umrah (PDF A4 landscape)"><i class="bi bi-file-earmark-pdf-fill"></i> Unduh Daftar Program</button>`;
             headerActionsEl.innerHTML = canEditData
                 ? `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">${unduhListBtn}<button class="btn-primary" onclick="showAdminForm()"><i class="bi bi-plus-lg"></i> Tambah Program</button></div>`
                 : `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;"><span class="admin-role-note"><i class="bi bi-eye-fill"></i> Mode lihat saja (Guest)</span></div>`;
@@ -5841,7 +5844,7 @@ async function downloadProgramListPdf(btn) {
     if (!list.length) { showToast('Belum ada program untuk diunduh', 'error'); return; }
 
     const oldHtml = btn ? btn.innerHTML : '';
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-arrow-repeat bi-spin"></i> Membuat PDF...'; }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-arrow-repeat bi-spin"></i> Menyiapkan preview...'; }
     try {
         if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
             try { await ensureLibLoaded('jspdf'); }
@@ -6011,14 +6014,146 @@ async function downloadProgramListPdf(btn) {
             }
         }
 
-        pdf.save(`Jadwal-Umrah-${y1 === y2 ? y1 : y1 + '-' + y2}.pdf`);
-        showToast(`Jadwal diunduh (${list.length} program, ${total} halaman)`, 'success');
+        // PDF TIDAK langsung diunduh: tampilkan preview dulu, unduh lewat tombol "Unduh PDF" di preview.
+        await openProgramListPreview(pdf, `Jadwal-Umrah-${y1 === y2 ? y1 : y1 + '-' + y2}.pdf`, list.length, total);
     } catch (err) {
         console.error('downloadProgramListPdf error:', err);
         showToast('Gagal membuat PDF: ' + (err.message || err), 'error');
     } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = oldHtml; }
     }
+}
+
+// ============================================================
+// [PREVIEW DAFTAR PROGRAM] Modal preview PDF "Jadwal Umrah" sebelum diunduh.
+// - PDF dibuat seperti biasa (jsPDF), lalu tiap halamannya digambar ke <canvas> lewat pdf.js (dimuat lazy, hanya saat preview dibuka).
+//   Hasil preview = isi file yang diunduh (bukan tiruan HTML).
+// - [FIT] Lebar modal dihitung dari ukuran layar supaya satu halaman A4 landscape PAS memenuhi area preview:
+//   tanpa padding kanvas, tanpa sisa kiri/kanan. Dokumen lebih dari 1 halaman di-scroll ke bawah.
+// - Unduh baru terjadi saat tombol "Unduh PDF" ditekan. Esc / klik di luar / Tutup = batal tanpa mengunduh.
+// ============================================================
+let _plp = null;   // { pdf, fileName, count, doc, n, ratio, busy, again, rt }
+
+function ensurePlpModal() {
+    let el = document.getElementById('plpOverlay');
+    if (el) return el;
+    el = document.createElement('div');
+    el.className = 'modal-overlay'; el.id = 'plpOverlay';
+    el.innerHTML =
+        '<div class="modal-content plp-box" id="plpBox" role="dialog" aria-modal="true" aria-labelledby="plpTitle">' +
+            '<div class="modal-header plp-head"><h2 id="plpTitle"><i class="bi bi-file-earmark-pdf-fill"></i> Preview Daftar Program</h2>' +
+                '<button type="button" class="modal-close" aria-label="Tutup preview" onclick="closeProgramListPreview()">&times;</button></div>' +
+            '<div class="plp-body" id="plpBody"></div>' +
+            '<div class="plp-foot"><span class="plp-meta" id="plpMeta"></span>' +
+                '<button type="button" class="btn-secondary" onclick="closeProgramListPreview()">Tutup</button>' +
+                '<button type="button" class="btn-primary" id="plpDl" onclick="downloadProgramListFromPreview()"><i class="bi bi-download"></i> Unduh PDF</button></div>' +
+        '</div>';
+    el.addEventListener('click', e => { if (e.target === el) closeProgramListPreview(); });
+    document.body.appendChild(el);
+    return el;
+}
+
+// Hitung ukuran modal: lebar = lebar halaman yang muat utuh di layar (dibatasi lebar & tinggi), tinggi area preview = pas 1 halaman
+// (atau lebih bila dokumen panjang, maksimal setinggi layar yang tersedia).
+function plpFit() {
+    if (!_plp) return;
+    const box = document.getElementById('plpBox'), body = document.getElementById('plpBody');
+    if (!box || !body) return;
+    const head = box.querySelector('.plp-head'), foot = box.querySelector('.plp-foot');
+    const gap = 10, r = _plp.ratio, n = Math.max(1, _plp.n);
+    for (let pass = 0; pass < 2; pass++) {              // pass ke-2: ukur ulang header/footer setelah lebar berubah (bisa membungkus baris)
+        const chrome = head.offsetHeight + foot.offsetHeight;
+        const availW = Math.min(window.innerWidth - 40, 1280);
+        const availH = window.innerHeight - 40 - chrome;
+        const w = Math.max(280, Math.floor(Math.min(availW, availH / r)));
+        const full = n * w * r + (n - 1) * gap;
+        box.style.width = w + 'px';
+        body.style.height = Math.floor(Math.min(full, Math.max(availH, w * r))) + 'px';
+    }
+}
+
+async function plpRender() {
+    const st = _plp;
+    if (!st || !st.doc) return;
+    if (st.busy) { st.again = true; return; }          // render sedang jalan (mis. layar diubah) -> ulangi setelah selesai, jangan tumpang-tindih
+    st.busy = true;
+    try {
+        do {
+            st.again = false;
+            const body = document.getElementById('plpBody');
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const cssW = body.clientWidth || 800;
+            const canvases = body.querySelectorAll('canvas');
+            for (let i = 1; i <= st.doc.numPages; i++) {
+                if (_plp !== st) return;
+                const page = await st.doc.getPage(i);
+                const v0 = page.getViewport({ scale: 1 });
+                const vp = page.getViewport({ scale: (cssW * dpr) / v0.width });
+                const cv = canvases[i - 1]; if (!cv) continue;
+                cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+                await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+            }
+        } while (st.again && _plp === st);
+    } finally { st.busy = false; }
+}
+
+function plpKey(e) { if (e.key === 'Escape') closeProgramListPreview(); }
+function plpOnResize() {
+    if (!_plp) return;
+    plpFit();
+    clearTimeout(_plp.rt);
+    _plp.rt = setTimeout(plpRender, 250);               // tajamkan ulang sesudah ukuran layar berhenti berubah
+}
+
+async function openProgramListPreview(pdf, fileName, count, pages) {
+    const overlay = ensurePlpModal();
+    const body = document.getElementById('plpBody');
+    const st = _plp = { pdf, fileName, count, doc: null, n: pages, ratio: 210 / 297, busy: false, again: false, rt: 0 };
+    document.getElementById('plpMeta').textContent = `${count} program · ${pages} halaman`;
+    body.innerHTML = '<div class="plp-load"><i class="bi bi-arrow-repeat bi-spin"></i> Menyiapkan preview...</div>';
+    overlay.classList.add('open');
+    document.addEventListener('keydown', plpKey);
+    window.addEventListener('resize', plpOnResize);
+    plpFit();
+    try {
+        await ensureLibLoaded('pdfjs');
+        const lib = window.pdfjsLib;
+        lib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
+        const data = new Uint8Array(pdf.output('arraybuffer'));
+        // isEvalSupported:false -> CSP dashboard tidak mengizinkan eval. Worker lintas-origin ditolak CSP -> pdf.js otomatis jalan tanpa worker (cukup untuk 1-3 halaman).
+        const doc = await lib.getDocument({ data, isEvalSupported: false }).promise;
+        if (_plp !== st) { try { doc.destroy(); } catch (_) {} return; }
+        st.doc = doc; st.n = doc.numPages;
+        body.innerHTML = Array.from({ length: doc.numPages }, () => '<canvas class="plp-page"></canvas>').join('');
+        plpFit();
+        await plpRender();
+    } catch (err) {
+        console.error('openProgramListPreview error:', err);
+        if (_plp === st) body.innerHTML = '<div class="plp-load">Preview tidak bisa ditampilkan (periksa koneksi internet).<br>PDF tetap bisa diunduh lewat tombol di bawah.</div>';
+    }
+}
+
+function closeProgramListPreview() {
+    const el = document.getElementById('plpOverlay');
+    if (el) el.classList.remove('open');
+    document.removeEventListener('keydown', plpKey);
+    window.removeEventListener('resize', plpOnResize);
+    if (_plp) { clearTimeout(_plp.rt); try { if (_plp.doc) _plp.doc.destroy(); } catch (_) {} }
+    _plp = null;
+    const body = document.getElementById('plpBody'); if (body) body.innerHTML = '';
+}
+
+function downloadProgramListFromPreview() {
+    if (!_plp) return;
+    const { pdf, fileName, count, n } = _plp;
+    try {
+        pdf.save(fileName);
+        showToast(`Jadwal diunduh (${count} program, ${n} halaman)`, 'success');
+    } catch (err) {
+        showToast('Gagal mengunduh PDF: ' + (err.message || err), 'error');
+        return;
+    }
+    closeProgramListPreview();
 }
 
 async function clearAllAdminData() {
