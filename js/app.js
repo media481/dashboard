@@ -5952,7 +5952,7 @@ async function downloadProgramListPdf(btn) {
             return y + HEAD_H;
         };
 
-        const FOOT_H = 34;                       // tinggi blok keterangan di bawah tabel
+        const FOOT_H = 46;                       // tinggi blok keterangan (3 kartu) di bawah tabel
         const BOTTOM = PH - 6;
         const FIRST_TOP = M + 20, NEXT_TOP = M;
         drawFirstHeader();
@@ -5973,36 +5973,49 @@ async function downloadProgramListPdf(btn) {
             y += rowH;
         });
 
-        // ---- Blok keterangan di bawah tabel (pindah halaman kalau tidak muat) ----
+        // ---- Blok keterangan di bawah tabel: 3 kartu sederhana (pindah halaman kalau tidak muat) ----
         if (y + FOOT_H > BOTTOM) { pdf.addPage(); y = NEXT_TOP; }
-        let fy = y + 7;
-        const col1 = M + 5, col2 = M + 5 + 55, col3 = M + 5 + 55 + 56;
-        pdf.setTextColor(...INK);
-        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8.5);
-        pdf.text('BIAYA SUDAH TERMASUK', col1, fy);
-        pdf.text('BIAYA BELUM TERMASUK', col2, fy);
-        pdf.text('CATATAN', col3, fy);
-        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5);
-        JADWAL_PDF_TERMASUK.forEach((t, i) => pdf.text(t, col1, fy + 5 + i * 4.5));
-        JADWAL_PDF_BELUM_TERMASUK.forEach((t, i) => pdf.text(t, col2, fy + 5 + i * 4.5));
-        let cy = fy + 5;
-        JADWAL_PDF_CATATAN.forEach(t => {
-            const ls = pdf.splitTextToSize(t, PW - M - col3 - 4);
-            pdf.text(ls, col3, cy); cy += ls.length * 4.6;
-        });
+        const cy0 = y + 4;                                   // jarak dari tabel
+        const CG = 4, CW = (PW - 2 * M - 2 * CG) / 4;        // celah antar kartu, lebar kartu 1 & 2 (Catatan = sisanya)
+        const cw3 = PW - 2 * M - 2 * CW - 2 * CG;
+        const CARD_H = 4 + 6 + Math.max(JADWAL_PDF_TERMASUK.length, JADWAL_PDF_BELUM_TERMASUK.length) * 4.6 + 2;
+        const GREEN = [30, 130, 80], CARD_BG = [247, 249, 251], CARD_LINE = [222, 228, 234];
+        const drawCard = (x, w, title, accent) => {
+            pdf.setFillColor(...CARD_BG); pdf.setDrawColor(...CARD_LINE); pdf.setLineWidth(0.25);
+            pdf.roundedRect(x, cy0, w, CARD_H, 1.8, 1.8, 'FD');
+            pdf.setFillColor(...accent); pdf.roundedRect(x + 3.5, cy0 + 3.6, 1.1, 4, 0.5, 0.5, 'F');
+            pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8.5); pdf.setTextColor(...INK);
+            pdf.text(title, x + 6.3, cy0 + 6.6);
+            pdf.setDrawColor(...CARD_LINE); pdf.line(x + 3.5, cy0 + 9.2, x + w - 3.5, cy0 + 9.2);
+        };
+        const drawBullets = (x, w, items, color) => {
+            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5);
+            let ly = cy0 + 14;
+            items.forEach(t => {
+                const ls = pdf.splitTextToSize(t, w - 11);
+                pdf.setFillColor(...color); pdf.circle(x + 4.6, ly - 1, 0.55, 'F');
+                pdf.setTextColor(...INK); pdf.text(ls, x + 7, ly);
+                ly += ls.length * 4.6;
+            });
+        };
+        const cx1 = M, cx2 = M + CW + CG, cx3 = M + 2 * (CW + CG);
+        drawCard(cx1, CW, 'BIAYA SUDAH TERMASUK', GREEN);  drawBullets(cx1, CW, JADWAL_PDF_TERMASUK, GREEN);
+        drawCard(cx2, CW, 'BIAYA BELUM TERMASUK', RED);    drawBullets(cx2, CW, JADWAL_PDF_BELUM_TERMASUK, RED);
+        drawCard(cx3, cw3, 'CATATAN', BLUE);               drawBullets(cx3, cw3, JADWAL_PDF_CATATAN, BLUE);
 
-        // Kotak "Update : <tanggal>" merah, rata kanan bawah
+        // Lencana "Update : <tanggal>" di pojok kanan bawah kartu Catatan
         const upd = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
         pdf.setFontSize(7.5);
         pdf.setFont('helvetica', 'bold'); const lbl = 'Update';
         const wl = pdf.getTextWidth(lbl);
         pdf.setFont('helvetica', 'normal'); const rest = ` : ${upd}`;
         const wr = pdf.getTextWidth(rest);
-        const bw = wl + wr + 5, bh = 6, bx = PW - M - bw, by = fy + 5 + 5 * 4.5 - 1;
-        pdf.setDrawColor(...RED); pdf.setLineWidth(0.3); pdf.rect(bx, by, bw, bh);
+        const bw = wl + wr + 6, bh = 5.6, bx = cx3 + cw3 - bw - 3.5, by = cy0 + CARD_H - bh - 3;
+        pdf.setFillColor(253, 238, 238); pdf.setDrawColor(...RED); pdf.setLineWidth(0.25);
+        pdf.roundedRect(bx, by, bw, bh, 2.8, 2.8, 'FD');
         pdf.setTextColor(...RED);
-        pdf.setFont('helvetica', 'bold'); pdf.text(lbl, bx + 2.5, by + 4.1);
-        pdf.setFont('helvetica', 'normal'); pdf.text(rest, bx + 2.5 + wl, by + 4.1);
+        pdf.setFont('helvetica', 'bold'); pdf.text(lbl, bx + 3, by + 3.9);
+        pdf.setFont('helvetica', 'normal'); pdf.text(rest, bx + 3 + wl, by + 3.9);
 
         // Nomor halaman hanya kalau dokumen lebih dari 1 halaman
         const total = pdf.getNumberOfPages();
