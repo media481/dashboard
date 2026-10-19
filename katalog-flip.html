@@ -57,11 +57,11 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #fff;
 .book.nt,.book.nt *,.book.nt *::before,.book.nt *::after{transition:none!important}
 .sheet{position:absolute;left:50%;top:0;width:50%;height:100%;transform-origin:0 50%;transform-style:preserve-3d;will-change:transform}
 .face{position:absolute;inset:0;overflow:hidden;background:var(--paper);backface-visibility:hidden;-webkit-backface-visibility:hidden}
-.sheet .front{border-radius:0 5px 5px 0;box-shadow:0 18px 40px -12px var(--shadow),0 2px 8px rgba(0,0,0,.25)}
-.sheet .back{transform:rotateY(180deg);border-radius:5px 0 0 5px;box-shadow:0 18px 40px -12px var(--shadow),0 2px 8px rgba(0,0,0,.25)}
-.sheet .front::after,.sheet .back::after{content:"";position:absolute;top:0;bottom:0;width:9%;pointer-events:none;z-index:5}
-.sheet .front::after{left:0;background:linear-gradient(90deg,rgba(0,0,0,.24),rgba(0,0,0,.06) 45%,transparent)}
-.sheet .back::after{right:0;background:linear-gradient(270deg,rgba(0,0,0,.24),rgba(0,0,0,.06) 45%,transparent)}
+.sheet .front{border-radius:0 5px 5px 0;box-shadow:16px 18px 32px -14px var(--shadow),4px 2px 6px rgba(0,0,0,.16)}
+.sheet .back{transform:rotateY(180deg);border-radius:5px 0 0 5px;box-shadow:-16px 18px 32px -14px var(--shadow),-4px 2px 6px rgba(0,0,0,.16)}
+.sheet .front::after,.sheet .back::after{content:"";position:absolute;top:0;bottom:0;width:13%;pointer-events:none;z-index:5}
+.sheet .front::after{left:0;background:linear-gradient(90deg,rgba(0,0,0,.11),rgba(0,0,0,.035) 50%,transparent)}
+.sheet .back::after{right:0;background:linear-gradient(270deg,rgba(0,0,0,.11),rgba(0,0,0,.035) 50%,transparent)}
 .sheet .front::before,.sheet .back::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:6}
 .sheet .front::before{background:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.38) 100%);opacity:var(--sf,0)}
 .sheet .back::before{background:linear-gradient(270deg,transparent 0%,rgba(0,0,0,.38) 100%);opacity:var(--sb,1)}
@@ -582,8 +582,8 @@ function startCurl(i, dir) {
     const fw = div('cw'); fw.style.cssText = 'left:' + (-k * w).toFixed(2) + 'px;width:' + pw + 'px;height:' + ph + 'px'; fw.appendChild(fpg.cloneNode(true)); f.appendChild(fw);
     if (bpg) { const bw = div('cw'); bw.style.cssText = 'left:' + (-(N - 1 - k) * w).toFixed(2) + 'px;width:' + pw + 'px;height:' + ph + 'px'; bw.appendChild(bpg.cloneNode(true)); b.appendChild(bw); }
     const a = div('sh'), z = div('sh'); f.appendChild(a); b.appendChild(z); shF.push(a); shB.push(z);
-    if (k === 0) { const g = div('gut'); g.style.background = 'linear-gradient(90deg,rgba(0,0,0,.24),rgba(0,0,0,.06) 45%,transparent)'; f.appendChild(g);
-                   const g2 = div('gut'); g2.style.background = 'linear-gradient(270deg,rgba(0,0,0,.24),rgba(0,0,0,.06) 45%,transparent)'; b.appendChild(g2); }
+    if (k === 0) { const g = div('gut'); g.style.background = 'linear-gradient(90deg,rgba(0,0,0,.11),rgba(0,0,0,.035) 50%,transparent)'; f.appendChild(g);
+                   const g2 = div('gut'); g2.style.background = 'linear-gradient(270deg,rgba(0,0,0,.11),rgba(0,0,0,.035) 50%,transparent)'; b.appendChild(g2); }
     if (k === N - 1) { f.style.borderRadius = '0 5px 5px 0'; }
     if (k === 0) { b.style.borderRadius = '0'; }
     sg.appendChild(f); sg.appendChild(b); parent.appendChild(sg); parent = sg; segs.push(sg);
