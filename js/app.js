@@ -4628,7 +4628,7 @@ async function renderAdminPanel() {
         // di switchAdminSubTab() supaya hilang saat pindah ke subtab lain.
         const headerActionsEl = document.getElementById('adminPageHeaderActions');
         if (headerActionsEl) {
-            const unduhListBtn = `<button type="button" class="btn-export-subtle" onclick="downloadProgramListPdf(this)" title="Unduh daftar program (PDF A4 landscape, sama seperti tabel Program Umroh)"><i class="bi bi-file-earmark-pdf-fill"></i> Unduh Daftar Program</button>`;
+            const unduhListBtn = `<button type="button" class="btn-export-subtle" onclick="downloadProgramListPdf(this)" title="Unduh jadwal umrah (PDF A4 landscape)"><i class="bi bi-file-earmark-pdf-fill"></i> Unduh Daftar Program</button>`;
             headerActionsEl.innerHTML = canEditData
                 ? `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">${unduhListBtn}<button class="btn-primary" onclick="showAdminForm()"><i class="bi bi-plus-lg"></i> Tambah Program</button></div>`
                 : `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;"><span class="admin-role-note"><i class="bi bi-eye-fill"></i> Mode lihat saja (Guest)</span></div>`;
@@ -5815,12 +5815,26 @@ async function refreshPosterProgram(id) {
     autoScanPosterForProgram(id);
 }
 
-// [UNDUH DAFTAR PROGRAM] Dokumen PDF A4 landscape berisi tabel yang sama dengan tab
-// "Program Umroh" (Nama Program, Estimasi, Quad, Triple, Double, Berangkat, Durasi,
-// Maskapai, Status) -- isi & urutan sama persis dengan yang tampil di dashboard
-// (program aktif, belum expired, punya poster; urut tanggal terdekat). Kolom "Detail"
-// (tombol interaktif) tidak ikut karena tidak bermakna di kertas. Teks digambar langsung
-// lewat jsPDF (bukan screenshot), jadi tajam & bisa diseleksi/dicari di PDF.
+// [UNDUH DAFTAR PROGRAM] PDF A4 landscape bergaya "JADWAL UMRAH" Amiru Tour:
+// judul + subjudul, tabel (Tanggal, Program, Pesawat, Hotel Madinah, Hotel Mekah,
+// Biaya Quad/Triple/Double), lalu blok Biaya Sudah/Belum Termasuk, Catatan, Izin PPIU
+// dan tanggal Update. Baris = program yang tampil di dashboard (aktif, belum expired,
+// punya poster; urut tanggal terdekat). Teks digambar langsung lewat jsPDF (bukan
+// screenshot), jadi tajam & bisa diseleksi/dicari.
+//
+// Pemetaan kolom dari data program:
+//   Tanggal = tgl | Program = durasi + keterangan dari nama (Plus <kota>, Awal/Full Ramadhan, Syawal)
+//   Pesawat = maskapai + "Landing Jedah/Madinah" bila tertulis di nama program
+//   Hotel Madinah / Mekah = hotel_madinah / hotel_makkah (nama singkat, sebelum tanda "/")
+//   Biaya = harga_quad (atau harga_quint) / harga_triple / harga_double
+const JADWAL_PDF_TERMASUK = ['Tiket Pesawat Internasional', 'Visa Umrah', 'Perlengkapan Umrah', 'Handling Bandara', 'Asuransi', 'Air Zamzam 5 liter'];
+const JADWAL_PDF_BELUM_TERMASUK = ['Pembuatan Paspor', 'Vaksin Meningitis dan Polio', 'Tiket Domestik ke Jakarta', 'Hotel Transit di Jakarta', 'Biaya Kirim Perlengkapan'];
+const JADWAL_PDF_CATATAN = [
+    'Biaya dan jadwal sewaktu-waktu dapat berubah mengikuti ketentuan Saudi, Maskapai dan kurs riyal - dolar',
+    'Pembayaran wajib ditransfer ke rekening perusahaan',
+];
+const JADWAL_PDF_PPIU = '07042200368110004';
+
 async function downloadProgramListPdf(btn) {
     if (!canManageProgramData()) { showToast('Unduh daftar program hanya untuk admin & user', 'error'); return; }
     const list = sortProgramsDefault((dataUmroh || []).filter(isProgramVisibleOnDashboard));
@@ -5837,7 +5851,47 @@ async function downloadProgramListPdf(btn) {
         const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
         const PW = 297, PH = 210, M = 10;
         const now = new Date();
-        const nearestIds = getNearestDepartureIds(3);
+
+        // ---- Pemetaan data -> teks sel ----
+        const cap = (w) => w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : '';
+        const noRp = (v) => { const t = formatRupiah(v); return t === '-' ? '-' : t.replace(/^Rp\s*/i, ''); };
+        const programText = (p) => {
+            let d = String(p.durasi || '').trim();
+            if (/^\d+$/.test(d)) d += ' Hari';
+            const n = String(p.nama || '');
+            const extra = [];
+            const plus = n.match(/plus\s+([A-Za-z]+)/i);
+            if (plus) extra.push('Plus ' + cap(plus[1]));
+            if (/full\s+ramadhan/i.test(n)) extra.push('Full Ramadhan');
+            else if (/awal\s+ramadhan/i.test(n)) extra.push('Awal Ramadhan');
+            else if (/ramadhan/i.test(n)) extra.push('Ramadhan');
+            if (/syawal/i.test(n)) extra.push('Syawal');
+            return [d || '-', ...extra].join(' ');
+        };
+        const pesawatText = (p) => {
+            const n = String(p.nama || '');
+            let landing = '';
+            const m = n.match(/landing\s+(jed+ah|madinah|makkah|mekah)/i);
+            if (m) landing = 'Landing ' + (/^jed/i.test(m[1]) ? 'Jedah' : cap(m[1]));
+            else if (/jed+ah\s+madinah/i.test(n)) landing = 'Jedah Madinah';
+            return [String(p.maskapai || '').trim() || '-', landing].filter(Boolean).join(' ');
+        };
+        const rows = list.map(p => [
+            String(p.tgl || '-'),
+            programText(p),
+            pesawatText(p),
+            hotelNamaSingkat(p.hotel_madinah) || '-',
+            hotelNamaSingkat(p.hotel_makkah) || '-',
+            noRp(p.harga_quad || p.harga_quint),
+            noRp(p.harga_triple),
+            noRp(p.harga_double),
+        ]);
+
+        // Rentang tahun untuk judul: "2026 - 2027" (atau satu tahun kalau semuanya sama)
+        const years = list.map(p => p.dateObj instanceof Date && !isNaN(p.dateObj) ? p.dateObj.getFullYear() : null).filter(Boolean);
+        const y1 = years.length ? Math.min(...years) : now.getFullYear();
+        const y2 = years.length ? Math.max(...years) : y1;
+        const judul = `JADWAL UMRAH ${y1 === y2 ? y1 : y1 + ' - ' + y2}`;
 
         // Logo (opsional -- kalau gagal dimuat dokumen tetap dibuat tanpa logo)
         let logo = null;
@@ -5847,102 +5901,106 @@ async function downloadProgramListPdf(btn) {
         } catch (_) { /* tanpa logo */ }
 
         const cols = [
-            { h: 'Nama Program', w: 60, a: 'left' },
-            { h: 'Estimasi',     w: 28, a: 'left' },
-            { h: 'Quad',         w: 25, a: 'right' },
-            { h: 'Triple',       w: 25, a: 'right' },
-            { h: 'Double',       w: 25, a: 'right' },
-            { h: 'Berangkat',    w: 36, a: 'left' },
-            { h: 'Durasi',       w: 18, a: 'left' },
-            { h: 'Maskapai',     w: 34, a: 'left' },
-            { h: 'Status',       w: 26, a: 'left' },
+            { h: 'TANGGAL',       w: 32,   a: 'left' },
+            { h: 'PROGRAM',       w: 38,   a: 'left' },
+            { h: 'PESAWAT',       w: 52,   a: 'left' },
+            { h: 'HOTEL MADINAH', w: 36,   a: 'left' },
+            { h: 'HOTEL MEKAH',   w: 36,   a: 'left' },
+            { h: 'BIAYA QUAD',    w: 27.7, a: 'left' },
+            { h: 'BIAYA TRIPLE',  w: 27.7, a: 'left' },
+            { h: 'BIAYA DOUBLE',  w: 27.6, a: 'left' },
         ];
-        const PAD = 1.8, FS = 8, LH = 3.7, HEAD_H = 8;
-        const BRAND = [26, 53, 91], INK = [28, 43, 58], LINE = [205, 214, 225];
+        const PAD = 2.2, FS = 8.5, LH = 3.5, HEAD_H = 6.4;
+        const BLUE = [21, 101, 168], INK = [28, 28, 28], GREY = [238, 240, 242], RED = [200, 30, 30];
 
-        const drawPageHeader = () => {
-            let x = M;
-            if (logo) { pdf.addImage(logo, 'PNG', M, M - 1, 12, 11.1); x = M + 15; }
-            pdf.setFont('helvetica', 'bold'); pdf.setFontSize(15); pdf.setTextColor(...BRAND);
-            pdf.text('Daftar Program Umroh', x, M + 5);
-            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5); pdf.setTextColor(100, 117, 138);
-            pdf.text('Amiru Tour', x, M + 9.5);
-            const dicetak = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-            pdf.text(`Per ${dicetak}  |  ${list.length} program`, PW - M, M + 5, { align: 'right' });
+        const drawFirstHeader = () => {
+            if (logo) pdf.addImage(logo, 'PNG', M + 4, M, 14.5, 13.4);
+            pdf.setFont('helvetica', 'bold'); pdf.setFontSize(19); pdf.setTextColor(...INK);
+            pdf.text(judul, PW / 2, M + 8, { align: 'center' });
+            // Subjudul: "Keberangkatan" normal + "Bandara Soetta Jakarta" tebal, dipusatkan
+            pdf.setFontSize(11.5);
+            pdf.setFont('helvetica', 'normal'); const a = 'Keberangkatan ';
+            pdf.setFont('helvetica', 'bold');   const b = 'Bandara Soetta Jakarta';
+            pdf.setFont('helvetica', 'normal'); const wa = pdf.getTextWidth(a);
+            pdf.setFont('helvetica', 'bold');   const wb = pdf.getTextWidth(b);
+            const sx = PW / 2 - (wa + wb) / 2;
+            pdf.setFont('helvetica', 'normal'); pdf.text(a, sx, M + 14.5);
+            pdf.setFont('helvetica', 'bold');   pdf.text(b, sx + wa, M + 14.5);
+            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7); pdf.setTextColor(60, 60, 60);
+            pdf.text(`Izin PPIU : ${JADWAL_PDF_PPIU}`, PW - M - 4, M + 12, { align: 'right' });
         };
         const drawTableHead = (y) => {
-            pdf.setFillColor(...BRAND); pdf.rect(M, y, PW - 2 * M, HEAD_H, 'F');
+            pdf.setFillColor(...BLUE); pdf.rect(M, y, PW - 2 * M, HEAD_H, 'F');
             pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8.5); pdf.setTextColor(255, 255, 255);
             let x = M;
-            cols.forEach(c => {
-                const tx = c.a === 'right' ? x + c.w - PAD - 2.5 : x + PAD;
-                pdf.text(c.h, tx, y + 5.3, { align: c.a });
-                x += c.w;
-            });
+            cols.forEach(c => { pdf.text(c.h, x + PAD, y + 4.5); x += c.w; });
             return y + HEAD_H;
         };
 
-        const TOP = M + 16, BOTTOM = PH - 12;
-        drawPageHeader();
-        let y = drawTableHead(TOP);
+        const FOOT_H = 34;                       // tinggi blok keterangan di bawah tabel
+        const BOTTOM = PH - 6;
+        const FIRST_TOP = M + 20, NEXT_TOP = M;
+        drawFirstHeader();
+        let y = drawTableHead(FIRST_TOP);
 
-        list.forEach((p, idx) => {
-            const kuota = p.kuota_pax || 45;
-            const terisi = (kbJamaahList || []).filter(j => String(j.program_id) === String(p.id) && j.status !== 'batal').length;
-            const nearestRank = nearestIds.has(String(p.id)) ? Math.min(nearestIds.get(String(p.id)) + 1, 3) : 0;
-            const penuh = terisi >= kuota;
-            const cells = [
-                String(p.nama || '-'),
-                hitungEstimasi(p.dateObj, now),
-                formatRupiah(p.harga_quad || p.harga_quint),
-                formatRupiah(p.harga_triple),
-                formatRupiah(p.harga_double),
-                String(p.tgl || '-') + (nearestRank ? '\n(Terdekat)' : ''),
-                String(p.durasi || '-'),
-                String(p.maskapai || '-'),
-                `${terisi}/${kuota} ${penuh ? 'Penuh' : 'Tersedia'}`,
-            ];
+        rows.forEach((cells, idx) => {
             pdf.setFont('helvetica', 'normal'); pdf.setFontSize(FS);
-            const wrapped = cells.map((t, i) => pdf.splitTextToSize(t, cols[i].w - 2 * PAD));
-            const rowH = Math.max(...wrapped.map(l => l.length)) * LH + 2 * PAD - 0.4;
-
-            if (y + rowH > BOTTOM) {            // halaman baru + ulang header tabel
-                pdf.addPage(); drawPageHeader(); y = drawTableHead(TOP);
-            }
-            // Warna baris: 3 keberangkatan terdekat disorot biru muda (seperti di dashboard), sisanya selang-seling
-            if (nearestRank) pdf.setFillColor(220, 233, 249);
-            else if (idx % 2) pdf.setFillColor(246, 248, 251);
-            else pdf.setFillColor(255, 255, 255);
-            pdf.rect(M, y, PW - 2 * M, rowH, 'F');
-            pdf.setDrawColor(...LINE); pdf.setLineWidth(0.15);
-            pdf.line(M, y + rowH, PW - M, y + rowH);
-
+            const wrapped = cells.map((t, i) => pdf.splitTextToSize(t, cols[i].w - 2 * PAD + 1));
+            const rowH = Math.max(...wrapped.map(l => l.length)) * LH + 1.3;
+            if (y + rowH > BOTTOM) { pdf.addPage(); y = drawTableHead(NEXT_TOP); }
+            if (idx % 2) { pdf.setFillColor(...GREY); pdf.rect(M, y, PW - 2 * M, rowH, 'F'); }
+            pdf.setTextColor(...INK);
             let x = M;
             cells.forEach((_, i) => {
-                const c = cols[i];
-                const bold = i === 0;
-                pdf.setFont('helvetica', bold ? 'bold' : 'normal');
-                if (i === 8) pdf.setTextColor(...(penuh ? [192, 57, 43] : [27, 107, 72]));
-                else pdf.setTextColor(...INK);
-                const tx = c.a === 'right' ? x + c.w - PAD - 2.5 : x + PAD;
-                pdf.text(wrapped[i], tx, y + PAD + 2.6, { align: c.a, lineHeightFactor: LH / (FS * 0.3528) });
-                x += c.w;
+                pdf.text(wrapped[i], x + PAD, y + 0.8 + LH * 0.82, { lineHeightFactor: LH / (FS * 0.3528) });
+                x += cols[i].w;
             });
             y += rowH;
         });
 
-        // Footer + nomor halaman (setelah jumlah halaman final diketahui)
+        // ---- Blok keterangan di bawah tabel (pindah halaman kalau tidak muat) ----
+        if (y + FOOT_H > BOTTOM) { pdf.addPage(); y = NEXT_TOP; }
+        let fy = y + 7;
+        const col1 = M + 5, col2 = M + 5 + 55, col3 = M + 5 + 55 + 56;
+        pdf.setTextColor(...INK);
+        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8.5);
+        pdf.text('BIAYA SUDAH TERMASUK', col1, fy);
+        pdf.text('BIAYA BELUM TERMASUK', col2, fy);
+        pdf.text('CATATAN', col3, fy);
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5);
+        JADWAL_PDF_TERMASUK.forEach((t, i) => pdf.text(t, col1, fy + 5 + i * 4.5));
+        JADWAL_PDF_BELUM_TERMASUK.forEach((t, i) => pdf.text(t, col2, fy + 5 + i * 4.5));
+        let cy = fy + 5;
+        JADWAL_PDF_CATATAN.forEach(t => {
+            const ls = pdf.splitTextToSize(t, PW - M - col3 - 4);
+            pdf.text(ls, col3, cy); cy += ls.length * 4.6;
+        });
+
+        // Kotak "Update : <tanggal>" merah, rata kanan bawah
+        const upd = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        pdf.setFontSize(7.5);
+        pdf.setFont('helvetica', 'bold'); const lbl = 'Update';
+        const wl = pdf.getTextWidth(lbl);
+        pdf.setFont('helvetica', 'normal'); const rest = ` : ${upd}`;
+        const wr = pdf.getTextWidth(rest);
+        const bw = wl + wr + 5, bh = 6, bx = PW - M - bw, by = fy + 5 + 5 * 4.5 - 1;
+        pdf.setDrawColor(...RED); pdf.setLineWidth(0.3); pdf.rect(bx, by, bw, bh);
+        pdf.setTextColor(...RED);
+        pdf.setFont('helvetica', 'bold'); pdf.text(lbl, bx + 2.5, by + 4.1);
+        pdf.setFont('helvetica', 'normal'); pdf.text(rest, bx + 2.5 + wl, by + 4.1);
+
+        // Nomor halaman hanya kalau dokumen lebih dari 1 halaman
         const total = pdf.getNumberOfPages();
-        for (let i = 1; i <= total; i++) {
-            pdf.setPage(i);
-            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.5); pdf.setTextColor(100, 117, 138);
-            pdf.text('Amiru Tour - Daftar Program Umroh', M, PH - 6);
-            pdf.text(`Halaman ${i} dari ${total}`, PW - M, PH - 6, { align: 'right' });
+        if (total > 1) {
+            for (let i = 1; i <= total; i++) {
+                pdf.setPage(i);
+                pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7); pdf.setTextColor(120, 130, 140);
+                pdf.text(`Halaman ${i} dari ${total}`, PW / 2, PH - 3.5, { align: 'center' });
+            }
         }
 
-        const stamp = now.toISOString().slice(0, 10);
-        pdf.save(`Daftar-Program-Umroh-${stamp}.pdf`);
-        showToast(`Daftar program diunduh (${list.length} program, ${total} halaman)`, 'success');
+        pdf.save(`Jadwal-Umrah-${y1 === y2 ? y1 : y1 + '-' + y2}.pdf`);
+        showToast(`Jadwal diunduh (${list.length} program, ${total} halaman)`, 'success');
     } catch (err) {
         console.error('downloadProgramListPdf error:', err);
         showToast('Gagal membuat PDF: ' + (err.message || err), 'error');
