@@ -5958,7 +5958,7 @@ async function downloadProgramListPdf(btn) {
             return y + HEAD_H;
         };
 
-        const FOOT_H = 46;                       // tinggi blok keterangan (3 kartu) di bawah tabel
+        const FOOT_H = 44;                       // tinggi blok keterangan (3 kolom) di bawah tabel
         const BOTTOM = PH - 6;
         const FIRST_TOP = M + 21, NEXT_TOP = M;
         drawFirstHeader();
@@ -5979,28 +5979,25 @@ async function downloadProgramListPdf(btn) {
             y += rowH;
         });
 
-        // ---- Blok keterangan di bawah tabel: 3 kartu sederhana (pindah halaman kalau tidak muat) ----
+        // ---- Blok keterangan di bawah tabel: 3 kolom tanpa kotak/border (pindah halaman kalau tidak muat) ----
         if (y + FOOT_H > BOTTOM) { pdf.addPage(); y = NEXT_TOP; }
-        const cy0 = y + 4;                                   // jarak dari tabel
-        const CG = 4, CW = (PW - 2 * M - 2 * CG) / 4;        // celah antar kartu, lebar kartu 1 & 2 (Catatan = sisanya)
+        const cy0 = y + 5;                                   // jarak dari tabel
+        const CG = 6, CW = (PW - 2 * M - 2 * CG) / 4;        // celah antar kolom, lebar kolom 1 & 2 (Catatan = sisanya)
         const cw3 = PW - 2 * M - 2 * CW - 2 * CG;
-        const CARD_H = 4 + 6 + Math.max(JADWAL_PDF_TERMASUK.length, JADWAL_PDF_BELUM_TERMASUK.length) * 4.6 + 2;
-        const GREEN = [30, 130, 80], CARD_BG = [247, 249, 251], CARD_LINE = [222, 228, 234];
+        const CARD_H = 10 + Math.max(JADWAL_PDF_TERMASUK.length, JADWAL_PDF_BELUM_TERMASUK.length) * 4.6;
+        const GREEN = [30, 130, 80];
         const drawCard = (x, w, title, accent) => {
-            pdf.setFillColor(...CARD_BG); pdf.setDrawColor(...CARD_LINE); pdf.setLineWidth(0.25);
-            pdf.roundedRect(x, cy0, w, CARD_H, 1.8, 1.8, 'FD');
-            pdf.setFillColor(...accent); pdf.roundedRect(x + 3.5, cy0 + 3.6, 1.1, 4, 0.5, 0.5, 'F');
+            pdf.setFillColor(...accent); pdf.roundedRect(x, cy0, 1.1, 4, 0.5, 0.5, 'F');
             pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8.5); pdf.setTextColor(...INK);
-            pdf.text(title, x + 6.3, cy0 + 6.6);
-            pdf.setDrawColor(...CARD_LINE); pdf.line(x + 3.5, cy0 + 9.2, x + w - 3.5, cy0 + 9.2);
+            pdf.text(title, x + 3, cy0 + 3.1);
         };
         const drawBullets = (x, w, items, color) => {
             pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5);
-            let ly = cy0 + 14;
+            let ly = cy0 + 10;
             items.forEach(t => {
-                const ls = pdf.splitTextToSize(t, w - 11);
-                pdf.setFillColor(...color); pdf.circle(x + 4.6, ly - 1, 0.55, 'F');
-                pdf.setTextColor(...INK); pdf.text(ls, x + 7, ly);
+                const ls = pdf.splitTextToSize(t, w - 6);
+                pdf.setFillColor(...color); pdf.circle(x + 1.1, ly - 1, 0.55, 'F');
+                pdf.setTextColor(...INK); pdf.text(ls, x + 3.5, ly);
                 ly += ls.length * 4.6;
             });
         };
@@ -6009,14 +6006,14 @@ async function downloadProgramListPdf(btn) {
         drawCard(cx2, CW, 'BIAYA BELUM TERMASUK', RED);    drawBullets(cx2, CW, JADWAL_PDF_BELUM_TERMASUK, RED);
         drawCard(cx3, cw3, 'CATATAN', BLUE);               drawBullets(cx3, cw3, JADWAL_PDF_CATATAN, BLUE);
 
-        // Lencana "Update : <tanggal>" di pojok kanan bawah kartu Catatan
+        // Lencana "Update : <tanggal>" di pojok kanan bawah blok Catatan
         const upd = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
         pdf.setFontSize(7.5);
         pdf.setFont('helvetica', 'bold'); const lbl = 'Update';
         const wl = pdf.getTextWidth(lbl);
         pdf.setFont('helvetica', 'normal'); const rest = ` : ${upd}`;
         const wr = pdf.getTextWidth(rest);
-        const bw = wl + wr + 6, bh = 5.6, bx = cx3 + cw3 - bw - 3.5, by = cy0 + CARD_H - bh - 3;
+        const bw = wl + wr + 6, bh = 5.6, bx = cx3 + cw3 - bw, by = cy0 + CARD_H - bh;
         pdf.setFillColor(253, 238, 238); pdf.setDrawColor(...RED); pdf.setLineWidth(0.25);
         pdf.roundedRect(bx, by, bw, bh, 2.8, 2.8, 'FD');
         pdf.setTextColor(...RED);
