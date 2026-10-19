@@ -5880,7 +5880,8 @@ async function downloadProgramListPdf(btn) {
             else if (/jed+ah\s+madinah/i.test(n)) landing = 'Jedah Madinah';
             return [String(p.maskapai || '').trim() || '-', landing].filter(Boolean).join(' ');
         };
-        const rows = list.map(p => [
+        const rows = list.map((p, i) => [
+            String(i + 1),
             String(p.tgl || '-'),
             programText(p),
             pesawatText(p),
@@ -5905,7 +5906,7 @@ async function downloadProgramListPdf(btn) {
         } catch (_) { /* tanpa logo */ }
 
         const cols = [
-            { h: 'TANGGAL' }, { h: 'PROGRAM' }, { h: 'PESAWAT' }, { h: 'HOTEL MADINAH' },
+            { h: 'NO' }, { h: 'TANGGAL' }, { h: 'PROGRAM' }, { h: 'PESAWAT' }, { h: 'HOTEL MADINAH' },
             { h: 'HOTEL MEKAH' }, { h: 'BIAYA QUAD' }, { h: 'BIAYA TRIPLE' }, { h: 'BIAYA DOUBLE' },
         ].map(c => ({ ...c, a: 'left', w: 0 }));
         const PAD = 2.2, HEAD_H = 6.4, TABLE_W = PW - 2 * M;
