@@ -2284,7 +2284,7 @@ async function loadDataFromSupabase(forceRefresh = false) {
             id: p.id, nama: p.nama, tgl: p.tgl, durasi: p.durasi, maskapai: p.maskapai,
             harga_quint: p.harga_quint, teks_wa: p.teks_wa,
             link_form: p.link_form, link_itinerary: p.link_itinerary,
-            link_poster: p.link_poster, link_metaads: p.link_metaads,
+            link_poster: p.link_poster, poster_version: p.poster_version, link_metaads: p.link_metaads,
             link_dokumentasi: p.link_dokumentasi, created_at: p.created_at,
             is_active: p.is_active !== false,
             kuota_pax: p.kuota_pax || 45,
@@ -2413,7 +2413,7 @@ function buildProgramRowHTML(item, now, nearestIds, hl) {
 
     const hasPosterHover = !!item.link_poster;
     const posterHoverAttrs = hasPosterHover
-        ? ` data-poster="${escapeHtml(item.link_poster)}" data-nama="${escapeHtml(item.nama||'')}" onmouseenter="showPosterPopup(event,this)" onmouseleave="hidePosterPopup()" style="cursor:pointer;"`
+        ? ` data-poster="${escapeHtml(item.link_poster)}" data-poster-v="${escapeHtml(item.poster_version || '')}" data-nama="${escapeHtml(item.nama||'')}" onmouseenter="showPosterPopup(event,this)" onmouseleave="hidePosterPopup()" style="cursor:pointer;"`
         : '';
 
     // [VERIFIED BADGE] Badge hijau "Verified" tampil di tampilan depan hanya kalau
@@ -2758,7 +2758,7 @@ function renderProgramDetailPoster(program) {
     loading.style.display = 'flex';
     img.onload = () => { loading.style.display = 'none'; img.classList.add('loaded'); };
     img.onerror = () => { loading.style.display = 'none'; err.style.display = 'flex'; };
-    img.src = resolveImageUrl(rawUrl);
+    img.src = resolveImageUrl(rawUrl, program.poster_version);
 }
 // Panah kiri/kanan di keyboard = program sebelumnya/berikutnya saat modal Detail Program terbuka.
 document.addEventListener('keydown', (e) => {
@@ -4831,6 +4831,7 @@ function renderAdminTable() {
             ${canEditData ? `
             <td style="text-align:right;">
                 <div class="action-btns" style="justify-content:flex-end;">
+                    ${p.link_poster ? `<button onclick="refreshPosterProgram('${p.id}')" title="Refresh poster (muat ulang gambar dari Drive + scan ulang OCR)"><i class="bi bi-arrow-clockwise"></i></button>` : ''}
                     <button onclick="editAdminProgram('${p.id}')" title="Edit"><i class="bi bi-pencil-fill"></i></button>
                     <button onclick="openDeleteModal('programs','${p.id}','${escapeJsAttr(p.nama)}')" class="danger" title="Hapus"><i class="bi bi-trash-fill"></i></button>
                 </div>
@@ -5786,6 +5787,33 @@ async function updateProgramById(id, patch) {
     return data && data[0];
 }
 
+// [REFRESH POSTER] Dipanggil setelah file poster di Google Drive diganti (link tetap sama).
+// 1) simpan poster_version = sekarang di database -> semua pengguna (dashboard & katalog)
+//    memuat ulang gambar karena URL-nya berubah (&v=...);
+// 2) scan ulang OCR memakai URL baru, supaya data Crosscheck ikut diperbarui.
+// Catatan: thumbnail Google Drive sendiri kadang butuh beberapa menit untuk ter-update.
+async function refreshPosterProgram(id) {
+    if (!canManageProgramData()) { showToast('Tidak punya izin', 'error'); return; }
+    const ver = Date.now();
+    try {
+        await updateProgramById(id, { poster_version: ver });
+    } catch (err) {
+        const missing = /poster_version/i.test(err.message || '');
+        showToast(missing
+            ? 'Kolom poster_version belum ada — jalankan sql/57_tambah_programs_poster_version.sql di Supabase dulu.'
+            : 'Gagal refresh poster: ' + (err.message || err), 'error');
+        return;
+    }
+    [adminPrograms, dataUmroh, currentData].forEach(list => {
+        const row = (list || []).find(p => String(p.id) === String(id));
+        if (row) row.poster_version = ver;
+    });
+    renderAdminTable();
+    try { if (typeof renderTableWithSearch === 'function') renderTableWithSearch(); } catch (e) {}
+    showToast('Poster di-refresh — memindai ulang. Kalau masih gambar lama, tunggu beberapa menit (thumbnail Google belum ter-update).', 'success');
+    autoScanPosterForProgram(id);
+}
+
 async function clearAllAdminData() {
     if (currentRole !== 'admin') { showToast('Halaman Admin hanya untuk Administrator', 'error'); return; }
 
@@ -6315,7 +6343,7 @@ function isValidUUID(str) {
 // tidak lagi menyertakan/memulihkan data lama di kolom tersebut.
 const PROGRAM_COLUMNS = [
     'id', 'nama', 'tgl', 'durasi', 'maskapai', 'harga_quint',
-    'link_poster', 'link_itinerary',
+    'link_poster', 'poster_version', 'link_itinerary',
     'teks_wa', 'admin_data_lengkap', 'is_active', 'kuota_pax', 'created_at'
 ];
 function pickAllowedColumns(obj, allowed) {
@@ -12559,7 +12587,7 @@ async function autoScanPosterForProgram(progId) {
         // link share Google Drive biasa (/file/d/ID/view), server OCR akan fetch HTML
         // halaman viewer-nya (bukan gambar) dan gagal/salah baca. Popup hover poster
         // sudah benar melakukan ini, tapi jalur OCR sebelumnya lupa dipasangi juga.
-        const posterUrlForOcr = resolveImageUrl(prog.link_poster);
+        const posterUrlForOcr = resolveImageUrl(prog.link_poster, prog.poster_version);
         const result = await cxRunOcr(progId, posterUrlForOcr, (pct) => {
             cxOcrProgress[progId] = pct;
             if (String(cxSelectedProgram) === String(progId)) {
@@ -13348,6 +13376,7 @@ function renderCxPanel(progId) {
             ${mismatchCount > 0 ? `<span class="cx-mismatch-count"><i class="bi bi-exclamation-triangle-fill"></i> ${mismatchCount} tidak cocok</span>` : ''}
             ${!hasPoster ? `<button type="button" class="poster-missing-badge" onclick="quickAddPosterLink('${prog.id}')" title="Klik untuk langsung tambahkan link poster program ini"><i class="bi bi-image"></i>Belum ada poster<i class="bi bi-plus-lg"></i></button>` : ''}
             <button class="cx-parse-btn" onclick="openCxEditModal('${prog.id}')"><i class="bi bi-pencil-square"></i> Input Manual</button>
+            ${hasPoster ? `<button class="cx-parse-btn" onclick="refreshPosterProgram('${prog.id}')" ${isScanning?'disabled':''} title="Poster di Drive sudah diganti? Muat ulang gambar & scan ulang"><i class="bi bi-arrow-clockwise"></i> Refresh Poster</button>` : ''}
             ${hasPoster ? `<button class="cx-parse-btn" onclick="autoScanPosterForProgram('${prog.id}')" ${isScanning?'disabled':''}><i class="bi ${isScanning?'bi-arrow-repeat bi-spin':'bi-arrow-repeat'}"></i> ${isScanning?'Memindai...':'Scan Ulang Poster'}</button>` : ''}
             ${hasPoster ? `<button class="cx-parse-btn" onclick="window.open('${escapeJsAttr(prog.link_poster)}','_blank')"><i class="bi bi-image-fill"></i> Lihat Poster</button>` : ''}
         </div>
@@ -14810,15 +14839,20 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
 // ============================================================
 // 24. POSTER HOVER POPUP
 // ============================================================
-function resolveImageUrl(url) {
+// [REFRESH POSTER] ver = programs.poster_version (timestamp ms terakhir tombol "Refresh Poster"
+// ditekan). Ditempel sebagai &v=... supaya browser tidak memakai gambar lama dari cache
+// saat file di Google Drive diganti dengan link yang sama.
+function resolveImageUrl(url, ver) {
     if (!url) return url;
+    let out = url;
     // Google Drive: /file/d/ID/view atau /file/d/ID/view?usp=...
     const gdMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
-    if (gdMatch) return `https://drive.google.com/thumbnail?id=${gdMatch[1]}&sz=w1080`;
     // Google Drive: open?id=ID
     const gdOpen = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
-    if (gdOpen) return `https://drive.google.com/thumbnail?id=${gdOpen[1]}&sz=w1080`;
-    return url;
+    const gdId = gdMatch ? gdMatch[1] : (gdOpen ? gdOpen[1] : null);
+    if (gdId) out = `https://drive.google.com/thumbnail?id=${gdId}&sz=w1080`;
+    if (ver) out += (out.includes('?') ? '&' : '?') + 'v=' + encodeURIComponent(ver);
+    return out;
 }
 
 let _posterHideTimer = null;
@@ -14830,7 +14864,7 @@ function showPosterPopup(e, el) {
     const errEl = document.getElementById('posterPopupError');
     const nameEl = document.getElementById('posterPopupName');
     if (!popup || !img || !loading || !errEl || !nameEl) return;
-    const posterUrl = resolveImageUrl(el.getAttribute('data-poster'));
+    const posterUrl = resolveImageUrl(el.getAttribute('data-poster'), el.getAttribute('data-poster-v'));
     const posterNama = el.getAttribute('data-nama');
     // Reset state
     img.classList.remove('loaded');

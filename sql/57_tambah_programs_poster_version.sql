@@ -1,0 +1,14 @@
+-- ============================================================
+-- MIGRASI: programs.poster_version -- tombol "Refresh Poster"
+-- Tabel: programs (kolom baru: poster_version)
+--
+-- Masalah: poster di Google Drive sering diganti (replace file) dengan link
+-- yang SAMA, sehingga browser tetap menampilkan gambar lama dari cache.
+-- poster_version = timestamp (ms) terakhir tombol "Refresh Poster" ditekan.
+-- Nilainya ditempel sebagai &v=... di URL gambar (dashboard, katalog, OCR)
+-- supaya semua pengguna otomatis memuat ulang gambar terbaru.
+--
+-- JALANKAN SQL INI DULU sebelum deploy js/app.js & katalog.html baru.
+-- Aman dijalankan ulang.
+-- ============================================================
+alter table programs add column if not exists poster_version bigint;

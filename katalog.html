@@ -397,7 +397,8 @@ const BARU_HARI = 3;    // badge "Baru" tampil selama N hari sejak program dibua
 const BULAN = {Januari:0,Februari:1,Maret:2,April:3,Mei:4,Juni:5,Juli:6,Agustus:7,September:8,Oktober:9,November:10,Desember:11};
 let semua = [], tampil = [];
 const CACHE_KEY = 'katalog_programs_v1', CACHE_MAX_UMUR = 24 * 3600e3;   // cache daftar program maks 24 jam
-const SEL_PROGRAM = 'id,nama,tgl,durasi,maskapai,harga_quint,link_itinerary,link_poster,created_at,is_active,admin_data_lengkap';   // dipakai muat() & penyegaran slideshow
+const SEL_PROGRAM_BASE = 'id,nama,tgl,durasi,maskapai,harga_quint,link_itinerary,link_poster,created_at,is_active,admin_data_lengkap';
+let SEL_PROGRAM = SEL_PROGRAM_BASE + ',poster_version';   // kolom poster_version = migrasi sql/57; kalau belum ada, otomatis turun ke SEL_PROGRAM_BASE   // dipakai muat() & penyegaran slideshow
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const safeUrl = u => { u = String(u || '').trim(); return /^https?:\/\//i.test(u) ? u : ''; };
@@ -423,10 +424,17 @@ function rupiah(v) {
 }
 // w = lebar thumbnail Drive. Kartu memakai srcset berbasis lebar (320/480/640) + sizes, jadi HP 2 kolom
 // hanya mengunduh ukuran yang pas (hemat kuota); modal memakai w800, lightbox w1600.
+// POSTER_VER[link_poster] = programs.poster_version (diisi olah()); ditempel sebagai &v=... supaya
+// poster yang diganti di Drive (link sama) tidak tertahan di cache browser.
+const POSTER_VER = {};
 function posterSrc(u, w = 800) {
+  const raw = u;
   u = safeUrl(u);
   const m = u.match(/drive\.google\.com\/file\/d\/([\w-]+)/) || u.match(/drive\.google\.com\/open\?id=([\w-]+)/);
-  return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w${w}` : u;
+  let out = m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w${w}` : u;
+  const v = POSTER_VER[raw];
+  if (v && out) out += (out.includes('?') ? '&' : '?') + 'v=' + encodeURIComponent(v);
+  return out;
 }
 const isDrive = u => /drive\.google\.com/.test(safeUrl(u));
 const preloaded = new Set();
@@ -459,14 +467,15 @@ function hargaUtama(p) { const h = hargaPilih(p); return h ? h.n : 0; }
 async function muat() {
   const grid = document.getElementById('grid');
   try {
-    const sel = SEL_PROGRAM;
     // Kunjungan ulang: tampilkan daftar dari cache dulu (instan, gambar langsung mulai dimuat), lalu segarkan di belakang layar
     let cached = null;
     try { cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch {}
     if (cached && Array.isArray(cached.rows) && Date.now() - cached.t < CACHE_MAX_UMUR) { olah(cached.rows); }
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/programs?select=${sel}&order=created_at.asc`, {
+    const ambil = () => fetch(`${SUPABASE_URL}/rest/v1/programs?select=${SEL_PROGRAM}&order=created_at.asc`, {
       headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY }
     });
+    let r = await ambil();
+    if (r.status === 400 && SEL_PROGRAM !== SEL_PROGRAM_BASE) { SEL_PROGRAM = SEL_PROGRAM_BASE; r = await ambil(); }   // migrasi 57 belum dijalankan
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const rows = await r.json();
     const baru = JSON.stringify(rows);
@@ -507,6 +516,7 @@ function olah(rows) {
       return { ...row, ...(adl || {}), dateObj: parseTgl(row.tgl) };
     }).filter(p => p.is_active !== false && p.link_poster && (!p.dateObj || p.dateObj >= now));
     // 3 keberangkatan terdekat
+    semua.forEach(p => { if (p.poster_version) POSTER_VER[p.link_poster] = p.poster_version; });
     const terdekat = new Set([...semua].filter(p => p.dateObj).sort((a,b) => a.dateObj - b.dateObj).slice(0,3).map(p => String(p.id)));
     semua.forEach(p => { p._near = terdekat.has(String(p.id)); const c = new Date(p.created_at); p._baru = !isNaN(c) && (Date.now() - c) < BARU_HARI * 864e5; });
     document.getElementById('grid').setAttribute('aria-busy', 'false');
