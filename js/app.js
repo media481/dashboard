@@ -6295,11 +6295,13 @@ function plpOnResize() {
     _plp.rt = setTimeout(plpRender, 250);               // tajamkan ulang sesudah ukuran layar berhenti berubah
 }
 
-async function openProgramListPreview(pdf, fileName, count, pages) {
+async function openProgramListPreview(pdf, fileName, count, pages, opts = {}) {
     const overlay = ensurePlpModal();
     const body = document.getElementById('plpBody');
-    const st = _plp = { pdf, fileName, count, doc: null, n: pages, ratio: 210 / 297, trim: 1, busy: false, again: false, rt: 0 };
-    document.getElementById('plpMeta').textContent = `${count} program · ${pages} halaman`;
+    const st = _plp = { pdf, fileName, count, doc: null, n: pages, ratio: opts.ratio || 210 / 297, trim: 1, busy: false, again: false, rt: 0, unit: opts.unit || 'program', noun: opts.noun || 'Jadwal', waJudul: opts.waJudul || '', waText: opts.waText || '' };
+    const ttl = document.getElementById('plpTitle');
+    if (ttl) ttl.innerHTML = '<i class="bi bi-file-earmark-pdf-fill"></i> ' + escapeHtml(opts.title || 'Preview Daftar Program');
+    document.getElementById('plpMeta').textContent = `${count} ${st.unit} · ${pages} halaman`;
     body.innerHTML = '<div class="plp-load"><i class="bi bi-arrow-repeat bi-spin"></i> Menyiapkan preview...</div>';
     overlay.classList.add('open');
     document.addEventListener('keydown', plpKey);
@@ -6349,14 +6351,14 @@ async function shareProgramListWa() {
     if (!_plp) return;
     const { pdf, fileName, count } = _plp;
     const periode = (fileName.match(/Jadwal-Umrah-(.+)\.pdf$/) || [])[1];
-    const judul = 'Jadwal Umrah' + (periode ? ' ' + periode.replace(/-/g, ' - ') : '') + ' Amiru Tour';
+    const judul = _plp.waJudul || ('Jadwal Umrah' + (periode ? ' ' + periode.replace(/-/g, ' - ') : '') + ' Amiru Tour');
     const tgl = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-    const teks = `Assalamu'alaikum, berikut ${judul} (${count} program, update ${tgl}).`;
+    const teks = _plp.waText || `Assalamu'alaikum, berikut ${judul} (${count} program, update ${tgl}).`;
     try {
         const file = new File([pdf.output('blob')], fileName, { type: 'application/pdf' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
             await navigator.share({ files: [file], title: judul, text: teks });
-            showToast('Jadwal dibagikan', 'success');
+            showToast(_plp.noun + ' dibagikan', 'success');
             return;
         }
     } catch (err) {
@@ -6370,10 +6372,10 @@ async function shareProgramListWa() {
 
 function downloadProgramListFromPreview() {
     if (!_plp) return;
-    const { pdf, fileName, count, n } = _plp;
+    const { pdf, fileName, count, n, unit, noun } = _plp;
     try {
         pdf.save(fileName);
-        showToast(`Jadwal diunduh (${count} program, ${n} halaman)`, 'success');
+        showToast(`${noun} diunduh (${count} ${unit}, ${n} halaman)`, 'success');
     } catch (err) {
         showToast('Gagal mengunduh PDF: ' + (err.message || err), 'error');
         return;
@@ -18624,8 +18626,247 @@ function igUnduhRencanaKonten() {
     }
 }
 
+// ============================================================
+// [UNDUH PDF LAPORAN RENCANA KONTEN] Laporan 12 bulan (isi sama dengan rekap .md) sebagai PDF A4 landscape.
+// Caranya SAMA dengan Unduh Daftar Program: PDF digambar lewat jsPDF (teks asli, bukan screenshot), lalu tampil
+// di modal preview yang sama (openProgramListPreview) dengan tombol Tutup, Share WA, dan Unduh PDF.
+// Isi: kop (logo, judul, periode), ringkasan, Kesehatan Rencana, lalu tiap bulan berisi tabel pekan
+// (tema, status, ide, jadi post, fase program) dengan isi harian di bawah pekan yang sudah disusun.
+// Hanya membaca igRkData (data yang sama dengan yang tampil di modal), tidak menulis apa pun ke database.
+// ============================================================
+// jsPDF (font bawaan) hanya mengenal Latin-1: rapikan tanda baca umum dan buang emoji/simbol lain supaya tidak jadi karakter rusak.
+function igPdfAman(v) {
+    return String(v == null ? '' : v)
+        .replace(/[\u2018\u2019\u201A]/g, "'").replace(/[\u201C\u201D\u201E]/g, '"')
+        .replace(/[\u2013\u2014]/g, '-').replace(/\u2026/g, '...').replace(/\u00A0/g, ' ')
+        .replace(/[^\u0020-\u007E\u00A1-\u00FF]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+async function igUnduhRencanaKontenPdf() {
+    const btn = (this && this.nodeType === 1) ? this : null;
+    if (!igRkData) igRkRender();
+    const d = igRkData;
+    if (!d) { showToast('Belum ada data rencana konten untuk diunduh', 'error'); return; }
+
+    const oldHtml = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-arrow-repeat bi-spin"></i> Menyiapkan preview...'; }
+    try {
+        if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
+            try { await ensureLibLoaded('jspdf'); }
+            catch (_) { showToast('Modul PDF gagal dimuat — periksa koneksi internet lalu coba lagi', 'error'); return; }
+        }
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        const PW = 297, PH = 210, M = 12, CW = PW - 2 * M, BOTTOM = PH - 12;
+        const BLUE = [21, 101, 168], INK = [28, 28, 28], MUTED = [110, 118, 126], GREY = [238, 240, 242], SOFT = [234, 243, 250];
+        const RED = [200, 30, 30], GREEN = [30, 130, 80], AMBER = [190, 115, 0];
+        const T = igPdfAman;
+        const r = d.ringkas;
+        const now = new Date();
+        const tglBuat = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        const periode = `${d.dari} - ${d.sampai}`;
+        let y = M;
+        const lineH = (fs) => fs * 0.3528 * 1.18;   // tinggi baris (mm) untuk ukuran font fs (pt)
+        const ensure = (h) => { if (y + h > BOTTOM) { pdf.addPage(); y = M; return true; } return false; };
+
+        // Logo (opsional -- kalau gagal dimuat dokumen tetap dibuat tanpa logo)
+        let logo = null;
+        try {
+            const blob = await (await fetch('assets/logo-amirutour.png')).blob();
+            logo = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob); });
+        } catch (_) { /* tanpa logo */ }
+
+        // ---- Kop ----
+        const LOGO_H = 15, LOGO_W = LOGO_H * 300 / 278;
+        if (logo) pdf.addImage(logo, 'PNG', M, y, LOGO_W, LOGO_H);
+        const tx = M + (logo ? LOGO_W + 4 : 0);
+        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(16); pdf.setTextColor(...INK);
+        pdf.text('RENCANA KONTEN INSTAGRAM', tx, y + 6.5);
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5); pdf.setTextColor(...MUTED);
+        pdf.text(T('Amiru Tour | Periode ' + periode), tx, y + 12.2);
+        pdf.setFontSize(7); pdf.text('Dibuat', PW - M, y + 5.2, { align: 'right' });
+        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor(...INK);
+        pdf.text(T(tglBuat), PW - M, y + 9.8, { align: 'right' });
+        y += LOGO_H + 3;
+        pdf.setDrawColor(...BLUE); pdf.setLineWidth(0.6); pdf.line(M, y, PW - M, y);
+        y += 5;
+
+        // ---- Ringkasan (kotak statistik) ----
+        const pct = r.total ? Math.round(r.post / r.total * 100) : 0;
+        const stats = [[r.disusun + '/' + r.minggu, 'pekan disusun']];
+        if (r.rencana) stats.push([String(r.rencana), 'pekan rencana AI']);
+        stats.push([String(r.total), 'total ide'], [String(r.post), `jadi post (${pct}%)`], [String(r.lewat), 'dilewati'], [String(r.kosong), 'pekan lewat kosong']);
+        const SG = 2.5, SW = (CW - (stats.length - 1) * SG) / stats.length, SH = 14;
+        stats.forEach((st, i) => {
+            const x = M + i * (SW + SG);
+            pdf.setFillColor(...GREY); pdf.roundedRect(x, y, SW, SH, 1.5, 1.5, 'F');
+            pdf.setFont('helvetica', 'bold'); pdf.setFontSize(13); pdf.setTextColor(...BLUE);
+            pdf.text(st[0], x + SW / 2, y + 6.2, { align: 'center' });
+            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(6.8); pdf.setTextColor(...MUTED);
+            pdf.text(T(st[1]), x + SW / 2, y + 10.8, { align: 'center', maxWidth: SW - 2 });
+        });
+        y += SH + 6;
+
+        // Judul bagian bergaya kartu (aksen warna kecil + teks tebal), sama seperti blok keterangan di PDF Jadwal Umrah
+        const sectionTitle = (txt, accent) => {
+            ensure(14);
+            pdf.setFillColor(...accent); pdf.roundedRect(M, y, 1.1, 4, 0.5, 0.5, 'F');
+            pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9.5); pdf.setTextColor(...INK);
+            pdf.text(T(txt), M + 3, y + 3.2);
+            y += 7;
+        };
+        const bullet = (txt, color, fs = 8) => {
+            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(fs);
+            const ls = pdf.splitTextToSize(T(txt), CW - 6), lh = lineH(fs);
+            ensure(ls.length * lh + 1);
+            pdf.setFillColor(...color); pdf.circle(M + 1.1, y + lh * 0.55, 0.55, 'F');
+            pdf.setTextColor(...INK);
+            ls.forEach((l, i) => pdf.text(l, M + 3.5, y + lh * 0.8 + i * lh));
+            y += ls.length * lh + 0.8;
+        };
+
+        // ---- Kesehatan rencana ----
+        const kes = igRkKesehatan();
+        if (kes && kes.pekan) {
+            sectionTitle(`KESEHATAN RENCANA (${kes.pekan} pekan ke depan)`, RED);
+            if (kes.catatan.length) kes.catatan.forEach(c => bullet(c, AMBER));
+            else bullet('Komposisi fase, rasio hati dan praktis, serta stok tema tampak sehat.', GREEN);
+            y += 1.5;
+            // Tabel komposisi fase
+            const kc = [{ h: 'FASE', w: 90 }, { h: 'PEKAN (JATAH)', w: 45 }, { h: 'STOK TEMA (BUTUH/THN)', w: 60 }, { h: 'TANDA', w: CW - 195 }];
+            ensure(6 + 7 * 2);
+            pdf.setFillColor(...BLUE); pdf.rect(M, y, CW, 5.8, 'F');
+            pdf.setFont('helvetica', 'bold'); pdf.setFontSize(7.2); pdf.setTextColor(255, 255, 255);
+            { let x = M; kc.forEach(c => { pdf.text(c.h, x + 2, y + 4); x += c.w; }); }
+            y += 5.8;
+            kes.fase.forEach((f, i) => {
+                ensure(6);
+                if (i % 2) { pdf.setFillColor(...GREY); pdf.rect(M, y, CW, 5.6, 'F'); }
+                pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.8); pdf.setTextColor(...INK);
+                const cells = [T(f.label), `${f.jumlah} (sekitar ${f.jatah})`, `${f.stok} (sekitar ${f.perlu})`, f.tanda.map(t => IG_KES_TANDA[t][0]).join(', ') || '-'];
+                let x = M;
+                cells.forEach((c, ci) => {
+                    if (ci === 3 && f.tanda.length) pdf.setTextColor(...(f.tanda.some(t => IG_KES_TANDA[t][1] === 'danger') ? RED : AMBER));
+                    pdf.text(c, x + 2, y + 3.9, { maxWidth: kc[ci].w - 3 }); x += kc[ci].w;
+                    pdf.setTextColor(...INK);
+                });
+                y += 5.6;
+            });
+            y += 2.5;
+            const terkls = kes.hati + kes.praktis;
+            bullet(`Hati ${kes.hati} pekan, praktis ${kes.praktis} pekan (hati ${terkls ? kes.hatiPersen : 0}%, batas sehat ${Math.round(IG_RASIO_HATI[0] * 100)}-${Math.round(IG_RASIO_HATI[1] * 100)}%)`, BLUE);
+            if (kes.musimN || kes.lainN) bullet(`Di luar fase: ${kes.musimN} pekan musiman, ${kes.lainN} ketikan sendiri`, BLUE);
+            y += 3;
+        }
+
+        // ---- Tabel per bulan ----
+        const WC = [32, 100, 24, 11, 12, CW - 179];       // Pekan | Tema | Status | Ide | Post | Fase program
+        const WX = WC.map((_, i) => WC.slice(0, i).reduce((a, b) => a + b, 0));
+        const HEAD = ['PEKAN', 'TEMA', 'STATUS', 'IDE', 'POST', 'FASE PROGRAM'];
+        const STATUS_WARNA = { disusun: GREEN, 'tanpa-tema': AMBER, rencana: BLUE, saran: MUTED, kosong: RED };
+        const drawCols = () => {
+            pdf.setFillColor(215, 224, 232); pdf.rect(M, y, CW, 5.2, 'F');
+            pdf.setFont('helvetica', 'bold'); pdf.setFontSize(6.8); pdf.setTextColor(...INK);
+            HEAD.forEach((h, i) => pdf.text(h, M + WX[i] + 1.8, y + 3.6));
+            y += 5.2;
+        };
+        const drawMonthBand = (b, lanjut) => {
+            pdf.setFillColor(...BLUE); pdf.rect(M, y, CW, 6.6, 'F');
+            pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9.5); pdf.setTextColor(255, 255, 255);
+            pdf.text(`${IG_NAMA_BULAN[b.m]} ${b.y}${lanjut ? ' (lanjutan)' : ''}`, M + 2, y + 4.6);
+            const info = b.total ? `${b.total} ide | ${b.post} jadi post${b.lewat ? ' | ' + b.lewat + ' dilewati' : ''}` : 'belum ada ide';
+            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.5);
+            pdf.text(info, PW - M - 2, y + 4.4, { align: 'right' });
+            y += 6.6;
+        };
+
+        d.bulan.forEach(b => {
+            ensure(6.6 + 5.2 + 14);
+            drawMonthBand(b, false);
+            const pil = Object.entries(b.pilar).sort((a, c) => c[1] - a[1]).map(([k, n]) => `${igRkLabelPilar(k)} ${n}`).join(', ');
+            if (pil) {
+                pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.2); pdf.setTextColor(...MUTED);
+                const ls = pdf.splitTextToSize(T('Pilar: ' + pil), CW - 4);
+                ls.forEach((l, i) => pdf.text(l, M + 2, y + 3.4 + i * 3.2));
+                y += ls.length * 3.2 + 1.6;
+            }
+            drawCols();
+            if (!b.minggu.length) {
+                pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.8); pdf.setTextColor(...MUTED);
+                pdf.text('Tidak ada pekan', M + 2, y + 4); y += 6;
+            }
+            // Baris baru: pindah halaman bila tidak muat, lalu ulangi kepala bulan + kolom
+            const guard = (h) => { if (y + h > BOTTOM) { pdf.addPage(); y = M; drawMonthBand(b, true); drawCols(); } };
+
+            b.minggu.forEach(w => {
+                const nPost = w.isi.filter(p => p.status === 'dijadikan_post').length;
+                const fase = w.program.map(x => `${x.nama} (${x.f.label})`).join('; ');
+                pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.8);
+                const cTema = pdf.splitTextToSize(T(w.tema) || '-', WC[1] - 3);
+                const cFase = pdf.splitTextToSize(T(fase) || '-', WC[5] - 3);
+                const LH = lineH(7.8);
+                const rowH = Math.max(cTema.length, cFase.length, 1) * LH + 1.8;
+                guard(rowH + (w.isi.length ? 5 : 0));
+                pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.8);   // guard() bisa mengubah font (kepala bulan/kolom)
+                pdf.setFillColor(...SOFT); pdf.rect(M, y, CW, rowH, 'F');
+                const by = y + 0.9 + LH * 0.78;
+                pdf.setTextColor(...INK);
+                pdf.text(`${igTglPendek(w.senin)} - ${igTglPendek(w.minggu)}`, M + WX[0] + 1.8, by, { maxWidth: WC[0] - 2 });
+                cTema.forEach((l, i) => pdf.text(l, M + WX[1] + 1.8, by + i * LH));
+                pdf.setFont('helvetica', 'bold'); pdf.setTextColor(...(STATUS_WARNA[w.status] || INK));
+                pdf.text(IG_RK_LABEL_STATUS[w.status] || '', M + WX[2] + 1.8, by, { maxWidth: WC[2] - 2 });
+                pdf.setFont('helvetica', 'normal'); pdf.setTextColor(...INK);
+                pdf.text(String(w.isi.length), M + WX[3] + 1.8, by);
+                pdf.text(String(nPost), M + WX[4] + 1.8, by);
+                pdf.setTextColor(...MUTED);
+                cFase.forEach((l, i) => pdf.text(l, M + WX[5] + 1.8, by + i * LH));
+                y += rowH;
+
+                // Isi harian pekan ini (kecil, di bawah baris pekan)
+                w.isi.forEach(p => {
+                    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.2);
+                    const LH2 = lineH(7.2);
+                    const teks = T(p.tema || '(tanpa judul)') + (p.pilar ? '  [' + T(igRkLabelPilar(p.pilar)) + ']' : '');
+                    const ls = pdf.splitTextToSize(teks, WC[1] + WC[2] + WC[3] + WC[4] - 3);
+                    const h = ls.length * LH2 + 1.1;
+                    guard(h);
+                    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.2);
+                    const by2 = y + 0.6 + LH2 * 0.78;
+                    pdf.setTextColor(...MUTED); pdf.text(T(igRkTglHari(p.tanggal)), M + WX[0] + 4, by2);
+                    pdf.setTextColor(...INK); ls.forEach((l, i) => pdf.text(l, M + WX[1] + 1.8, by2 + i * LH2));
+                    pdf.setTextColor(...MUTED); pdf.text(T(IG_RK_STATUS[p.status] || ''), M + WX[5] + 1.8, by2);
+                    y += h;
+                });
+                pdf.setDrawColor(225, 229, 233); pdf.setLineWidth(0.15); pdf.line(M, y, M + CW, y);
+            });
+            y += 5;
+        });
+
+        // Footer tiap halaman: nama dokumen di kiri, nomor halaman di kanan
+        const total = pdf.getNumberOfPages();
+        for (let i = 1; i <= total; i++) {
+            pdf.setPage(i);
+            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7); pdf.setTextColor(120, 130, 140);
+            pdf.text('Rencana Konten Instagram Amiru Tour', M, PH - 6);
+            pdf.text(`Halaman ${i} dari ${total}`, PW - M, PH - 6, { align: 'right' });
+        }
+
+        // PDF TIDAK langsung diunduh: tampilkan preview dulu (modal yang sama dengan Daftar Program), unduh lewat tombol "Unduh PDF".
+        await openProgramListPreview(pdf, `Rencana-Konten-${igLocalDateKey(now)}.pdf`, r.minggu, total, {
+            title: 'Preview Laporan Rencana Konten', unit: 'pekan', noun: 'Laporan',
+            waJudul: 'Rencana Konten Instagram Amiru Tour',
+            waText: `Assalamu'alaikum, berikut Rencana Konten Instagram Amiru Tour periode ${periode} (${r.disusun} dari ${r.minggu} pekan sudah disusun, update ${tglBuat}).`
+        });
+    } catch (err) {
+        console.error('igUnduhRencanaKontenPdf error:', err);
+        showToast('Gagal membuat PDF: ' + (err.message || err), 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = oldHtml; }
+    }
+}
+
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeIgRencanaKontenModal();
+    if (e.key === 'Escape' && !_plp) closeIgRencanaKontenModal();
 });
 
 // ============================================================
@@ -21164,6 +21405,7 @@ window.igRkIniHari = igRkIniHari;
 window.igRkLihatDiKalender = igRkLihatDiKalender;
 window.igSalinRencanaKonten = igSalinRencanaKonten;
 window.igUnduhRencanaKonten = igUnduhRencanaKonten;
+window.igUnduhRencanaKontenPdf = igUnduhRencanaKontenPdf;
 window.showIgPlanGenerateForm = showIgPlanGenerateForm;
 window.generateIgContentPlanAI = generateIgContentPlanAI;
 window.igConvertPlanToPost = igConvertPlanToPost;
