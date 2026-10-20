@@ -1567,8 +1567,10 @@ document.addEventListener('click', (e) => {
                 const dlg = dialogOf(ov);
                 if (dlg.contains(document.activeElement)) return; // modal sudah memfokuskan inputnya sendiri
                 const first = focusables(ov).find(el => !el.classList.contains('modal-close') && !el.classList.contains('close-btn')) || focusables(ov)[0];
-                if (first) first.focus();
-                else { dlg.setAttribute('tabindex', '-1'); dlg.focus(); }
+                // Input tanggal/bulan jangan jadi fokus otomatis: segmen pertamanya (mis. "October") ikut ter-blok biru seperti sedang diseleksi.
+                const tglInput = first && first.tagName === 'INPUT' && /^(month|date|week|time|datetime-local)$/.test(first.type);
+                if (first && !tglInput) first.focus();
+                else { dlg.setAttribute('tabindex', '-1'); dlg.style.outline = 'none'; dlg.focus(); }
             });
         } else {
             const back = lastFocus.get(ov);
