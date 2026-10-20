@@ -2179,6 +2179,21 @@ a.ig-dm-iconbtn { text-decoration: none; }
 
 .ig-about-hint { font-size: var(--fs-sm); color: var(--ink-soft); min-width: 0; }
 
+/* Seragamkan tombol footer (Unduh PDF / Unduh .md / Salin): tinggi, padding, font, radius, dan gap sama, seperti footer preview PDF; beda hanya warna. */
+.ig-about-footer > button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  box-sizing: border-box; min-height: 40px; padding: 0 18px;
+  font: 600 14px/1 var(--font-body, 'Inter', sans-serif);
+  border: 1px solid transparent; border-radius: var(--r-md, 10px);
+  cursor: pointer; white-space: nowrap; transition: filter .15s, background .15s;
+}
+.ig-about-footer > button i { font-size: 16px; line-height: 1; }
+.ig-about-footer > .btn-secondary { background: var(--surface); border-color: var(--line); color: var(--ink); }
+.ig-about-footer > .btn-secondary:hover { background: var(--bg-soft, #f1f5f9); }
+.ig-about-footer > .btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; transform: none; }
+.ig-about-footer > .btn-primary:hover { background: var(--brand-deep); border-color: var(--brand-deep); transform: none; box-shadow: none; }
+.ig-about-footer > button:disabled { opacity: .6; cursor: not-allowed; }
+
 @media (max-width: 560px) {
 .ig-plan-modal .ig-about-body { padding: 4px 16px 16px; }
 
