@@ -2811,3 +2811,57 @@ details.ig-rk-minggu > summary.ig-rk-row::-webkit-details-marker { display: none
   .ig-rk-row { align-items: start; }
   .ig-rk-meta { justify-content: flex-start; }
 }
+
+/* =====================================================================
+   Month picker (Rencana Konten "Mulai dari" dan Perencanaan Konten "Bulan")
+   Segmen bulan/tahun berwarna brand saat fokus, ikon kalender dibuat bulat dengan hover, dan fokus memakai ring brand.
+   ===================================================================== */
+.ig-rk-controls input[type="month"],
+.ig-plan-modal .form-group input[type="month"] {
+  accent-color: var(--brand);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .01em;
+  cursor: pointer;
+}
+.ig-plan-modal .form-group input[type="month"] {
+  height: 40px; padding: 0 10px 0 14px; font-weight: 600; color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface);
+  transition: border-color .15s, box-shadow .15s;
+}
+.ig-plan-modal .form-group input[type="month"]:hover { border-color: var(--brand); }
+.ig-plan-modal .form-group input[type="month"]:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-tint); }
+
+/* Segmen bulan dan tahun */
+.ig-rk-controls input[type="month"]::-webkit-datetime-edit,
+.ig-plan-modal .form-group input[type="month"]::-webkit-datetime-edit { padding: 0; }
+.ig-rk-controls input[type="month"]::-webkit-datetime-edit-month-field,
+.ig-rk-controls input[type="month"]::-webkit-datetime-edit-year-field,
+.ig-plan-modal .form-group input[type="month"]::-webkit-datetime-edit-month-field,
+.ig-plan-modal .form-group input[type="month"]::-webkit-datetime-edit-year-field { padding: 2px 4px; border-radius: 6px; }
+.ig-rk-controls input[type="month"]::-webkit-datetime-edit-month-field:hover,
+.ig-rk-controls input[type="month"]::-webkit-datetime-edit-year-field:hover,
+.ig-plan-modal .form-group input[type="month"]::-webkit-datetime-edit-month-field:hover,
+.ig-plan-modal .form-group input[type="month"]::-webkit-datetime-edit-year-field:hover { background: var(--brand-tint); }
+.ig-rk-controls input[type="month"]::-webkit-datetime-edit-month-field:focus,
+.ig-rk-controls input[type="month"]::-webkit-datetime-edit-year-field:focus,
+.ig-plan-modal .form-group input[type="month"]::-webkit-datetime-edit-month-field:focus,
+.ig-plan-modal .form-group input[type="month"]::-webkit-datetime-edit-year-field:focus { background: var(--brand); color: #fff; }
+.ig-rk-controls input[type="month"]::-webkit-datetime-edit-text,
+.ig-plan-modal .form-group input[type="month"]::-webkit-datetime-edit-text { color: var(--ink-soft); padding: 0 1px; }
+
+/* Ikon kalender */
+.ig-rk-controls input[type="month"]::-webkit-calendar-picker-indicator,
+.ig-plan-modal .form-group input[type="month"]::-webkit-calendar-picker-indicator {
+  width: 16px; height: 16px; padding: 6px; margin-left: 4px; border-radius: 50%;
+  cursor: pointer; opacity: .65; background-position: center; background-size: 16px;
+  transition: background-color .15s, opacity .15s;
+}
+.ig-rk-controls input[type="month"]::-webkit-calendar-picker-indicator:hover,
+.ig-plan-modal .form-group input[type="month"]::-webkit-calendar-picker-indicator:hover { background-color: var(--brand-tint); opacity: 1; }
+
+/* "Mulai dari": pill sedikit lebih tinggi dan pemisah tipis antara label dan nilai */
+.ig-rk-range { padding-left: 16px; }
+.ig-rk-range label { padding-right: 10px; margin-right: 4px; border-right: 1px solid var(--line); line-height: 1.6; }
+.ig-rk-range:hover { border-color: var(--brand); }
+.ig-rk-controls .ig-rk-range input[type="month"] { padding: 6px 4px 6px 6px; }
