@@ -2773,7 +2773,7 @@ details.ig-rk-minggu > summary.ig-rk-row::-webkit-details-marker { display: none
 .ig-rk-weeks { padding: 8px 10px 4px; }
 .ig-rk-minggu { transition: background .12s ease; }
 .ig-rk-minggu:hover { background: var(--bg); }
-.ig-rk-minggu.now { background: var(--brand-tint); box-shadow: inset 3px 0 0 var(--brand); }
+.ig-rk-minggu.now { background: var(--brand-tint); }
 .ig-rk-row { padding: 10px 10px; gap: 14px; align-items: center; }
 .ig-rk-tema { font-weight: 600; color: var(--ink); line-height: 1.45; }
 .ig-rk-tema small { font-weight: 400; margin-top: 2px; line-height: 1.45; }
