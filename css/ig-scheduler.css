@@ -2717,3 +2717,80 @@ details.ig-rk-minggu > summary.ig-rk-row::-webkit-details-marker { display: none
 .ig-dm-seg button,
 .ig-dm .ig-dm-seg button { min-height: 40px; }
 }
+
+
+/* =====================================================================
+   Rapikan modal Rencana Konten + panel Rencana Setahun AI (override; dimuat terakhir)
+   ===================================================================== */
+.ig-rk-controls { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 24px; background: var(--surface); }
+.ig-rk-bar-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ig-rk-range { display: inline-flex; align-items: center; gap: 4px; padding: 4px 4px 4px 14px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--bg); }
+.ig-rk-range label { font-size: var(--fs-sm); color: var(--ink-soft); font-weight: 600; margin-right: 2px; white-space: nowrap; }
+.ig-rk-controls .ig-rk-range input[type="month"] { border: 0; background: transparent; padding: 6px 4px; font-size: var(--fs-md); font-weight: 600; color: var(--ink); min-width: 0; cursor: pointer; }
+.ig-rk-controls .ig-rk-range input[type="month"]:focus { outline: none; }
+.ig-rk-range:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-tint); }
+.ig-rk-now { border-radius: var(--r-pill); padding: 7px 14px; font-weight: 600; font-size: var(--fs-sm); background: var(--surface); }
+.ig-rk-ai { display: inline-flex; align-items: center; gap: 8px; border-radius: var(--r-pill); padding: 10px 20px; font-size: var(--fs-md); font-weight: 700; box-shadow: 0 4px 12px rgba(26,53,91,.22); }
+.ig-rk-controls .ig-rk-legend { margin: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: var(--fs-sm); color: var(--ink-soft); }
+.ig-rk-lg { display: inline-flex; align-items: center; gap: 7px; }
+.ig-rk-badge { padding: 2px 9px; }
+
+/* Panel Rencana Setahun AI */
+.ig-rt-panel { padding: 18px 24px 20px; background: linear-gradient(180deg, var(--brand-tint) 0%, var(--surface) 100%); border-bottom: 1px solid var(--line); }
+.ig-rt-head { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 14px; }
+.ig-rt-icon { flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--brand); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 10px rgba(26,53,91,.25); }
+.ig-rt-head-text h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; color: var(--ink); }
+.ig-rt-intro { margin: 0; font-size: var(--fs-md); line-height: 1.6; color: var(--ink-soft); max-width: 78ch; }
+.ig-rt-intro strong { color: var(--ink); font-weight: 600; }
+.ig-rt-form { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: 0 2px 8px rgba(15,33,56,.05); }
+.ig-rt-lbl { font-size: var(--fs-sm); font-weight: 700; color: var(--ink); }
+.ig-rt-lbl em { font-style: normal; font-weight: 500; color: var(--ink-soft); }
+.ig-rt-form textarea { padding: 10px 12px; font-size: var(--fs-md); line-height: 1.5; min-height: 64px; border-radius: var(--r-md); }
+.ig-rt-form textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-tint); }
+.ig-rt-baris { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 2px; }
+.ig-rt-cek { margin: 0; font-size: var(--fs-md); }
+.ig-rt-cek input { width: 16px; height: 16px; accent-color: var(--brand); }
+.ig-rt-go { display: inline-flex; align-items: center; gap: 8px; border-radius: var(--r-pill); padding: 10px 22px; font-weight: 700; }
+.ig-rt-info { padding: 9px 12px; border-radius: var(--r-md); background: var(--bg); color: var(--ink-soft); font-size: var(--fs-sm); line-height: 1.5; }
+.ig-rt-info:empty { display: none; }
+.ig-rt-info i { margin-right: 4px; color: var(--brand); }
+.ig-rt-status { margin-top: 0; }
+.ig-rt-status:empty { display: none; }
+
+/* Isi rekap */
+.ig-plan-modal .ig-rk-body { padding: 18px 24px 24px; background: var(--bg); }
+.ig-rk-stats { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.ig-rk-stat { background: var(--surface); border-radius: var(--r-lg); padding: 12px 14px; box-shadow: 0 1px 4px rgba(15,33,56,.05); }
+.ig-rk-stat strong { font-size: 24px; color: var(--brand); }
+.ig-rk-stat span { display: block; margin-top: 2px; }
+.ig-rk-bulan { background: var(--surface); border-radius: var(--r-lg); margin-bottom: 12px; box-shadow: 0 1px 4px rgba(15,33,56,.05); }
+.ig-rk-bulan > summary { padding: 14px 16px; background: var(--surface); transition: background .15s ease; }
+.ig-rk-bulan > summary:hover { background: var(--bg); }
+.ig-rk-bulan[open] > summary { border-bottom: 1px solid var(--line); }
+.ig-rk-bulan-nama { font-size: 15px; }
+.ig-rk-bar { width: 110px; height: 7px; }
+.ig-rk-pilars { padding: 12px 16px 0; }
+.ig-rk-weeks { padding: 8px 10px 4px; }
+.ig-rk-minggu { transition: background .12s ease; }
+.ig-rk-minggu:hover { background: var(--bg); }
+.ig-rk-minggu.now { background: var(--brand-tint); box-shadow: inset 3px 0 0 var(--brand); }
+.ig-rk-row { padding: 10px 10px; gap: 14px; align-items: center; }
+.ig-rk-tema { font-weight: 600; color: var(--ink); line-height: 1.45; }
+.ig-rk-tema small { font-weight: 400; margin-top: 2px; line-height: 1.45; }
+.ig-rk-meta { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.ig-rk-lihat { padding: 4px 16px 14px; }
+
+@media (max-width: 640px) {
+  .ig-rk-controls { padding: 12px 16px; }
+  .ig-rk-bar-top { flex-direction: column; align-items: stretch; }
+  .ig-rk-range { justify-content: space-between; }
+  .ig-rk-ai { justify-content: center; }
+  .ig-rk-controls .ig-rk-legend { flex-direction: column; gap: 6px; }
+  .ig-rt-panel { padding: 14px 16px 16px; }
+  .ig-rt-form { padding: 12px; }
+  .ig-rt-baris { flex-direction: column; align-items: stretch; }
+  .ig-rt-go { justify-content: center; }
+  .ig-plan-modal .ig-rk-body { padding: 12px 12px 18px; }
+  .ig-rk-row { align-items: start; }
+  .ig-rk-meta { justify-content: flex-start; }
+}
