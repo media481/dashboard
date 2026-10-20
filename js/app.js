@@ -1859,16 +1859,15 @@ function openInfografisModal() { openRekapGallery('infografis'); }
 // ============================================================
 // MICROBLOG -- feed ringkas isi Content Planner (tabel ig_content_plan) di dashboard.
 // Menggantikan tile "Keberangkatan"; klik tile membuka modal berisi kartu-kartu konten
-// bergaya timeline (tema + draft caption + pilar/tipe/tahap). Gambar sementara DUMMY
+// sederhana untuk publik (gambar + tanggal + tema + caption; tanpa filter/pilar/tahap). Gambar sementara DUMMY
 // (blok warna sesuai pilar + teks_gambar) sampai media asli tersedia.
 // Terbuka untuk SEMUA pengunjung (guest & anonim, baca saja). Data dibaca dari view `microblog_publik`
 // (sql/58) -- bukan tabel ig_content_plan langsung -- supaya kolom internal (canva_url, dll) tidak terbuka.
 // Rencana berstatus "dilewati" tidak ditampilkan.
 // Urutan: tanggal terdekat (hari ini ke depan) dulu, lalu yang sudah lewat dari yang terbaru.
 // ============================================================
-const mbState = { items: [], loaded: false, loading: false, filter: 'all', shown: 0, countFetched: false };
-const MB_PAGE = 12;
-const MB_FILTERS = [['all', 'Semua'], ['idea', 'Ide'], ['dijadikan_post', 'Sudah jadi post']];
+const mbState = { items: [], loaded: false, loading: false, shown: 0, countFetched: false };
+const MB_PAGE = 8;
 
 function mbTodayKey() { return new Date().toLocaleDateString('en-CA'); }
 
@@ -1921,7 +1920,6 @@ async function loadMicroblog() {
     }
 }
 
-function mbSetFilter(f) { mbState.filter = f; mbState.shown = MB_PAGE; renderMicroblog(); }
 function mbLoadMore() { mbState.shown += MB_PAGE; renderMicroblog(); }
 function mbToggleCaption(btn) {
     const cap = btn.previousElementSibling;
@@ -1929,61 +1927,43 @@ function mbToggleCaption(btn) {
     btn.textContent = open ? 'Tutup' : 'Selengkapnya';
 }
 
+// Kartu sederhana untuk pengunjung umum: gambar + nama/tanggal + judul + caption.
+// Info internal (pilar, tipe, tahap, seri) sengaja TIDAK ditampilkan.
 function mbPostHtml(pl, todayKey) {
     const pil = IG_PILLARS[pl.pilar];
     const color = pil ? pil.color : '#1565a8';
     const tipe = pl.tipe_konten || 'image';
-    const tipeLabel = IG_TYPE_LABELS[tipe] || 'Image';
-    const stage = pl.status === 'dijadikan_post' ? 'Sudah jadi post' : (IG_STAGES[pl.tahap || 'ide'] || 'Ide');
     const d = new Date(pl.tanggal + 'T00:00:00');
-    const tgl = isNaN(d) ? escapeHtml(pl.tanggal) : d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    const tgl = isNaN(d) ? escapeHtml(pl.tanggal) : d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
     const rel = pl.tanggal === todayKey ? '<span class="mb-today">Hari ini</span>' : '';
     const imgRaw = String(pl.teks_gambar || pl.tema || '').trim();
     const blocks = imgRaw.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
     const firstBlock = (tipe === 'carousel' && blocks.length ? blocks[0] : imgRaw);
-    const slides = tipe === 'carousel' ? (blocks.length > 1 ? Math.min(blocks.length, 5) : 5) : 0;
     const caption = String(pl.draft_caption || '').trim();
-    const longCap = caption.length > 220 || (caption.match(/\n/g) || []).length > 3;
+    const longCap = caption.length > 320 || (caption.match(/\n/g) || []).length > 5;
     const nl = (t) => escapeHtml(t).replace(/\n/g, '<br>');
-    const dots = slides ? '<span class="mb-dots">' + Array.from({ length: slides }, (_, i) => '<i' + (i === 0 ? ' class="on"' : '') + '></i>').join('') + '</span>' : '';
     return `<article class="mb-post">
         <div class="mb-img" style="--mb-c:${color}">
-            <span class="mb-img-tag">Gambar dummy</span>
-            ${slides ? `<span class="mb-img-count"><i class="bi bi-collection-fill"></i> 1/${slides}</span>` : ''}
-            ${tipe === 'video' ? '<i class="bi bi-play-circle-fill mb-img-play"></i>' : ''}
             <div class="mb-img-text">${nl(firstBlock)}</div>
-            ${dots}
         </div>
         <div class="mb-side">
             <div class="mb-post-head">
                 <img class="mb-avatar" src="assets/logo-amirutour.png" alt="Amiru Tour">
                 <div class="mb-who"><b>Amiru Tour</b><span>${tgl}${rel}</span></div>
-                ${pil ? `<span class="mb-pilar" style="--mb-c:${color}">${escapeHtml(pil.label)}</span>` : ''}
             </div>
-            <h3 class="mb-tema">${escapeHtml(pl.tema || '(tanpa tema)')}</h3>
-            ${caption ? `<div class="mb-caption">${nl(caption)}</div>${longCap ? '<button type="button" class="mb-more" onclick="mbToggleCaption(this)">Selengkapnya</button>' : ''}` : '<div class="mb-caption mb-caption-empty">Draft caption belum diisi.</div>'}
-            <div class="mb-meta">
-                <span><i class="bi bi-${tipe === 'carousel' ? 'collection' : tipe === 'video' ? 'play-btn' : 'image'}"></i> ${escapeHtml(tipeLabel)}</span>
-                <span><i class="bi bi-flag"></i> ${escapeHtml(stage)}</span>
-                ${pl.tema_minggu ? `<span><i class="bi bi-calendar-week"></i> Seri ${escapeHtml(pl.tema_minggu)}</span>` : ''}
-            </div>
+            <h3 class="mb-tema">${escapeHtml(pl.tema || '')}</h3>
+            ${caption ? `<div class="mb-caption">${nl(caption)}</div>${longCap ? '<button type="button" class="mb-more" onclick="mbToggleCaption(this)">Selengkapnya</button>' : ''}` : ''}
         </div>
     </article>`;
 }
 
 function renderMicroblog() {
     const feed = document.getElementById('mbFeed');
-    const bar = document.getElementById('mbFilters');
-    if (!feed || !bar) return;
-    const all = mbState.items;
-    const cnt = (f) => f === 'all' ? all.length : all.filter(x => x.status === f).length;
-    bar.innerHTML = MB_FILTERS.map(([k, label]) =>
-        `<button type="button" class="mb-chip${mbState.filter === k ? ' active' : ''}" data-action="mbSetFilter" data-args='["${k}"]'>${label} <em>${cnt(k)}</em></button>`).join('');
-    const list = mbState.filter === 'all' ? all : all.filter(x => x.status === mbState.filter);
-    document.getElementById('mbCount').textContent = list.length ? `· ${list.length} konten` : '';
+    if (!feed) return;
+    const list = mbState.items;
     if (!list.length) {
         feed.innerHTML = '<div class="mb-empty"><i class="bi bi-chat-square-text"></i><p>' +
-            (all.length ? 'Tidak ada konten di filter ini.' : (canManageProgramData() ? 'Belum ada konten di Content Planner. Isi lewat menu IG Scheduler.' : 'Belum ada konten untuk ditampilkan.')) + '</p></div>';
+            (canManageProgramData() ? 'Belum ada konten di Content Planner. Isi lewat menu IG Scheduler.' : 'Belum ada konten untuk ditampilkan.') + '</p></div>';
         return;
     }
     const today = mbTodayKey();
@@ -1993,7 +1973,6 @@ function renderMicroblog() {
 }
 window.openMicroblogModal = openMicroblogModal;
 window.closeMicroblogModal = closeMicroblogModal;
-window.mbSetFilter = mbSetFilter;
 window.mbLoadMore = mbLoadMore;
 window.mbToggleCaption = mbToggleCaption;
 

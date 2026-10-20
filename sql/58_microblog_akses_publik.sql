@@ -15,6 +15,21 @@
 -- penuh tetap hanya admin & user.
 -- ============================================================
 
+-- Pastikan kolom Content Planner yang dipakai view ini ada (sama dengan sql/45, 46, 47).
+-- Kalau migrasi itu sudah pernah dijalankan, bagian ini tidak mengubah apa-apa.
+alter table public.ig_content_plan add column if not exists pilar text;
+alter table public.ig_content_plan add column if not exists tahap text not null default 'ide';
+alter table public.ig_content_plan add column if not exists teks_gambar text;
+alter table public.ig_content_plan add column if not exists tema_minggu text;
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'ig_content_plan_tahap_check') then
+    alter table public.ig_content_plan
+      add constraint ig_content_plan_tahap_check check (tahap in ('ide', 'dikerjakan', 'siap'));
+  end if;
+end $$;
+
 drop view if exists public.microblog_publik;
 
 create view public.microblog_publik as
