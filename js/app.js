@@ -18502,7 +18502,7 @@ function igRkRender() {
             + `<span class="ig-rk-bar" title="${pBulan}% jadi post"><i style="width:${pBulan}%"></i></span></summary>`
             + (pil ? `<div class="ig-rk-pilars">${pil}</div>` : '')
             + `<div class="ig-rk-weeks">${weeks || '<div class="ig-rk-row"><span class="ig-rk-tema">Tidak ada pekan</span></div>'}</div>`
-            + `<div class="ig-rk-lihat"><button type="button" class="ig-plan-link" onclick="igRkLihatDiKalender(${b.y},${b.m})">Lihat di kalender</button></div>`
+            + `<div class="ig-rk-lihat"><button type="button" class="ig-rk-lihat-btn" onclick="igRkLihatDiKalender(${b.y},${b.m})"><i class="bi bi-calendar-week"></i> Lihat di kalender <i class="bi bi-arrow-right"></i></button></div>`
             + `</details>`;
     }).join('');
     body.innerHTML = html;

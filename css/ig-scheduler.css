@@ -2871,3 +2871,16 @@ details.ig-rk-minggu > summary.ig-rk-row::-webkit-details-marker { display: none
 .mp-foot { display: flex; justify-content: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
 .mp-today { border: 0; background: transparent; color: var(--brand); font: 600 13px var(--font-body, 'Inter', sans-serif); padding: 6px 12px; border-radius: var(--r-pill); cursor: pointer; }
 .mp-today:hover { background: var(--brand-tint); }
+
+/* Tombol "Lihat di kalender" di tiap bulan (Rencana Konten): tombol pill, bukan tautan bergaris bawah bawaan */
+.ig-rk-lihat-btn {
+  display: inline-flex; align-items: center; gap: 8px; box-sizing: border-box; min-height: 34px; padding: 0 14px;
+  font: 600 13px/1 var(--font-body, 'Inter', sans-serif); color: var(--brand);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill);
+  cursor: pointer; transition: background .15s, border-color .15s, color .15s, box-shadow .15s;
+}
+.ig-rk-lihat-btn i { font-size: 14px; line-height: 1; }
+.ig-rk-lihat-btn .bi-arrow-right { transition: transform .15s; }
+.ig-rk-lihat-btn:hover { background: var(--brand-tint); border-color: var(--brand); }
+.ig-rk-lihat-btn:hover .bi-arrow-right { transform: translateX(3px); }
+.ig-rk-lihat-btn:focus-visible { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-tint); }
