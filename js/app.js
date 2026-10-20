@@ -1936,7 +1936,10 @@ function mbPostHtml(pl, todayKey) {
     const d = new Date(pl.tanggal + 'T00:00:00');
     const tgl = isNaN(d) ? escapeHtml(pl.tanggal) : d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
     const rel = pl.tanggal === todayKey ? '<span class="mb-today">Hari ini</span>' : '';
-    const imgRaw = String(pl.teks_gambar || pl.tema || '').trim();
+    // Teks gambar: buang baris internal ("Label gambar: ...") dan penanda "Slide N:" supaya bersih untuk publik
+    const imgRaw = String(pl.teks_gambar || pl.tema || '').split('\n')
+        .filter(l => !/^\s*Label gambar:/i.test(l)).join('\n')
+        .replace(/^\s*Slide\s*\d+\s*[:.\-–]\s*/gim, '').trim() || String(pl.tema || '').trim();
     const blocks = imgRaw.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
     const firstBlock = (tipe === 'carousel' && blocks.length ? blocks[0] : imgRaw);
     const caption = String(pl.draft_caption || '').trim();
