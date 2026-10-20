@@ -13,15 +13,30 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
 
+    <!-- [OPTIMASI LOAD] Koneksi ke Supabase dibuka lebih awal (DNS+TLS), sebelum app.js jalan
+         dan mengirim query pertama. Ini cuma "pemanasan" koneksi, tidak mengubah logika apa pun. -->
+    <link rel="preconnect" href="https://vlrizloxsjejcfuxuyju.supabase.co" crossorigin>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <!-- [OPTIMASI LOAD] CSS pihak ketiga (Google Fonts & bootstrap-icons) dimuat NON-BLOCKING
+         (media=print lalu dialihkan ke all saat selesai diunduh), jadi render pertama tidak
+         menunggu server font/CDN. Font sudah display=swap, jadi teks tetap tampil dulu. -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.13.1/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.13.1/font/bootstrap-icons.min.css" media="print" onload="this.media='all'">
+    <noscript>
+        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.13.1/font/bootstrap-icons.min.css">
+    </noscript>
 
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+    <!-- [OPTIMASI LOAD] app.js dipindah dari akhir <body> ke <head> (tetap defer, tetap SETELAH
+         supabase-js, jadi urutan eksekusi & waktu eksekusinya sama persis). Bedanya browser
+         menemukan & mulai mengunduhnya sejak awal, bukan setelah mem-parse ~1.700 baris HTML. -->
+    <script src="js/app.js" defer></script>
 
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/rekap-infografis.css">
@@ -1750,8 +1765,6 @@
 </div>
 
 <div id="notaRenderArea" style="position:fixed;left:-99999px;top:0;pointer-events:none;"></div>
-
-<script src="js/app.js" defer></script>
 
 </body>
 </html>
