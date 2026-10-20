@@ -21774,3 +21774,151 @@ function withBusy(fn) {
 ].forEach(name => {
     if (typeof window[name] === 'function') window[name] = withBusy(window[name]);
 });
+
+
+// ============================================================
+// MONTH PICKER buatan sendiri: menggantikan panel kalender bawaan browser (tidak bisa di-style) pada
+// input type="month" #igRkMulai ("Mulai dari") dan #igPlanMonth ("Bulan"). Input aslinya tetap dipakai sebagai
+// penyimpan nilai "YYYY-MM" (disembunyikan), jadi seluruh kode lama (.value, onchange) jalan tanpa diubah:
+// - mengisi .value lewat kode ikut memperbarui label (properti value pada elemen dibungkus)
+// - memilih bulan di panel mengisi .value lalu memicu event "change"
+// Keyboard: tombol dibuka dengan Enter/Spasi, panah menggeser bulan, PageUp/PageDown ganti tahun, Esc menutup panel saja.
+// ============================================================
+(function initMonthPicker() {
+    const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const BULAN_S = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const PW = 268;
+    let pop = null, cur = null;
+
+    const parse = (v) => { const m = /^(\d{4})-(\d{2})$/.exec(v || ''); return m ? { y: +m[1], m: +m[2] - 1 } : null; };
+    const key = (y, m) => `${y}-${String(m + 1).padStart(2, '0')}`;
+
+    function enhance(input) {
+        if (!input || input.dataset.mp) return;
+        input.dataset.mp = '1';
+        const wrap = document.createElement('span');
+        wrap.className = 'mp-wrap';
+        input.parentNode.insertBefore(wrap, input);
+        wrap.appendChild(input);
+        input.classList.add('mp-native');
+        input.tabIndex = -1;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'mp-btn';
+        btn.setAttribute('aria-haspopup', 'dialog');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.innerHTML = '<span class="mp-label"></span><i class="bi bi-calendar3" aria-hidden="true"></i>';
+        wrap.appendChild(btn);
+        const lab = input.id ? document.querySelector(`label[for="${input.id}"]`) : null;
+        const sync = () => {
+            const p = parse(input.value);
+            const teks = p ? `${BULAN[p.m]} ${p.y}` : 'Pilih bulan';
+            btn.firstChild.textContent = teks;
+            btn.setAttribute('aria-label', `${lab ? lab.textContent.trim() : 'Bulan'}: ${teks}. Tekan untuk mengganti bulan`);
+        };
+        const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+        Object.defineProperty(input, 'value', { configurable: true, get() { return d.get.call(this); }, set(v) { d.set.call(this, v); sync(); } });
+        sync();
+        btn.addEventListener('click', () => { if (cur && cur.input === input) close(); else open(input, btn); });
+        if (lab) lab.addEventListener('click', (e) => { e.preventDefault(); btn.focus(); open(input, btn); });
+    }
+
+    function render() {
+        const { year, focus, input } = cur;
+        const sel = parse(input.value), now = new Date();
+        pop.innerHTML =
+            `<div class="mp-head"><button type="button" class="mp-nav" data-d="-1" tabindex="-1" aria-label="Tahun sebelumnya"><i class="bi bi-chevron-left"></i></button>` +
+            `<strong class="mp-year">${year}</strong>` +
+            `<button type="button" class="mp-nav" data-d="1" tabindex="-1" aria-label="Tahun berikutnya"><i class="bi bi-chevron-right"></i></button></div>` +
+            `<div class="mp-grid" role="grid">` + BULAN_S.map((n, i) => {
+                const cls = ['mp-m'];
+                if (sel && sel.y === year && sel.m === i) cls.push('is-sel');
+                if (now.getFullYear() === year && now.getMonth() === i) cls.push('is-now');
+                if (focus === i) cls.push('is-focus');
+                return `<button type="button" class="${cls.join(' ')}" data-m="${i}" tabindex="-1" aria-label="${BULAN[i]} ${year}">${n}</button>`;
+            }).join('') + `</div>` +
+            `<div class="mp-foot"><button type="button" class="mp-today" tabindex="-1">Bulan ini</button></div>`;
+    }
+
+    function place() {
+        if (!pop || !cur) return;
+        const r = cur.btn.getBoundingClientRect(), h = pop.offsetHeight;
+        const left = Math.max(8, Math.min(r.left, window.innerWidth - PW - 8));
+        let top = r.bottom + 6;
+        if (top + h > window.innerHeight - 8 && r.top - 6 - h > 8) top = r.top - 6 - h;
+        pop.style.left = left + 'px';
+        pop.style.top = Math.max(8, top) + 'px';
+    }
+
+    function open(input, btn) {
+        close();
+        const now = new Date(), p = parse(input.value);
+        cur = { input, btn, year: p ? p.y : now.getFullYear(), focus: p ? p.m : now.getMonth() };
+        pop = document.createElement('div');
+        pop.className = 'mp-pop';
+        pop.setAttribute('role', 'dialog');
+        pop.setAttribute('aria-label', 'Pilih bulan');
+        pop.addEventListener('mousedown', (e) => e.preventDefault()); // fokus tetap di tombol pemicu (tidak mengganggu fokus modal)
+        pop.addEventListener('click', (e) => {
+            const nav = e.target.closest('.mp-nav'), m = e.target.closest('.mp-m'), today = e.target.closest('.mp-today');
+            if (nav) { cur.year += +nav.dataset.d; render(); }
+            else if (m) pick(cur.year, +m.dataset.m);
+            else if (today) { const t = new Date(); pick(t.getFullYear(), t.getMonth()); }
+        });
+        document.body.appendChild(pop);
+        render();
+        place();
+        btn.setAttribute('aria-expanded', 'true');
+        document.addEventListener('mousedown', onOutside, true);
+        window.addEventListener('keydown', onKey, true);
+        window.addEventListener('resize', place);
+        window.addEventListener('scroll', place, true);
+    }
+
+    function close(kembaliFokus) {
+        if (!pop) return;
+        document.removeEventListener('mousedown', onOutside, true);
+        window.removeEventListener('keydown', onKey, true);
+        window.removeEventListener('resize', place);
+        window.removeEventListener('scroll', place, true);
+        pop.remove();
+        if (cur) { cur.btn.setAttribute('aria-expanded', 'false'); if (kembaliFokus) cur.btn.focus(); }
+        pop = null; cur = null;
+    }
+
+    function pick(y, m) {
+        const { input } = cur, v = key(y, m), berubah = input.value !== v;
+        input.value = v;
+        close(true);
+        if (berubah) input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function onOutside(e) {
+        if (pop && !pop.contains(e.target) && !(cur && cur.btn.contains(e.target))) close();
+    }
+
+    function geser(delta) {
+        let idx = cur.focus + delta, y = cur.year;
+        while (idx < 0) { idx += 12; y--; }
+        while (idx > 11) { idx -= 12; y++; }
+        cur.focus = idx; cur.year = y;
+        render();
+    }
+
+    function onKey(e) {
+        if (!pop) return;
+        const k = e.key;
+        if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); return; }  // jangan ikut menutup modal di belakangnya
+        if (k === 'Tab') { close(); return; }
+        const arah = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -3, ArrowDown: 3 }[k];
+        if (arah) { e.preventDefault(); e.stopPropagation(); geser(arah); return; }
+        if (k === 'PageUp' || k === 'PageDown') { e.preventDefault(); e.stopPropagation(); cur.year += k === 'PageUp' ? -1 : 1; render(); return; }
+        if (k === 'Enter' || k === ' ') {
+            e.preventDefault(); e.stopPropagation();
+            window.addEventListener('keyup', (ev) => ev.preventDefault(), { once: true, capture: true });  // cegah klik tombol dari lepasnya Spasi
+            pick(cur.year, cur.focus);
+        }
+    }
+
+    ['igRkMulai', 'igPlanMonth'].forEach(id => enhance(document.getElementById(id)));
+})();
