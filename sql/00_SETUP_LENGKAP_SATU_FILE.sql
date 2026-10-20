@@ -1274,3 +1274,24 @@ drop function if exists _setup_drop_policies(text);
 --    igScheduler, infografis) default-nya TERSEMBUNYI untuk user/guest sampai
 --    Admin mengaturnya di Userman > Akses Menu Sidebar.
 -- ============================================================================
+
+-- 18x. Microblog publik (view tanpa kolom internal, bisa dibaca anon/guest) -- sql/58
+drop view if exists public.microblog_publik;
+
+create view public.microblog_publik as
+select
+  id,
+  tanggal,
+  tema,
+  tipe_konten,
+  draft_caption,
+  status,
+  pilar,
+  tahap,
+  teks_gambar,
+  tema_minggu
+from public.ig_content_plan
+where status <> 'dilewati';
+
+revoke all on public.microblog_publik from public;
+grant select on public.microblog_publik to anon, authenticated;

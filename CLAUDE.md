@@ -154,6 +154,7 @@ cek dulu apakah direferensikan di `index.html`/`service-worker.js` sebelum diasu
 | `ig_accounts`, `ig_posts`, `ig_post_media`, `ig_publish_logs` | IG Scheduler: akun, post, media carousel, log publish |
 | `ig_comments` | Komentar IG hasil `ig-sync-comments` |
 | `ig_content_plan`, `ig_rencana_tahunan`, `ig_tasklist` | Perencanaan konten IG (ide harian, tema per pekan, tasklist) |
+| `microblog_publik` (VIEW) | Turunan `ig_content_plan` untuk tile/modal Microblog. Dibaca anon/guest/semua role (sql/58); hanya kolom tampilan, status `dilewati` disembunyikan, `canva_url`/`ig_post_id` tidak ikut |
 
 Daftar di atas dari `sql/00_SETUP_LENGKAP_SATU_FILE.sql`; cek file itu bila ragu.
 

@@ -1861,7 +1861,9 @@ function openInfografisModal() { openRekapGallery('infografis'); }
 // Menggantikan tile "Keberangkatan"; klik tile membuka modal berisi kartu-kartu konten
 // bergaya timeline (tema + draft caption + pilar/tipe/tahap). Gambar sementara DUMMY
 // (blok warna sesuai pilar + teks_gambar) sampai media asli tersedia.
-// Hanya admin & user (sama dengan RLS ig_content_plan). Rencana berstatus "dilewati" tidak ditampilkan.
+// Terbuka untuk SEMUA pengunjung (guest & anonim, baca saja). Data dibaca dari view `microblog_publik`
+// (sql/58) -- bukan tabel ig_content_plan langsung -- supaya kolom internal (canva_url, dll) tidak terbuka.
+// Rencana berstatus "dilewati" tidak ditampilkan.
 // Urutan: tanggal terdekat (hari ini ke depan) dulu, lalu yang sudah lewat dari yang terbaru.
 // ============================================================
 const mbState = { items: [], loaded: false, loading: false, filter: 'all', shown: 0, countFetched: false };
@@ -1872,18 +1874,17 @@ function mbTodayKey() { return new Date().toLocaleDateString('en-CA'); }
 
 async function refreshMicroblogMetric() {
     const el = document.getElementById('totalMicroblog');
-    if (!el || mbState.countFetched || !canManageProgramData()) return;
+    if (!el || mbState.countFetched) return;
     mbState.countFetched = true;
     try {
-        const { count, error } = await supabaseClient.from('ig_content_plan')
-            .select('id', { count: 'exact', head: true }).neq('status', 'dilewati');
+        const { count, error } = await supabaseClient.from('microblog_publik')
+            .select('id', { count: 'exact', head: true });
         if (error) throw error;
         el.textContent = count ?? 0;
     } catch (_) { el.textContent = '–'; }
 }
 
 function openMicroblogModal() {
-    if (!canManageProgramData()) { showToast('Microblog hanya untuk admin & user', 'error'); return; }
     document.getElementById('microblogModal').classList.add('open');
     loadMicroblog();
 }
@@ -1898,7 +1899,7 @@ async function loadMicroblog() {
     if (!mbState.loaded) feed.innerHTML = '<div class="mb-empty"><i class="bi bi-hourglass-split"></i><p>Memuat konten…</p></div>';
     try {
         const { data, error } = await withRetry(
-            () => supabaseClient.from('ig_content_plan').select('*').neq('status', 'dilewati').order('tanggal', { ascending: true }),
+            () => supabaseClient.from('microblog_publik').select('*').order('tanggal', { ascending: true }),
             { label: 'Muat microblog' }
         );
         if (error) throw error;
@@ -1982,7 +1983,7 @@ function renderMicroblog() {
     document.getElementById('mbCount').textContent = list.length ? `· ${list.length} konten` : '';
     if (!list.length) {
         feed.innerHTML = '<div class="mb-empty"><i class="bi bi-chat-square-text"></i><p>' +
-            (all.length ? 'Tidak ada konten di filter ini.' : 'Belum ada konten di Content Planner. Isi lewat menu IG Scheduler.') + '</p></div>';
+            (all.length ? 'Tidak ada konten di filter ini.' : (canManageProgramData() ? 'Belum ada konten di Content Planner. Isi lewat menu IG Scheduler.' : 'Belum ada konten untuk ditampilkan.')) + '</p></div>';
         return;
     }
     const today = mbTodayKey();
@@ -5549,11 +5550,10 @@ function applyRoleUIVisibility() {
     const btnProgram = document.getElementById('btnTambahProgram');
     if (btnJadwal) btnJadwal.style.display = canEdit ? '' : 'none';
     if (btnProgram) btnProgram.style.display = canQuickAddProgram() ? '' : 'none';
-    // Tile Microblog (isi dari ig_content_plan, RLS hanya admin & user)
+    // Tile Microblog: tampil untuk semua (guest & anonim juga), data dari view publik `microblog_publik`
     const tileMb = document.getElementById('metricMicroblog');
-    if (tileMb) tileMb.style.display = canEdit ? '' : 'none';
-    if (canEdit) refreshMicroblogMetric();
-    else { mbState.items = []; mbState.loaded = false; mbState.countFetched = false; }
+    if (tileMb) tileMb.style.display = '';
+    refreshMicroblogMetric();
 }
 
 // ============================================================
