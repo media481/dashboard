@@ -1895,7 +1895,7 @@ async function loadMicroblog() {
     const feed = document.getElementById('mbFeed');
     if (!feed || mbState.loading) return;
     mbState.loading = true;
-    if (!mbState.loaded) feed.innerHTML = '<div class="mb-empty"><i class="bi bi-hourglass-split"></i><p>Memuat konten…</p></div>';
+    if (!mbState.loaded) feed.innerHTML = '<div class="mb-skel"><div></div><div></div></div><div class="mb-skel"><div></div><div></div></div>';
     try {
         const { data, error } = await withRetry(
             () => supabaseClient.from('microblog_publik').select('*').order('tanggal', { ascending: true }),
@@ -1927,7 +1927,26 @@ function mbToggleCaption(btn) {
     btn.textContent = open ? 'Tutup' : 'Selengkapnya';
 }
 
-// Kartu sederhana untuk pengunjung umum: gambar + nama/tanggal + judul + caption.
+// Nomor WA perusahaan untuk tombol "Tanya via WhatsApp" (pakai kontak_wa pertama, fallback ke telp).
+function mbWaNumber() {
+    const n = String((NOTA_PERUSAHAAN.kontak_wa || [])[0] || NOTA_PERUSAHAAN.telp || '').replace(/\D/g, '');
+    if (!n) return '';
+    return n.startsWith('0') ? '62' + n.slice(1) : n;
+}
+
+// Pecah caption jadi paragraf + baris hashtag penutup (ditampilkan terpisah, bukan teks polos).
+function mbParseCaption(raw) {
+    const lines = String(raw || '').replace(/\r/g, '').trim().split('\n');
+    let tags = [];
+    while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+    if (lines.length && /^\s*(#[^\s#]+\s*)+$/.test(lines[lines.length - 1])) {
+        tags = lines.pop().match(/#[^\s#]+/g) || [];
+    }
+    const paras = lines.join('\n').split(/\n\s*\n/).map(x => x.trim()).filter(Boolean);
+    return { paras, tags };
+}
+
+// Kartu sederhana untuk pengunjung umum: gambar + nama/tanggal + judul + caption + tombol WA.
 // Info internal (pilar, tipe, tahap, seri) sengaja TIDAK ditampilkan.
 function mbPostHtml(pl, todayKey) {
     const pil = IG_PILLARS[pl.pilar];
@@ -1942,12 +1961,22 @@ function mbPostHtml(pl, todayKey) {
         .replace(/^\s*Slide\s*\d+\s*[:.\-–]\s*/gim, '').trim() || String(pl.tema || '').trim();
     const blocks = imgRaw.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
     const firstBlock = (tipe === 'carousel' && blocks.length ? blocks[0] : imgRaw);
-    const caption = String(pl.draft_caption || '').trim();
-    const longCap = caption.length > 320 || (caption.match(/\n/g) || []).length > 5;
+    const { paras, tags } = mbParseCaption(pl.draft_caption);
+    const totalLen = paras.join('').length;
+    const longCap = totalLen > 380 || paras.length > 3;
     const nl = (t) => escapeHtml(t).replace(/\n/g, '<br>');
+    const capHtml = paras.map(x => `<p>${nl(x)}</p>`).join('') +
+        (tags.length ? `<div class="mb-tags">${tags.map(t => `<span>${escapeHtml(t)}</span>`).join('')}</div>` : '');
+    const wa = mbWaNumber();
+    const waText = `Assalamualaikum Amiru Tour, saya melihat postingan "${pl.tema || ''}" dan ingin bertanya.`;
+    const actions = wa ? `<div class="mb-actions">
+                <span class="mb-actions-note">Ada pertanyaan seputar umroh?</span>
+                <a class="mb-wa" href="https://wa.me/${wa}?text=${encodeURIComponent(waText)}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> Tanya via WhatsApp</a>
+            </div>` : '';
     return `<article class="mb-post">
         <div class="mb-img" style="--mb-c:${color}">
             <div class="mb-img-text">${nl(firstBlock)}</div>
+            <div class="mb-img-brand"><img src="assets/logo-amirutour.png" alt="">Amiru Tour</div>
         </div>
         <div class="mb-side">
             <div class="mb-post-head">
@@ -1955,7 +1984,8 @@ function mbPostHtml(pl, todayKey) {
                 <div class="mb-who"><b>Amiru Tour</b><span>${tgl}${rel}</span></div>
             </div>
             <h3 class="mb-tema">${escapeHtml(pl.tema || '')}</h3>
-            ${caption ? `<div class="mb-caption">${nl(caption)}</div>${longCap ? '<button type="button" class="mb-more" onclick="mbToggleCaption(this)">Selengkapnya</button>' : ''}` : ''}
+            ${capHtml ? `<div class="mb-caption${longCap ? ' mb-clamped' : ''}">${capHtml}</div>${longCap ? '<button type="button" class="mb-more" onclick="mbToggleCaption(this)">Selengkapnya</button>' : ''}` : ''}
+            ${actions}
         </div>
     </article>`;
 }
