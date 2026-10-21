@@ -9,7 +9,7 @@
 //
 // Aman dijalankan berulang kali (idempoten). Folder scripts/ tidak ikut ter-deploy
 // (lihat .assetsignore).
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -34,7 +34,25 @@ if (missing.length) {
     process.exit(1);
 }
 
-if (stamped === original) {
+// Versi modul lazy (js/modules/*.min.js): dimuat lewat ensureModuleLoaded() di app.js, yang membaca
+// <script id="moduleVersions" type="application/json"> di index.html lalu menambahkan ?v=<hash>.
+const modDir = join(root, 'js', 'modules');
+const modVersions = {};
+if (existsSync(modDir)) {
+    for (const f of readdirSync(modDir).sort()) {
+        if (!f.endsWith('.min.js')) continue;
+        modVersions[f.replace(/\.min\.js$/, '')] =
+            createHash('sha256').update(readFileSync(join(modDir, f))).digest('hex').slice(0, 10);
+    }
+}
+const modTag = /(<script id="moduleVersions" type="application\/json">)([\s\S]*?)(<\/script>)/;
+if (Object.keys(modVersions).length && !modTag.test(stamped)) {
+    console.error('index.html tidak punya <script id="moduleVersions" type="application/json">.');
+    process.exit(1);
+}
+const stampedAll = stamped.replace(modTag, (_, a, __, c) => `${a}${JSON.stringify(modVersions)}${c}`);
+
+if (stampedAll === original) {
     console.log('index.html sudah memakai versi terbaru.');
     process.exit(0);
 }
@@ -44,5 +62,5 @@ if (checkOnly) {
     process.exit(1);
 }
 
-writeFileSync(htmlPath, stamped);
+writeFileSync(htmlPath, stampedAll);
 console.log('index.html diperbarui.');

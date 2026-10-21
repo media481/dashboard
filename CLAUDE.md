@@ -40,6 +40,16 @@ mengunduh ulang saat file berubah.
 - Naikkan `CACHE_NAME` di `service-worker.js` kalau daftar `APP_SHELL` atau isi file precache berubah.
 - `css/ig-scheduler.css` dll. tetap dipecah per modul; esbuild hanya meminify, tidak menggabungkan.
 
+## Modul JS lazy (`js/modules/`)
+
+`js/app.js` tidak lagi memuat semuanya. Modul besar dipecah ke `js/modules/<nama>.js` dan baru diunduh saat dibutuhkan lewat `ensureModuleLoaded('<nama>')` (di app.js, bagian "24").
+
+- Saat ini ada satu modul: **`ig-scheduler`** (semua kode halaman IG Scheduler: bagian 24 s/d 24h lama). Dibuka lewat `openIgSchedulerPage()`, yang menunggu modul lalu memanggil `igOnPageOpen()`.
+- Modul dimuat sebagai `<script>` biasa (BUKAN ES module): satu lingkup global dengan app.js, nama fungsi global tidak berubah, `onclick`/`data-action` tetap jalan. **Jangan deklarasi ulang nama yang sudah ada di app.js** (`const`/`let` ganda = SyntaxError, seluruh modul gagal).
+- Fungsi modul yang dirujuk `index.html` atau kode inti sebelum modul termuat WAJIB didaftarkan di `LAZY_MODULES['ig-scheduler'].api` (app.js); stub dibuat otomatis. Konstanta yang dipakai kode inti (`IG_PILLARS`, `IG_AUTOPUBLISH_ENABLED`, `IG_CAPTION_FUNCTION_URL`) tinggal di app.js.
+- Tetap edit file sumber `js/modules/*.js`, bukan `*.min.js`. `npm run release` meminify modul dan menulis hash-nya ke `<script id="moduleVersions">` di index.html. Modul baru juga perlu ditambahkan ke `APP_SHELL` di `service-worker.js` (+ naikkan `CACHE_NAME`).
+- Tes (`tests/test-core.js`, `test-core.js`) memuat modul sebagai skrip kedua di konteks yang sama, jadi nama IG tetap bisa diuji.
+
 ## Struktur file AKTIF (yang benar-benar di-load browser)
 
 ```

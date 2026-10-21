@@ -16,6 +16,14 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const checkOnly = process.argv.includes('--check');
 
 const jobs = [{ src: 'js/app.js', out: 'js/app.min.js', loader: 'js' }];
+// Modul lazy (js/modules/*.js, dimuat saat dibutuhkan oleh ensureModuleLoaded() di app.js).
+const modDir = join(root, 'js', 'modules');
+if (existsSync(modDir)) {
+    for (const f of readdirSync(modDir).sort()) {
+        if (!f.endsWith('.js') || f.endsWith('.min.js')) continue;
+        jobs.push({ src: `js/modules/${f}`, out: `js/modules/${f.replace(/\.js$/, '.min.js')}`, loader: 'js' });
+    }
+}
 for (const f of readdirSync(join(root, 'css')).sort()) {
     if (!f.endsWith('.css') || f.endsWith('.min.css')) continue;
     jobs.push({ src: `css/${f}`, out: `css/${f.replace(/\.css$/, '.min.css')}`, loader: 'css' });

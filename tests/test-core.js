@@ -26,7 +26,7 @@ function makeEl() {
   // supaya escapeHtml() bisa diuji secara valid di Node tanpa jsdom.
   let _text = '';
   const el = {
-    style: {}, classList: { add(){}, remove(){}, contains(){return false;} },
+    style: {}, dataset: {}, parentNode: { insertBefore(){} }, classList: { add(){}, remove(){}, contains(){return false;} },
     addEventListener(){}, removeEventListener(){}, appendChild(){},
     setAttribute(){}, getAttribute(){return null;}, querySelector(){return null;},
     querySelectorAll(){return [];}, focus(){}, click(){}, value: '',
@@ -50,7 +50,8 @@ const sandbox = {
   },
   document: {
     addEventListener(){}, removeEventListener(){},
-    getElementById: () => makeEl(),
+    // Input month picker (IIFE initMonthPicker) butuh HTMLInputElement asli; tidak relevan untuk tes ini -> null (IIFE menanganinya).
+    getElementById: (id) => (id === 'igRkMulai' || id === 'igPlanMonth') ? null : makeEl(),
     querySelector: () => null,
     querySelectorAll: () => [],
     createElement: () => makeEl(),
@@ -74,8 +75,19 @@ const code = fs.readFileSync(APP_PATH, 'utf8');
 const context = vm.createContext(sandbox);
 // Tambahkan penangkap: deklarasikan fungsi sebagai property di sandbox
 // dengan meng-append kode yang menaruh fungsi ke globalThis
-const wrapped = code + '\n;globalThis.__T = { hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah, igIsSimilarText, igIsDuplicateIdea, igRiwayatAdd, igBuildSlotBulan, igPickEvenly, igBuildPolaMingguan, igBuildSlotPekan, igDaftarPekanBulan, igMinusTokens, igChipTopik, IG_POLA_AMIRU, IG_PILLARS };';
-vm.runInContext(wrapped, context, { filename: 'app.js' });
+// Fungsi/konstanta yang diekspos ke tes. Sebagian kini ada di modul lazy (js/modules/*.js) -- dimuat
+// SESUDAH app.js sebagai skrip terpisah di konteks yang sama, persis seperti ensureModuleLoaded() di browser.
+const __names = 'hitungEstimasi, rupiahTerbilang, parseRupiahToNumber, escapeHtml, escapeJsAttr, takeSnapshot, MAX_SNAPSHOTS, getHargaKamarJamaah, igIsSimilarText, igIsDuplicateIdea, igRiwayatAdd, igBuildSlotBulan, igPickEvenly, igBuildPolaMingguan, igBuildSlotPekan, igDaftarPekanBulan, igMinusTokens, igChipTopik, IG_POLA_AMIRU, IG_PILLARS'.split(/,\s*/);
+const MODULES_DIR = path.join(path.dirname(APP_PATH), 'modules');
+const moduleSrcs = fs.existsSync(MODULES_DIR)
+  ? fs.readdirSync(MODULES_DIR).filter(f => f.endsWith('.js') && !f.endsWith('.min.js')).sort()
+      .map(f => ({ f, src: fs.readFileSync(path.join(MODULES_DIR, f), 'utf8') }))
+  : [];
+const inModule = n => moduleSrcs.some(m => new RegExp('^(?:async\\s+)?(?:function\\s+|const\\s+|let\\s+)' + n + '\\b', 'm').test(m.src));
+const coreNames = __names.filter(n => !inModule(n)), modNames = __names.filter(inModule);
+vm.runInContext(code + '\n;globalThis.__T = { ' + coreNames.join(', ') + ' };', context, { filename: 'app.js' });
+for (const m of moduleSrcs) vm.runInContext(m.src, context, { filename: 'modules/' + m.f });
+if (modNames.length) vm.runInContext(';Object.assign(globalThis.__T, { ' + modNames.join(', ') + ' });', context, { filename: 'capture' });
 const T = sandbox.__T;
 
 if (!T || !T.hitungEstimasi) {

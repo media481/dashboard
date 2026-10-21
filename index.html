@@ -36,7 +36,9 @@
     <!-- [OPTIMASI LOAD] app.js dipindah dari akhir <body> ke <head> (tetap defer, tetap SETELAH
          supabase-js, jadi urutan eksekusi & waktu eksekusinya sama persis). Bedanya browser
          menemukan & mulai mengunduhnya sejak awal, bukan setelah mem-parse ~1.700 baris HTML. -->
-    <script src="js/app.min.js?v=879deeb49a" defer></script>
+    <script src="js/app.min.js?v=2fdc6f74f6" defer></script>
+    <!-- Versi modul lazy (js/modules/*.min.js), ditulis scripts/stamp-versions.mjs; dibaca ensureModuleLoaded() di app.js. -->
+    <script id="moduleVersions" type="application/json">{"ig-scheduler":"64b211725b"}</script>
 
     <link rel="stylesheet" href="css/style.min.css?v=e209f82a7e">
     <link rel="stylesheet" href="css/rekap-infografis.min.css?v=ca9c348d92">
