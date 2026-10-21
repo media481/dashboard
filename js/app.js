@@ -4067,40 +4067,72 @@ async function renderAdminPanel() {
             </div>
 
             <div class="admin-subtab-panel" id="adminSubTab-telegram" style="display:none;">
-                <div class="admin-section-header">
-                    <div><h4>Notifikasi Telegram</h4>
-                    <p>Kirim notifikasi otomatis ke grup/chat Telegram saat ada program/jadwal baru</p></div>
-                </div>
-                <div class="tg-info-box">
-                    <b><i class="bi bi-list-check"></i> Cara Setup:</b><br>
-                    1. Buat bot via <b>@BotFather</b> di Telegram → dapatkan <b>Bot Token</b><br>
-                    2. Tambahkan bot ke grup/chat yang diinginkan, jadikan <b>Admin</b><br>
-                    3. Dapatkan <b>Chat ID</b> via <code>@userinfobot</code> atau <code>https://api.telegram.org/bot[TOKEN]/getUpdates</code><br>
-                    4. Buat <b>Edge Function</b> di Supabase bernama <code>send-telegram</code> → isi URL-nya di bawah<br>
-                    5. Simpan konfigurasi → notifikasi otomatis aktif!
-                </div>
-                <div class="tg-settings-grid">
-                    <div class="form-group">
-                        <label>Bot Token</label>
-                        <input type="text" id="tg_bot_token" placeholder="1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ" style="font-family:'IBM Plex Mono',monospace;">
+                <div class="tg-head">
+                    <span class="tg-head-ico"><i class="bi bi-telegram"></i></span>
+                    <div class="tg-head-text">
+                        <h4>Notifikasi Telegram</h4>
+                        <p>Kirim notifikasi otomatis ke grup/chat Telegram saat ada program/jadwal baru</p>
                     </div>
-                    <div class="form-group">
-                        <label>Edge Function URL</label>
-                        <input type="url" id="tg_edge_url" placeholder="https://xxx.supabase.co/functions/v1/send-telegram" style="font-family:'IBM Plex Mono',monospace;">
+                    <span class="tg-state" id="tgState">Belum dikonfigurasi</span>
+                </div>
+
+                <details class="tg-guide" id="tgGuide">
+                    <summary><i class="bi bi-list-check"></i> Panduan setup (5 langkah)<i class="bi bi-chevron-down tg-guide-caret"></i></summary>
+                    <ol class="tg-steps">
+                        <li><span>Buat bot lewat <b>@BotFather</b> di Telegram, lalu salin <b>Bot Token</b>.</span></li>
+                        <li><span>Tambahkan bot ke grup/chat tujuan dan jadikan <b>Admin</b>.</span></li>
+                        <li><span>Dapatkan <b>Chat ID</b> lewat <code>@userinfobot</code> atau <code>https://api.telegram.org/bot[TOKEN]/getUpdates</code>.</span></li>
+                        <li><span>Buat <b>Edge Function</b> Supabase bernama <code>send-telegram</code>, lalu isi URL-nya di bawah.</span></li>
+                        <li><span>Simpan konfigurasi, maka notifikasi otomatis aktif.</span></li>
+                    </ol>
+                </details>
+
+                <section class="tg-card">
+                    <div class="tg-card-head">
+                        <h5 class="tg-card-title"><i class="bi bi-robot"></i> Koneksi Bot</h5>
                     </div>
-                </div>
-                <div class="cx-label-sm">Penerima Notifikasi</div>
-                <p class="tg-hint">Centang jenis notifikasi yang diterima tiap penerima. <b>Pengingat 1 bulan</b> dikirim otomatis saat halaman dibuka.</p>
-                <div class="tg-recipients-list" id="tgRecipientsList"></div>
-                <button class="tg-add-btn" onclick="addTgRecipient()"><i class="bi bi-plus-lg"></i> Tambah Penerima</button>
-                <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;">
-                    <button class="btn-primary" onclick="saveTgConfig()"><i class="bi bi-floppy-fill"></i> Simpan Konfigurasi</button>
-                    <button class="btn-cancel" onclick="testTgNotif()"><i class="bi bi-send-fill"></i> Test Kirim</button>
-                    <button class="btn-cancel" onclick="testTgReminderAI()"><i class="bi bi-stars"></i> Test Reminder AI</button>
-                </div>
-                <div id="tgStatusMsg" style="margin-top:12px;"></div>
-                <div class="tg-notif-log" id="tgNotifLog" style="display:none;">
-                    <p style="color:var(--ink-soft);font-size:11px;margin-bottom:6px;"><i class="bi bi-list-ul"></i> LOG PENGIRIMAN TELEGRAM:</p>
+                    <div class="tg-settings-grid">
+                        <div class="form-group">
+                            <label for="tg_bot_token"><i class="bi bi-key-fill"></i> Bot Token</label>
+                            <div class="tg-secret">
+                                <input type="password" id="tg_bot_token" autocomplete="off" spellcheck="false" placeholder="1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ" style="font-family:'IBM Plex Mono',monospace;">
+                                <button type="button" class="tg-secret-btn" title="Tampilkan/sembunyikan token" aria-label="Tampilkan atau sembunyikan token" onclick="var i=document.getElementById('tg_bot_token');var show=i.type==='password';i.type=show?'text':'password';this.firstElementChild.className='bi '+(show?'bi-eye-slash':'bi-eye');"><i class="bi bi-eye"></i></button>
+                            </div>
+                            <span class="tg-field-help">Disembunyikan secara default. Dari @BotFather.</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="tg_edge_url"><i class="bi bi-link-45deg"></i> Edge Function URL</label>
+                            <input type="url" id="tg_edge_url" placeholder="https://xxx.supabase.co/functions/v1/send-telegram" style="font-family:'IBM Plex Mono',monospace;">
+                            <span class="tg-field-help">Alamat fungsi <code>send-telegram</code> di Supabase.</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="tg-card">
+                    <div class="tg-card-head">
+                        <h5 class="tg-card-title"><i class="bi bi-people-fill"></i> Penerima Notifikasi <span class="tg-count" id="tgCount">0</span></h5>
+                        <button type="button" class="tg-add-btn" onclick="addTgRecipient()"><i class="bi bi-plus-lg"></i> Tambah Penerima</button>
+                    </div>
+                    <p class="tg-hint">Pilih jenis notifikasi yang diterima tiap penerima. <b>Pengingat 1 bulan</b> dikirim otomatis saat halaman dibuka.</p>
+                    <div class="tg-recipients-list" id="tgRecipientsList"></div>
+                </section>
+
+                <section class="tg-card">
+                    <div class="tg-card-head">
+                        <h5 class="tg-card-title"><i class="bi bi-send-check-fill"></i> Uji Coba</h5>
+                    </div>
+                    <p class="tg-hint">Tombol uji coba menyimpan konfigurasi lebih dulu, lalu mengirim pesan contoh ke penerima yang sesuai.</p>
+                    <div class="tg-test-actions">
+                        <button type="button" class="tg-btn-ghost" onclick="testTgNotif()"><i class="bi bi-send-fill"></i> Test Kirim</button>
+                        <button type="button" class="tg-btn-ghost" onclick="testTgReminderAI()"><i class="bi bi-stars"></i> Test Reminder AI</button>
+                    </div>
+                    <div class="tg-log-head"><span><i class="bi bi-terminal"></i> Log pengiriman</span><button type="button" class="tg-log-clear" onclick="var l=document.getElementById('tgNotifLog');l.innerHTML='<p class=&quot;tg-log-empty&quot;>Belum ada pengiriman.</p>';">Bersihkan</button></div>
+                    <div class="tg-notif-log" id="tgNotifLog" aria-live="polite"><p class="tg-log-empty">Belum ada pengiriman.</p></div>
+                </section>
+
+                <div class="tg-savebar">
+                    <div class="tg-savebar-info" id="tgStatusMsg"></div>
+                    <button type="button" class="btn-primary" onclick="saveTgConfig()"><i class="bi bi-floppy-fill"></i> Simpan Konfigurasi</button>
                 </div>
             </div>
 

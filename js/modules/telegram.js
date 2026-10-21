@@ -64,16 +64,21 @@ function collectTgRecipients() {
 async function renderTgRecipients() {
     const list = document.getElementById('tgRecipientsList');
     if (!list) return;
-    list.innerHTML = '<p style="color:var(--ink-soft);font-size:12px;"><i class="bi bi-hourglass-split"></i> Memuat konfigurasi...</p>';
+    list.innerHTML = '<p class="tg-loading"><i class="bi bi-hourglass-split"></i> Memuat konfigurasi...</p>';
     const cfg = await getTgConfig();
     const tokenInput = document.getElementById('tg_bot_token');
     const edgeInput  = document.getElementById('tg_edge_url');
     if (tokenInput && cfg.botToken) tokenInput.value = cfg.botToken;
     if (edgeInput  && cfg.edgeUrl)  edgeInput.value  = cfg.edgeUrl;
-    const recipients = typeof cfg.recipients === 'string' ? JSON.parse(cfg.recipients) : (cfg.recipients || []);
+    let recipients = [];
+    try { recipients = typeof cfg.recipients === 'string' ? JSON.parse(cfg.recipients) : (cfg.recipients || []); } catch { recipients = []; }
     list.innerHTML = '';
-    if (!recipients.length) { addTgRecipient(); return; }
-    recipients.forEach(r => addTgRecipientRow(r));
+    if (!recipients.length) addTgRecipient();
+    else recipients.forEach(r => addTgRecipientRow(r));
+    // Panduan setup: terbuka kalau belum dikonfigurasi, terlipat kalau sudah.
+    const guide = document.getElementById('tgGuide');
+    if (guide) guide.open = !(cfg.botToken && cfg.edgeUrl && recipients.length);
+    updateTgSummary();
 }
 
 function addTgRecipient() {
@@ -92,13 +97,52 @@ function addTgRecipientRow(r) {
         { val: 'ig_comment', label: '<i class="bi bi-instagram"></i> Komentar IG Baru' },
     ];
     row.innerHTML = `
-        <input class="tg-chat-id" placeholder="Chat ID (mis: -1001234567890)" value="${escapeHtml(r.chatId||'')}">
-        <input class="tg-label" placeholder="Label (mis: Grup Admin)" value="${escapeHtml(r.label||'')}">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-            ${typeOpts.map(t => `<label class="tg-type-label"><input type="checkbox" class="tg-type-check" value="${t.val}" ${(r.types||[]).includes(t.val)?'checked':''}> ${t.label}</label>`).join('')}
+        <span class="tg-recipient-ava"><i class="bi bi-chat-dots-fill"></i></span>
+        <div class="tg-recipient-fields">
+            <label class="tg-field"><span>Label</span><input class="tg-label" aria-label="Label penerima" placeholder="mis: Grup Admin" value="${escapeHtml(r.label||'')}"></label>
+            <label class="tg-field"><span>Chat ID</span><input class="tg-chat-id" aria-label="Chat ID" inputmode="text" placeholder="mis: -1001234567890" value="${escapeHtml(r.chatId||'')}"></label>
         </div>
-        <button class="tg-remove-btn" onclick="this.closest('.tg-recipient-row').remove()" title="Hapus penerima"><i class="bi bi-x-lg"></i></button>`;
+        <button type="button" class="tg-remove-btn" onclick="removeTgRecipient(this)" title="Hapus penerima" aria-label="Hapus penerima"><i class="bi bi-trash3"></i></button>
+        <div class="tg-recipient-types">
+            ${typeOpts.map(t => `<label class="tg-chip"><input type="checkbox" class="tg-type-check" value="${t.val}" ${(r.types||[]).includes(t.val)?'checked':''}><span class="tg-chip-body">${t.label}</span></label>`).join('')}
+        </div>`;
     list.appendChild(row);
+    updateTgSummary();
+}
+
+function removeTgRecipient(btn) {
+    const row = btn && btn.closest('.tg-recipient-row');
+    if (row) row.remove();
+    updateTgSummary();
+}
+
+// Ringkasan di header panel: jumlah penerima + status "Siap" kalau token, URL, dan minimal 1 penerima terisi.
+function updateTgSummary() {
+    const rows = document.querySelectorAll('#tgRecipientsList .tg-recipient-row');
+    let filled = 0;
+    rows.forEach(r => { if (r.querySelector('.tg-chat-id')?.value.trim()) filled++; });
+    const count = document.getElementById('tgCount');
+    if (count) count.textContent = String(filled);
+    const list = document.getElementById('tgRecipientsList');
+    if (list) {
+        let empty = list.querySelector('.tg-empty');
+        if (!rows.length && !empty && !list.querySelector('.tg-loading')) {
+            empty = document.createElement('div');
+            empty.className = 'tg-empty';
+            empty.innerHTML = '<i class="bi bi-people"></i>Belum ada penerima. Klik <b>Tambah Penerima</b>.';
+            list.appendChild(empty);
+        } else if (rows.length && empty) empty.remove();
+    }
+    const state = document.getElementById('tgState');
+    if (state) {
+        const ready = !!(document.getElementById('tg_bot_token')?.value.trim() && document.getElementById('tg_edge_url')?.value.trim() && filled);
+        state.classList.toggle('is-ready', ready);
+        state.textContent = ready ? 'Siap dikirim' : 'Belum lengkap';
+    }
+}
+if (!window.__tgSummaryBound) {
+    window.__tgSummaryBound = true;
+    document.addEventListener('input', e => { if (e.target.closest && e.target.closest('#adminSubTab-telegram')) updateTgSummary(); });
 }
 
 function showTgStatus(msg, type) {
@@ -113,11 +157,15 @@ function showTgStatus(msg, type) {
 function logTg(msg, ok = true) {
     const log = document.getElementById('tgNotifLog');
     if (!log) return;
-    log.style.display = 'block';
-    const p = document.createElement('p');
-    p.className = ok ? 'ok' : 'err';
-    p.textContent = '[' + new Date().toLocaleTimeString('id-ID') + '] ' + msg;
-    log.appendChild(p);
+    log.querySelector('.tg-log-empty')?.remove();
+    const row = document.createElement('div');
+    row.className = 'tg-log-row ' + (ok ? 'ok' : 'err');
+    const t = document.createElement('time');
+    t.textContent = new Date().toLocaleTimeString('id-ID');
+    const m = document.createElement('span');
+    m.textContent = (ok ? '✓ ' : '✗ ') + msg;
+    row.appendChild(t); row.appendChild(m);
+    log.appendChild(row);
     log.scrollTop = log.scrollHeight;
 }
 
