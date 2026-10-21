@@ -4,8 +4,8 @@
   "description": "Dashboard Amiru — PWA manajemen program Umroh (vanilla JS + Supabase).",
   "private": true,
   "scripts": {
-    "test": "node tests/test-core.js && node tests/test-modules.js && node tests/test-total-bayar.js && node tests/test-with-retry.js && node tests/test-lazy-css.js && node tests/test-service-worker.js",
-    "test:ci": "node tests/test-core.js && node tests/test-modules.js && node tests/test-total-bayar.js && node tests/test-with-retry.js && node tests/test-lazy-css.js && node tests/test-service-worker.js",
+    "test": "node tests/test-core.js && node tests/test-modules.js && node tests/test-total-bayar.js && node tests/test-with-retry.js && node tests/test-lazy-css.js && node tests/test-service-worker.js && node tests/test-auto-generate.js",
+    "test:ci": "node tests/test-core.js && node tests/test-modules.js && node tests/test-total-bayar.js && node tests/test-with-retry.js && node tests/test-lazy-css.js && node tests/test-service-worker.js && node tests/test-auto-generate.js",
     "build": "node scripts/build.mjs",
     "build:check": "node scripts/build.mjs --check",
     "release": "npm run build && npm run stamp",
@@ -13,13 +13,15 @@
     "stamp": "node scripts/stamp-versions.mjs",
     "stamp:check": "node scripts/stamp-versions.mjs --check",
     "test:ig": "node test-core.js",
-    "test:edge": "node --experimental-strip-types supabase/functions/generate-ig-content-plan/test-core.mjs"
+    "test:edge": "node --experimental-strip-types supabase/functions/generate-ig-content-plan/test-core.mjs",
+    "auto:konten": "node scripts/auto-generate-konten.mjs"
   },
   "engines": {
     "node": ">=18"
   },
   "license": "UNLICENSED",
   "devDependencies": {
+    "@supabase/supabase-js": "^2.45.0",
     "esbuild": "0.28.2"
   }
 }

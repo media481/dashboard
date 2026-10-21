@@ -182,6 +182,11 @@ supabase/functions/    ← 17 Edge Function + `_shared/gemini.ts` (acuan helper)
 scheduler/             ← Cloudflare Worker cron IG Scheduler (deploy terpisah, BUKAN bagian deploy dashboard)
 apps-script/           ← Google Apps Script listing folder Drive (Infografis, Rekap Program)
 scripts/setup-auth-accounts.mjs ← setup akun Supabase Auth awal (sekali jalan, butuh service role key)
+scripts/auto-generate-konten.mjs ← generate konten IG pekan depan otomatis (dipicu .github/workflows/auto-generate-konten.yml, Minggu 03:00 WIB).
+                          Memuat js/app.js + js/modules/ig-scheduler.js apa adanya lewat vm (mock DOM) dan memanggil fungsi yang sama dengan tombol
+                          Generate Konten (igKandidatTemaMinggu, igBuildSlotPekan, igGeneratePlanForSlots), login dengan akun Supabase Auth khusus
+                          (secret AUTO_BOT_EMAIL/AUTO_BOT_PASSWORD). ATURAN: jalur generate (loadIgContentPlan, loadIgPosts, igGeneratePlanForSlots,
+                          buildIgPlanProgramContext, dst.) tidak boleh bergantung pada DOM/`event`; dijaga tests/test-auto-generate.js. Setup: README_ig_scheduler.md
 tests/test-core.js     ← test minimal tanpa dependency (`npm test`)
 wrangler.jsonc, .assetsignore, _headers ← deploy & header Cloudflare. `.assetsignore` WAJIB ada
                           (cegah sql/, supabase/, scheduler/, *.md, serta file sumber `css/*.css`, `js/app.js`,

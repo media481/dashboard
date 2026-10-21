@@ -410,3 +410,32 @@ Di modal **Rencana Konten**, tombol **Rencana Setahun AI** menyusun TEMA tiap pe
 3. Frontend: unggah `index.html`, `js/app.js`, `css/style.css`, dan `css/ig-scheduler.css` yang baru.
 
 Tanpa langkah 1, dashboard tetap jalan normal; panel Rencana Setahun hanya menampilkan petunjuk menjalankan SQL.
+
+---
+
+## Generate Konten Otomatis (tiap Minggu 03:00 WIB)
+
+Tiap Minggu jam 03:00 WIB, GitHub Actions (`.github/workflows/auto-generate-konten.yml`) menjalankan `scripts/auto-generate-konten.mjs`.
+Hasilnya sama dengan menekan **Generate Konten** di Perencanaan Konten untuk pekan Senin-Minggu berikutnya:
+
+- Tema Minggu: dari **Rencana Setahun** kalau pekan itu sudah punya tema, kalau tidak dari saran otomatis (musiman/alur perjalanan jamaah).
+- Isi: 7 hari menyambung (Pola 7 Hari), memakai edge function `generate-ig-content-plan` dan semua pemeriksa anti-duplikat yang sama dengan di browser.
+- Disimpan sebagai **ide** (status `idea`, tahap `ide`). Tidak ada yang diposting otomatis: admin tetap meninjau (terutama yang bertanda `[cek pembimbing]`) lalu menekan **Jadikan Post**.
+- Aman dijalankan berulang: hari yang sudah terisi dilewati, jadi pekan yang sudah lengkap tidak digandakan.
+- Script memuat `js/app.js` dan `js/modules/ig-scheduler.js` apa adanya (tanpa menyalin logika), jadi perubahan aturan generator otomatis ikut berlaku. Syaratnya, jalur generate tidak boleh bergantung pada DOM; `tests/test-auto-generate.js` (bagian `npm test`) menjaga ini.
+
+### Setup (sekali)
+
+1. Buat akun khusus di **Admin > Pengaturan User** dengan role **User** (misalnya `konten-otomatis@...`). Role `user` atau `admin` dibutuhkan karena edge function menolak role lain. Jangan pakai akun pribadi.
+2. Di GitHub: **Settings > Secrets and variables > Actions > New repository secret**, tambah `AUTO_BOT_EMAIL` dan `AUTO_BOT_PASSWORD` (email dan password akun tadi).
+3. Pastikan edge function `generate-ig-content-plan` sudah di-deploy dan secret `GEMINI_API_KEY` terisi (sama seperti tombol Generate manual).
+4. Uji dulu: **Actions > Auto Generate Konten IG > Run workflow** dengan *Dry run* dicentang. Log menampilkan pekan target, tema, dan jumlah slot tanpa memanggil AI atau menyimpan apa pun.
+5. Setelah dry run beres, jalankan sekali lagi dengan *Dry run* tidak dicentang untuk menguji penyimpanan sungguhan (opsional isi `target_senin`).
+
+### Catatan
+
+- Jadwal cron `0 20 * * 6` (UTC) = Minggu 03:00 WIB. GitHub bisa menunda jadwal beberapa menit sampai puluhan menit saat ramai; hasilnya tetap untuk pekan berikutnya.
+- GitHub menonaktifkan workflow terjadwal di repo publik yang tidak ada aktivitas 60 hari. Kalau itu terjadi, aktifkan lagi dari tab Actions.
+- Hasil `sebagian` (ada hari yang ditolak karena mirip konten lama) tetap tersimpan; buka Perencanaan Konten dan klik Generate lagi untuk melengkapi. Run dianggap gagal (merah, email dari GitHub) kalau tidak ada ide yang tersimpan atau proses berhenti karena error.
+- Tidak ada Tema Minggu untuk pekan target = run gagal dengan pesan jelas. Isi Rencana Setahun sebelum pekan itu supaya tema tidak bergantung pada saran otomatis.
+
