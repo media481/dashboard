@@ -1,0 +1,49 @@
+name: Auto Generate Konten IG
+
+# Tiap Minggu jam 03:00 WIB (= Sabtu 20:00 UTC) menyusun konten IG untuk pekan Senin-Minggu berikutnya.
+# Hasil disimpan sebagai ide di Perencanaan Konten (tidak diposting otomatis).
+# Setup: lihat bagian "Generate Konten Otomatis" di README_ig_scheduler.md.
+on:
+  schedule:
+    - cron: '0 20 * * 6'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (cek login, tema, dan slot saja; tidak memanggil AI dan tidak menyimpan)'
+        type: boolean
+        default: true
+      target_senin:
+        description: 'Opsional: hari Senin pekan yang digenerate (YYYY-MM-DD). Kosong = Senin berikutnya'
+        type: string
+        default: ''
+
+concurrency:
+  group: auto-generate-konten
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TZ: Asia/Jakarta
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Pasang dependensi
+        run: npm install --no-audit --no-fund
+
+      - name: Generate konten pekan depan
+        env:
+          AUTO_BOT_EMAIL: ${{ secrets.AUTO_BOT_EMAIL }}
+          AUTO_BOT_PASSWORD: ${{ secrets.AUTO_BOT_PASSWORD }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+          TARGET_SENIN: ${{ inputs.target_senin }}
+        run: node scripts/auto-generate-konten.mjs
