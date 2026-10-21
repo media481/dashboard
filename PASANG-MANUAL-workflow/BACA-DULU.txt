@@ -1,0 +1,21 @@
+Folder ".github" diawali titik, jadi sering tersembunyi / ikut terlewat saat ekstrak atau salin.
+
+File workflow harus berada TEPAT di path ini di ROOT repo GitHub (branch utama):
+
+    .github/workflows/auto-generate-konten.yml
+
+Kalau di komputermu folder .github tidak terlihat, pakai salinan di folder ini
+(auto-generate-konten.yml) lalu:
+
+  Lewat web GitHub:
+    1. Buka repo > Add file > Create new file
+    2. Di kolom nama ketik:  .github/workflows/auto-generate-konten.yml
+       (ketik "/" supaya folder otomatis terbentuk)
+    3. Tempel seluruh isi auto-generate-konten.yml
+    4. Commit langsung ke branch utama (main)
+
+  Lewat komputer:
+    Aktifkan "tampilkan file tersembunyi" (Mac: Cmd+Shift+. | Windows: View > Hidden items),
+    lalu salin file ke .github/workflows/ dan push.
+
+Setelah itu buka tab Actions: workflow muncul di daftar kiri sebagai "Auto Generate Konten IG".
