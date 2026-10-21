@@ -5931,12 +5931,15 @@ async function clearAllAdminData() {
     } catch (_) { /* biarkan null kalau gagal hitung, tetap tampilkan konfirmasi */ }
     const ok = await openActionConfirm({
         title: 'Hapus SEMUA Program?',
-        message: `Tindakan ini akan menghapus <strong>${jumlahProgram != null ? jumlahProgram + ' program' : 'SEMUA program'}</strong> beserta seluruh datanya secara permanen dan <strong>tidak dapat dibatalkan</strong>. Sebuah snapshot cadangan otomatis akan dibuat sebelum penghapusan.`,
+        message: `Tindakan ini akan menghapus <strong>${jumlahProgram != null ? jumlahProgram + ' program' : 'SEMUA program'}</strong> beserta seluruh datanya secara permanen dan <strong>tidak dapat dibatalkan</strong>. Sebuah snapshot cadangan otomatis akan dibuat sebelum penghapusan; kalau snapshot gagal, penghapusan <strong>dibatalkan</strong>.`,
         confirmLabel: 'Hapus Semua Program',
         requireTypedWord: 'HAPUS SEMUA'
     });
     if (!ok) return;
-    await ensureAutoSnapshot('auto-pre-clear', 'Auto sebelum Hapus Semua');
+    if (!(await ensureAutoSnapshot('auto-pre-clear', 'Auto sebelum Hapus Semua'))) {
+        showToast('Hapus Semua DIBATALKAN — snapshot pengaman gagal dibuat, tidak ada data yang dihapus. Coba lagi.', 'error');
+        return;
+    }
     try {
         const { data } = await supabaseClient.from('programs').select('id');
         for (const prog of data) await deleteProgramById(prog.id);
@@ -6565,11 +6568,14 @@ function importAdminData() {
                     });
                     if (!(await openActionConfirm({
                         title: 'Restore Backup?',
-                        message: `Restore backup dari <strong>${escapeHtml(new Date(imported._meta.exported_at).toLocaleString('id-ID'))}</strong>?<br><br>• ${counts.map(c => escapeHtml(c)).join('<br>• ')}<br><br>Data yang ada <strong>TIDAK</strong> akan dihapus, hanya ditambah/diperbarui.`,
+                        message: `Restore backup dari <strong>${escapeHtml(new Date(imported._meta.exported_at).toLocaleString('id-ID'))}</strong>?<br><br>• ${counts.map(c => escapeHtml(c)).join('<br>• ')}<br><br>Data yang ada <strong>TIDAK</strong> akan dihapus, hanya ditambah/diperbarui.<br><br>Snapshot pengaman dibuat dulu; kalau gagal, restore dibatalkan.`,
                         confirmLabel: 'Restore Backup',
                         danger: false
                     }))) return;
-                    await ensureAutoSnapshot('auto-pre-import', 'Auto sebelum Import');
+                    if (!(await ensureAutoSnapshot('auto-pre-import', 'Auto sebelum Import'))) {
+                        showToast('Restore DIBATALKAN — snapshot pengaman gagal dibuat, tidak ada data yang diubah. Coba lagi.', 'error');
+                        return;
+                    }
                     showToast('Mengimport data...');
                     const { ok, failed } = await importProgramList(imported.programs || []);
                     // Program diimport dulu (di atas) baru tabel lain, supaya foreign key
@@ -6617,7 +6623,11 @@ const MAX_SNAPSHOTS = 10;
 const SNAPSHOT_TABLES = ['programs', 'kb_jamaah', 'jadwal_tamu', 'pendaftaran', 'pembayaran_jamaah', 'featured_programs'];
 
 // Ambil seluruh baris dari semua tabel terkait dalam satu objek.
-async function collectAllUmrohData() {
+// strict=false (snapshot manual/harian): tabel yang gagal dimuat disimpan kosong.
+// strict=true (snapshot pengaman sebelum Hapus Semua/Import): satu tabel gagal
+// dimuat -> lempar error, supaya snapshot yang "berhasil" tidak pernah ternyata
+// cadangan yang bolong (dan aksi berisiko di belakangnya ikut dibatalkan).
+async function collectAllUmrohData(strict = false) {
     const data = {};
     for (const tbl of SNAPSHOT_TABLES) {
         try {
@@ -6625,19 +6635,21 @@ async function collectAllUmrohData() {
                 () => supabaseClient.from(tbl).select('*'),
                 { label: 'Snapshot: muat ' + tbl }
             );
-            data[tbl] = error ? [] : (rows || []);
+            if (error) throw error;
+            data[tbl] = rows || [];
         } catch (err) {
             console.error('collectAllUmrohData error on', tbl, err);
+            if (strict) throw new Error('tabel ' + tbl + ' gagal dimuat (' + (err.message || err) + ')');
             data[tbl] = [];
         }
     }
     return data;
 }
 
-async function takeSnapshot(label = 'Snapshot', trigger = 'manual') {
+async function takeSnapshot(label = 'Snapshot', trigger = 'manual', strict = false) {
     try {
         showToast('Membuat snapshot...', 'info');
-        const payload = await collectAllUmrohData();
+        const payload = await collectAllUmrohData(strict);
         const totalRows = SNAPSHOT_TABLES.reduce((s, t) => s + (payload[t] ? payload[t].length : 0), 0);
         const { error } = await supabaseClient.from('snapshot_backup').insert([{
             label: String(label).slice(0, 80),
@@ -6665,10 +6677,12 @@ async function takeSnapshot(label = 'Snapshot', trigger = 'manual') {
     }
 }
 
-// Ambil snapshot otomatis sebelum tindakan berisiko. Best-effort: gagal pun tindakan tetap lanjut.
+// Ambil snapshot pengaman sebelum tindakan berisiko (mode strict: cadangan harus
+// lengkap). Mengembalikan true/false -- PEMANGGIL WAJIB membatalkan aksinya kalau
+// false (lihat clearAllAdminData() dan importAdminData()).
 async function ensureAutoSnapshot(trigger, label) {
-    const ok = await takeSnapshot(label || ('Auto: ' + trigger), trigger);
-    if (!ok) console.warn('Auto-snapshot gagal, tindakan berisiko tetap dilanjutkan.');
+    const ok = await takeSnapshot(label || ('Auto: ' + trigger), trigger, true);
+    if (!ok) console.warn('Auto-snapshot gagal, tindakan berisiko dibatalkan oleh pemanggil.');
     return ok;
 }
 
