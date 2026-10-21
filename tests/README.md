@@ -23,6 +23,13 @@ npm test
 - `escapeHtml` / `escapeJsAttr` — escaping XSS.
 - Konstanta kritis: `MAX_SNAPSHOTS === 10`, `takeSnapshot` terdefinisi.
 
+## Tes service worker (`tests/test-service-worker.js`)
+
+Menjalankan `service-worker.js` di Node dengan Cache API tiruan. Yang dijaga: aset ber-hash (`?v=`) dilayani cache-first
+tanpa menyentuh jaringan, hash baru = unduh baru, 404 tidak disimpan, fallback offline, install memprecache aset dari
+`index.html`, activate membuang cache lama & aset basi, dan `index.html` sinkron dengan file `*.min.*` di disk (kalau
+gagal di sini: jalankan `npm run release`).
+
 ## Tes integrasi modul lazy (`tests/test-modules.js`)
 
 Menjalankan `app.js` + modul `js/modules/*.js` di sandbox Node (DOM & Supabase ditiru) untuk memastikan stub →

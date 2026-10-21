@@ -66,7 +66,7 @@ css/user-akses.css      Modul CSS User & Akses Menu (.us-*, .rma-*)
 css/keuangan.css        Modul CSS Keuangan (.pb-*, .cicilan-*, .nota-*, .kuitansi-*, .an-* Audit Nota)
 css/crosscheck.css      Modul CSS Crosscheck OCR poster (.cx-*, @keyframes cxFieldFlash)
 manifest.json           Konfigurasi PWA
-service-worker.js       Precache + network-first; CACHE_NAME dinaikkan tiap rilis
+service-worker.js       Cache-first untuk aset ber-hash (css/js ?v=), network-first untuk sisanya; CACHE_NAME dinaikkan tiap rilis
 icons/, assets/         Ikon PWA dan logo
 sql/                    Skema dan migrasi (00 = setup lengkap satu file, 01-56 = migrasi bertahap)
 supabase/functions/     Edge Function (Deno/TypeScript)

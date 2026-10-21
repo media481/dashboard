@@ -169,7 +169,8 @@ Karena `directory` = `.`, tanpa `.assetsignore` seluruh isi repo ikut terpublish
 (`sql/`, `supabase/`, `scheduler/`, script setup, semua `.md`). Ingat: yang dipakai
 untuk aset adalah **`.assetsignore`**, bukan `.wranglerignore`.
 Kalau menambah folder/file internal baru (bukan bagian web), tambahkan juga ke
-`.assetsignore`. Kalau menambah file web baru di folder yang sudah di-ignore, keluarkan
+`.assetsignore`. File sumber `css/*.css`, `js/app.js`, dan `js/modules/*.js` juga di-ignore (browser hanya
+memuat `*.min.*`, yang dikecualikan lewat baris `!`), jadi hasil `npm run release` WAJIB ikut di-commit. Kalau menambah file web baru di folder yang sudah di-ignore, keluarkan
 dulu dari daftar.
 
 > Upload lewat dashboard GitHub: file berawalan titik disembunyikan oleh file picker.

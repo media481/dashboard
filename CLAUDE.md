@@ -21,7 +21,7 @@ Bahasa UI & komentar kode: **Bahasa Indonesia**. Ikuti gaya ini saat menambah fi
   Gemini (AI caption, OCR poster, rencana konten), Telegram, manajemen akun, Instagram Graph API
 - Cloudflare: frontend di Workers Static Assets (`wrangler.jsonc`), cron IG Scheduler di Worker
   terpisah (`scheduler/`)
-- PWA: `manifest.json` + `service-worker.js` (strategi network-first, fallback cache)
+- PWA: `manifest.json` + `service-worker.js` (aset ber-hash `?v=` = cache-first; file lain network-first, fallback cache)
 - jsPDF (CDN) untuk generate kuitansi PDF
 
 ## Build & rilis (minify + versi cache)
@@ -38,6 +38,13 @@ mengunduh ulang saat file berubah.
 - `npm run check` memastikan file `*.min.*` dan versi di `index.html` sinkron dengan sumbernya
   (exit 1 kalau basi) -- cocok dipasang di CI. Lupa `release` = user bisa memakai file lama dari cache.
 - Naikkan `CACHE_NAME` di `service-worker.js` kalau daftar `APP_SHELL` atau isi file precache berubah.
+- **Service worker & aset ber-hash:** request same-origin ke `css/*`/`js/*` ber-`?v=<hex>` dilayani CACHE-FIRST dari cache
+  terpisah `ASSET_CACHE` (`amiru-assets-v1`, TIDAK terhapus saat `CACHE_NAME` naik). Daftar aset yang diprecache
+  dibaca otomatis dari `index.html` (`<link>`, `<script src>`, `<script id="moduleVersions">`), jadi CSS/modul baru
+  TIDAK perlu didaftar manual di `APP_SHELL` (isinya kini hanya file tanpa hash: index, manifest, ikon, logo). Saat
+  activate, aset ber-hash yang tak dirujuk `index.html` terbaru dibuang. **Syarat:** `npm run release` WAJIB dijalankan
+  setiap `js/`/`css/` berubah; kalau hash tidak berubah padahal isi berubah, user akan terjebak di versi lama. Tesnya:
+  `tests/test-service-worker.js` (juga memastikan `index.html` sinkron dengan file `*.min.*` di disk).
 - `css/ig-scheduler.css` dll. tetap dipecah per modul; esbuild hanya meminify, tidak menggabungkan.
 
 ## Modul JS lazy (`js/modules/`)
@@ -79,7 +86,7 @@ mengunduh ulang saat file berubah.
   **Snapshot Backup (16B) sekarang modul lazy `snapshot`.** Isi: `takeSnapshot`, `collectAllUmrohData`, `ensureAutoSnapshot`, `restoreSnapshot`, `renderSnapshotAdminTable`, `MAX_SNAPSHOTS`, `SNAPSHOT_TABLES`. Dibuka lewat `switchAdminSubTab('snapshot')`, tombol Ambil, snapshot harian, dan snapshot pengaman. Tetap di app.js: `maybeDailySnapshot()` + `SNAP_DAILY_KEY` (cek throttle harian tanpa mengunduh modul). **Aturan keras:** `clearAllAdminData()` dan `importAdminData()` memeriksa hasil `await ensureAutoSnapshot(...)` dan MEMBATALKAN aksi kalau falsy; stub mengembalikan `undefined` kalau modul gagal diunduh (offline), jadi aksi tetap batal. `ensureAutoSnapshot()` memakai mode strict (satu tabel gagal dimuat = snapshot gagal). Jangan hapus pemeriksaan itu di pemanggil mana pun, termasuk pemanggil baru.
 - Modul dimuat sebagai `<script>` biasa (BUKAN ES module): satu lingkup global dengan app.js, nama fungsi global tidak berubah, `onclick`/`data-action` tetap jalan. **Jangan deklarasi ulang nama yang sudah ada di app.js** (`const`/`let` ganda = SyntaxError, seluruh modul gagal).
 - Fungsi modul yang dirujuk `index.html` atau kode inti sebelum modul termuat WAJIB didaftarkan di `LAZY_MODULES['ig-scheduler'].api` (app.js); stub dibuat otomatis. Konstanta yang dipakai kode inti (`IG_PILLARS`, `IG_AUTOPUBLISH_ENABLED`, `IG_CAPTION_FUNCTION_URL`) tinggal di app.js.
-- Tetap edit file sumber `js/modules/*.js`, bukan `*.min.js`. `npm run release` meminify modul dan menulis hash-nya ke `<script id="moduleVersions">` di index.html. Modul baru juga perlu ditambahkan ke `APP_SHELL` di `service-worker.js` (+ naikkan `CACHE_NAME`).
+- Tetap edit file sumber `js/modules/*.js`, bukan `*.min.js`. `npm run release` meminify modul dan menulis hash-nya ke `<script id="moduleVersions">` di index.html. Modul baru otomatis ikut diprecache service worker (daftarnya dibaca dari `moduleVersions` di index.html); tidak perlu mengubah `APP_SHELL`.
 - Aturan stub (penting saat memecah modul baru): stub MENGEMBALIKAN Promise, jadi hanya aman untuk fungsi yang dipanggil tanpa memakai nilai baliknya (render/buka modal/handler klik). Fungsi yang hasilnya dipakai sinkron oleh kode inti (mis. `cxIsProgramVerified`, `isDokumenLengkap`) harus tetap di app.js. `let/const` yang dibaca kode inti juga harus tetap di app.js (di modul yang belum dimuat akan `ReferenceError`). Pembungkus `withBusy()` untuk fungsi modul dipasang di akhir file modulnya (contoh: `saveCxPosterData`, `saveIgPost`).
 - Pemeriksaan sebelum memecah: pastikan tidak ada fungsi modul yang memakai `event` global implisit (stub dipanggil setelah modul diunduh, `window.event` sudah hilang); nama yang dirujuk dari string HTML (`onclick="..."`, `data-action`) juga wajib ada di `api`.
 - Tes (`tests/test-core.js`, `test-core.js`) memuat modul sebagai skrip kedua di konteks yang sama, jadi nama IG tetap bisa diuji.
@@ -137,8 +144,8 @@ css/rooming.css       ← MODUL Rooming List (`.rm-*`).
 css/ig-scheduler.css ← MODUL IG Scheduler (semua `.ig-*`, `#ig*`, variabel `--ig-*`, `@keyframes ig-plan-spin`).
                         Di-load SETELAH style.css. Gaya IG baru -> taruh di sini, bukan di style.css.
                         Pemecahan CSS dilakukan bertahap per modul (SELESAI semua: IG Scheduler, User/Akses, Keuangan, Crosscheck, Rekap/Infografis, Snapshot, Jadwal Tamu, Assets, Hotel, Detail Program, Telegram, Kepulangan, Rooming);
-                        modul baru WAJIB ditambah `<link>` di index.html (setelah style.css) dan di daftar
-                        APP_SHELL `service-worker.js`, lalu naikkan `CACHE_NAME`.
+                        modul baru WAJIB ditambah `<link>` di index.html (setelah style.css) lalu jalankan `npm run release`
+                        (service worker membaca daftar aset dari index.html, tidak perlu ubah `APP_SHELL`); naikkan `CACHE_NAME`.
 css/user-akses.css   ← MODUL User & Akses Menu (semua `.us-*`, `.rma-*`). Di-load setelah ig-scheduler.css.
                         `.us-*` juga dipakai di luar halaman user (mis. `.us-stat` di Audit Nota, gayanya `.an-*` di keuangan.css), jadi file ini
                         tidak boleh dilepas. `.ms-*` (komponen modal bersama) dan `.cs-*` (custom select) SENGAJA
@@ -156,8 +163,9 @@ css/crosscheck.css   ← MODUL Crosscheck OCR poster vs data (semua `.cx-*` kecu
                         varian ber-ID (spesifisitas lebih tinggi), jadi urutan load tidak mengubah tampilan.
 js/app.js            ← SATU-SATUNYA file JS, berisi SEMUA logic + koneksi Supabase
 manifest.json         ← config PWA (name, theme_color, icons)
-service-worker.js     ← precache list, HARUS disinkronkan manual kalau nama file berubah.
-                        `CACHE_NAME` (saat ini `amiru-repo-cache-v134`) dinaikkan tiap rilis
+service-worker.js     ← cache-first untuk aset ber-hash (daftarnya dibaca dari index.html), network-first untuk sisanya;
+                        `APP_SHELL` (file tanpa hash) HARUS disinkronkan manual kalau nama file berubah.
+                        `CACHE_NAME` (saat ini `amiru-repo-cache-v156`) dinaikkan tiap rilis
 icons/                ← 9 file ikon PWA sesuai daftar di manifest.json
 sql/                  ← skema & migrasi bernomor 00-56. `00_SETUP_LENGKAP_SATU_FILE.sql` = gabungan
                         semuanya (idempoten, bebas urutan) untuk project baru. Untuk project yang SUDAH
@@ -175,8 +183,9 @@ apps-script/           ← Google Apps Script listing folder Drive (Infografis, 
 scripts/setup-auth-accounts.mjs ← setup akun Supabase Auth awal (sekali jalan, butuh service role key)
 tests/test-core.js     ← test minimal tanpa dependency (`npm test`)
 wrangler.jsonc, .assetsignore, _headers ← deploy & header Cloudflare. `.assetsignore` WAJIB ada
-                          (cegah sql/, supabase/, scheduler/, *.md ikut terpublish). Folder/file
-                          internal baru harus ditambahkan ke sana
+                          (cegah sql/, supabase/, scheduler/, *.md, serta file sumber `css/*.css`, `js/app.js`,
+                          `js/modules/*.js` yang tidak dimuat browser ikut terpublish; yang `*.min.*` dikecualikan
+                          lewat `!`). Folder/file internal baru harus ditambahkan ke sana
 ```
 
 **PENTING:** `index.html` HANYA punya satu `<script src="js/app.js">`. Tidak ada file JS
@@ -414,9 +423,9 @@ satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
 - Pakai `showToast(msg, type)` untuk feedback ke user, bukan `alert()`
 - Operasi baca (SELECT) yang rawan gagal jaringan → bungkus dengan `withRetry()`
 - Operasi tulis (insert/update/upsert) JANGAN dibungkus `withRetry()` — risiko data dobel
-- Kalau menambah file baru yang perlu di-load browser, jangan lupa update
-  `service-worker.js` (`APP_SHELL` array) supaya PWA cache-nya ikut sinkron, dan naikkan
-  `CACHE_NAME` versinya
+- Kalau menambah file baru yang perlu di-load browser: css/js ber-hash cukup lewat `npm run release`
+  (otomatis diprecache); file tanpa hash (ikon, dst.) tambahkan ke `APP_SHELL` di `service-worker.js`.
+  Naikkan `CACHE_NAME` versinya
 - Akurasi data finansial adalah prioritas karena datanya dipakai untuk laporan resmi
 
 ## Aturan Edge Function (supabase/functions/*)
