@@ -210,6 +210,27 @@ function loadScriptOnce(src) {
     });
 }
 
+// CSS lazy (css/<nama>.min.css): dimuat sekali lewat LAZY_MODULES[..].css / ensureStyleLoaded().
+// Promise selesai SETELAH stylesheet benar-benar terpasang (onload), jadi pemanggil bisa
+// menunggu sebelum menampilkan markup-nya dan tidak terjadi flash tanpa gaya.
+// Gagal (mis. offline) -> elemen dibuang & boleh dicoba lagi. Versi (?v=hash) dari
+// <script id="moduleVersions"> di index.html, kunci 'css:<nama>' (diisi scripts/stamp-versions.mjs).
+const _lazyStylePromises = {};
+function ensureStyleLoaded(name) {
+    if (!_lazyStylePromises[name]) {
+        _lazyStylePromises[name] = new Promise((resolve, reject) => {
+            const v = getModuleVersion('css:' + name);
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'css/' + name + '.min.css' + (v ? '?v=' + v : '');
+            link.onload = () => resolve();
+            link.onerror = () => { link.remove(); reject(new Error('Gagal memuat css/' + name)); };
+            document.head.appendChild(link);
+        }).catch(err => { _lazyStylePromises[name] = null; throw err; });
+    }
+    return _lazyStylePromises[name];
+}
+
 // key: 'jspdf' | 'html2canvas' | 'xlsx' | 'pdfjs'. Aman dipanggil berkali-kali --
 // request CDN cuma sekali per key (di-cache di _lazyLibPromises), pemanggil
 // berikutnya cukup nebeng promise yang sama/sudah selesai.
@@ -1395,6 +1416,18 @@ async function openIgSchedulerPage() {
 
     const activeTabBtn = document.querySelector('.sidebar .nav-item[data-tab].active');
     previousActiveTabForIg = activeTabBtn ? activeTabBtn.dataset.tab : null;
+
+    // CSS halaman IG dimuat lazy: tunggu dulu supaya kerangka halaman (HTML di index.html)
+    // tidak tampil polos tanpa gaya. Unduhan modul JS dimulai paralel (promise-nya dipakai ulang di bawah).
+    // Cuma lambat saat pertama kali; sesudahnya dari cache browser.
+    ensureModuleLoaded('ig-scheduler').catch(() => {});
+    try {
+        await ensureStyleLoaded('ig-scheduler');
+    } catch (err) {
+        console.error('Gagal memuat CSS IG Scheduler:', err);
+        showToast('Gagal memuat halaman IG Scheduler. Periksa koneksi lalu coba lagi.', 'error');
+        return;
+    }
 
     document.getElementById('dashboardView').style.display = 'none';
     document.getElementById('igSchedulerPageView').style.display = 'block';
@@ -10069,6 +10102,10 @@ const IG_PILLARS = {
 const LAZY_MODULES = {
     'ig-scheduler': {
         src: 'js/modules/ig-scheduler.min.js',
+        // CSS khusus modul ini (94 KB) ikut diunduh paralel dengan skripnya & ditunggu sebelum modul
+        // dianggap siap -> tidak lagi memblokir render halaman depan. Kelas yang dipakai di luar
+        // halaman IG (mis. .ig-empty) ada di style.css.
+        css: ['ig-scheduler'],
         // Fungsi yang dirujuk index.html (onclick / data-action). Stub meneruskan panggilan
         // setelah modul termuat; modul lalu menimpa stub dengan fungsi aslinya.
         api: [
@@ -10195,7 +10232,11 @@ function ensureModuleLoaded(key) {
         const v = getModuleVersion(key);
         // deps: modul lain yang HARUS sudah termuat sebelum skrip ini dieksekusi (dipakai sinkron di tingkat-atas/template).
         const deps = Promise.all((def.deps || []).map(ensureModuleLoaded));
-        _lazyModulePromises[key] = deps.then(() => loadScriptOnce(def.src + (v ? '?v=' + v : ''))).catch(err => {
+        const styles = Promise.all((def.css || []).map(ensureStyleLoaded));
+        _lazyModulePromises[key] = Promise.all([
+            deps.then(() => loadScriptOnce(def.src + (v ? '?v=' + v : ''))),
+            styles
+        ]).catch(err => {
             _lazyModulePromises[key] = null;
             throw err;
         });

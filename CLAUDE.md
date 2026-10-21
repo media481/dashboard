@@ -64,6 +64,16 @@ mengunduh ulang saat file berubah.
   | `snapshot` | Admin > Snapshot / Backup: ambil/pulihkan snapshot, daftar timeline, snapshot pengaman (strict) | `switchAdminSubTab('snapshot')`, tombol Ambil, snapshot harian, `clearAllAdminData()`/`importAdminData()` | `maybeDailySnapshot()`, `SNAP_DAILY_KEY` |
   | `telegram` | Admin > Telegram: konfigurasi, penerima, kirim notifikasi, pengingat otomatis (`checkAndSendReminders`) | `switchAdminSubTab('telegram')`; `sendTelegramNotif` setelah simpan program/jadwal; `checkAndSendReminders` 2 detik setelah boot | `formatTgProgram()`, `formatTgJadwal()` (hasilnya dipakai sinkron sebagai argumen `sendTelegramNotif`) |
 
+  **CSS lazy (`css: [...]` di `LAZY_MODULES`):** modul boleh punya CSS sendiri yang TIDAK di-`<link>` di
+  `index.html`, tapi diunduh paralel oleh `ensureModuleLoaded()` lewat `ensureStyleLoaded('<nama>')` (versi
+  `?v=` dari kunci `css:<nama>` di `moduleVersions`, diisi `npm run stamp`). Saat ini hanya `ig-scheduler`
+  (94 KB). Halaman yang kerangkanya sudah ada di `index.html` (mis. `openIgSchedulerPage()`) harus
+  `await ensureStyleLoaded(...)` SEBELUM menampilkan kerangka, supaya tidak tampil polos. SYARAT memindah CSS
+  ke lazy: tidak ada kelas dari file itu yang dipakai di luar modulnya (cek app.js, index.html di luar blok
+  modul, dan modul lain). Contoh yang ketahuan: `.ig-empty` dipakai galeri Infografis -> dipindah ke `style.css`.
+  CSS lain (`keuangan`, `user-akses`, `crosscheck`, dst.) BELUM bisa lazy karena markup panel admin-nya dirender
+  oleh `app.js` inti.
+
   **`deps` di `LAZY_MODULES`:** modul yang memakai fungsi/konstanta modul lain secara SINKRON (di template, tingkat-atas, atau nilai balik) harus mendeklarasikan `deps: ['<modul>']`. `ensureModuleLoaded()` memuat dep lebih dulu, baru skrip modulnya. Saat ini `kepulangan`, `manifest`, `rooming`, dan `audit-nota` ber-`deps: ['nota']` (memakai `NOTA_TEMA`, `buildNota*HTML`, `exportNotaElementAs*`, `tanggalIndonesia`, dst.). Menambah pemakai baru fungsi nota di modul lain = tambahkan `deps` itu juga.
 
   **Snapshot Backup (16B) sekarang modul lazy `snapshot`.** Isi: `takeSnapshot`, `collectAllUmrohData`, `ensureAutoSnapshot`, `restoreSnapshot`, `renderSnapshotAdminTable`, `MAX_SNAPSHOTS`, `SNAPSHOT_TABLES`. Dibuka lewat `switchAdminSubTab('snapshot')`, tombol Ambil, snapshot harian, dan snapshot pengaman. Tetap di app.js: `maybeDailySnapshot()` + `SNAP_DAILY_KEY` (cek throttle harian tanpa mengunduh modul). **Aturan keras:** `clearAllAdminData()` dan `importAdminData()` memeriksa hasil `await ensureAutoSnapshot(...)` dan MEMBATALKAN aksi kalau falsy; stub mengembalikan `undefined` kalau modul gagal diunduh (offline), jadi aksi tetap batal. `ensureAutoSnapshot()` memakai mode strict (satu tabel gagal dimuat = snapshot gagal). Jangan hapus pemeriksaan itu di pemanggil mana pun, termasuk pemanggil baru.

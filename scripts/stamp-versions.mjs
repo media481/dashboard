@@ -45,6 +45,15 @@ if (existsSync(modDir)) {
             createHash('sha256').update(readFileSync(join(modDir, f))).digest('hex').slice(0, 10);
     }
 }
+// Versi CSS lazy (css/*.min.css yang dimuat lewat ensureStyleLoaded()): kunci 'css:<nama>'.
+const cssDir = join(root, 'css');
+if (existsSync(cssDir)) {
+    for (const f of readdirSync(cssDir).sort()) {
+        if (!f.endsWith('.min.css')) continue;
+        modVersions['css:' + f.replace(/\.min\.css$/, '')] =
+            createHash('sha256').update(readFileSync(join(cssDir, f))).digest('hex').slice(0, 10);
+    }
+}
 const modTag = /(<script id="moduleVersions" type="application\/json">)([\s\S]*?)(<\/script>)/;
 if (Object.keys(modVersions).length && !modTag.test(stamped)) {
     console.error('index.html tidak punya <script id="moduleVersions" type="application/json">.');

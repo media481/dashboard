@@ -3636,3 +3636,10 @@ mark.srch-hit { background: #FFE9A8; color: inherit; border-radius: var(--r-sm);
 @keyframes mbShimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 @media (max-width: 960px) { .mb-post, .mb-skel { grid-template-columns: 1fr; gap: 20px; } .mb-img { position: relative; top: 0; max-width: 520px; margin: 0 auto; } }
 @media (max-width: 640px) { .mb-modal { width: 100vw; max-width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; margin: 0; } .mb-head { padding: 14px 16px; } .mb-head h2 { font-size: 19px; } .mb-feed { padding: 12px; gap: 16px; } .mb-post { padding: 14px; border-radius: 16px; } .mb-img { padding: 28px 22px 54px; } .mb-img-text { font-size: 21px; } .mb-tema { font-size: 20px; } .mb-caption { font-size: 15.5px; } .mb-actions { flex-direction: column; align-items: stretch; } .mb-wa { justify-content: center; } }
+
+/* Pesan kosong/memuat. Dipakai galeri Infografis (di luar halaman IG Scheduler), jadi sengaja
+   ada di style.css, BUKAN di ig-scheduler.css (yang dimuat lazy hanya saat halaman IG dibuka). */
+.ig-empty {
+    text-align: center; padding: 30px; color: var(--ink-soft);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+}

@@ -500,11 +500,6 @@
         padding: 2px 5px; min-width: 14px; text-align: center;
     }
 
-.ig-empty {
-        text-align: center; padding: 30px; color: var(--ink-soft);
-        display: flex; flex-direction: column; align-items: center; gap: 8px;
-    }
-
 .ig-file-input-wrap { display: flex; align-items: center; gap: 8px; }
 
 .ig-file-name { font-size: var(--fs-sm); color: var(--ink-soft); }
