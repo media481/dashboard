@@ -44,10 +44,23 @@ mengunduh ulang saat file berubah.
 
 `js/app.js` tidak lagi memuat semuanya. Modul besar dipecah ke `js/modules/<nama>.js` dan baru diunduh saat dibutuhkan lewat `ensureModuleLoaded('<nama>')` (di app.js, bagian "24").
 
-- Saat ini ada satu modul: **`ig-scheduler`** (semua kode halaman IG Scheduler: bagian 24 s/d 24h lama). Dibuka lewat `openIgSchedulerPage()`, yang menunggu modul lalu memanggil `igOnPageOpen()`.
+- Modul yang ada sekarang (`LAZY_MODULES` di app.js bagian "24"):
+
+  | Modul | Isi | Dibuka lewat | Tetap di app.js (dipakai inti secara sinkron) |
+  |---|---|---|---|
+  | `ig-scheduler` | semua halaman IG Scheduler (bagian 24 s/d 24h lama) | `openIgSchedulerPage()` → `igOnPageOpen()` | `IG_PILLARS`, `IG_AUTOPUBLISH_ENABLED`, `IG_CAPTION_FUNCTION_URL` |
+  | `crosscheck` | panel Crosscheck: OCR poster, `renderCxPanel`, `openCxEditModal`, `saveCxPosterData`, `autoScanPosterForProgram` | tab Admin > Crosscheck, simpan program (auto-scan) | seluruh mesin pembanding (`cxValuesMatch`, `cxIsProgramVerified`, `cxGetProgramStatus`, ...) karena badge Verified di tabel utama butuh nilai sinkron; highlight autofill (`cxApplyAutofillHighlight`, `cxClearAutofillHighlight`) + listener `input`-nya; `CX_OCR_FUNCTION_URL`, `CX_HOTEL_REF_HINT_ENABLED` |
+  | `dokumen` | tab Kelengkapan Dokumen + To-Do CS (`loadDokumenForProgram`, `renderTodoCsPanel`, reminder WA) | `switchTab('dokumen'|'todocs')` | `isDokumenLengkap()` (badge sidebar & statistik) |
+  | `kepulangan` | tab Status Kepulangan + Tanda Terima Dokumen | `switchTab('kepulangan')`, tombol Tanda Terima di tab Dokumen | `kepulanganStatusInfo`, `statusKepulanganProgram`, `efektifStatusKepulangan`, `efektifTglKepulangan`, `tglKepulanganProgram`, `KEPULANGAN_STATUS_OPSI` (dipakai badge & arsip) |
+  | `manifest` | Manifest Jamaah (preview/JPEG/PDF) + Export Excel jamaah & pembayaran | tombol di tab Data Jamaah | - |
+  | `rooming` | Rooming List | tombol di tab Data Jamaah | - |
+
+  **Snapshot Backup (16B) SENGAJA tetap di app.js.** `clearAllAdminData()` dan `importAdminData()` memanggil `await ensureAutoSnapshot(...)` lalu langsung menghapus/menimpa data tanpa memeriksa hasilnya. Kalau fungsi itu dibuat lazy dan unduhan modul gagal (offline), stub hanya menampilkan toast lalu pemanggil melanjutkan penghapusan TANPA cadangan. Pecahkan Snapshot hanya setelah kedua pemanggil itu diubah supaya membatalkan aksi saat snapshot gagal.
 - Modul dimuat sebagai `<script>` biasa (BUKAN ES module): satu lingkup global dengan app.js, nama fungsi global tidak berubah, `onclick`/`data-action` tetap jalan. **Jangan deklarasi ulang nama yang sudah ada di app.js** (`const`/`let` ganda = SyntaxError, seluruh modul gagal).
 - Fungsi modul yang dirujuk `index.html` atau kode inti sebelum modul termuat WAJIB didaftarkan di `LAZY_MODULES['ig-scheduler'].api` (app.js); stub dibuat otomatis. Konstanta yang dipakai kode inti (`IG_PILLARS`, `IG_AUTOPUBLISH_ENABLED`, `IG_CAPTION_FUNCTION_URL`) tinggal di app.js.
 - Tetap edit file sumber `js/modules/*.js`, bukan `*.min.js`. `npm run release` meminify modul dan menulis hash-nya ke `<script id="moduleVersions">` di index.html. Modul baru juga perlu ditambahkan ke `APP_SHELL` di `service-worker.js` (+ naikkan `CACHE_NAME`).
+- Aturan stub (penting saat memecah modul baru): stub MENGEMBALIKAN Promise, jadi hanya aman untuk fungsi yang dipanggil tanpa memakai nilai baliknya (render/buka modal/handler klik). Fungsi yang hasilnya dipakai sinkron oleh kode inti (mis. `cxIsProgramVerified`, `isDokumenLengkap`) harus tetap di app.js. `let/const` yang dibaca kode inti juga harus tetap di app.js (di modul yang belum dimuat akan `ReferenceError`). Pembungkus `withBusy()` untuk fungsi modul dipasang di akhir file modulnya (contoh: `saveCxPosterData`, `saveIgPost`).
+- Pemeriksaan sebelum memecah: pastikan tidak ada fungsi modul yang memakai `event` global implisit (stub dipanggil setelah modul diunduh, `window.event` sudah hilang); nama yang dirujuk dari string HTML (`onclick="..."`, `data-action`) juga wajib ada di `api`.
 - Tes (`tests/test-core.js`, `test-core.js`) memuat modul sebagai skrip kedua di konteks yang sama, jadi nama IG tetap bisa diuji.
 
 ## Struktur file AKTIF (yang benar-benar di-load browser)
