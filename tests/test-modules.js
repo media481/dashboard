@@ -70,7 +70,7 @@ await T('importAdminData: snapshot ok -> impor jalan', async()=>{ reset(); run("
   run("importAdminData()"); await input.onchange({target:{files:[{size:10}]}}); await new Promise(r=>setTimeout(r,30)); assert(imported>=1); });
 loaderFail=false; run("_lazyModulePromises['profil-perusahaan']=null");
 await T('profil: stub memuat modul & render form sekali', async()=>{ reset(); const m=el('companyProfileMount'); m.dataset={}; m.innerHTML=''; ['cp_rekening_list','cp_kontak_wa_list'].forEach(i=>el(i));
-  await run("renderCompanyProfilePanel()"); assert(/cp_brand/.test(m.innerHTML)); assert.strictEqual(m.dataset.ready,'1'); });
+  await run("renderCompanyProfilePanel()"); assert(/cp_brand/.test(m.innerHTML)); assert(/cp_preview/.test(m.innerHTML)); assert.strictEqual(m.dataset.ready,'1'); });
 await T('profil: saveCompanyProfile menimpa NOTA_PERUSAHAAN (let inti) lewat modul', async()=>{ reset(); sb.cfg.tg_config={data:[],error:null};
   el('cp_brand').value='B2'; el('cp_nama').value='PT BARU'; el('cp_alamat').value='Jl X'; el('cp_telp').value='1'; el('cp_email').value='a@b.c';
   await run("saveCompanyProfile()"); assert.strictEqual(run("NOTA_PERUSAHAAN.nama"),'PT BARU'); assert(calls.some(c=>c.tbl==='tg_config'&&c.op==='upsert')); });

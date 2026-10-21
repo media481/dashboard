@@ -166,7 +166,7 @@ js/app.js            ← file JS inti (sumber): logic utama + koneksi Supabase. 
 manifest.json         ← config PWA (name, theme_color, icons)
 service-worker.js     ← cache-first untuk aset ber-hash (daftarnya dibaca dari index.html), network-first untuk sisanya;
                         `APP_SHELL` (file tanpa hash) HARUS disinkronkan manual kalau nama file berubah.
-                        `CACHE_NAME` (saat ini `amiru-repo-cache-v156`) dinaikkan tiap rilis
+                        `CACHE_NAME` (saat ini `amiru-repo-cache-v157`) dinaikkan tiap rilis
 icons/                ← 9 file ikon PWA sesuai daftar di manifest.json
 sql/                  ← skema & migrasi bernomor 00-56. `00_SETUP_LENGKAP_SATU_FILE.sql` = gabungan
                         semuanya (idempoten, bebas urutan) untuk project baru. Untuk project yang SUDAH

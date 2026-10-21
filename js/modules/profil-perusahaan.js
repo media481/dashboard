@@ -16,70 +16,165 @@ let profileRekeningDraft = [];
 let profileKontakWaDraft = [];
 // Data URL logo yang baru dipilih user tapi belum disimpan (null = belum ganti, pakai logo lama)
 let profileLogoPendingDataUrl = null;
+// true = ada isian yang diubah tapi belum disimpan (menampilkan penanda di bar simpan)
+let profileDirty = false;
+
+// Nilai input berdasarkan id (aman kalau elemen belum ada)
+function cpVal(id) {
+    const el = document.getElementById(id);
+    return el && typeof el.value === 'string' ? el.value : '';
+}
+
+function cpRefreshDirty() {
+    const d = document.getElementById('cp_dirty');
+    if (d) d.hidden = !profileDirty;
+}
+
+function markCompanyProfileDirty() {
+    profileDirty = true;
+    cpRefreshDirty();
+    updateCompanyProfilePreview();
+}
+
+// Dipasang di semua input teks identitas: hapus tanda merah, tandai belum tersimpan, segarkan pratinjau.
+function onCompanyProfileInput(el) {
+    if (el && el.classList) el.classList.remove('cp-invalid');
+    markCompanyProfileDirty();
+}
+
+// Pratinjau ringkas kop & footer nota, diperbarui langsung saat mengetik (tanpa menyimpan).
+function updateCompanyProfilePreview() {
+    const box = document.getElementById('cp_preview');
+    if (!box) return;
+    const logo = profileLogoPendingDataUrl || NOTA_PERUSAHAAN.logo || '';
+    const brand = cpVal('cp_brand').trim();
+    const nama = cpVal('cp_nama').trim();
+    const alamat = cpVal('cp_alamat').trim();
+    const telp = cpVal('cp_telp').trim();
+    const email = cpVal('cp_email').trim();
+    const rek = profileRekeningDraft.filter(r => r.bank || r.nomor || r.an);
+    const wa = profileKontakWaDraft.map(n => (n || '').replace(/\D/g, '')).filter(Boolean);
+    const kontak = [alamat, telp ? 'Telp. ' + telp : '', email].filter(Boolean).map(escapeHtml).join(' &middot; ');
+    box.innerHTML = `
+        <div class="cp-pv-head">
+            ${logo ? `<img src="${escapeHtml(logo)}" alt="">` : ''}
+            <div>
+                <div class="cp-pv-brand">${brand ? escapeHtml(brand) : '<span class="cp-pv-empty">Brand</span>'}</div>
+                <div class="cp-pv-nama">${nama ? escapeHtml(nama) : '<span class="cp-pv-empty">Nama perusahaan</span>'}</div>
+            </div>
+        </div>
+        <div class="cp-pv-kontak">${kontak || '<span class="cp-pv-empty">Alamat, telepon &amp; email</span>'}</div>
+        <div class="cp-pv-sec">Pembayaran ke rekening</div>
+        ${rek.length ? rek.map(r => `<div class="cp-pv-rek"><b>${escapeHtml(r.bank || '-')}</b> ${escapeHtml(r.nomor || '-')}<span>a.n. ${escapeHtml(r.an || '-')}</span></div>`).join('') : '<div class="cp-pv-empty">Belum ada rekening</div>'}
+        <div class="cp-pv-sec">Kontak WA marketing</div>
+        ${wa.length ? `<div class="cp-pv-wa">${wa.map(n => `<span><i class="bi bi-whatsapp"></i> ${escapeHtml(n)}</span>`).join('')}</div>` : '<div class="cp-pv-empty">Belum ada nomor</div>'}
+    `;
+}
 
 function renderCompanyProfileForm() {
     profileRekeningDraft = (NOTA_PERUSAHAAN.rekening || []).map(r => ({ ...r }));
     profileKontakWaDraft = (NOTA_PERUSAHAAN.kontak_wa || []).slice();
     profileLogoPendingDataUrl = null;
+    profileDirty = false;
     return `
-        <div class="admin-section-header">
-            <div><h4>Profil Perusahaan</h4>
-            <p>Data ini dipakai untuk kop &amp; footer semua nota (Nota Pembayaran, Nota Riwayat, Kuitansi) — ubah di sini, otomatis ikut berubah di semua nota tanpa perlu edit kode.</p></div>
-        </div>
-
-        <div class="admin-fieldset" style="margin-top:28px;">
-            <div class="admin-fieldset-title"><i class="bi bi-card-image"></i> Logo</div>
-            <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-                <img id="cp_logo_preview" src="${escapeHtml(NOTA_PERUSAHAAN.logo)}" alt="Logo" style="height:56px;width:auto;max-width:160px;object-fit:contain;border:1px solid var(--line);border-radius:8px;padding:6px;background:#fff;">
+        <div class="cp-wrap">
+            <div class="cp-hero">
+                <div class="cp-hero-icon"><i class="bi bi-building"></i></div>
                 <div>
-                    <input type="file" id="cp_logo_file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange="handleCompanyLogoUpload(this)" style="display:block;">
-                    <p style="font-size:11.5px;color:var(--ink-soft);margin-top:6px;">PNG/JPEG/WebP/SVG, disarankan latar transparan, maks 2MB.</p>
+                    <h4>Profil Perusahaan</h4>
+                    <p>Data ini dipakai untuk kop &amp; footer semua nota (Nota Pembayaran, Nota Riwayat, Kuitansi). Ubah di sini, otomatis ikut berubah di semua nota tanpa perlu edit kode.</p>
                 </div>
             </div>
-        </div>
 
-        <div class="admin-fieldset">
-            <div class="admin-fieldset-title"><i class="bi bi-briefcase-fill"></i> Identitas</div>
-            <div class="form-group">
-                <label>Brand / Nama Singkat<span class="required">*</span></label>
-                <input type="text" id="cp_brand" value="${escapeHtml(NOTA_PERUSAHAAN.brand)}" placeholder="Contoh: AMIRU TOUR">
-            </div>
-            <div class="form-group">
-                <label>Nama Perusahaan (Resmi)<span class="required">*</span></label>
-                <input type="text" id="cp_nama" value="${escapeHtml(NOTA_PERUSAHAAN.nama)}" placeholder="Contoh: PT AMIRU HARAMAIN INDONESIA">
-            </div>
-            <div class="form-group">
-                <label>Alamat<span class="required">*</span></label>
-                <textarea id="cp_alamat" rows="2" placeholder="Alamat lengkap perusahaan">${escapeHtml(NOTA_PERUSAHAAN.alamat)}</textarea>
-            </div>
-            <div class="form-group">
-                <label>Telepon</label>
-                <input type="text" id="cp_telp" value="${escapeHtml(NOTA_PERUSAHAAN.telp)}" placeholder="0851-xxxx-xxxx">
-            </div>
-            <div class="form-group" style="margin-bottom:0;">
-                <label>Email</label>
-                <input type="email" id="cp_email" value="${escapeHtml(NOTA_PERUSAHAAN.email)}" placeholder="nama@domain.com">
-            </div>
-        </div>
+            <div class="cp-layout">
+                <div class="cp-main">
+                    <section class="cp-card">
+                        <div class="cp-card-head">
+                            <div class="cp-card-icon"><i class="bi bi-card-image"></i></div>
+                            <div><h5>Logo</h5><p>Tampil di kop nota dan sidebar.</p></div>
+                        </div>
+                        <div class="cp-card-body">
+                            <div class="cp-logo">
+                                <div class="cp-logo-tile"><img id="cp_logo_preview" src="${escapeHtml(NOTA_PERUSAHAAN.logo)}" alt="Logo"></div>
+                                <div class="cp-logo-info">
+                                    <label class="cp-btn-upload" for="cp_logo_file"><i class="bi bi-upload"></i> Pilih Logo</label>
+                                    <input type="file" id="cp_logo_file" class="cp-file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange="handleCompanyLogoUpload(this)">
+                                    <div id="cp_logo_name" class="cp-logo-name"></div>
+                                    <p class="cp-hint">PNG/JPEG/WebP/SVG, disarankan latar transparan, maks 2MB.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
 
-        <div class="admin-fieldset">
-            <div class="admin-fieldset-title"><i class="bi bi-bank"></i> Rekening Pembayaran</div>
-            <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;">Daftar rekening yang dicetak di footer semua nota. Bisa lebih dari satu.</p>
-            <div id="cp_rekening_list"></div>
-            <button type="button" class="btn-cancel" onclick="addCompanyRekeningRow()"><i class="bi bi-plus-lg"></i> Tambah Rekening</button>
-        </div>
+                    <section class="cp-card">
+                        <div class="cp-card-head">
+                            <div class="cp-card-icon"><i class="bi bi-briefcase-fill"></i></div>
+                            <div><h5>Identitas</h5><p>Nama dan kontak resmi yang dicetak di kop nota.</p></div>
+                        </div>
+                        <div class="cp-card-body">
+                            <div class="cp-grid">
+                                <div class="cp-field">
+                                    <label for="cp_brand">Brand / Nama Singkat<span class="required">*</span></label>
+                                    <input type="text" id="cp_brand" value="${escapeHtml(NOTA_PERUSAHAAN.brand)}" placeholder="Contoh: AMIRU TOUR" oninput="onCompanyProfileInput(this)">
+                                </div>
+                                <div class="cp-field">
+                                    <label for="cp_telp">Telepon</label>
+                                    <input type="text" id="cp_telp" value="${escapeHtml(NOTA_PERUSAHAAN.telp)}" placeholder="0851-xxxx-xxxx" oninput="onCompanyProfileInput(this)">
+                                </div>
+                                <div class="cp-field full">
+                                    <label for="cp_nama">Nama Perusahaan (Resmi)<span class="required">*</span></label>
+                                    <input type="text" id="cp_nama" value="${escapeHtml(NOTA_PERUSAHAAN.nama)}" placeholder="Contoh: PT AMIRU HARAMAIN INDONESIA" oninput="onCompanyProfileInput(this)">
+                                </div>
+                                <div class="cp-field full">
+                                    <label for="cp_alamat">Alamat<span class="required">*</span></label>
+                                    <textarea id="cp_alamat" rows="2" placeholder="Alamat lengkap perusahaan" oninput="onCompanyProfileInput(this)">${escapeHtml(NOTA_PERUSAHAAN.alamat)}</textarea>
+                                </div>
+                                <div class="cp-field full">
+                                    <label for="cp_email">Email</label>
+                                    <input type="email" id="cp_email" value="${escapeHtml(NOTA_PERUSAHAAN.email)}" placeholder="nama@domain.com" oninput="onCompanyProfileInput(this)">
+                                </div>
+                            </div>
+                        </div>
+                    </section>
 
-        <div class="admin-fieldset">
-            <div class="admin-fieldset-title"><i class="bi bi-whatsapp"></i> Kontak WA Marketing</div>
-            <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;margin-bottom:14px;">Nomor WA yang dicetak di bagian penutup caption marketing (Generate Teks WA Otomatis &amp; Generate Caption AI) — beda dari field Telepon di atas.</p>
-            <div id="cp_kontak_wa_list"></div>
-            <button type="button" class="btn-cancel" onclick="addCompanyKontakWaRow()"><i class="bi bi-plus-lg"></i> Tambah Nomor WA</button>
-        </div>
+                    <section class="cp-card">
+                        <div class="cp-card-head">
+                            <div class="cp-card-icon"><i class="bi bi-bank"></i></div>
+                            <div><h5>Rekening Pembayaran</h5><p>Dicetak di footer semua nota. Bisa lebih dari satu.</p></div>
+                        </div>
+                        <div class="cp-card-body">
+                            <div id="cp_rekening_list"></div>
+                            <button type="button" class="cp-add" onclick="addCompanyRekeningRow()"><i class="bi bi-plus-lg"></i> Tambah Rekening</button>
+                        </div>
+                    </section>
 
-        <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
-            <button class="btn-primary" onclick="saveCompanyProfile()"><i class="bi bi-save-fill"></i> Simpan Profil</button>
+                    <section class="cp-card">
+                        <div class="cp-card-head">
+                            <div class="cp-card-icon"><i class="bi bi-whatsapp"></i></div>
+                            <div><h5>Kontak WA Marketing</h5><p>Dicetak di penutup caption marketing (Teks WA Otomatis &amp; Caption AI). Berbeda dari field Telepon di atas.</p></div>
+                        </div>
+                        <div class="cp-card-body">
+                            <div id="cp_kontak_wa_list"></div>
+                            <button type="button" class="cp-add" onclick="addCompanyKontakWaRow()"><i class="bi bi-plus-lg"></i> Tambah Nomor WA</button>
+                        </div>
+                    </section>
+                </div>
+
+                <aside class="cp-aside">
+                    <div class="cp-aside-title"><i class="bi bi-eye"></i> Pratinjau kop &amp; footer nota <span class="cp-live">Langsung</span></div>
+                    <div id="cp_preview" class="cp-preview"></div>
+                    <p class="cp-hint">Ringkasan saja. Tata letak nota sebenarnya bisa sedikit berbeda.</p>
+                </aside>
+            </div>
+
+            <div class="cp-savebar">
+                <div class="cp-savebar-info">
+                    <span id="cp_dirty" class="cp-dirty" hidden><i class="bi bi-circle-fill"></i> Ada perubahan belum disimpan</span>
+                    <div id="cpProfileStatus"></div>
+                </div>
+                <button class="btn-primary" onclick="saveCompanyProfile()"><i class="bi bi-save-fill"></i> Simpan Profil</button>
+            </div>
         </div>
-        <div id="cpProfileStatus" style="margin-top:12px;"></div>
     `;
 }
 
@@ -87,24 +182,30 @@ function renderCompanyRekeningRows() {
     const wrap = document.getElementById('cp_rekening_list');
     if (!wrap) return;
     if (!profileRekeningDraft.length) {
-        wrap.innerHTML = `<p class="cp-rekening-empty">Belum ada rekening. Klik "Tambah Rekening" di bawah.</p>`;
+        wrap.innerHTML = `<p class="cp-rekening-empty"><i class="bi bi-bank"></i> Belum ada rekening. Klik "Tambah Rekening" di bawah.</p>`;
         return;
     }
     wrap.innerHTML = profileRekeningDraft.map((r, i) => `
-        <div class="cp-rekening-row">
-            <div class="cp-rekening-field">
-                <label>Nama Bank</label>
-                <input type="text" value="${escapeHtml(r.bank || '')}" placeholder="Contoh: Bank Syariah Indonesia" oninput="updateCompanyRekeningField(${i}, 'bank', this.value)">
+        <div class="cp-item">
+            <div class="cp-item-head">
+                <span class="cp-item-badge">${i + 1}</span>
+                <span class="cp-item-title">Rekening ${i + 1}</span>
+                <button type="button" class="btn-icon-ghost danger" title="Hapus rekening ${i + 1}" onclick="removeCompanyRekeningRow(${i})"><i class="bi bi-trash-fill"></i></button>
             </div>
-            <div class="cp-rekening-field">
-                <label>Nomor Rekening</label>
-                <input type="text" value="${escapeHtml(r.nomor || '')}" placeholder="Contoh: 2026 64 2027" oninput="updateCompanyRekeningField(${i}, 'nomor', this.value)">
+            <div class="cp-item-grid">
+                <div class="cp-field">
+                    <label>Nama Bank</label>
+                    <input type="text" value="${escapeHtml(r.bank || '')}" placeholder="Contoh: Bank Syariah Indonesia" oninput="updateCompanyRekeningField(${i}, 'bank', this.value)">
+                </div>
+                <div class="cp-field">
+                    <label>Nomor Rekening</label>
+                    <input type="text" inputmode="numeric" value="${escapeHtml(r.nomor || '')}" placeholder="Contoh: 2026 64 2027" oninput="updateCompanyRekeningField(${i}, 'nomor', this.value)">
+                </div>
+                <div class="cp-field">
+                    <label>Atas Nama</label>
+                    <input type="text" value="${escapeHtml(r.an || '')}" placeholder="Contoh: Amiru Tour" oninput="updateCompanyRekeningField(${i}, 'an', this.value)">
+                </div>
             </div>
-            <div class="cp-rekening-field">
-                <label>Atas Nama</label>
-                <input type="text" value="${escapeHtml(r.an || '')}" placeholder="Contoh: Amiru Tour" oninput="updateCompanyRekeningField(${i}, 'an', this.value)">
-            </div>
-            <button type="button" class="btn-icon-ghost danger" title="Hapus" onclick="removeCompanyRekeningRow(${i})"><i class="bi bi-trash-fill"></i></button>
         </div>
     `).join('');
 }
@@ -112,32 +213,35 @@ function renderCompanyRekeningRows() {
 function addCompanyRekeningRow() {
     profileRekeningDraft.push({ bank: '', nomor: '', an: '' });
     renderCompanyRekeningRows();
+    markCompanyProfileDirty();
 }
 
 function removeCompanyRekeningRow(index) {
     profileRekeningDraft.splice(index, 1);
     renderCompanyRekeningRows();
+    markCompanyProfileDirty();
 }
 
 function updateCompanyRekeningField(index, field, value) {
     if (!profileRekeningDraft[index]) return;
     profileRekeningDraft[index][field] = value;
+    markCompanyProfileDirty();
 }
 
 function renderCompanyKontakWaRows() {
     const wrap = document.getElementById('cp_kontak_wa_list');
     if (!wrap) return;
     if (!profileKontakWaDraft.length) {
-        wrap.innerHTML = `<p class="cp-rekening-empty">Belum ada nomor WA. Klik "Tambah Nomor WA" di bawah.</p>`;
+        wrap.innerHTML = `<p class="cp-rekening-empty"><i class="bi bi-whatsapp"></i> Belum ada nomor WA. Klik "Tambah Nomor WA" di bawah.</p>`;
         return;
     }
     wrap.innerHTML = profileKontakWaDraft.map((n, i) => `
-        <div class="cp-rekening-row" style="grid-template-columns:1fr auto;">
-            <div class="cp-rekening-field">
-                <label>Nomor WA (format 62xxxxxxxxxx)</label>
-                <input type="text" value="${escapeHtml(n || '')}" placeholder="Contoh: 6285122336300" oninput="updateCompanyKontakWaField(${i}, this.value)">
+        <div class="cp-item cp-item-wa">
+            <div class="cp-field">
+                <label>Nomor WA ${i + 1} <span class="cp-label-hint">(format 62xxxxxxxxxx)</span></label>
+                <input type="text" inputmode="numeric" value="${escapeHtml(n || '')}" placeholder="Contoh: 6285122336300" oninput="updateCompanyKontakWaField(${i}, this.value)">
             </div>
-            <button type="button" class="btn-icon-ghost danger" title="Hapus" onclick="removeCompanyKontakWaRow(${i})"><i class="bi bi-trash-fill"></i></button>
+            <button type="button" class="btn-icon-ghost danger" title="Hapus nomor ${i + 1}" onclick="removeCompanyKontakWaRow(${i})"><i class="bi bi-trash-fill"></i></button>
         </div>
     `).join('');
 }
@@ -145,15 +249,18 @@ function renderCompanyKontakWaRows() {
 function addCompanyKontakWaRow() {
     profileKontakWaDraft.push('');
     renderCompanyKontakWaRows();
+    markCompanyProfileDirty();
 }
 
 function removeCompanyKontakWaRow(index) {
     profileKontakWaDraft.splice(index, 1);
     renderCompanyKontakWaRows();
+    markCompanyProfileDirty();
 }
 
 function updateCompanyKontakWaField(index, value) {
     profileKontakWaDraft[index] = value;
+    markCompanyProfileDirty();
 }
 
 function handleCompanyLogoUpload(input) {
@@ -165,6 +272,9 @@ function handleCompanyLogoUpload(input) {
         profileLogoPendingDataUrl = e.target.result;
         const preview = document.getElementById('cp_logo_preview');
         if (preview) preview.src = profileLogoPendingDataUrl;
+        const nameEl = document.getElementById('cp_logo_name');
+        if (nameEl) nameEl.textContent = file.name || '';
+        markCompanyProfileDirty();
     };
     reader.onerror = () => showToast('❌ Gagal membaca file logo.');
     reader.readAsDataURL(file);
@@ -185,7 +295,11 @@ async function saveCompanyProfile() {
         .filter(Boolean);
 
     if (!brand || !nama || !alamat) {
-        if (statusEl) statusEl.innerHTML = `<p style="color:var(--danger);font-size:13px;"><i class="bi bi-exclamation-circle-fill"></i> Brand, Nama Perusahaan, dan Alamat wajib diisi.</p>`;
+        const kosong = [['cp_brand', brand], ['cp_nama', nama], ['cp_alamat', alamat]]
+            .filter(w => !w[1]).map(w => document.getElementById(w[0])).filter(Boolean);
+        kosong.forEach(el => { if (el.classList) el.classList.add('cp-invalid'); });
+        if (kosong[0] && kosong[0].focus) kosong[0].focus();
+        if (statusEl) statusEl.innerHTML = `<p class="cp-status is-error"><i class="bi bi-exclamation-circle-fill"></i> Brand, Nama Perusahaan, dan Alamat wajib diisi.</p>`;
         return;
     }
 
@@ -201,7 +315,7 @@ async function saveCompanyProfile() {
     };
 
     try {
-        if (statusEl) statusEl.innerHTML = `<p style="color:var(--ink-soft);font-size:13px;"><i class="bi bi-hourglass-split"></i> Menyimpan...</p>`;
+        if (statusEl) statusEl.innerHTML = `<p class="cp-status"><i class="bi bi-hourglass-split"></i> Menyimpan...</p>`;
         const { error } = await supabaseClient.from('tg_config').upsert(
             [{ key: COMPANY_PROFILE_KEY, value: JSON.stringify(payload) }],
             { onConflict: 'key' }
@@ -209,10 +323,12 @@ async function saveCompanyProfile() {
         if (error) throw error;
         NOTA_PERUSAHAAN = { ...payload };
         profileLogoPendingDataUrl = null;
-        if (statusEl) statusEl.innerHTML = `<p style="color:var(--success);font-size:13px;"><i class="bi bi-check-circle-fill"></i> Profil perusahaan tersimpan.</p>`;
+        profileDirty = false;
+        cpRefreshDirty();
+        if (statusEl) statusEl.innerHTML = `<p class="cp-status is-ok"><i class="bi bi-check-circle-fill"></i> Profil perusahaan tersimpan.</p>`;
         showToast('✅ Profil perusahaan tersimpan');
     } catch (err) {
-        if (statusEl) statusEl.innerHTML = `<p style="color:var(--danger);font-size:13px;"><i class="bi bi-exclamation-circle-fill"></i> Gagal menyimpan: ${escapeHtml(err.message || 'Error tidak diketahui')}</p>`;
+        if (statusEl) statusEl.innerHTML = `<p class="cp-status is-error"><i class="bi bi-exclamation-circle-fill"></i> Gagal menyimpan: ${escapeHtml(err.message || 'Error tidak diketahui')}</p>`;
         showToast('❌ Gagal menyimpan profil perusahaan');
     }
 }
@@ -226,6 +342,7 @@ function renderCompanyProfilePanel() {
     mount.dataset.ready = '1';
     renderCompanyRekeningRows();
     renderCompanyKontakWaRows();
+    updateCompanyProfilePreview();
 }
 
 // withBusy() (app.js): anti klik ganda + spinner. Dibungkus di sini karena fungsinya baru ada setelah modul dimuat.
