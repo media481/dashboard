@@ -50,7 +50,7 @@ Detail Edge Function ada di [`supabase/functions/README.md`](supabase/functions/
 
 ```
 index.html              Struktur HTML; memuat css/style.css, css/rekap-infografis.css, css/snapshot.css, css/jadwal-tamu.css, css/assets.css, css/hotel.css, css/detail-program.css, css/telegram.css, css/kepulangan.css, css/rooming.css, css/ig-scheduler.css, css/user-akses.css, css/keuangan.css, css/crosscheck.css, dan js/app.js
-js/app.js               SATU-SATUNYA file JS aktif (seluruh logic + koneksi Supabase)
+js/app.js               File JS inti (sumber): logic utama + koneksi Supabase; yang dimuat browser: js/app.min.js + js/modules/*.min.js
 css/style.css           CSS inti (warna brand via CSS custom properties, layout, komponen umum)
 css/rekap-infografis.css Modul CSS Rekap Program & Infografis (.rekap-*, .infografis-*, .poster-popup*, .poster-missing-badge, .metric-clickable)
 css/snapshot.css        Modul CSS Snapshot/Backup (.snap-*)
@@ -79,7 +79,7 @@ wrangler.jsonc          Konfigurasi deploy frontend ke Cloudflare
 .assetsignore           Daftar file yang TIDAK boleh ikut terpublish (wajib ada)
 ```
 
-> Hanya `js/app.js` yang dimuat `index.html`. File `.js` lepas lain di root atau `js/` (`utils.js`, `test-core.js`, `js/index.html`, dan sejenisnya) adalah sisa lama. Cek dulu apakah direferensikan sebelum diedit. Begitu juga `style.css` lepas di root: yang aktif selalu `css/style.css` (+ modul di `css/`).
+> `index.html` hanya memuat `js/app.min.js` (hasil minify `js/app.js`) dan modul lazy `js/modules/*.min.js`. File `.js` lepas lain di root atau `js/` (`utils.js`, `test-core.js`, `js/index.html`, dan sejenisnya) adalah sisa lama. Cek dulu apakah direferensikan sebelum diedit. Begitu juga `style.css` lepas di root: yang aktif selalu `css/style.css` (+ modul di `css/`).
 
 ## Mulai dari nol
 

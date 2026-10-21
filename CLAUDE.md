@@ -161,7 +161,8 @@ css/crosscheck.css   ← MODUL Crosscheck OCR poster vs data (semua `.cx-*` kecu
                         `.form-group input/select/textarea.cx-autofill-pending|cx-field-flash` (highlight autofill
                         di form program, field `admin_*`); di dalam `#adminFormContainer` aturan itu dijaga oleh
                         varian ber-ID (spesifisitas lebih tinggi), jadi urutan load tidak mengubah tampilan.
-js/app.js            ← SATU-SATUNYA file JS, berisi SEMUA logic + koneksi Supabase
+js/app.js            ← file JS inti (sumber): logic utama + koneksi Supabase. Yang dimuat browser adalah hasil minify
+                        `js/app.min.js` (+ modul lazy `js/modules/*.min.js`, lihat bagian "Modul JS lazy")
 manifest.json         ← config PWA (name, theme_color, icons)
 service-worker.js     ← cache-first untuk aset ber-hash (daftarnya dibaca dari index.html), network-first untuk sisanya;
                         `APP_SHELL` (file tanpa hash) HARUS disinkronkan manual kalau nama file berubah.
@@ -188,10 +189,11 @@ wrangler.jsonc, .assetsignore, _headers ← deploy & header Cloudflare. `.assets
                           lewat `!`). Folder/file internal baru harus ditambahkan ke sana
 ```
 
-**PENTING:** `index.html` HANYA punya satu `<script src="js/app.js">`. Tidak ada file JS
-lain yang di-load. Kalau menambah fitur, tambahkan langsung ke `js/app.js` (jangan buat
-file `.js` baru terpisah kecuali memang berniat mengubah `index.html` untuk me-load-nya
-juga, dan update `service-worker.js` precache list-nya).
+**PENTING:** `index.html` memuat `js/app.min.js` (hasil minify `js/app.js`); modul besar dimuat lazy dari
+`js/modules/*.min.js` lewat `ensureModuleLoaded()`. Tidak ada file JS lain yang di-load. Kalau menambah fitur, edit
+`js/app.js` (atau modul yang sesuai di `js/modules/`), lalu jalankan `npm run release`. Jangan buat file `.js` baru
+terpisah kecuali berniat mendaftarkannya sebagai modul lazy (`LAZY_MODULES` di app.js); service worker otomatis
+memprecache-nya lewat `moduleVersions` di index.html.
 
 Riwayat: proyek ini pernah beberapa kali disusun ulang (monolith → dipecah jadi ~22 file
 modular → digabung lagi jadi satu `js/app.js`). Kalau menemukan file `.js` lepas di root

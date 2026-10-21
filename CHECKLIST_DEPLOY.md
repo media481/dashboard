@@ -93,8 +93,9 @@ const SUPABASE_URL = "https://<project_ref>.supabase.co";
 const SUPABASE_ANON_KEY = "<anon_key_dari_project_yang_sama>";
 ```
 
-> Jangan lupa naikkan `CACHE_NAME` di `service-worker.js` (sekarang `v33`)
+> Jangan lupa naikkan `CACHE_NAME` di `service-worker.js` (sekarang `v156`)
 > kalau kamu ubah `index.html`/`css`/`app.js`, supaya PWA tidak pakai cache lama.
+> Setelah mengubah `css/` atau `js/`, jalankan juga `npm run release` (minify + hash `?v=`) dan commit hasilnya.
 
 ---
 
