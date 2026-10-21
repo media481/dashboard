@@ -223,24 +223,51 @@ function ensureLibLoaded(key) {
     return _lazyLibPromises[key];
 }
 
+// Apakah hasil request layak dicoba ulang? supabase-js TIDAK melempar exception saat
+// jaringan putus / server error: ia mengembalikan { data: null, error, status }.
+// Karena itu withRetry harus memeriksa hasilnya, bukan hanya menunggu catch().
+// Transient = jaringan putus (status 0 / pesan "Failed to fetch"), timeout (408),
+// terlalu banyak request (429), atau error server/gateway (5xx).
+// BUKAN transient (jangan diulang, hasilnya pasti sama): 4xx lain -- RLS/izin (401/403,
+// kode 42501), JWT kedaluwarsa, data/kolom salah.
+// Response fetch() mentah (tanpa .error) juga dikenali lewat .ok / .status.
+function isTransientResult(res) {
+    if (!res || typeof res !== 'object') return false;
+    const st = Number(res.status);
+    const statusTransient = st === 0 || st === 408 || st === 429 || st >= 500;
+    if (res.error) {
+        if (statusTransient) return true;
+        const msg = String(res.error.message || res.error);
+        return /failed to fetch|networkerror|network request failed|load failed|timeout|timed out/i.test(msg);
+    }
+    return res.ok === false && statusTransient;
+}
+
 // Retry helper untuk request baca (SELECT) yang gagal karena masalah jaringan
-// (mis. ERR_CONNECTION_TIMED_OUT, ERR_QUIC_PROTOCOL_ERROR, ERR_CONNECTION_ABORTED).
+// (mis. ERR_CONNECTION_TIMED_OUT, ERR_QUIC_PROTOCOL_ERROR, ERR_CONNECTION_ABORTED)
+// atau error server sementara (5xx). Mencoba ulang maksimal `retries` kali dengan
+// exponential backoff (1s, 2s, ...). Percobaan terakhir yang masih gagal:
+//   - hasil { error } dikembalikan apa adanya (pemanggil tetap memakai `if (error)`),
+//   - exception dilempar ulang.
 // HANYA dipakai untuk operasi baca — jangan dipakai untuk insert/update/upsert
 // karena retry bisa menyebabkan data dobel jika request pertama sebenarnya sukses
 // tapi responsnya yang gagal sampai ke browser.
 async function withRetry(fn, { retries = 2, delayMs = 1000, label = '' } = {}) {
     let lastErr;
     for (let attempt = 0; attempt <= retries; attempt++) {
+        let alasan;
         try {
-            return await fn();
+            const res = await fn();
+            if (attempt >= retries || !isTransientResult(res)) return res;
+            alasan = res.error || ('HTTP ' + res.status);
         } catch (err) {
             lastErr = err;
-            if (attempt < retries) {
-                console.warn(`${label || 'Request'} gagal (percobaan ${attempt + 1}/${retries + 1}), coba lagi dalam ${delayMs}ms...`, err);
-                await new Promise(r => setTimeout(r, delayMs));
-                delayMs *= 2; // exponential backoff: 1s, 2s, 4s, ...
-            }
+            if (attempt >= retries) throw err;
+            alasan = err;
         }
+        console.warn(`${label || 'Request'} gagal (percobaan ${attempt + 1}/${retries + 1}), coba lagi dalam ${delayMs}ms...`, alasan);
+        await new Promise(r => setTimeout(r, delayMs));
+        delayMs *= 2; // exponential backoff: 1s, 2s, 4s, ...
     }
     throw lastErr;
 }
