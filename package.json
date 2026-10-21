@@ -6,6 +6,10 @@
   "scripts": {
     "test": "node tests/test-core.js",
     "test:ci": "node tests/test-core.js",
+    "build": "node scripts/build.mjs",
+    "build:check": "node scripts/build.mjs --check",
+    "release": "npm run build && npm run stamp",
+    "check": "npm run build:check && npm run stamp:check",
     "stamp": "node scripts/stamp-versions.mjs",
     "stamp:check": "node scripts/stamp-versions.mjs --check",
     "test:ig": "node test-core.js",
@@ -14,5 +18,8 @@
   "engines": {
     "node": ">=18"
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
 }

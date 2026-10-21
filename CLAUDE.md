@@ -24,6 +24,22 @@ Bahasa UI & komentar kode: **Bahasa Indonesia**. Ikuti gaya ini saat menambah fi
 - PWA: `manifest.json` + `service-worker.js` (strategi network-first, fallback cache)
 - jsPDF (CDN) untuk generate kuitansi PDF
 
+## Build & rilis (minify + versi cache)
+
+`index.html` TIDAK memuat `js/app.js` / `css/*.css` langsung, melainkan hasil minify-nya:
+`js/app.min.js` dan `css/*.min.css` (dibuat esbuild lewat `scripts/build.mjs`), masing-masing
+dengan `?v=<hash isi file>` (ditempel `scripts/stamp-versions.mjs`). `_headers` meng-cache
+`/js/*` dan `/css/*` setahun (`immutable`), jadi versi di URL itulah yang memaksa browser
+mengunduh ulang saat file berubah.
+
+- **Tetap edit file sumber** (`js/app.js`, `css/*.css`). Jangan edit file `*.min.*` (ditimpa tiap build).
+- Setelah mengubah `js/` atau `css/`: jalankan `npm install` (sekali, untuk esbuild) lalu `npm run release`
+  (= `build` + `stamp`), dan commit file sumber, file `*.min.*`, dan `index.html` bersama-sama.
+- `npm run check` memastikan file `*.min.*` dan versi di `index.html` sinkron dengan sumbernya
+  (exit 1 kalau basi) -- cocok dipasang di CI. Lupa `release` = user bisa memakai file lama dari cache.
+- Naikkan `CACHE_NAME` di `service-worker.js` kalau daftar `APP_SHELL` atau isi file precache berubah.
+- `css/ig-scheduler.css` dll. tetap dipecah per modul; esbuild hanya meminify, tidak menggabungkan.
+
 ## Struktur file AKTIF (yang benar-benar di-load browser)
 
 ```

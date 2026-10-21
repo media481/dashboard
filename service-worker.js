@@ -3,27 +3,27 @@
 // fallback ke cache saat offline. Request ke domain luar (Supabase, CDN, Google Fonts)
 // tidak di-cache, dibiarkan langsung ke jaringan.
 
-const CACHE_NAME = 'amiru-repo-cache-v142';
+const CACHE_NAME = 'amiru-repo-cache-v143';
 
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
-  './css/style.css',
-  './css/rekap-infografis.css',
-  './css/snapshot.css',
-  './css/jadwal-tamu.css',
-  './css/assets.css',
-  './css/hotel.css',
-  './css/detail-program.css',
-  './css/telegram.css',
-  './css/kepulangan.css',
-  './css/rooming.css',
-  './css/ig-scheduler.css',
-  './css/user-akses.css',
-  './css/keuangan.css',
-  './css/crosscheck.css',
-  './js/app.js',
+  './css/style.min.css',
+  './css/rekap-infografis.min.css',
+  './css/snapshot.min.css',
+  './css/jadwal-tamu.min.css',
+  './css/assets.min.css',
+  './css/hotel.min.css',
+  './css/detail-program.min.css',
+  './css/telegram.min.css',
+  './css/kepulangan.min.css',
+  './css/rooming.min.css',
+  './css/ig-scheduler.min.css',
+  './css/user-akses.min.css',
+  './css/keuangan.min.css',
+  './css/crosscheck.min.css',
+  './js/app.min.js',
   './icons/icon-72.png',
   './icons/icon-96.png',
   './icons/icon-128.png',
