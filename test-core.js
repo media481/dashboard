@@ -143,6 +143,15 @@ test('escape quote di attr (aman dari break-out)', () => {
 console.log('\n=== TEST: konstanta & wiring kritis ===');
 test('MAX_SNAPSHOTS = 10', () => assert.strictEqual(T.MAX_SNAPSHOTS, 10));
 test('takeSnapshot terdefinisi', () => assert.strictEqual(typeof T.takeSnapshot, 'function'));
+test('Hapus Semua & Import membatalkan aksi kalau snapshot pengaman gagal', () => {
+  const calls = code.match(/ensureAutoSnapshot\('auto-pre-(clear|import)'/g) || [];
+  assert.strictEqual(calls.length, 2);
+  const guarded = code.match(/if \(!\(await ensureAutoSnapshot\('auto-pre-(clear|import)'[^\n]*\)\)\) \{[\s\S]{0,260}?return;/g) || [];
+  assert.strictEqual(guarded.length, 2, 'kedua pemanggil harus memeriksa hasil snapshot lalu return');
+});
+test("modul lazy 'snapshot' mendaftarkan ensureAutoSnapshot di api (stub meneruskan nilai balik)", () => {
+  assert.ok(/'snapshot':\s*\{[\s\S]*?api:\s*\[[^\]]*'ensureAutoSnapshot'/.test(code));
+});
 
 console.log('\n=== TEST: getHargaKamarJamaah (harga per tipe kamar) ===');
 const progFull = { harga_quad: 'Rp 32.500.000', harga_triple: 'Rp 37.500.000', harga_double: 'Rp 42.000.000' };
