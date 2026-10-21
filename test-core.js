@@ -149,6 +149,12 @@ test('Hapus Semua & Import membatalkan aksi kalau snapshot pengaman gagal', () =
   const guarded = code.match(/if \(!\(await ensureAutoSnapshot\('auto-pre-(clear|import)'[^\n]*\)\)\) \{[\s\S]{0,260}?return;/g) || [];
   assert.strictEqual(guarded.length, 2, 'kedua pemanggil harus memeriksa hasil snapshot lalu return');
 });
+test("modul lazy 'cicilan': openCicilanModal bisa dipanggil via stub, sinkron status tetap di inti", () => {
+  assert.ok(/'cicilan':\s*\{[\s\S]*?api:\s*\[[^\]]*'openCicilanModal'/.test(code));
+  assert.ok(/^async function syncJamaahStatus\(/m.test(code), 'syncJamaahStatus harus tetap di app.js');
+  assert.ok(/^async function syncJamaahStatusForProgram\(/m.test(code), 'syncJamaahStatusForProgram harus tetap di app.js');
+  assert.ok(!/^async function saveCicilan\(/m.test(code), 'saveCicilan sudah pindah ke modul');
+});
 test("modul lazy 'snapshot' mendaftarkan ensureAutoSnapshot di api (stub meneruskan nilai balik)", () => {
   assert.ok(/'snapshot':\s*\{[\s\S]*?api:\s*\[[^\]]*'ensureAutoSnapshot'/.test(code));
 });

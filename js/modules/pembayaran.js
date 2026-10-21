@@ -7,7 +7,7 @@
 // ATURAN: jangan mendeklarasikan ulang nama yang sudah ada di app.js (const/let ganda = SyntaxError).
 // Fungsi yang dirujuk index.html / kode inti SEBELUM modul dimuat didaftarkan di LAZY_MODULES['pembayaran'].api (app.js).
 // SENGAJA tetap di app.js: state cache panel (pbCacheJamaahAll, pbCacheTotalPerJamaah, pbSearchDebounce),
-// modal Kelola Cicilan (openCicilanModal, saveCicilan, deleteCicilan) dan sinkron status jamaah.
+// sinkron status jamaah (syncJamaahStatus*) dan state modal Kelola Cicilan; UI modalnya ada di modul 'cicilan' (js/modules/cicilan.js).
 // ============================================================
 
 // ============================================================
