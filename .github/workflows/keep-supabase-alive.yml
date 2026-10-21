@@ -1,34 +1,56 @@
 name: Keep Supabase Alive
 
+# Ping REST API Supabase tiap 3 hari supaya project free tier tidak auto-pause (jeda tanpa aktivitas ~7 hari).
+# URL & anon key dibaca dari secret SUPABASE_URL / SUPABASE_ANON_KEY kalau ada; kalau tidak, diambil dari
+# js/app.js (baris SUPABASE_URL / SUPABASE_ANON_KEY). Anon key memang publik (sudah dipakai browser), jadi aman.
 on:
   schedule:
-    - cron: '0 3 */3 * *'
+    - cron: '17 3 */3 * *'
   workflow_dispatch: {}
+
+permissions:
+  contents: read
 
 jobs:
   ping-supabase:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            js/app.js
+          sparse-checkout-cone-mode: false
+
       - name: Ping Supabase REST API
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-            echo "::error::Secret SUPABASE_URL atau SUPABASE_ANON_KEY belum di-set di repo (Settings > Secrets and variables > Actions)."
+          URL="${SUPABASE_URL:-}"
+          KEY="${SUPABASE_ANON_KEY:-}"
+          if [ -z "$URL" ]; then URL=$(grep -m1 -oP '^const SUPABASE_URL\s*=\s*"\K[^"]+' js/app.js || true); fi
+          if [ -z "$KEY" ]; then KEY=$(grep -m1 -oP '^const SUPABASE_ANON_KEY\s*=\s*"\K[^"]+' js/app.js || true); fi
+          URL="${URL%/}"
+
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then
+            echo "::error::URL/anon key Supabase tidak ditemukan (secret SUPABASE_URL & SUPABASE_ANON_KEY kosong dan js/app.js tidak terbaca)."
             exit 1
           fi
 
-          http_code=$(curl -s -o /tmp/response.json -w "%{http_code}" \
-            "${SUPABASE_URL}/rest/v1/programs?select=id&limit=1" \
-            -H "apikey: ${SUPABASE_ANON_KEY}" \
-            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")
+          # Coba sampai 3 kali (jaringan runner kadang putus sesaat); hanya gagal kalau semuanya gagal.
+          http_code=$(curl -sS --max-time 30 --retry 3 --retry-delay 5 --retry-all-errors \
+            -o /tmp/response.json -w "%{http_code}" \
+            "${URL}/rest/v1/programs?select=id&limit=1" \
+            -H "apikey: ${KEY}" \
+            -H "Authorization: Bearer ${KEY}") || http_code="000"
 
           echo "HTTP status: $http_code"
-          cat /tmp/response.json
+          head -c 300 /tmp/response.json 2>/dev/null || true
+          echo
 
           if [ "$http_code" != "200" ] && [ "$http_code" != "206" ]; then
-            echo "::error::Ping ke Supabase gagal dengan status $http_code"
+            echo "::error::Ping ke Supabase gagal dengan status $http_code (000 = tidak tersambung; 401/403 = anon key salah atau RLS menolak; 540/503 = project sedang paused)."
             exit 1
           fi
 
