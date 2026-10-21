@@ -3,7 +3,7 @@
 // fallback ke cache saat offline. Request ke domain luar (Supabase, CDN, Google Fonts)
 // tidak di-cache, dibiarkan langsung ke jaringan.
 
-const CACHE_NAME = 'amiru-repo-cache-v141';
+const CACHE_NAME = 'amiru-repo-cache-v142';
 
 const APP_SHELL = [
   './',
@@ -40,7 +40,9 @@ const APP_SHELL = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(APP_SHELL).catch((err) => {
+      // cache:'reload' = lewati HTTP cache browser saat precache, supaya salinan
+      // yang disimpan selalu segar (css/js sekarang diberi Cache-Control panjang).
+      return cache.addAll(APP_SHELL.map((url) => new Request(url, { cache: 'reload' }))).catch((err) => {
         console.warn('[SW] Gagal precache sebagian file:', err);
       });
     })
@@ -91,7 +93,9 @@ self.addEventListener('fetch', (event) => {
         return networkResponse;
       })
       .catch(async () => {
-        const cachedResponse = await caches.match(req);
+        // ignoreSearch: css/js di index.html kini berbentuk ?v=<hash>, sedangkan
+        // APP_SHELL menyimpan URL tanpa query -- tanpa ini fallback offline meleset.
+        const cachedResponse = await caches.match(req, { ignoreSearch: true });
         if (cachedResponse) return cachedResponse;
         // Fallback terakhir untuk navigasi halaman saat offline total
         if (req.mode === 'navigate') {
