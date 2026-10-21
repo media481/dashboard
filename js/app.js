@@ -1351,7 +1351,8 @@ function openIgSchedulerPage() {
     igApplyPlannerMode();   // dulu: sesudah loadIgPosts -> kelas layout planner telat terpasang
     const dataMuat = Promise.all([
         loadIgPosts(),          // renderIgCalendar() sudah dipanggil di dalam loadIgPosts()
-        loadIgContentPlan()     // dulu tidak ikut dimuat -> ide kosong/basi sampai tombol Refresh ditekan
+        loadIgContentPlan(),    // dulu tidak ikut dimuat -> ide kosong/basi sampai tombol Refresh ditekan
+        loadIgTasks()           // tasklist mingguan (dulu dimuat saat boot)
     ]);
     // Generate otomatis per pekan DINONAKTIFKAN: ide hanya dibuat saat tombol Generate / Isi dari Pola diklik.
     void dataMuat;
@@ -2433,7 +2434,10 @@ async function loadDataFromSupabase(forceRefresh = false) {
 
     try {
         const { data, error } = await withRetry(
-            () => supabaseClient.from('programs').select('*').order('created_at', { ascending: true }),
+            // [OPTIMASI DATA] Hanya kolom yang benar-benar dipetakan ke plainData di bawah
+            // (tanpa status_kepulangan/tgl_*_aktual yang tidak dipakai tabel utama).
+            // link_form sengaja tidak di-select: tidak ada di skema SQL & tidak dipakai.
+            () => supabaseClient.from('programs').select('id, nama, tgl, durasi, maskapai, harga_quint, teks_wa, link_itinerary, link_poster, poster_version, link_metaads, link_dokumentasi, created_at, is_active, kuota_pax, admin_data_lengkap').order('created_at', { ascending: true }),
             { label: 'Muat data program' }
         );
         if (error) throw error;
@@ -15370,10 +15374,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderPendaftaranSection();
     renderKbProgramSelector();
     renderFeaturedSection();
-    loadIgPosts();  // IG Scheduler — fire & forget di init
-    loadIgContentPlan();  // Content Planner Bulanan — fire & forget di init
-    loadIgTasks();  // Tasklist mingguan — fire & forget di init
-    loadIgAccounts();
+    // [OPTIMASI DATA] Data IG (post, rencana konten + 4 probe kolom + rencana tahunan,
+    // tasklist, akun) dulu dimuat tiap kali aplikasi dibuka walau halaman IG tidak dipakai.
+    // Semua variabel itu hanya dibaca di dalam halaman IG, jadi sekarang dimuat saat
+    // openIgSchedulerPage() dipanggil (termasuk lewat restoreLastView setelah F5).
     renderIgCalendar();
 
     // Bind sort listeners on table headers (nama, tgl, maskapai, isAvailable)
