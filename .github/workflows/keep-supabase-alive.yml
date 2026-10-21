@@ -1,57 +1,89 @@
 name: Keep Supabase Alive
 
-# Ping REST API Supabase tiap 3 hari supaya project free tier tidak auto-pause (jeda tanpa aktivitas ~7 hari).
-# URL & anon key dibaca dari secret SUPABASE_URL / SUPABASE_ANON_KEY kalau ada; kalau tidak, diambil dari
-# js/app.js (baris SUPABASE_URL / SUPABASE_ANON_KEY). Anon key memang publik (sudah dipakai browser), jadi aman.
+# Supabase free tier mem-pause project yang tidak ada request ke API selama 7 hari.
+# Workflow ini mengirim 1 request baca ringan tiap 3 hari supaya project tetap aktif.
 on:
   schedule:
+    # Menit 17 (bukan :00) karena jadwal tepat di awal jam sering tertunda/terlewat
+    # di GitHub Actions saat antrean sibuk. Hari ke-1,4,7,...,31 tiap bulan (UTC).
     - cron: '17 3 */3 * *'
   workflow_dispatch: {}
 
+# Izin minimal. `actions: write` hanya dipakai step terakhir untuk mengaktifkan ulang
+# workflow ini (lihat penjelasan di sana).
 permissions:
   contents: read
+  actions: write
+
+concurrency:
+  group: keep-supabase-alive
+  cancel-in-progress: false
 
 jobs:
   ping-supabase:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            js/app.js
-          sparse-checkout-cone-mode: false
-
       - name: Ping Supabase REST API
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          URL="${SUPABASE_URL:-}"
-          KEY="${SUPABASE_ANON_KEY:-}"
-          if [ -z "$URL" ]; then URL=$(grep -m1 -oP '^const SUPABASE_URL\s*=\s*"\K[^"]+' js/app.js || true); fi
-          if [ -z "$KEY" ]; then KEY=$(grep -m1 -oP '^const SUPABASE_ANON_KEY\s*=\s*"\K[^"]+' js/app.js || true); fi
-          URL="${URL%/}"
+          set -u
 
-          if [ -z "$URL" ] || [ -z "$KEY" ]; then
-            echo "::error::URL/anon key Supabase tidak ditemukan (secret SUPABASE_URL & SUPABASE_ANON_KEY kosong dan js/app.js tidak terbaca)."
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+            echo "::error::Secret SUPABASE_URL atau SUPABASE_ANON_KEY belum di-set di repo (Settings > Secrets and variables > Actions)."
             exit 1
           fi
 
-          # Coba sampai 3 kali (jaringan runner kadang putus sesaat); hanya gagal kalau semuanya gagal.
-          http_code=$(curl -sS --max-time 30 --retry 3 --retry-delay 5 --retry-all-errors \
-            -o /tmp/response.json -w "%{http_code}" \
-            "${URL}/rest/v1/programs?select=id&limit=1" \
-            -H "apikey: ${KEY}" \
-            -H "Authorization: Bearer ${KEY}") || http_code="000"
+          # Buang spasi/newline/garis miring di ujung yang sering ikut ter-paste ke secret.
+          SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
+          SUPABASE_URL="${SUPABASE_URL%/}"
+          SUPABASE_ANON_KEY=$(printf '%s' "$SUPABASE_ANON_KEY" | tr -d '[:space:]')
 
-          echo "HTTP status: $http_code"
-          head -c 300 /tmp/response.json 2>/dev/null || true
-          echo
+          # Timeout + retry supaya gangguan jaringan sesaat tidak membuat run gagal.
+          # Isi respons tidak dicetak (cukup status HTTP).
+          http_code=$(curl -sS -o /dev/null -w "%{http_code}" \
+            --max-time 30 --retry 3 --retry-delay 10 --retry-all-errors \
+            "${SUPABASE_URL}/rest/v1/programs?select=id&limit=1" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}") || http_code="000"
 
-          if [ "$http_code" != "200" ] && [ "$http_code" != "206" ]; then
-            echo "::error::Ping ke Supabase gagal dengan status $http_code (000 = tidak tersambung; 401/403 = anon key salah atau RLS menolak; 540/503 = project sedang paused)."
-            exit 1
-          fi
+          echo "HTTP status: ${http_code}"
 
-          echo "✅ Supabase project aktif dan merespons normal."
+          case "$http_code" in
+            200|206)
+              echo "✅ Supabase project aktif dan merespons normal."
+              ;;
+            000)
+              echo "::error::Tidak bisa terhubung ke Supabase. Cek nilai secret SUPABASE_URL (harus berbentuk https://<ref>.supabase.co)."
+              exit 1
+              ;;
+            401|403)
+              echo "::error::Supabase menolak key (status ${http_code}). Cek secret SUPABASE_ANON_KEY (harus anon/public key project ini)."
+              exit 1
+              ;;
+            404)
+              echo "::error::Tabel 'programs' tidak ditemukan (404). Kalau tabelnya sudah diganti nama, ubah path di workflow ini."
+              exit 1
+              ;;
+            5*)
+              echo "::error::Supabase mengembalikan status ${http_code}. Project mungkin sedang PAUSED: buka dashboard Supabase dan tekan Restore project."
+              exit 1
+              ;;
+            *)
+              echo "::error::Ping ke Supabase gagal dengan status ${http_code}"
+              exit 1
+              ;;
+          esac
+
+      # GitHub otomatis menonaktifkan workflow terjadwal di repo yang 60 hari tanpa aktivitas
+      # (commit dsb.), sehingga ping berhenti diam-diam. Mengaktifkan ulang workflow ini di
+      # tiap run adalah cara yang umum dipakai untuk mereset hitungan itu. Kalau gagal,
+      # ping di atas tetap dianggap sukses.
+      - name: Jaga workflow tetap aktif
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow enable "${{ github.workflow }}" --repo "${{ github.repository }}"
