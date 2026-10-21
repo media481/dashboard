@@ -1766,5 +1766,18 @@
 
 <div id="notaRenderArea" style="position:fixed;left:-99999px;top:0;pointer-events:none;"></div>
 
+<!-- [OPTIMASI] Daftarkan Service Worker (sebelumnya service-worker.js ada tapi tidak pernah didaftarkan,
+     jadi cache app shell & fallback offline tidak aktif). Didaftarkan setelah halaman selesai dimuat
+     agar tidak bersaing dengan request awal. Gagal daftar tidak mengganggu aplikasi. -->
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./service-worker.js').catch(function (err) {
+            console.warn('[SW] Gagal mendaftar:', err);
+        });
+    });
+}
+</script>
+
 </body>
 </html>
