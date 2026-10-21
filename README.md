@@ -50,7 +50,7 @@ Detail Edge Function ada di [`supabase/functions/README.md`](supabase/functions/
 
 ```
 index.html              Struktur HTML; memuat css/style.css, css/rekap-infografis.css, css/snapshot.css, css/jadwal-tamu.css, css/assets.css, css/hotel.css, css/detail-program.css, css/telegram.css, css/kepulangan.css, css/rooming.css, css/ig-scheduler.css, css/user-akses.css, css/keuangan.css, css/crosscheck.css, dan js/app.js
-js/app.js               File JS inti (sumber): logic utama + koneksi Supabase; yang dimuat browser: js/app.min.js + js/modules/*.min.js
+js/app.js               SATU-SATUNYA file JS aktif (seluruh logic + koneksi Supabase)
 css/style.css           CSS inti (warna brand via CSS custom properties, layout, komponen umum)
 css/rekap-infografis.css Modul CSS Rekap Program & Infografis (.rekap-*, .infografis-*, .poster-popup*, .poster-missing-badge, .metric-clickable)
 css/snapshot.css        Modul CSS Snapshot/Backup (.snap-*)
@@ -66,7 +66,7 @@ css/user-akses.css      Modul CSS User & Akses Menu (.us-*, .rma-*)
 css/keuangan.css        Modul CSS Keuangan (.pb-*, .cicilan-*, .nota-*, .kuitansi-*, .an-* Audit Nota)
 css/crosscheck.css      Modul CSS Crosscheck OCR poster (.cx-*, @keyframes cxFieldFlash)
 manifest.json           Konfigurasi PWA
-service-worker.js       Cache-first untuk aset ber-hash (css/js ?v=), network-first untuk sisanya; CACHE_NAME dinaikkan tiap rilis
+service-worker.js       Precache + network-first; CACHE_NAME dinaikkan tiap rilis
 icons/, assets/         Ikon PWA dan logo
 sql/                    Skema dan migrasi (00 = setup lengkap satu file, 01-56 = migrasi bertahap)
 supabase/functions/     Edge Function (Deno/TypeScript)
@@ -79,7 +79,7 @@ wrangler.jsonc          Konfigurasi deploy frontend ke Cloudflare
 .assetsignore           Daftar file yang TIDAK boleh ikut terpublish (wajib ada)
 ```
 
-> `index.html` hanya memuat `js/app.min.js` (hasil minify `js/app.js`) dan modul lazy `js/modules/*.min.js`. File `.js` lepas lain di root atau `js/` (`utils.js`, `test-core.js`, `js/index.html`, dan sejenisnya) adalah sisa lama. Cek dulu apakah direferensikan sebelum diedit. Begitu juga `style.css` lepas di root: yang aktif selalu `css/style.css` (+ modul di `css/`).
+> Hanya `js/app.js` yang dimuat `index.html`. File `.js` lepas lain di root atau `js/` (`utils.js`, `test-core.js`, `js/index.html`, dan sejenisnya) adalah sisa lama. Cek dulu apakah direferensikan sebelum diedit. Begitu juga `style.css` lepas di root: yang aktif selalu `css/style.css` (+ modul di `css/`).
 
 ## Mulai dari nol
 
@@ -90,7 +90,7 @@ Butuh: akun Supabase, akun Cloudflare, Node.js 18+, dan Supabase CLI (`npm i -g 
 3. **Edge Function.** Deploy fungsi yang dibutuhkan dan set secret-nya. Lihat [`supabase/functions/README.md`](supabase/functions/README.md).
 4. **Konfigurasi frontend.** Isi `SUPABASE_URL` dan `SUPABASE_ANON_KEY` di `js/app.js` (bagian "Supabase Config" di baris paling atas) dengan project yang **sama** dengan tempat SQL dan fungsi dideploy. Project yang tidak cocok menyebabkan error `PGRST301`.
 5. **Instagram (opsional).** Ikuti `INSTAGRAM_AUTOUPLOAD_SETUP.md`: Meta App, tabel `ig_*`, bucket Storage `ig-media`, dan Worker di `scheduler/`.
-6. **Secret GitHub (opsional).** Set `SUPABASE_URL` dan `SUPABASE_ANON_KEY` di repo agar workflow `keep-supabase-alive` jalan, supaya project free tier tidak auto-pause.
+6. **Keep-alive Supabase.** Workflow `keep-supabase-alive` tidak butuh secret: URL dan anon key dibaca langsung dari `js/app.js` (keduanya memang publik), jadi selalu sama dengan project yang dipakai aplikasi. Secret `SUPABASE_URL` / `SUPABASE_ANON_KEY` lama di repo boleh dihapus.
 
 ### Menjalankan lokal
 
