@@ -196,12 +196,7 @@ async function exportJamaahExcel(btn) {
         if (error) throw error;
         if (!jamaah || !jamaah.length) { showToast('Belum ada jamaah untuk program ini', 'error'); return; }
 
-        const jamaahIds = jamaah.map(j => j.id);
-        const { data: bayarData, error: bErr } = await supabaseClient
-            .from('pembayaran_jamaah').select('jamaah_id, jumlah').in('jamaah_id', jamaahIds);
-        if (bErr) throw bErr;
-        const totalPerJamaah = {};
-        (bayarData || []).forEach(b => { totalPerJamaah[b.jamaah_id] = (totalPerJamaah[b.jamaah_id] || 0) + Number(b.jumlah || 0); });
+        const totalPerJamaah = await fetchTotalBayar({ programId: kbSelectedProgram });
 
         const kepulanganLabel = { belum_berangkat: 'Belum Berangkat', sudah_berangkat: 'Sudah Berangkat', sudah_pulang: 'Sudah Pulang', batal: 'Batal / No-show' };
         const programStatusKepulangan = (program && program.status_kepulangan) || 'belum_berangkat';

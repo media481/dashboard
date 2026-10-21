@@ -245,6 +245,33 @@ async function withRetry(fn, { retries = 2, delayMs = 1000, label = '' } = {}) {
     throw lastErr;
 }
 
+// Total pembayaran per jamaah, dihitung DATABASE lewat view v_total_bayar
+// (sql/59_tambah_view_total_bayar.sql). Mengembalikan { [jamaah_id]: total }.
+// Jamaah tanpa pembayaran tidak ada di hasil -> pemanggil memakai `|| 0`.
+// Filter: programId (satu program) atau programIds (beberapa program); tanpa
+// filter = semua jamaah. Dipaginasi per 1000 baris supaya tidak terpotong diam-diam
+// oleh batas max-rows Supabase. Melempar error kalau query gagal.
+async function fetchTotalBayar({ programId = null, programIds = null } = {}) {
+    if (Array.isArray(programIds) && !programIds.length) return {};
+    const PAGE = 1000;
+    const totals = {};
+    for (let from = 0; ; from += PAGE) {
+        const { data, error } = await withRetry(() => {
+            let q = supabaseClient.from('v_total_bayar')
+                .select('jamaah_id, total_dibayar')
+                .order('jamaah_id', { ascending: true })
+                .range(from, from + PAGE - 1);
+            if (programId != null) q = q.eq('program_id', programId);
+            else if (Array.isArray(programIds)) q = q.in('program_id', programIds);
+            return q;
+        }, { label: 'Muat total pembayaran' });
+        if (error) throw error;
+        (data || []).forEach(r => { totals[r.jamaah_id] = Number(r.total_dibayar || 0); });
+        if (!data || data.length < PAGE) break;
+    }
+    return totals;
+}
+
 // Escape aman untuk disisipkan di dalam atribut onclick="...('...')"
 // (escapeHtml saja tidak cukup karena tidak meng-escape tanda kutip tunggal)
 function escapeJsAttr(str) {
@@ -7645,17 +7672,7 @@ async function loadKbJamaahForProgram(programId) {
             return;
         }
 
-        const jamaahIds = jamaah.map(j => j.id);
-        const { data: bayarData, error: bErr } = await withRetry(
-            () => supabaseClient.from('pembayaran_jamaah').select('jamaah_id, jumlah').in('jamaah_id', jamaahIds),
-            { label: 'Muat data pembayaran' }
-        );
-        if (bErr) throw bErr;
-
-        const totalPerJamaah = {};
-        (bayarData || []).forEach(b => {
-            totalPerJamaah[b.jamaah_id] = (totalPerJamaah[b.jamaah_id] || 0) + Number(b.jumlah || 0);
-        });
+        const totalPerJamaah = await fetchTotalBayar({ programId });
 
         let grandTotalTagihan = 0, grandTotalDibayar = 0, anyHargaKosong = false;
 
@@ -8756,14 +8773,7 @@ async function syncJamaahStatusForProgram(programId) {
         const { data: jamaahRows, error: jErr } = await supabaseClient.from('kb_jamaah').select('id, status, tipe_kamar, harga_custom').eq('program_id', programId);
         if (jErr || !jamaahRows || !jamaahRows.length) return;
 
-        const jamaahIds = jamaahRows.map(j => j.id);
-        const { data: bayarData, error: bErr } = await supabaseClient.from('pembayaran_jamaah').select('jamaah_id, jumlah').in('jamaah_id', jamaahIds);
-        if (bErr) return;
-
-        const totalPerJamaah = {};
-        (bayarData || []).forEach(b => {
-            totalPerJamaah[b.jamaah_id] = (totalPerJamaah[b.jamaah_id] || 0) + Number(b.jumlah || 0);
-        });
+        const totalPerJamaah = await fetchTotalBayar({ programId });
 
         const updates = [];
         for (const j of jamaahRows) {

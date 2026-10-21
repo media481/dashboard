@@ -289,12 +289,8 @@ async function renderTodoCsPanel() {
 
         let totalPerJamaah = {};
         if (jamaahAll.length) {
-            const { data: bayarData, error: bErr } = await withRetry(
-                () => supabaseClient.from('pembayaran_jamaah').select('jamaah_id, jumlah').in('jamaah_id', jamaahAll.map(j => j.id)),
-                { label: 'Muat data pembayaran' }
-            );
-            if (bErr) throw bErr;
-            (bayarData || []).forEach(b => { totalPerJamaah[b.jamaah_id] = (totalPerJamaah[b.jamaah_id] || 0) + Number(b.jumlah || 0); });
+            const programIds = [...new Set(jamaahAll.map(j => j.program_id).filter(Boolean))];
+            totalPerJamaah = await fetchTotalBayar({ programIds });
         }
 
         // Simpan ke cache milik tab ini + "titipkan" ke cache Pembayaran supaya

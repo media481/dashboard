@@ -146,17 +146,7 @@ async function renderPembayaranPanel() {
             return;
         }
 
-        const jamaahIds = jamaahAll.map(j => j.id);
-        const { data: bayarData, error: bErr } = await withRetry(
-            () => supabaseClient.from('pembayaran_jamaah').select('jamaah_id, jumlah').in('jamaah_id', jamaahIds),
-            { label: 'Muat data pembayaran' }
-        );
-        if (bErr) throw bErr;
-
-        const totalPerJamaah = {};
-        (bayarData || []).forEach(b => {
-            totalPerJamaah[b.jamaah_id] = (totalPerJamaah[b.jamaah_id] || 0) + Number(b.jumlah || 0);
-        });
+        const totalPerJamaah = await fetchTotalBayar();
 
         // Simpan ke cache -- pencarian/filter berikutnya baca dari sini saja,
         // TIDAK fetch ulang ke server (lihat renderPembayaranTable()).

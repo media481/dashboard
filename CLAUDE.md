@@ -271,6 +271,13 @@ satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
 - Kelebihan bayar (total dibayar > harga program) ditampilkan sebagai peringatan
   info di ringkasan modal Kelola Cicilan — sistem tidak memblokir pembayaran
   melebihi sisa tagihan (fleksibel untuk kasus DP awal besar/pelunasan lebih).
+- **Total dibayar per jamaah dihitung di database**, bukan di browser: view `v_total_bayar`
+  (`sql/59_tambah_view_total_bayar.sql`, `security_invoker`, hanya `authenticated`) dibaca lewat
+  `fetchTotalBayar({ programId | programIds })` di `app.js` (dipaginasi 1000 baris). Jangan kembali
+  ke `select('jumlah').in('jamaah_id', ...)` + sum di JS: terpotong diam-diam di 1000 baris dan
+  URL `.in()` kepanjangan. Kalau mau menambah halaman yang butuh total bayar, pakai helper itu.
+  SQL 59 WAJIB dijalankan sebelum frontend ini di-deploy. Query yang butuh baris rinci
+  (modal Kelola Cicilan, riwayat nota, export) tetap membaca `pembayaran_jamaah`.
 - `saveCicilan()` punya guard `cicilanSaving` untuk cegah insert dobel kalau
   tombol submit di-double click/tap saat koneksi lambat.
 - Hapus jamaah (`kb_jamaah`) akan **cascade delete** semua riwayat pembayarannya
