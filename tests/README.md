@@ -23,6 +23,14 @@ npm test
 - `escapeHtml` / `escapeJsAttr` — escaping XSS.
 - Konstanta kritis: `MAX_SNAPSHOTS === 10`, `takeSnapshot` terdefinisi.
 
+## Tes integrasi modul lazy (`tests/test-modules.js`)
+
+Menjalankan `app.js` + modul `js/modules/*.js` di sandbox Node (DOM & Supabase ditiru) untuk memastikan stub →
+modul → fungsi asli benar-benar jalan. Yang dijaga: Hapus Semua & Import **dibatalkan** kalau snapshot pengaman
+gagal (termasuk saat modul snapshot gagal diunduh), penanda snapshot harian tidak terkunci kalau unduhan gagal,
+modul Profil Perusahaan/Kelola Cicilan menulis ke `let` di `app.js`. `USE_MIN=1 node tests/test-modules.js`
+menguji hasil build `*.min.js`. Tes baru: tambahkan `await T('nama', async () => { ... })`.
+
 ## Cara kerja
 
 `app.js` tidak dirancang untuk di-`import` (memakai `document`/`window` global di level

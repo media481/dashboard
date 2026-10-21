@@ -6615,16 +6615,23 @@ function importAdminData() {
 // sehingga tiap hari admin pertama yang buka panel otomatis menyimpan cadangan.
 // Menyimpan penanda hari terakhir di localStorage agar tidak dobel dalam sehari.
 const SNAP_DAILY_KEY = 'amiru_last_daily_snapshot';
+let _dailySnapInflight = false; // modul snapshot diunduh async: cegah dua pemanggilan beruntun sama-sama lolos cek tanggal
 async function maybeDailySnapshot() {
+    if (_dailySnapInflight) return;
+    _dailySnapInflight = true;
     try {
         const today = new Date().toISOString().slice(0, 10);
         const last = localStorage.getItem(SNAP_DAILY_KEY);
         if (last === today) return; // sudah ada snapshot hari ini
+        // Muat modul DULU, baru kunci penanda hari ini: kalau unduhan gagal (offline), hari ini masih
+        // boleh dicoba lagi di pembukaan panel berikutnya, bukan terkunci tanpa snapshot.
+        await ensureModuleLoaded('snapshot');
         localStorage.setItem(SNAP_DAILY_KEY, today);
-        await ensureModuleLoaded('snapshot'); // modul baru diunduh kalau memang perlu snapshot hari ini
         await takeSnapshot('Harian ' + new Date().toLocaleDateString('id-ID'), 'auto-daily');
     } catch (err) {
         console.warn('maybeDailySnapshot gagal:', err);
+    } finally {
+        _dailySnapInflight = false;
     }
 }
 

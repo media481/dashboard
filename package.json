@@ -4,8 +4,8 @@
   "description": "Dashboard Amiru — PWA manajemen program Umroh (vanilla JS + Supabase).",
   "private": true,
   "scripts": {
-    "test": "node tests/test-core.js",
-    "test:ci": "node tests/test-core.js",
+    "test": "node tests/test-core.js && node tests/test-modules.js",
+    "test:ci": "node tests/test-core.js && node tests/test-modules.js",
     "build": "node scripts/build.mjs",
     "build:check": "node scripts/build.mjs --check",
     "release": "npm run build && npm run stamp",
