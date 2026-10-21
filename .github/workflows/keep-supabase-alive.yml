@@ -26,36 +26,28 @@ jobs:
     steps:
       - name: Ping Supabase REST API
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -u
 
-          # URL project sudah publik (tertanam di js/app.js), jadi dipakai sebagai cadangan
-          # kalau secret SUPABASE_URL kosong atau salah ketik.
-          DEFAULT_URL="https://vlrizloxsjejcfuxuyju.supabase.co"
+          # Sumber kebenaran tunggal: URL & anon key dibaca dari js/app.js, yaitu project yang
+          # benar-benar dipakai aplikasi. (Keduanya memang publik karena dikirim ke browser,
+          # jadi tidak perlu secret -- dan tidak bisa lagi menunjuk ke project lain/lama.)
+          git clone --quiet --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repo
+          APP_JS="repo/js/app.js"
 
-          if [ -z "${SUPABASE_ANON_KEY:-}" ]; then
-            echo "::error::Secret SUPABASE_ANON_KEY belum di-set di repo (Settings > Secrets and variables > Actions)."
+          extract() {
+            grep -oE "const $1 *= *[\"'][^\"']+[\"']" "$APP_JS" | head -1 | sed -E "s/^[^\"']*[\"']//; s/[\"']\$//"
+          }
+          url=$(extract SUPABASE_URL | tr -d '[:space:]')
+          SUPABASE_ANON_KEY=$(extract SUPABASE_ANON_KEY | tr -d '[:space:]')
+          url="${url%/}"
+
+          if ! printf '%s' "$url" | grep -Eq '^https://[a-z0-9]+\.supabase\.co$' || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Tidak bisa membaca SUPABASE_URL / SUPABASE_ANON_KEY dari js/app.js (format 'const SUPABASE_URL = \"...\"' berubah?). Sesuaikan fungsi extract di workflow ini."
             exit 1
           fi
-
-          # Rapikan secret: buang spasi/newline/tanda kutip yang sering ikut ter-paste.
-          SUPABASE_ANON_KEY=$(printf '%s' "$SUPABASE_ANON_KEY" | tr -d "[:space:]\"'")
-          url=$(printf '%s' "${SUPABASE_URL:-}" | tr -d "[:space:]\"'")
-
-          # Tambah https:// kalau lupa, lalu potong path (mis. /rest/v1/) -> sisakan host saja.
-          case "$url" in
-            "" | http://* | https://*) ;;
-            *) url="https://$url" ;;
-          esac
-          url=$(printf '%s' "$url" | sed -E 's#^(https?://[^/]+).*#\1#')
-
-          if ! printf '%s' "$url" | grep -Eq '^https://[a-z0-9]+\.supabase\.co$'; then
-            echo "::warning::Secret SUPABASE_URL kosong/tidak berbentuk https://<ref>.supabase.co. Memakai URL project dari js/app.js: ${DEFAULT_URL}"
-            url="$DEFAULT_URL"
-          fi
-          echo "Host tujuan: ${url#https://}"
+          echo "Host tujuan (dari js/app.js): ${url#https://}"
 
           # Timeout + retry supaya gangguan jaringan sesaat tidak membuat run gagal.
           # Isi respons tidak dicetak (cukup status HTTP).
@@ -70,7 +62,7 @@ jobs:
 
           if [ "$rc" -ne 0 ]; then
             case "$rc" in
-              6)  echo "::error::Host ${url#https://} tidak ditemukan (DNS gagal). Referensi project salah ketik, atau project sudah dihapus." ;;
+              6)  echo "::error::Host ${url#https://} tidak ditemukan (DNS gagal). Project yang dipakai aplikasi (js/app.js) sudah dihapus atau URL-nya salah -- aplikasi juga tidak akan bisa terhubung." ;;
               7)  echo "::error::Koneksi ke ${url#https://} ditolak/gagal. Project mungkin sedang bermasalah atau dijeda." ;;
               28) echo "::error::Timeout menghubungi ${url#https://} (>30 detik, sudah 3x retry)." ;;
               *)  echo "::error::curl gagal (exit ${rc}) saat menghubungi ${url#https://}. Lihat pesan curl di atas." ;;
@@ -83,7 +75,7 @@ jobs:
               echo "✅ Supabase project aktif dan merespons normal."
               ;;
             401|403)
-              echo "::error::Supabase menolak key (status ${http_code}). Cek secret SUPABASE_ANON_KEY (harus anon/public key project ini)."
+              echo "::error::Supabase menolak key (status ${http_code}). Cek SUPABASE_ANON_KEY di js/app.js."
               exit 1
               ;;
             404)
