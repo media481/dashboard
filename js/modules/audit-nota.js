@@ -7,7 +7,8 @@
 // ATURAN: jangan mendeklarasikan ulang nama yang sudah ada di app.js (const/let ganda = SyntaxError).
 // Fungsi yang dirujuk index.html / kode inti SEBELUM modul dimuat didaftarkan di LAZY_MODULES['audit-nota'].api (app.js).
 // SENGAJA tetap di app.js: logNotaAudit(), sha256Hex(), getPetugasNama() (pencatatan log saat nota diunduh,
-// tidak boleh bergantung pada unduhan modul), pembangun nota (buildNotaHTML, ...) dan lightbox nota.
+// tidak boleh bergantung pada unduhan modul) dan lightbox nota. Pembangun nota (buildNotaHTML, ...) ada di modul 'nota':
+// modul ini memakai deps: ['nota'] di LAZY_MODULES, jadi nota.js sudah termuat sebelum file ini dieksekusi.
 // ============================================================
 
 // ---- Panel Admin "Audit Nota": daftar log yang bisa dicari/difilter, dengan
