@@ -31,33 +31,56 @@ jobs:
         run: |
           set -u
 
-          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_ANON_KEY:-}" ]; then
-            echo "::error::Secret SUPABASE_URL atau SUPABASE_ANON_KEY belum di-set di repo (Settings > Secrets and variables > Actions)."
+          # URL project sudah publik (tertanam di js/app.js), jadi dipakai sebagai cadangan
+          # kalau secret SUPABASE_URL kosong atau salah ketik.
+          DEFAULT_URL="https://vlrizloxsjejcfuxuyju.supabase.co"
+
+          if [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+            echo "::error::Secret SUPABASE_ANON_KEY belum di-set di repo (Settings > Secrets and variables > Actions)."
             exit 1
           fi
 
-          # Buang spasi/newline/garis miring di ujung yang sering ikut ter-paste ke secret.
-          SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
-          SUPABASE_URL="${SUPABASE_URL%/}"
-          SUPABASE_ANON_KEY=$(printf '%s' "$SUPABASE_ANON_KEY" | tr -d '[:space:]')
+          # Rapikan secret: buang spasi/newline/tanda kutip yang sering ikut ter-paste.
+          SUPABASE_ANON_KEY=$(printf '%s' "$SUPABASE_ANON_KEY" | tr -d "[:space:]\"'")
+          url=$(printf '%s' "${SUPABASE_URL:-}" | tr -d "[:space:]\"'")
+
+          # Tambah https:// kalau lupa, lalu potong path (mis. /rest/v1/) -> sisakan host saja.
+          case "$url" in
+            "" | http://* | https://*) ;;
+            *) url="https://$url" ;;
+          esac
+          url=$(printf '%s' "$url" | sed -E 's#^(https?://[^/]+).*#\1#')
+
+          if ! printf '%s' "$url" | grep -Eq '^https://[a-z0-9]+\.supabase\.co$'; then
+            echo "::warning::Secret SUPABASE_URL kosong/tidak berbentuk https://<ref>.supabase.co. Memakai URL project dari js/app.js: ${DEFAULT_URL}"
+            url="$DEFAULT_URL"
+          fi
+          echo "Host tujuan: ${url#https://}"
 
           # Timeout + retry supaya gangguan jaringan sesaat tidak membuat run gagal.
           # Isi respons tidak dicetak (cukup status HTTP).
+          rc=0
           http_code=$(curl -sS -o /dev/null -w "%{http_code}" \
             --max-time 30 --retry 3 --retry-delay 10 --retry-all-errors \
-            "${SUPABASE_URL}/rest/v1/programs?select=id&limit=1" \
+            "${url}/rest/v1/programs?select=id&limit=1" \
             -H "apikey: ${SUPABASE_ANON_KEY}" \
-            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}") || http_code="000"
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}") || rc=$?
 
-          echo "HTTP status: ${http_code}"
+          echo "HTTP status: ${http_code} (curl exit: ${rc})"
+
+          if [ "$rc" -ne 0 ]; then
+            case "$rc" in
+              6)  echo "::error::Host ${url#https://} tidak ditemukan (DNS gagal). Referensi project salah ketik, atau project sudah dihapus." ;;
+              7)  echo "::error::Koneksi ke ${url#https://} ditolak/gagal. Project mungkin sedang bermasalah atau dijeda." ;;
+              28) echo "::error::Timeout menghubungi ${url#https://} (>30 detik, sudah 3x retry)." ;;
+              *)  echo "::error::curl gagal (exit ${rc}) saat menghubungi ${url#https://}. Lihat pesan curl di atas." ;;
+            esac
+            exit 1
+          fi
 
           case "$http_code" in
             200|206)
               echo "✅ Supabase project aktif dan merespons normal."
-              ;;
-            000)
-              echo "::error::Tidak bisa terhubung ke Supabase. Cek nilai secret SUPABASE_URL (harus berbentuk https://<ref>.supabase.co)."
-              exit 1
               ;;
             401|403)
               echo "::error::Supabase menolak key (status ${http_code}). Cek secret SUPABASE_ANON_KEY (harus anon/public key project ini)."
