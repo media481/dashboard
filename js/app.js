@@ -2014,13 +2014,6 @@ function mbToggleCaption(btn) {
     btn.textContent = open ? 'Tutup' : 'Selengkapnya';
 }
 
-// Nomor WA perusahaan untuk tombol "Tanya via WhatsApp" (pakai kontak_wa pertama, fallback ke telp).
-function mbWaNumber() {
-    const n = String((NOTA_PERUSAHAAN.kontak_wa || [])[0] || NOTA_PERUSAHAAN.telp || '').replace(/\D/g, '');
-    if (!n) return '';
-    return n.startsWith('0') ? '62' + n.slice(1) : n;
-}
-
 // Pecah caption jadi paragraf + baris hashtag penutup (ditampilkan terpisah, bukan teks polos).
 function mbParseCaption(raw) {
     const lines = String(raw || '').replace(/\r/g, '').trim().split('\n');
@@ -2033,7 +2026,7 @@ function mbParseCaption(raw) {
     return { paras, tags };
 }
 
-// Kartu sederhana untuk pengunjung umum: gambar + nama/tanggal + judul + caption + tombol WA.
+// Kartu ringkas untuk pengunjung umum: thumbnail + nama/tanggal + judul + caption (tanpa tombol aksi).
 // Info internal (pilar, tipe, tahap, seri) sengaja TIDAK ditampilkan.
 function mbPostHtml(pl, todayKey) {
     const pil = IG_PILLARS[pl.pilar];
@@ -2050,16 +2043,10 @@ function mbPostHtml(pl, todayKey) {
     const firstBlock = (tipe === 'carousel' && blocks.length ? blocks[0] : imgRaw);
     const { paras, tags } = mbParseCaption(pl.draft_caption);
     const totalLen = paras.join('').length;
-    const longCap = totalLen > 380 || paras.length > 3;
+    const longCap = totalLen > 240 || paras.length > 2;
     const nl = (t) => escapeHtml(t).replace(/\n/g, '<br>');
     const capHtml = paras.map(x => `<p>${nl(x)}</p>`).join('') +
         (tags.length ? `<div class="mb-tags">${tags.map(t => `<span>${escapeHtml(t)}</span>`).join('')}</div>` : '');
-    const wa = mbWaNumber();
-    const waText = `Assalamualaikum Amiru Tour, saya melihat postingan "${pl.tema || ''}" dan ingin bertanya.`;
-    const actions = wa ? `<div class="mb-actions">
-                <span class="mb-actions-note">Ada pertanyaan seputar umroh?</span>
-                <a class="mb-wa" href="https://wa.me/${wa}?text=${encodeURIComponent(waText)}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> Tanya via WhatsApp</a>
-            </div>` : '';
     return `<article class="mb-post">
         <div class="mb-img" style="--mb-c:${color}">
             <div class="mb-img-text">${nl(firstBlock)}</div>
@@ -2072,7 +2059,6 @@ function mbPostHtml(pl, todayKey) {
             </div>
             <h3 class="mb-tema">${escapeHtml(pl.tema || '')}</h3>
             ${capHtml ? `<div class="mb-caption${longCap ? ' mb-clamped' : ''}">${capHtml}</div>${longCap ? '<button type="button" class="mb-more" onclick="mbToggleCaption(this)">Selengkapnya</button>' : ''}` : ''}
-            ${actions}
         </div>
     </article>`;
 }
