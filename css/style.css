@@ -3656,7 +3656,7 @@ mark.srch-hit { background: #FFE9A8; color: inherit; border-radius: var(--r-sm);
 .mb-head-sub { font-size: 12.5px; color: var(--ink-soft); }
 .mb-body { overflow-y: auto; padding: 0; background: #eef2f6; flex: 1; min-height: 0; scrollbar-width: thin; scrollbar-color: rgba(26,53,91,.25) transparent; }
 .mb-feed { display: flex; flex-direction: column; gap: 10px; padding: 14px; max-width: 920px; width: 100%; margin: 0 auto; box-sizing: border-box; }
-.mb-post { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 14px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; animation: mbIn .3s ease both; }
+.mb-post { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; animation: mbIn .3s ease both; }
 @keyframes mbIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .mb-side { display: flex; flex-direction: column; min-width: 0; padding: 0; }
 .mb-post-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
@@ -3674,22 +3674,22 @@ mark.srch-hit { background: #FFE9A8; color: inherit; border-radius: var(--r-sm);
 .mb-tags { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: .6em; font-size: 12.5px; font-weight: 600; color: var(--brand); }
 .mb-more { align-self: flex-start; background: none; border: 0; padding: 4px 0 0; color: var(--brand); font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
 .mb-more:hover { text-decoration: underline; }
-.mb-img { aspect-ratio: 1 / 1; width: 100%; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 12px 10px 26px; box-sizing: border-box; text-align: center; position: relative;
+.mb-img { aspect-ratio: 1 / 1; width: 100%; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 22px 18px 40px; position: sticky; top: 0; box-sizing: border-box; text-align: center;
   background: radial-gradient(circle at 85% 12%, rgba(255,255,255,.16), transparent 45%), linear-gradient(135deg, var(--mb-c), color-mix(in srgb, var(--mb-c) 55%, #000)); color: #fff; }
-.mb-img-text { font-size: 12.5px; font-weight: 700; line-height: 1.3; text-shadow: 0 1px 2px rgba(0,0,0,.28); display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
-.mb-img-brand { position: absolute; left: 0; right: 0; bottom: 6px; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 8.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; opacity: .9; }
-.mb-img-brand img { width: 12px; height: 12px; border-radius: 50%; background: #fff; padding: 1px; object-fit: contain; }
+.mb-img-text { font-size: 19px; font-weight: 700; line-height: 1.32; text-shadow: 0 1px 2px rgba(0,0,0,.28); display: -webkit-box; -webkit-line-clamp: 8; -webkit-box-orient: vertical; overflow: hidden; }
+.mb-img-brand { position: absolute; left: 0; right: 0; bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; opacity: .9; }
+.mb-img-brand img { width: 18px; height: 18px; border-radius: 50%; background: #fff; padding: 1px; object-fit: contain; }
 .mb-loadmore { align-self: center; font-family: inherit; font-size: 13.5px; font-weight: 700; color: var(--brand); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 20px; cursor: pointer; }
 .mb-loadmore:hover { background: var(--brand); color: #fff; border-color: var(--brand); }
 .mb-empty { text-align: center; padding: 50px 20px; color: var(--ink-soft); }
 .mb-empty i { font-size: 32px; display: block; margin-bottom: 8px; }
 .mb-empty p { margin: 0; font-size: 14px; }
-.mb-skel { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.mb-skel { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
 .mb-skel > div { border-radius: 10px; background: linear-gradient(90deg, #e8edf3 25%, #f4f7fa 50%, #e8edf3 75%); background-size: 200% 100%; animation: mbShimmer 1.3s infinite linear; }
 .mb-skel > div:first-child { aspect-ratio: 1 / 1; }
 .mb-skel > div:last-child { min-height: 90px; }
 @keyframes mbShimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
-@media (max-width: 640px) { .mb-modal { width: 100vw; max-width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; margin: 0; } .mb-head { padding: 10px 14px; } .mb-head-sub { display: none; } .mb-feed { padding: 8px; gap: 8px; } .mb-post, .mb-skel { grid-template-columns: 76px minmax(0, 1fr); gap: 10px; padding: 10px; } .mb-img { border-radius: 8px; padding: 6px 5px 16px; } .mb-img-text { font-size: 9px; -webkit-line-clamp: 5; } .mb-img-brand { display: none; } .mb-tema { font-size: 15px; } .mb-caption { font-size: 13.5px; } }
+@media (max-width: 640px) { .mb-modal { width: 100vw; max-width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; margin: 0; } .mb-head { padding: 10px 14px; } .mb-head-sub { display: none; } .mb-feed { padding: 8px; gap: 8px; } .mb-post, .mb-skel { grid-template-columns: 112px minmax(0, 1fr); gap: 10px; padding: 10px; } .mb-img { border-radius: 10px; padding: 10px 8px 22px; } .mb-img-text { font-size: 11px; -webkit-line-clamp: 7; } .mb-img-brand { bottom: 6px; font-size: 7.5px; } .mb-img-brand img { width: 11px; height: 11px; } .mb-tema { font-size: 15px; } .mb-caption { font-size: 13.5px; } }
 
 /* Pesan kosong/memuat. Dipakai galeri Infografis (di luar halaman IG Scheduler), jadi sengaja
    ada di style.css, BUKAN di ig-scheduler.css (yang dimuat lazy hanya saat halaman IG dibuka). */
