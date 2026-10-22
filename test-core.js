@@ -636,7 +636,7 @@ console.log('\n=== TEST: igArahanTetangga (generate ulang 1 hari tetap memenuhi 
 const rencanaTetangga = () => [
   { id: 'sen', tanggal: '2026-10-12', status: 'idea', tema_minggu: 'Talbiyah', draft_caption: 'Pembuka senin.\n\nIsi senin.\n\nTahu nggak caranya? Besok kita bahas.\n\n#UmrohBersamaAmiru #AmiruTour' },
   { id: 'sel', tanggal: '2026-10-13', status: 'idea', tema_minggu: 'Talbiyah', draft_caption: 'x' },
-  { id: 'rab', tanggal: '2026-10-14', status: 'idea', tema_minggu: 'Talbiyah', draft_caption: 'Kemarin kita bahas tata caranya. Sekarang persiapannya.\n\nIsi.' },
+  { id: 'rab', tanggal: '2026-10-14', status: 'idea', tema_minggu: 'Talbiyah', draft_caption: 'Koper masih terbuka di lantai. Persiapannya mulai dari mana?\n\nIsi.' },
   { id: 'min', tanggal: '2026-10-18', status: 'idea', tema_minggu: 'Talbiyah', draft_caption: 'Renungan.' },
   { id: 'sen2', tanggal: '2026-10-19', status: 'idea', tema_minggu: 'Talbiyah', draft_caption: 'Senin depan.' }
 ];
@@ -644,7 +644,7 @@ test('Selasa: penutup Senin & pembuka Rabu masuk arahan', () => {
   const pl = rencanaTetangga(); const a = run('igArahanTetangga')(pl, pl[1], 'Talbiyah');
   assert.strictEqual(a.length, 2);
   assert.ok(a[0].includes('Senin') && a[0].includes('Tahu nggak caranya? Besok kita bahas.') && !a[0].includes('#UmrohBersamaAmiru'));
-  assert.ok(a[1].includes('Rabu') && a[1].includes('Kemarin kita bahas tata caranya'));
+  assert.ok(a[1].includes('Rabu') && a[1].includes('Koper masih terbuka di lantai'));
 });
 test('Senin: hanya pembuka hari sesudahnya (tidak ada hari sebelumnya di pekan yang sama)', () => {
   const pl = rencanaTetangga(); const a = run('igArahanTetangga')(pl, pl[0], 'Talbiyah');
@@ -671,11 +671,11 @@ test('rumus pembuka: 3 kata pertama sama -> mirip, walau sisa kalimat beda', () 
   const r = riwayatGaya([['2026-10-01', 'Topik A', 'Hook A', 'Pasir sunyi menunggu tata cara niat.']]);
   assert.strictEqual(run('igIsPembukaMirip')({ draft_caption: 'Pasir sunyi menunggu persiapan fisik.\n\nIsi' }, r), true);
 });
-test('rumus rujukan hari sebelumnya ("Kemarin kita bahas") dikecualikan dari cek 3 kata terhadap 20 posting terakhir', () => {
+test('rumus "Kemarin kita bahas" tidak lagi dikecualikan: 3 kata pertama yang sama dengan 20 posting terakhir dianggap mirip', () => {
   const r = riwayatGaya([['2026-10-01', 'Topik A', 'Hook A', 'Kemarin kita bahas tata cara niat.']]);
-  assert.strictEqual(run('igIsPembukaMirip')({ draft_caption: 'Kemarin kita bahas persiapan fisik.\n\nIsi' }, r), false);
+  assert.strictEqual(run('igIsPembukaMirip')({ draft_caption: 'Kemarin kita bahas persiapan fisik.\n\nIsi' }, r), true);
 });
-test('rumus rujukan tetap ditolak kalau seluruh kalimat pembukanya hampir sama (cek token tidak ikut dilonggarkan)', () => {
+test('pembuka yang seluruh kalimatnya hampir sama dengan riwayat tetap dianggap mirip', () => {
   const r = riwayatGaya([['2026-10-01', 'Topik A', 'Hook A', 'Kemarin kita bahas tata cara niat umroh pertama.']]);
   assert.strictEqual(run('igIsPembukaMirip')({ draft_caption: 'Kemarin kita bahas tata cara niat umroh pertama.\n\nIsi' }, r), true);
 });
@@ -729,8 +729,8 @@ testAsync('generate pekan: pembuka Rabu memakai rumus yang sama dgn Selasa -> Ra
   assert.ok(log.panggilan[1].riwayatGaya.includes('Pasir sunyi menunggu rindu'), 'pembuka hari yang sudah jadi harus dikirim ke AI');
   assert.strictEqual(r.berhasil, 7);
 });
-testAsync('generate pekan: rumus rujukan "Kemarin kita bahas" di Selasa-Minggu tidak membuat hari-hari itu saling menolak', async () => {
-  const log = siapkanGenPekan([(payload) => payload.slots.map((sl, i) => ({ ...itemHari(sl.tanggal, i, null), draft_caption: (i === 0 ? 'Pembuka senin ' : 'Kemarin kita bahas ') + TEMA_HARI[i] }))], []);
+testAsync('generate pekan: pembuka Selasa-Minggu yang menyambung lewat isi (tanpa rumus rujukan) tidak membuat hari-hari itu saling menolak', async () => {
+  const log = siapkanGenPekan([(payload) => payload.slots.map((sl, i) => ({ ...itemHari(sl.tanggal, i, null), draft_caption: 'Pembuka ' + TEMA_HARI[i] + ' unik ' + TEMA_HARI[i] }))], []);
   sandbox.__slots = slotPekan(); sandbox.__opsi = opsiPekan;
   const r = await run("igGeneratePlanForSlots(2026, 9, __slots, '', null, __opsi)");
   assert.strictEqual(log.panggilan.length, 1); assert.strictEqual(r.berhasil, 7);

@@ -9,7 +9,7 @@
 // Request ke domain luar (Supabase, CDN, Google Fonts) tidak di-cache, langsung ke jaringan.
 
 // Cache "shell": naikkan versinya tiap rilis seperti biasa (isinya diganti total).
-const CACHE_NAME = 'amiru-repo-cache-v158';
+const CACHE_NAME = 'amiru-repo-cache-v159';
 // Cache aset ber-hash: bertahan lintas rilis. Isinya dirapikan otomatis saat activate
 // (hanya URL yang masih dirujuk index.html terbaru yang disimpan). Naikkan angkanya
 // hanya kalau ingin membuang SEMUA aset ber-hash (jarang perlu).

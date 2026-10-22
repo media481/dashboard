@@ -183,7 +183,7 @@ async function panggilBerurutan(responses, reqBody, envUbah = {}) {
 }
 const captionAwal = (awal, akhir = '') => `${awal}. ${kalimat.repeat(8).trim()}\n\nChat WA aja ya.${akhir}`;
 const slotSel = { tanggal: '2026-10-13', hari: 'Selasa', peran: 'Pahami', pilar: 'manasik', tipe_konten: 'image' };
-const itemSel = (o = {}) => item({ tanggal: '2026-10-13', pilar: 'manasik', tema: 'Kartu praktis miqat', teks_gambar: 'Dari mana mulainya?\nIni kartunya', draft_caption: captionAwal('Kemarin kita bahas rasa'), ...o });
+const itemSel = (o = {}) => item({ tanggal: '2026-10-13', pilar: 'manasik', tema: 'Kartu praktis miqat', teks_gambar: 'Dari mana mulainya?\nIni kartunya', draft_caption: captionAwal('Pasir sunyi menunggu rasa'), ...o });
 const dua = (o = {}) => body({ jumlahPost: 2, slots: [slot, slotSel], ...o });
 
 console.log('\n=== TEST: validator mutu (kutipan, placeholder, angka, kata kaku, format gambar) ===');
@@ -285,7 +285,7 @@ await test('semua lolos -> 1 panggilan saja, sudut/jembatan tidak ikut ke fronte
 });
 await test('Selasa ditolak (terlalu pendek) -> putaran perbaikan hanya untuk Selasa, membawa alasan + Senin sebagai konteks', async () => {
   const senin = item({ jembatan: 'Besok kita bahas tata caranya', draft_caption: captionAwal('Subuh yang lengang', ' Semoga hatimu lapang.') });
-  const { json, calls } = await panggilBerurutan([[senin, itemSel({ draft_caption: 'pendek' })], [itemSel({ draft_caption: captionAwal('Semalam kamu bertanya soal caranya') })]], dua());
+  const { json, calls } = await panggilBerurutan([[senin, itemSel({ draft_caption: 'pendek' })], [itemSel({ draft_caption: captionAwal('Dini hari kamu bertanya soal caranya') })]], dua());
   assert.strictEqual(calls.length, 2); assert.strictEqual(json.perbaikan, 1);
   assert.strictEqual(json.items.length, 2); assert.strictEqual(json.items[1].tanggal, '2026-10-13');
   const m = calls[1].msg;
@@ -315,15 +315,31 @@ await test('prompt sistem memuat aturan VARIAN PEKAN dan semua peran pengganti',
 await test('hasil perbaikan untuk tanggal yang sudah lolos diabaikan (tidak menimpa hari yang sudah jadi)', async () => {
   const { json } = await panggilBerurutan([
     [item({ tema: 'Senin ASLI', draft_caption: captionAwal('Subuh yang lengang') }), itemSel({ draft_caption: 'pendek' })],
-    [item({ tema: 'Senin PALSU', draft_caption: captionAwal('Tengah malam yang sunyi') }), itemSel({ draft_caption: captionAwal('Semalam kamu bertanya') })],
+    [item({ tema: 'Senin PALSU', draft_caption: captionAwal('Tengah malam yang sunyi') }), itemSel({ draft_caption: captionAwal('Dini hari kamu bertanya') })],
   ], dua());
   assert.strictEqual(json.items.length, 2); assert.strictEqual(json.items[0].tema.replace(' [cek pembimbing]', ''), 'Senin ASLI');
 });
-await test('rumus pembuka kembar antarhari ("Kemarin kita bahas") -> hari kedua diperbaiki dengan alasan jelas', async () => {
-  const a = item({ draft_caption: captionAwal('Kemarin kita bahas rasa') });
-  const { json, calls } = await panggilBerurutan([[a, itemSel()], [itemSel({ draft_caption: captionAwal('Semalam kamu bertanya soal caranya') })]], dua());
+await test('rumus pembuka kembar antarhari ("Pasir sunyi menunggu") -> hari kedua diperbaiki dengan alasan jelas', async () => {
+  const a = item({ draft_caption: captionAwal('Pasir sunyi menunggu rasa') });
+  const { json, calls } = await panggilBerurutan([[a, itemSel()], [itemSel({ draft_caption: captionAwal('Dini hari kamu bertanya soal caranya') })]], dua());
   assert.strictEqual(calls.length, 2); assert.ok(calls[1].msg.includes('rumus yang sama dengan 2026-10-12'));
   assert.strictEqual(json.items.length, 2);
+});
+await test('caption yang merujuk konten sebelumnya (kemarin, \"yang kita bahas\", meneruskan ... kita) ditolak dengan alasan jelas', async () => {
+  for (const buka of ['Berbekal pertimbangan matang yang kita bahas kemarin', 'Meneruskan perhitungan dana dan cuti kita', 'Kemarin kita bahas rasa', 'Semalam kita sempat bahas niat', 'Seperti yang sudah kita bahas di Senin']) {
+    const { json } = await panggil([item({ draft_caption: captionAwal(buka) })], body());
+    assert.strictEqual(json.items.length, 0, buka); assert.ok(json.ditolak[0].includes('kata rujukan'), json.ditolak[0]);
+  }
+  // kemarin di paragraf mana pun ditolak
+  const b = await panggil([item({ draft_caption: captionAwal('Pasir sunyi menunggu rasa', ' Kemarin aku bertemu jamaah.') })], body());
+  assert.strictEqual(b.json.items.length, 0); assert.ok(b.json.ditolak[0].includes('kata rujukan'), b.json.ditolak[0]);
+});
+await test('pembuka yang menyambung lewat isi (tanpa kata rujukan) diterima; \"tadi\" di luar paragraf pembuka tidak ikut ditolak', async () => {
+  const ok = await panggil([item({ draft_caption: captionAwal('Koper masih terbuka di lantai, dan kamu belum tahu mulai dari mana') })], body());
+  assert.strictEqual(ok.json.items.length, 1);
+  const c = item({ draft_caption: `${captionAwal('Koper masih terbuka di lantai')}\n\nMatahari tadi pagi sudah meninggi di Madinah.\n\nChat WA aja ya.` });
+  const lolos = await panggil([c], body());
+  assert.strictEqual(lolos.json.items.length, 1);
 });
 await test('perbaikan gagal (error/JSON rusak) -> hari yang lolos tetap dikembalikan, status 200, sisanya dilaporkan di ditolak', async () => {
   for (const gagal of [new Error('boom'), 'bukan json']) {

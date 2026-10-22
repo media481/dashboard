@@ -11,7 +11,7 @@ Dokumen acuan untuk membuat konten Instagram Amiru Tour (PT Amiru Haramain Indon
 
 ## 1. Prinsip
 
-1. **Menyambung.** Tujuh posting dalam seminggu membahas satu tema dari tujuh sudut berurutan, supaya jamaah merasa tiap konten melanjutkan yang kemarin.
+1. **Menyambung.** Tujuh posting dalam seminggu membahas satu tema dari tujuh sudut berurutan, supaya jamaah merasa tiap konten melanjutkan konten sebelumnya, tanpa perlu kata rujukan.
 2. **Seimbang.** Hati (cerita, perasaan, renungan) dan akal (tata cara, persiapan, kesalahan umum) bergantian.
 3. **Tahan jangka panjang.** Topik, hook, dan kalimat pembuka tidak boleh berulang antarhari, antarminggu, maupun antarbulan.
 4. **Jujur.** Tidak ada testimoni, kutipan, angka, atau janji yang dikarang.
@@ -50,7 +50,7 @@ Urutan perjalanan hati calon jamaah: **rasakan → pahami → siapkan → bayang
 **Keseimbangan:** 4 hari menyentuh hati (Senin, Kamis, Sabtu, Minggu) dan 3 hari praktis (Selasa, Rabu, Jumat).
 
 **Penyambung yang terlihat jamaah:**
-- Pembuka caption (kecuali Senin) merujuk hari sebelumnya ("Kemarin kita bahas...").
+- Pembuka caption (kecuali Senin) menyambung hari sebelumnya lewat isi, bukan kata rujukan. Dilarang: kemarin, kemaren, semalam, tadi, "yang kita bahas", "melanjutkan", "meneruskan", dan sejenisnya. Pembuka langsung masuk ke adegan atau pertanyaan yang menjawab penutup hari sebelumnya.
 - Penutup caption memancing hari berikutnya.
 - Label kecil di pojok gambar, mis. `Seri Talbiyah · 3/7`.
 
@@ -123,7 +123,7 @@ Acuan (JANGAN vs TULIS):
 
 - Satu topik hanya sekali. Sudut baru atas topik lama baru boleh muncul setelah jeda minimal 6 bulan.
   - **Cara sistem menegakkannya:** deteksi duplikat dan daftar riwayat yang dikirim ke AI hanya memuat 6 bulan terakhir (`IG_JEDA_TOPIK_BULAN` di `js/app.js`); topik atau hook yang lebih tua boleh kembali dengan sudut baru. Tema Minggu memakai jeda lebih ketat, 12 bulan, supaya peta setahun tidak punya tema pekan kembar.
-  - Hook dan pembuka caption dibandingkan dengan 20 posting terakhir, terlepas dari jendela 6 bulan. Rumus 3 kata pertama yang sama juga dianggap mirip, kecuali rumus rujukan hari sebelumnya (kemarin, kemaren, semalam, tadi), karena Selasa sampai Minggu wajib merujuk hari sebelumnya.
+  - Hook dan pembuka caption dibandingkan dengan 20 posting terakhir, terlepas dari jendela 6 bulan. Rumus 3 kata pertama yang sama juga dianggap mirip.
 - Hook dan kalimat pembuka caption tidak boleh mirip dengan 20 posting terakhir.
 - **Tema yang kembali di tahun/siklus berikutnya (edisi 2+):** jeda 6 bulan hanya berlaku untuk topik lintas tema. Ide dengan Tema Minggu yang sama selalu dibandingkan dengan SEMUA edisi sebelumnya, berapa pun umurnya (`igRiwayatAktif` memakai `temaMinggu`), dan daftar ide lama itu dikirim ke AI sebagai `riwayatTemaIni` bersama nomor `edisi` supaya tiap hari memakai sudut baru.
 - **Hari besar dikunci ke pekannya:** entri `IG_TEMA_MUSIM` ber-`hijriRentang` (Isra Miraj 27 Rajab, Maulid 12 Rabiul Awal, sepuluh malam terakhir Ramadhan, Arafah/Idul Adha, 1 Muharram) hanya disarankan di pekan yang salah satu harinya jatuh pada tanggal Hijriah itu. Tema musiman biasa tetap mengikuti bulan.
@@ -217,7 +217,7 @@ Urutan perjalanan hati calon jamaah: rasakan > pahami > siapkan > bayangkan > hi
 - JUMAT · Edukasi · Carousel · HINDARI: kesalahan umum dan FAQ terkait tema. Tutup dengan teaser Sabtu.
 - SABTU · Storytelling · Carousel · TERINSPIRASI: satu cerita manusiawi yang selesai dalam 5 slide (Slide 1 pemancing, 2-4 cerita, 5 penutup + doa). Cerita berupa ILUSTRASI/umum ("banyak jamaah bercerita..."), bukan klaim kejadian nyata atau kutipan karangan.
 - MINGGU · Kontemplasi ibadah umroh · Carousel · RENUNGKAN: renungan makna tema tanpa tokoh; tutup tenang + doa singkat + teaser tema minggu depan.
-Penyambung wajib: pembuka caption (kecuali Senin) merujuk hari sebelumnya ("Kemarin kita bahas..."), penutup caption memancing hari berikutnya. Tambahkan label kecil di pojok gambar, misalnya "Seri [Tema] · 3/7".
+Penyambung wajib, tanpa kata rujukan: pembuka caption (kecuali Senin) menyambung hari sebelumnya lewat isi (jangan memakai kemarin, kemaren, semalam, tadi, "yang kita bahas", "melanjutkan"), penutup caption memancing hari berikutnya. Tambahkan label kecil di pojok gambar, misalnya "Seri [Tema] · 3/7".
 Keseimbangan: 4 hari menyentuh hati (Sen, Kam, Sab, Min) dan 3 hari praktis (Sel, Rab, Jum).
 
 === ANTI PENGULANGAN ===
@@ -251,13 +251,13 @@ Content Planner dan Generate AI di dashboard **sudah mengikuti pola 7 hari yang 
 
 Yang berubah:
 - Modal **Rencana Konten AI** memilih **satu pekan (Senin–Minggu)** dan mengisi **Tema Minggu** (wajib). **Tema pekan depan** opsional, hanya untuk teaser penutup Minggu.
-- Generate AI menyusun ketujuh hari **dalam satu panggilan** dengan peran per hari sesuai bagian 3 (rasakan, pahami, siapkan, bayangkan, hindari, terinspirasi, renungkan). Pembuka caption merujuk hari sebelumnya, penutup memancing hari berikutnya.
+- Generate AI menyusun ketujuh hari **dalam satu panggilan** dengan peran per hari sesuai bagian 3 (rasakan, pahami, siapkan, bayangkan, hindari, terinspirasi, renungkan). Pembuka caption menyambung hari sebelumnya lewat isi (tanpa kata rujukan seperti kemarin), penutup memancing hari berikutnya.
 - Slot dan format: **tanpa video**, **carousel maksimal 5 slide** (hasil AI yang melebihi 5 slide ditolak dan slotnya dicoba ulang), pilar baru `kontemplasi` untuk Minggu.
 - **Label seri** ditambahkan otomatis di akhir teks gambar: `Label gambar: Seri [Tema] · n/7`.
 - Kolom baru `ig_content_plan.tema_minggu` (`sql/47_tambah_ig_content_plan_tema_minggu.sql`, opsional).
 - Anti-duplikat tetap berjalan (riwayat rencana + caption post, plus daftar topik awal di bagian 6). Kata tema minggu diabaikan saat membandingkan, supaya ide satu pekan tidak saling dianggap kembar.
 - Caption dirapikan di server: ejaan "Umroh", tepat 5 hashtag (`#UmrohBersamaAmiru` dan `#AmiruTour` selalu ada), maksimal 2200 karakter.
-- Generator caption manual (modal post) punya tujuan **Manasik** dan **Kontemplasi**; tombol "Jadikan Post" memilih tujuan sesuai pilar rencana dan mengirim konteks seri (hari/peran, Tema Minggu, teks di gambar, tema kemarin & besok) supaya caption yang digenerate ulang tetap menyambung.
+- Generator caption manual (modal post) punya tujuan **Manasik** dan **Kontemplasi**; tombol "Jadikan Post" memilih tujuan sesuai pilar rencana dan mengirim konteks seri (hari/peran, Tema Minggu, teks di gambar, tema hari sebelumnya & besok, hanya bahan menyambung isi dan tidak disebut di caption) supaya caption yang digenerate ulang tetap menyambung.
 - Bukti sosial dan engagement tetap **dijeda**. Info program muncul bila **Arahan tambahan** memintanya, atau otomatis 1-2 hari praktis pada pekan yang punya fase promosi program.
 
 Deploy ulang (urutan bebas): `supabase functions deploy generate-ig-content-plan --no-verify-jwt` dan `supabase functions deploy generate-ig-caption --no-verify-jwt`. Frontend menolak function lama (butuh `versi >= 4`), jadi lupa deploy akan muncul sebagai pesan error yang jelas.

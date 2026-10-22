@@ -53,7 +53,7 @@
 //   - Validator server (selain hashtag/ejaan/panjang): tolak teks Arab, janji berlebihan, kutipan/atribusi ayat atau hadis,
 //     placeholder [isi ...], statistik/klaim jumlah jamaah, kata kaku (silakan/hubungi kami/tersedia), format teks gambar yang
 //     tidak cocok dengan tipe (carousel = "Slide n:" berurutan 3-5; single post = tanpa "Slide"), caption yang menyalin teks
-//     gambar, dan rumus pembuka caption kembar antarhari. Angka & kata "tersedia" boleh kalau ARAHAN meminta info program atau pekan membawa blok FASE PROMOSI PROGRAM PEKAN INI.
+//     gambar, rumus pembuka caption kembar antarhari, dan caption yang merujuk konten sebelumnya dengan kata kemarin/semalam/tadi/"yang kita bahas". Angka & kata "tersedia" boleh kalau ARAHAN meminta info program atau pekan membawa blok FASE PROMOSI PROGRAM PEKAN INI.
 //   - Perbaikan terarah (maks. 2 putaran, dibatasi anggaran waktu): hari yang ditolak ditulis ulang SENDIRI dengan alasan
 //     penolakan + hari yang sudah lolos sebagai penyambung; hari yang sudah lolos tidak disentuh.
 //   - Opsional: secret IG_PLAN_THINKING_LEVEL=low|medium|high menyalakan tingkat berpikir model (default mati).
@@ -184,7 +184,7 @@ async function requireStaff(req: Request): Promise<Response | null> {
 // Bisa diganti tanpa edit kode: supabase secrets set GEMINI_MODEL=nama-model (kalau model ini dipensiunkan Google).
 const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash";
 
-const CONTENT_PLAN_SYSTEM_PROMPT = `Kamu adalah social media strategist & copywriter untuk biro umroh "Amiru Tour" (PT Amiru Haramain Indonesia). Tugasmu menyusun PAKET KONTEN INSTAGRAM yang SALING MENYAMBUNG dalam Bahasa Indonesia: tujuh posting dalam satu pekan (Senin-Minggu) membahas SATU TEMA MINGGUAN dari tujuh sudut berurutan, supaya jamaah merasa tiap konten melanjutkan yang kemarin. Tiap ide punya TEKS DI GAMBAR (pemancing pendek) dan CAPTION yang MELANJUTKAN teks gambar tersebut.
+const CONTENT_PLAN_SYSTEM_PROMPT = `Kamu adalah social media strategist & copywriter untuk biro umroh "Amiru Tour" (PT Amiru Haramain Indonesia). Tugasmu menyusun PAKET KONTEN INSTAGRAM yang SALING MENYAMBUNG dalam Bahasa Indonesia: tujuh posting dalam satu pekan (Senin-Minggu) membahas SATU TEMA MINGGUAN dari tujuh sudut berurutan, supaya jamaah merasa tiap konten melanjutkan konten sebelumnya tanpa pernah menyebutnya. Tiap ide punya TEKS DI GAMBAR (pemancing pendek) dan CAPTION yang MELANJUTKAN teks gambar tersebut.
 
 ATURAN FORMAT OUTPUT:
 - Output HARUS berupa JSON array MURNI, tanpa markdown code fence, tanpa teks pembuka/penutup apa pun, cuma JSON.
@@ -197,7 +197,7 @@ ATURAN FORMAT OUTPUT:
 TEMA MINGGU & KESINAMBUNGAN:
 - Kalau prompt user memuat TEMA MINGGU, semua posting pekan itu membahas tema tersebut dari sudut berbeda sesuai peran hari. Kalau tidak ada, pilih SATU tema yang belum ada di RIWAYAT TEMA dan pakai konsisten untuk satu pekan (pekan berbeda = tema berbeda).
 - Urutan perjalanan hati calon jamaah: rasakan > pahami > siapkan > bayangkan > hindari kesalahan > terinspirasi > renungkan. Tiap hari melanjutkan hari sebelumnya.
-- Penyambung WAJIB: pembuka caption (kecuali Senin atau hari pertama yang dibuat tanpa konteks hari sebelumnya) merujuk hari sebelumnya, mis. "Kemarin kita bahas..." (JANGAN menyalin kalimat persis ini terus; variasikan). Penutup caption memancing hari berikutnya.
+- Penyambung WAJIB, tapi TANPA kata rujukan: pembuka caption (kecuali Senin atau hari pertama yang dibuat tanpa konteks hari sebelumnya) menyambung hari sebelumnya lewat ISI, bukan lewat kata penghubung. DILARANG menyebut atau merujuk konten sebelumnya dengan kata "kemarin", "kemaren", "semalam", "tadi", "hari sebelumnya", "yang kita bahas", "melanjutkan", "meneruskan", "lanjutan dari", atau sejenisnya (contoh yang SALAH: "Berbekal pertimbangan matang yang kita bahas kemarin", "Meneruskan perhitungan dana dan cuti kita kemarin"). Caranya: baca penutup/jembatan hari sebelumnya, lalu buka caption langsung di adegan, pertanyaan, atau masalah yang menjadi jawaban alami dari penutup itu. Caption harus utuh bila dibaca sendiri oleh orang yang tidak melihat posting sebelumnya, sementara pembaca yang mengikuti merasakan benang merahnya dari tema, benda, perasaan, atau pertanyaan yang sama. Variasikan cara membuka tiap hari. Penutup caption memancing hari berikutnya.
 - Kalau ada KONTEKS PEKAN (hari lain di pekan yang sudah jadi), sambungkan dengan hari-hari itu dan jangan mengulang sudutnya.
 - Kalau ada TEMA PEKAN DEPAN, hanya Minggu yang memberi teaser tentangnya. Kalau tidak ada, Minggu cukup menutup dengan teaser umum ("minggu depan kita lanjut menyusuri perjalanan lain") TANPA menyebut topik spesifik.
 
@@ -289,7 +289,7 @@ ANTI-PENGULANGAN (PENTING):
 - Topik yang SUDAH PERNAH dipakai (awal pola, sebelum 12 Oktober 2026; jangan diulang sebelum 12 April 2027): niat umroh; pertama kali lihat Ka'bah; sa'i dan kisah Siti Hajar; Raudhah; subuh di Madinah; bawaan yang sering ketinggalan; kesalahan umum thawaf; urutan umroh (ihram, thawaf, sa'i, tahallul); larangan ihram; persiapan fisik; hari terakhir di Makkah; Makkah atau Madinah; umroh bersama orang tua; mulai dari yang kecil / menabung niat.
 - Kalau ada EDISI ke-2 atau lebih (tema yang sama kembali di tahun/siklus berikutnya), daftar ide lamanya diberikan tanpa batas umur. Tema boleh sama, tapi tiap hari HARUS membahas sudut yang benar-benar baru: jangan menulis ulang topik, hook, atau pembuka lama dengan kata yang diganti.
 - Kalau ada daftar IDE YANG SUDAH ADA, jangan mengulang topiknya dan jangan menaruh ide baru di tanggal yang sama.
-- Kalau ada daftar HOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR, hook (teks_gambar baris pertama) dan 3 kata pertama pembuka caption TIDAK boleh sama atau mirip dengan daftar itu, juga tidak antarhari dalam jawaban yang sama. Variasikan rumus pembuka (jangan terus memakai "Kemarin kita bahas").
+- Kalau ada daftar HOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR, hook (teks_gambar baris pertama) dan 3 kata pertama pembuka caption TIDAK boleh sama atau mirip dengan daftar itu, juga tidak antarhari dalam jawaban yang sama. Variasikan rumus pembuka antarhari.
 
 KEJUJURAN & KEHATI-HATIAN:
 - JANGAN mengarang ayat, hadis, atau lafaz/doa berbahasa Arab. Untuk lafaz dan tata cara tulis "sesuai manasik dari pembimbing". Soal agama dan hukum ibadah tulis secara umum, tanpa fatwa; tandai di akhir kolom "tema" dengan "[cek pembimbing]" kalau memuat tata cara, hukum, atau lafaz (menyebut kata \"doa\" atau nama ritual saja TIDAK perlu ditandai).
@@ -456,6 +456,10 @@ const CEK_PEMBIMBING_RE = /\b(tata\s*cara|lafaz|hukum(?:nya)?|wajib|rukun|sunnah
 // Penanda "terasa buatan AI" (ditegakkan di server; item yang kena ditulis ulang SENDIRI lewat putaran perbaikan terarah).
 const POLA_KONTRAS_RE = /\bbukan\s+(?:sekadar|sekedar|hanya|cuma)\b[^.!?\n]{0,90}?\b(?:tapi|tetapi|melainkan|namun)\b/i;
 const KLISE_AI_RE = /\b(?:relung\s+hati|hiruk\s*pikuk|perjalanan\s+spiritual|tak\s+terhingga|senantiasa|tentunya|sejatinya|mari\s+kita|di\s+sanalah|di\s+situlah|sejuta\s+rasa|samudra\s+(?:rindu|cinta|kasih))\b/i;
+// Kata rujukan ke konten sebelumnya dilarang (About Planner v16): caption menyambung hari lain lewat ISI, bukan lewat kata penghubung.
+// "kemarin"/"kemaren" ditolak di seluruh caption; kata lain hanya dicek di paragraf pembuka (supaya cerita berlatar waktu tidak ikut tertolak).
+const RUJUKAN_KEMARIN_RE = /\b(?:kemarin|kemaren)\b/i;
+const RUJUKAN_PEMBUKA_RE = /\b(?:semalam|tadi|hari\s+sebelumnya|(?:post(?:ingan)?|konten|bahasan|pembahasan|seri)\s+sebelumnya|(?:yang|apa\s+yang|seperti|sesuai)\s+(?:sudah\s+|telah\s+|pernah\s+)?kita\s+(?:bahas|bicarakan|bicarain|obrolkan|singgung|lihat|ulas)|kita\s+(?:bahas|bicarakan|ulas)\s+(?:di|pada)\s+\w+|(?:melanjutkan|meneruskan|lanjutan\s+dari|sambungan\s+dari)\s+(?:\S+\s+){0,6}?(?:kita|sebelumnya|tadi|semalam))\b/i;
 const EMOJI_RE = /\p{Extended_Pictographic}/gu;
 const DOA_PENUTUP_RE = /\b(?:semoga|ya\s+allah|ya\s+rabb|aamiin|amin)\b/i;
 const MAKS_DOA_PEKAN = 3; // total hari berdoa per pekan; satu jatah dicadangkan untuk Minggu (peran Renungkan: tutup dengan doa singkat)
@@ -531,6 +535,9 @@ function tolakAlasan(it: { tipe_konten: string; tema: string; teks_gambar: strin
   if (PROMISE_RE.test(all)) return "memuat janji berlebihan (buang \"pasti/dijamin\")";
   if (SCRIPTURE_RE.test(all)) return "memuat kutipan/atribusi ayat atau hadis (\"bersabda\", \"berfirman\", \"QS.\", \"HR.\"); sampaikan makna secara umum tanpa kutipan";
   if (PLACEHOLDER_RE.test(all)) return "masih memuat placeholder [isi ...]; tulis isinya sungguhan";
+  const capBersih = captionTanpaTag(it.draft_caption);
+  const rujukan = capBersih.match(RUJUKAN_KEMARIN_RE) || (capBersih.split(/\n\s*\n/)[0] || "").match(RUJUKAN_PEMBUKA_RE);
+  if (rujukan) return `caption menyebut konten sebelumnya dengan kata rujukan ("${rujukan[0]}"); jangan pakai kemarin/semalam/tadi/"yang kita bahas"/"melanjutkan". Sambungkan lewat isi: buka langsung di adegan atau pertanyaan yang menjawab penutup hari sebelumnya`;
   if (KLAIM_ANGKA_RE.test(`${it.teks_gambar}\n${it.draft_caption}`) && !opsi.bolehProgram) return "memuat statistik/persentase/klaim jumlah jamaah yang tidak ada datanya; hapus angkanya";
   if (KAKU_RE.test(it.draft_caption) && !opsi.bolehProgram) return "memakai kata kaku ala brosur (silakan/hubungi kami/tersedia); ganti dengan bahasa ngobrol";
   const fmt = periksaFormatGambar(it.tipe_konten, it.teks_gambar);
@@ -698,7 +705,7 @@ function olahHasil(
 
   const lolos: Diterima[] = [];
   const alasan = new Map<string, string>();
-  // Rumus pembuka ("kemarin kita bahas") yang sudah dipakai hari lain di pekan ini: tidak boleh sama.
+  // Rumus pembuka (3 kata pertama caption) yang sudah dipakai hari lain di pekan ini: tidak boleh sama.
   const rumusTerpakai = new Map<string, string>();
   for (const x of o.sudahLolos) {
     const r = rumusPembuka(barisPertamaCaption(x.draft_caption));
@@ -815,7 +822,7 @@ Deno.serve(async (req: Request) => {
 
         const catatan = `CATATAN PERBAIKAN (putaran ${k}): slot di bawah ini DITOLAK pemeriksa otomatis pada percobaan sebelumnya. Tulis ulang HANYA slot yang ada di DAFTAR SLOT TANGGAL, dan perbaiki sebab penolakannya:\n`
           + perlu.map((s) => `- ${s.tanggal} (${s.hari || namaHari(s.tanggal)}): ${alasanAkhir.get(s.tanggal)}`).join("\n")
-          + "\nHari lain di pekan ini yang sudah lolos ada di KONTEKS PEKAN: sambungkan dengan penutup hari sebelumnya, siapkan jalan untuk pembuka hari sesudahnya, dan jangan mengulang sudut maupun rumus pembuka mereka.";
+          + "\nHari lain di pekan ini yang sudah lolos ada di KONTEKS PEKAN: sambungkan dengan penutup hari sebelumnya lewat isi (TANPA kata rujukan seperti kemarin, semalam, tadi, \"yang kita bahas\"), siapkan jalan untuk pembuka hari sesudahnya, dan jangan mengulang sudut maupun rumus pembuka mereka.";
         const baris = [
           ...(pekanCtx ? [pekanCtx] : []),
           ...lolos.slice().sort((a, b) => a.tanggal.localeCompare(b.tanggal)).map(barisKonteks),

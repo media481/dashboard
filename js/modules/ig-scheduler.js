@@ -1619,8 +1619,8 @@ function igBuildKonteksSeri(planId) {
     if (plan.tema_minggu) baris.push(`Tema Minggu: ${plan.tema_minggu}`);
     if (plan.tema) baris.push(`Judul ide: ${plan.tema}`);
     if (teksGambar) baris.push(`Teks di gambar (caption adalah lanjutannya):\n${teksGambar}`);
-    const kemarin = tetangga(-1), besok = tetangga(1);
-    if (kemarin) baris.push(`Konten kemarin: ${kemarin}`);
+    const sebelumnya = tetangga(-1), besok = tetangga(1);
+    if (sebelumnya) baris.push(`Konten hari sebelumnya (bahan untuk menyambung isi; jangan disebut atau dirujuk dengan kata kemarin/semalam/tadi): ${sebelumnya}`);
     if (besok) baris.push(`Konten besok (untuk teaser penutup): ${besok}`);
     return baris.join('\n');
 }
@@ -2281,15 +2281,15 @@ function closeIgContentPlanModal() {
 // Baris "Versi:" dan "Diperbarui:" dibaca otomatis untuk header modal, jadi format dua baris itu jangan diubah.
 // ============================================================
 const ABOUT_PLANNER_MD = `# About Planner: Konsep Perencanaan Konten Instagram Amiru Tour
-Versi: 15
-Diperbarui: 16 Oktober 2026
+Versi: 16
+Diperbarui: 22 Oktober 2026
 Status: disepakati Oktober 2026. Uji coba alur mingguan yang menyambung dimulai pekan Senin, 12 Oktober 2026. Ejaan resmi: "Umroh" (bukan "Umrah"), termasuk di hashtag.
 
 ## 1. Tujuan dan Prinsip
 
 Dokumen acuan untuk membuat konten Instagram Amiru Tour (PT Amiru Haramain Indonesia) lewat fitur Perencanaan Konten di dashboard.
 
-1. **Menyambung.** Tujuh posting dalam seminggu membahas satu tema dari tujuh sudut berurutan, supaya jamaah merasa tiap konten melanjutkan yang kemarin.
+1. **Menyambung.** Tujuh posting dalam seminggu membahas satu tema dari tujuh sudut berurutan, supaya jamaah merasa tiap konten melanjutkan konten sebelumnya, tanpa perlu kata rujukan.
 2. **Seimbang.** Hati (cerita, perasaan, renungan) dan akal (tata cara, persiapan, kesalahan umum) bergantian.
 3. **Tahan jangka panjang.** Topik, hook, dan kalimat pembuka tidak boleh berulang antarhari, antarminggu, maupun antarbulan.
 4. **Jujur.** Tidak ada testimoni, kutipan, angka, atau janji yang dikarang.
@@ -2324,7 +2324,7 @@ Urutan perjalanan hati calon jamaah: rasakan > pahami > siapkan > bayangkan > hi
 Keseimbangan: 4 hari menyentuh hati (Senin, Kamis, Sabtu, Minggu) dan 3 hari praktis (Selasa, Rabu, Jumat).
 
 **Penyambung yang terlihat jamaah**
-- Pembuka caption (kecuali Senin) merujuk hari sebelumnya ("Kemarin kita bahas..."), dengan rumus pembuka yang divariasikan.
+- Pembuka caption (kecuali Senin) menyambung hari sebelumnya lewat isi, bukan lewat kata rujukan. Dilarang menyebut konten sebelumnya dengan kata kemarin, kemaren, semalam, tadi, "yang kita bahas", "melanjutkan", "meneruskan", dan sejenisnya (contoh yang salah: "Berbekal pertimbangan matang yang kita bahas kemarin", "Meneruskan perhitungan dana dan cuti kita kemarin"). Caranya: pembuka langsung masuk ke adegan, pertanyaan, atau masalah yang menjadi jawaban alami dari penutup hari sebelumnya, dan benang merahnya terbawa lewat tema, benda, perasaan, atau pertanyaan yang sama, sehingga caption tetap utuh bila dibaca sendiri. Rumus pembuka divariasikan.
 - Penutup caption memancing hari berikutnya.
 - Label kecil di pojok gambar, misalnya "Seri Talbiyah · 3/7". Ditambahkan otomatis oleh sistem di akhir teks gambar.
 
@@ -2384,7 +2384,7 @@ Tiap peran pengganti membawa catatan singkat untuk AI. Aturan lain tidak berubah
 ## 6. Aturan Anti-Pengulangan
 
 - Satu topik hanya sekali. Sudut baru atas topik lama baru boleh muncul setelah jeda minimal 6 bulan.
-- Hook dan pembuka caption tidak boleh mirip dengan 20 posting terakhir, terlepas dari jendela 6 bulan. Rumus 3 kata pertama pembuka caption yang sama juga dianggap mirip, kecuali rumus rujukan hari sebelumnya (diawali kemarin, kemaren, semalam, atau tadi). Rumus rujukan itu dikecualikan dari cek 3 kata terhadap 20 posting terakhir karena Selasa sampai Minggu wajib merujuk hari sebelumnya. Kemiripan seluruh kalimat pembuka tetap dicek, dan rumus pembuka yang sama antarhari dalam satu pekan tetap ditolak.
+- Hook dan pembuka caption tidak boleh mirip dengan 20 posting terakhir, terlepas dari jendela 6 bulan. Rumus 3 kata pertama pembuka caption yang sama juga dianggap mirip. Kemiripan seluruh kalimat pembuka tetap dicek, dan rumus pembuka yang sama antarhari dalam satu pekan tetap ditolak.
 - Tema Minggu memakai jeda lebih ketat, 12 bulan, supaya peta setahun tidak punya tema pekan kembar.
 - Kata tema minggu diabaikan saat membandingkan ide dalam satu pekan, supaya ketujuh ide tidak saling dianggap kembar.
 - Isi diambil dari bank topik per hari:
@@ -2444,13 +2444,13 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 - Modal **Perencanaan Konten** dibuat sederhana dalam dua langkah: (1) pilih bulan dan pekan (Senin-Minggu), (2) isi **Tema pekan ini** (Tema Minggu, wajib, terisi otomatis dari saran). Ringkasan jumlah ide yang akan dibuat muncul di bawahnya.
 - Bagian yang jarang dipakai dilipat dan terbuka lewat klik: **Pengaturan lanjutan** (Tema pekan depan dan Arahan tambahan, keduanya opsional), **Pola 7 hari**, **Peta tema 12 bulan**, dan **Cara lain** (Isi dari Pola dan Salin Prompt).
 - **Generate Konten** menyusun ketujuh hari dalam satu panggilan AI, dengan peran per hari sesuai bagian 3. Hari yang sudah lewat atau sudah terisi dilewati. Selama menyusun, tombol menampilkan detik berjalan dan perkiraan waktu (biasanya 1-2 menit), karena hitungan n/7 baru bergerak di akhir.
-- Setiap hari hasil AI diperiksa otomatis di server. Ditolak bila memuat teks Arab, janji berlebihan, kutipan ayat atau hadis ("bersabda", "berfirman", "QS.", "HR."), placeholder [isi ...], statistik atau klaim jumlah jamaah, kata kaku (silakan, hubungi kami, tersedia), pola atau frasa yang terasa buatan AI ("bukan sekadar X, tapi Y", frasa klise, lebih dari 2 tanda tanya, lebih dari 1 emoji, doa penutup lebih dari 2 hari dari Senin sampai Sabtu, karena satu jatah dari 3 dicadangkan untuk Minggu; doa dicari di dua paragraf terakhir caption), format teks gambar yang tidak cocok dengan tipe (carousel harus Slide 1 sampai n berurutan, 3 sampai 5 slide), caption yang menyalin teks gambar, atau pembuka caption yang sama dengan hari lain.
-- Hari yang ditolak ditulis ulang sendiri (maksimal 2 putaran) dengan alasan penolakan dan hari yang sudah lolos sebagai penyambung; hari yang sudah lolos tidak dibuang. Di dashboard, hari yang ditolak diulang bersama hari sesudahnya saja, karena pembuka hari sesudahnya merujuk hari yang ditolak; hari lain yang sudah lolos tetap disimpan.
+- Setiap hari hasil AI diperiksa otomatis di server. Ditolak bila memuat teks Arab, janji berlebihan, kutipan ayat atau hadis ("bersabda", "berfirman", "QS.", "HR."), placeholder [isi ...], statistik atau klaim jumlah jamaah, kata kaku (silakan, hubungi kami, tersedia), pola atau frasa yang terasa buatan AI ("bukan sekadar X, tapi Y", frasa klise, lebih dari 2 tanda tanya, lebih dari 1 emoji, doa penutup lebih dari 2 hari dari Senin sampai Sabtu, karena satu jatah dari 3 dicadangkan untuk Minggu; doa dicari di dua paragraf terakhir caption), format teks gambar yang tidak cocok dengan tipe (carousel harus Slide 1 sampai n berurutan, 3 sampai 5 slide), caption yang menyalin teks gambar, pembuka caption yang sama dengan hari lain, atau caption yang merujuk konten sebelumnya dengan kata kemarin, kemaren, semalam, tadi, "yang kita bahas", atau "melanjutkan" (kemarin dan kemaren ditolak di seluruh caption, kata lainnya di paragraf pembuka).
+- Hari yang ditolak ditulis ulang sendiri (maksimal 2 putaran) dengan alasan penolakan dan hari yang sudah lolos sebagai penyambung; hari yang sudah lolos tidak dibuang. Di dashboard, hari yang ditolak diulang bersama hari sesudahnya saja, karena pembuka hari sesudahnya menyambung penutup hari yang ditolak; hari lain yang sudah lolos tetap disimpan.
 - Caption dirapikan di server: ejaan "Umroh", tepat 5 hashtag (#UmrohBersamaAmiru dan #AmiruTour selalu ada), maksimal 2200 karakter. Teks gambar juga dibersihkan dari tanda pisah panjang dan titik koma (baris tidak digabung, rentang angka seperti "Slide 2–3" dibiarkan).
 - Label seri "Seri [Tema] · n/7" ditambahkan otomatis di akhir teks gambar.
 - **Isi dari Pola** (di Cara lain) membuat kerangka kosong 7 hari (pilar dan format sudah terisi) tanpa AI; bagian [isi ...] diganti data asli.
 - **Salin Prompt** (di Cara lain) menyalin prompt lengkap (pola 7 hari, konteks, riwayat konten lama) untuk ditempel ke asisten AI lain bila server penyusun konten bermasalah.
-- Tombol **Jadikan Post** memilih tujuan caption sesuai pilar rencana (termasuk Manasik dan Kontemplasi) dan mengirim konteks seri (hari/peran, Tema Minggu, teks di gambar, tema kemarin dan besok) supaya caption yang digenerate ulang tetap menyambung.
+- Tombol **Jadikan Post** memilih tujuan caption sesuai pilar rencana (termasuk Manasik dan Kontemplasi) dan mengirim konteks seri (hari/peran, Tema Minggu, teks di gambar, tema hari sebelumnya dan hari sesudahnya, hanya sebagai bahan menyambung isi dan tidak disebut di caption) supaya caption yang digenerate ulang tetap menyambung.
 - **Peta tema 12 bulan** di modal (dilipat) menampilkan tema pekan-pekan setahun supaya tidak ada tema kembar.
 - **Rencana Setahun AI** (di Rencana Konten) menyusun tema 12 bulan lewat AI dengan menimbang program keberangkatan, musim, dan alur jamaah, lalu menyimpannya per pekan. Riwayat tema yang dikirim ke AI dan dipakai untuk menolak tema kembar memakai tanggal dan jendela yang sama (365 hari, musiman 300 hari), jadi tahun kedua dan seterusnya tidak memblokir tema lama selamanya. Tema yang disimpan menjadi saran utama Tema Minggu; tema yang diedit admin terkunci dan tidak ditimpa saat disusun ulang.
 - Riwayat konten dibaca dari rencana dan post tersimpan, jadi AI menghindari topik lama otomatis.
@@ -2489,6 +2489,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 | 13 | 16 Oktober 2026 | Pola 7 hari dinamis: pekan hari besar dan pekan penjualan memakai varian peran dan format (Sambut, Kenali, Amalkan, Tanya Jawab, Rencanakan, Hitung, Pertimbangkan) supaya 52 pekan tidak seragam, dan tema musiman biasa diberi jeda agar tidak menempati pekan berurutan (Rencana Setahun AI ikut menolak dan mengulang pekan yang melanggar). Aturan konten harian tidak berubah |
 | 14 | 16 Oktober 2026 | Kesehatan Rencana: panel di modal Rencana Konten dan bagian di rekap salinan/unduhan yang menghitung pekan ke depan (komposisi per fase terhadap jatah bobot, fase yang hilang atau berlebih, stok tema per fase terhadap kebutuhan setahun, rasio tema hati dan praktis dengan batas sehat 40-65% hati). Bank alur ditambah 16 tema: Madinah 11 menjadi 19 dan umroh bersama siapa 9 menjadi 17 (total 111). Hanya laporan, tidak mengubah pemilihan tema. Aturan konten harian tidak berubah |
 | 15 | 16 Oktober 2026 | Promosi program otomatis: pekan yang punya fase promosi (Kenalkan, Isi paket, Seat menipis, Penutupan) kini menyisipkan 1-2 hari praktis (Selasa, Rabu, atau Jumat) yang mengarah ke program tanpa perlu Arahan tambahan. Dulu fase hanya menjadi label di rekap karena prompt dan pemeriksa server mengabaikan konteks program tanpa arahan. Pemeriksa server melonggarkan larangan angka dan kata "tersedia" pada pekan itu. Perlu deploy ulang generate-ig-content-plan. Pause bukti sosial, polling, dan Story tidak berubah |
+| 16 | 22 Oktober 2026 | Caption tidak lagi memakai kata rujukan untuk menyambung antarkonten (kemarin, kemaren, semalam, tadi, "yang kita bahas", "melanjutkan"). Penyambung kini lewat isi: pembuka langsung masuk ke adegan atau pertanyaan yang menjawab penutup hari sebelumnya, dan benang merahnya terbawa lewat tema, benda, atau perasaan yang sama. Pemeriksa server menolak caption yang merujuk, dan pengecualian rumus rujukan pada cek 3 kata dicabut. Perlu deploy ulang generate-ig-content-plan dan generate-ig-caption. Penutup caption yang memancing hari berikutnya tidak berubah |
 `;
 
 // Petunjuk yang ikut tersalin di depan dokumen supaya Claude mengembalikan dokumen dalam format yang bisa dipakai lagi.
@@ -4496,7 +4497,7 @@ function igSpasiSlide(text) {
         .replace(/[ \t]*\n[ \t\n]*(?=Label gambar:)/gi, '\n\n');
 }
 
-// 3 kata pertama (tanpa tanda baca, tanpa filter kata umum) = "rumus pembuka" ("kemarin kita bahas"). '' kalau < 3 kata.
+// 3 kata pertama (tanpa tanda baca, tanpa filter kata umum) = "rumus pembuka". '' kalau < 3 kata.
 function igRumusPembuka(teks) {
     const w = String(teks || '').toLowerCase().replace(/[’'`ʼ]/g, '').replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
     return w.length >= 3 ? w.slice(0, 3).join(' ') : '';
@@ -4526,17 +4527,13 @@ function igGayaTerbaru(riwayat) {
         .slice(0, IG_GAYA_JUMLAH);
 }
 
-// Rumus pembuka yang memang WAJIB dipakai Selasa-Minggu untuk merujuk hari sebelumnya ("Kemarin kita bahas...").
-// Rumus ini dikecualikan dari cek 3 kata pertama, kalau tidak hampir pasti bentrok dengan 20 posting terakhir.
-const IG_RUMUS_RUJUKAN_RE = /^(kemarin|kemaren|semalam|tadi)\s/;
-
 // true kalau pembuka caption item mengulang pembuka salah satu dari 20 posting terakhir: rumus 3 kata pertama sama
-// (selain rumus rujukan hari sebelumnya) ATAU token pembukanya hampir sama (kata tema minggu dibuang lewat `abaikan`).
+// ATAU token pembukanya hampir sama (kata tema minggu dibuang lewat `abaikan`).
 function igIsPembukaMirip(item, riwayat, abaikan) {
     const buka = igFirstLine(item.draft_caption).slice(0, 160);
     if (!buka) return false;
     const o3Mentah = igRumusPembuka(buka);
-    const o3 = IG_RUMUS_RUJUKAN_RE.test(o3Mentah) ? '' : o3Mentah;
+    const o3 = o3Mentah;
     const o = igMinusTokens(igTokenSet(buka), abaikan);
     return igGayaTerbaru(riwayat).some(r => {
         if (!r.buka) return false;
@@ -4788,7 +4785,7 @@ function igHariBerikutnya(tgl) {
 }
 
 // Seleksi hasil mode pekan (fungsi murni, mudah dites). `coba(slot)` mengembalikan baris siap simpan atau null (ditolak).
-// Aturan: hari yang ditolak membuat hari SESUDAHNYA (tanggal persis +1) ikut diulang, karena pembukanya merujuk versi lama.
+// Aturan: hari yang ditolak membuat hari SESUDAHNYA (tanggal persis +1) ikut diulang, karena pembukanya menyambung penutup versi lama.
 // Hari lain yang lolos tetap diterima. Hari yang ikut diulang tidak dicoba (coba tidak dipanggil), jadi tidak masuk riwayat.
 function igSeleksiPekan(batch, coba) {
     const hasil = [];
@@ -4887,8 +4884,8 @@ async function igGeneratePlanForSlots(year, month, slots, arahan, onProgress, op
                 };
 
                 if (pekan) {
-                    // Mode pekan: pembuka caption hari N+1 merujuk hari N ("Kemarin kita bahas..."). Kalau hari N ditolak lalu
-                    // dibuat ulang, hanya hari N+1 yang rujukannya jadi usang, jadi cukup N dan N+1 yang diulang. Hari lain yang
+                    // Mode pekan: pembuka caption hari N+1 menyambung penutup hari N (lewat isi). Kalau hari N ditolak lalu
+                    // dibuat ulang, hanya hari N+1 yang sambungannya jadi usang, jadi cukup N dan N+1 yang diulang. Hari lain yang
                     // sudah lolos tetap disimpan (lihat igSeleksiPekan).
                     const itemByDate = new Map();
                     (data.items || []).forEach(it => { if (it && it.tanggal && !itemByDate.has(it.tanggal)) itemByDate.set(it.tanggal, it); });
@@ -5053,7 +5050,7 @@ function igCaptionPenutup(caption) {
 }
 
 // Arahan tambahan untuk generate ulang 1 hari: hari sebelumnya sudah menjanjikan sesuatu di penutup captionnya, dan
-// hari sesudahnya sudah merujuk hari ini di pembukanya. Ide baru wajib memenuhi janji itu supaya rantai tidak putus.
+// hari sesudahnya sudah menyambung hari ini di pembukanya. Ide baru wajib memenuhi janji itu supaya rantai tidak putus.
 // Fungsi murni. Hanya hari seri yang sama (kalau seri diketahui) & belum dilewati yang dipakai.
 function igArahanTetangga(plans, plan, temaMinggu) {
     const [y, m, d] = plan.tanggal.split('-').map(Number);
@@ -5068,7 +5065,7 @@ function igArahanTetangga(plans, plan, temaMinggu) {
     // Senin tidak punya hari sebelumnya di pekan yang sama; Minggu tidak punya hari sesudahnya.
     if (prev && pola(prevT) && pola(prevT).urutan < pola(plan.tanggal).urutan) {
         const tutup = igCaptionPenutup(prev.draft_caption);
-        if (tutup) out.push(`Penutup caption ${pola(prevT).hari} (hari sebelumnya) berbunyi: "${tutup}" -- ide baru HARUS menjawab/memenuhi teaser itu, dan pembuka captionnya merujuk ${pola(prevT).hari}.`);
+        if (tutup) out.push(`Penutup caption ${pola(prevT).hari} (hari sebelumnya) berbunyi: "${tutup}" -- ide baru HARUS menjawab/memenuhi teaser itu, dan pembuka captionnya menyambung ${pola(prevT).hari} lewat isi, TANPA kata rujukan (kemarin, semalam, tadi, "yang kita bahas", "melanjutkan").`);
     }
     if (next && pola(nextT) && pola(nextT).urutan > pola(plan.tanggal).urutan) {
         const buka = igFirstLine(next.draft_caption).slice(0, 160);
@@ -5172,7 +5169,7 @@ window.igRegenerasiHariPlan = igRegenerasiHariPlan;
 // ---- Salin prompt untuk AI lain (cadangan kalau token Gemini habis / edge function bermasalah) ----
 // Isi prompt sistem SAMA PERSIS dengan CONTENT_PLAN_SYSTEM_PROMPT di supabase/functions/generate-ig-content-plan/index.ts
 // (dijaga oleh tes di test-core.js: kalau salah satu diubah tanpa yang lain, tes gagal).
-const IG_PLAN_PROMPT_SISTEM = `Kamu adalah social media strategist & copywriter untuk biro umroh "Amiru Tour" (PT Amiru Haramain Indonesia). Tugasmu menyusun PAKET KONTEN INSTAGRAM yang SALING MENYAMBUNG dalam Bahasa Indonesia: tujuh posting dalam satu pekan (Senin-Minggu) membahas SATU TEMA MINGGUAN dari tujuh sudut berurutan, supaya jamaah merasa tiap konten melanjutkan yang kemarin. Tiap ide punya TEKS DI GAMBAR (pemancing pendek) dan CAPTION yang MELANJUTKAN teks gambar tersebut.
+const IG_PLAN_PROMPT_SISTEM = `Kamu adalah social media strategist & copywriter untuk biro umroh "Amiru Tour" (PT Amiru Haramain Indonesia). Tugasmu menyusun PAKET KONTEN INSTAGRAM yang SALING MENYAMBUNG dalam Bahasa Indonesia: tujuh posting dalam satu pekan (Senin-Minggu) membahas SATU TEMA MINGGUAN dari tujuh sudut berurutan, supaya jamaah merasa tiap konten melanjutkan konten sebelumnya tanpa pernah menyebutnya. Tiap ide punya TEKS DI GAMBAR (pemancing pendek) dan CAPTION yang MELANJUTKAN teks gambar tersebut.
 
 ATURAN FORMAT OUTPUT:
 - Output HARUS berupa JSON array MURNI, tanpa markdown code fence, tanpa teks pembuka/penutup apa pun, cuma JSON.
@@ -5185,7 +5182,7 @@ ATURAN FORMAT OUTPUT:
 TEMA MINGGU & KESINAMBUNGAN:
 - Kalau prompt user memuat TEMA MINGGU, semua posting pekan itu membahas tema tersebut dari sudut berbeda sesuai peran hari. Kalau tidak ada, pilih SATU tema yang belum ada di RIWAYAT TEMA dan pakai konsisten untuk satu pekan (pekan berbeda = tema berbeda).
 - Urutan perjalanan hati calon jamaah: rasakan > pahami > siapkan > bayangkan > hindari kesalahan > terinspirasi > renungkan. Tiap hari melanjutkan hari sebelumnya.
-- Penyambung WAJIB: pembuka caption (kecuali Senin atau hari pertama yang dibuat tanpa konteks hari sebelumnya) merujuk hari sebelumnya, mis. "Kemarin kita bahas..." (JANGAN menyalin kalimat persis ini terus; variasikan). Penutup caption memancing hari berikutnya.
+- Penyambung WAJIB, tapi TANPA kata rujukan: pembuka caption (kecuali Senin atau hari pertama yang dibuat tanpa konteks hari sebelumnya) menyambung hari sebelumnya lewat ISI, bukan lewat kata penghubung. DILARANG menyebut atau merujuk konten sebelumnya dengan kata "kemarin", "kemaren", "semalam", "tadi", "hari sebelumnya", "yang kita bahas", "melanjutkan", "meneruskan", "lanjutan dari", atau sejenisnya (contoh yang SALAH: "Berbekal pertimbangan matang yang kita bahas kemarin", "Meneruskan perhitungan dana dan cuti kita kemarin"). Caranya: baca penutup/jembatan hari sebelumnya, lalu buka caption langsung di adegan, pertanyaan, atau masalah yang menjadi jawaban alami dari penutup itu. Caption harus utuh bila dibaca sendiri oleh orang yang tidak melihat posting sebelumnya, sementara pembaca yang mengikuti merasakan benang merahnya dari tema, benda, perasaan, atau pertanyaan yang sama. Variasikan cara membuka tiap hari. Penutup caption memancing hari berikutnya.
 - Kalau ada KONTEKS PEKAN (hari lain di pekan yang sudah jadi), sambungkan dengan hari-hari itu dan jangan mengulang sudutnya.
 - Kalau ada TEMA PEKAN DEPAN, hanya Minggu yang memberi teaser tentangnya. Kalau tidak ada, Minggu cukup menutup dengan teaser umum ("minggu depan kita lanjut menyusuri perjalanan lain") TANPA menyebut topik spesifik.
 
@@ -5277,7 +5274,7 @@ ANTI-PENGULANGAN (PENTING):
 - Topik yang SUDAH PERNAH dipakai (awal pola, sebelum 12 Oktober 2026; jangan diulang sebelum 12 April 2027): niat umroh; pertama kali lihat Ka'bah; sa'i dan kisah Siti Hajar; Raudhah; subuh di Madinah; bawaan yang sering ketinggalan; kesalahan umum thawaf; urutan umroh (ihram, thawaf, sa'i, tahallul); larangan ihram; persiapan fisik; hari terakhir di Makkah; Makkah atau Madinah; umroh bersama orang tua; mulai dari yang kecil / menabung niat.
 - Kalau ada EDISI ke-2 atau lebih (tema yang sama kembali di tahun/siklus berikutnya), daftar ide lamanya diberikan tanpa batas umur. Tema boleh sama, tapi tiap hari HARUS membahas sudut yang benar-benar baru: jangan menulis ulang topik, hook, atau pembuka lama dengan kata yang diganti.
 - Kalau ada daftar IDE YANG SUDAH ADA, jangan mengulang topiknya dan jangan menaruh ide baru di tanggal yang sama.
-- Kalau ada daftar HOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR, hook (teks_gambar baris pertama) dan 3 kata pertama pembuka caption TIDAK boleh sama atau mirip dengan daftar itu, juga tidak antarhari dalam jawaban yang sama. Variasikan rumus pembuka (jangan terus memakai "Kemarin kita bahas").
+- Kalau ada daftar HOOK & PEMBUKA CAPTION 20 POSTING TERAKHIR, hook (teks_gambar baris pertama) dan 3 kata pertama pembuka caption TIDAK boleh sama atau mirip dengan daftar itu, juga tidak antarhari dalam jawaban yang sama. Variasikan rumus pembuka antarhari.
 
 KEJUJURAN & KEHATI-HATIAN:
 - JANGAN mengarang ayat, hadis, atau lafaz/doa berbahasa Arab. Untuk lafaz dan tata cara tulis "sesuai manasik dari pembimbing". Soal agama dan hukum ibadah tulis secara umum, tanpa fatwa; tandai di akhir kolom "tema" dengan "[cek pembimbing]" kalau memuat tata cara, hukum, atau lafaz (menyebut kata \"doa\" atau nama ritual saja TIDAK perlu ditandai).

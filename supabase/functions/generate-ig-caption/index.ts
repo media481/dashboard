@@ -264,7 +264,7 @@ GAYA BAHASA:
 STRUKTUR:
 1. 3-5 paragraf pendek (1-3 kalimat tiap paragraf), dipisah SATU baris kosong. Panjang isi caption (di luar hashtag) sekitar 600-1200 karakter — jangan terlalu singkat.
 2. Pembukaan, isi, dan penutup mengikuti pola pada TUJUAN POST di atas.
-3. Kalau konsep menyebut hari/seri mingguan (mis. "Selasa, Seri Talbiyah"), pembukaan merujuk hari sebelumnya ("Kemarin kita bahas...") dan penutup memancing hari berikutnya. Kalau konsep memuat teks di gambar, caption adalah LANJUTANNYA, bukan pengulangan.
+3. Kalau konsep menyebut hari/seri mingguan (mis. "Selasa, Seri Talbiyah"), pembukaan menyambung hari sebelumnya lewat ISI, TANPA kata rujukan: DILARANG memakai "kemarin", "kemaren", "semalam", "tadi", "yang kita bahas", "melanjutkan", "meneruskan", atau sejenisnya untuk menyebut konten lain (contoh yang SALAH: "Berbekal pertimbangan matang yang kita bahas kemarin"). Buka langsung di adegan, pertanyaan, atau masalah yang menjadi jawaban alami dari konteks hari sebelumnya, supaya caption tetap utuh bila dibaca sendiri; penutup memancing hari berikutnya. Kalau konsep memuat teks di gambar, caption adalah LANJUTANNYA, bukan pengulangan.
 4. CTA ringan. Kalau ada nomor WA di konsep, sebut ringkas; kalau tidak ada, JANGAN mengarang nomor — pakai "chat WA aja ya" atau "klik link di bio".
 5. HASHTAG — blok terpisah di akhir (1 baris kosong sebelumnya), langsung tanpa tulisan "Hashtag:", tepat 5 hashtag: #UmrohBersamaAmiru, #AmiruTour, ditambah 3 hashtag topikal yang relevan. Tanpa spasi di dalam hashtag.
 
@@ -335,7 +335,7 @@ Deno.serve(async (req: Request) => {
     // Frontend lama mengirim awalan "KONSEP/IDE:" sendiri; yang baru mengirim teks mentah.
     let prompt = /^KONSEP\/IDE:/i.test(userMsg) ? userMsg : `KONSEP/IDE:\n${userMsg}`;
     if (konteks) {
-      prompt += `\n\nKONTEKS SERI MINGGUAN (caption harus menyambung dengan ini; jangan menyalin teks di gambar, jangan mengarang isi hari lain):\n${konteks}`;
+      prompt += `\n\nKONTEKS SERI MINGGUAN (caption harus menyambung dengan ini lewat isi; jangan menyalin teks di gambar, jangan mengarang isi hari lain, dan jangan menyebut hari lain dengan kata kemarin/semalam/tadi/\"yang kita bahas\"):\n${konteks}`;
     }
     if (hindari) {
       prompt += `\n\nCAPTION SEBELUMNYA (JANGAN diulang — buat hook, sudut pandang, dan kalimat pembuka yang benar-benar berbeda):\n${hindari}`;
