@@ -1904,10 +1904,14 @@ a.ig-dm-iconbtn { text-decoration: none; }
 .ig-cal-day.ig-type-carousel .ig-cal-chip-plan,
 .ig-cal-day.ig-type-video .ig-cal-chip-plan { background: var(--surface); }
 
-/* hari yang sudah lewat jangan terlalu pudar supaya warna tipe tetap terbaca */
+/* hari yang sudah lewat: semua tipe jadi abu-abu lembut (override warna tipe; hari ini tidak ikut) */
 .ig-cal-past.ig-type-image:not(.ig-cal-today),
 .ig-cal-past.ig-type-carousel:not(.ig-cal-today),
-.ig-cal-past.ig-type-video:not(.ig-cal-today) { opacity: .92; }
+.ig-cal-past.ig-type-video:not(.ig-cal-today) { --ig-type-c: #9aa5b4; opacity: .85; }
+
+.ig-cal-past.ig-type-image:not(.ig-cal-today) .ig-cal-day-num,
+.ig-cal-past.ig-type-carousel:not(.ig-cal-today) .ig-cal-day-num,
+.ig-cal-past.ig-type-video:not(.ig-cal-today) .ig-cal-day-num { font-weight: 600; }
 
 .ig-cal-day.ig-type-image:not(.ig-cal-today):hover,
 .ig-cal-day.ig-type-carousel:not(.ig-cal-today):hover,
