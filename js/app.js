@@ -9447,10 +9447,11 @@ function renderFeaturedSection() {
     if (!tbody) return;
 
     const now = new Date();
-    // Catatan: sengaja TIDAK ikut pakai isProgramVisibleOnDashboard() di sini
-    // supaya perilaku lama (program expired tetap bisa tampil di tab
-    // Unggulan) tidak berubah -- cuma nambah syarat wajib punya poster.
-    const featuredPrograms = dataUmroh.filter(p => featuredIds.includes(String(p.id)) && p.is_active !== false && !!p.link_poster);
+    // Program yang sudah expired (Tanggal Berangkat sudah lewat) disembunyikan dari
+    // tab Unggulan. Status unggulannya di tabel featured_programs TIDAK dihapus, jadi
+    // admin tetap melihatnya di Admin > Unggulan dan datanya tidak hilang.
+    // Syarat sama dengan dashboard utama: aktif, belum expired, punya poster.
+    const featuredPrograms = dataUmroh.filter(p => featuredIds.includes(String(p.id)) && isProgramVisibleOnDashboard(p));
 
     if (!featuredPrograms.length) {
         tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--ink-soft);">
