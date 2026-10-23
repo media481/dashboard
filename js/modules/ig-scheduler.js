@@ -641,7 +641,9 @@ function renderIgPlanSide(monthPlans) {
     }
     const canDrag = canManageProgramData();
     const mon = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-    const sorted = monthPlans.slice().sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+    // Urut tanggal terbaru di atas, terlama di bawah (di dalam tiap grup tahap),
+    // supaya user langsung melihat ide paling baru tanpa menggulir.
+    const sorted = monthPlans.slice().sort((a, b) => b.tanggal.localeCompare(a.tanggal));
     const groups = ['siap', 'dikerjakan', 'ide']
         .map(stage => ({ stage, items: sorted.filter(p => (p.tahap || 'ide') === stage) }))
         .filter(g => g.items.length);
