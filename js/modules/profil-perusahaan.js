@@ -55,6 +55,7 @@ function updateCompanyProfilePreview() {
     const rek = profileRekeningDraft.filter(r => r.bank || r.nomor || r.an);
     const wa = profileKontakWaDraft.map(n => (n || '').replace(/\D/g, '')).filter(Boolean);
     const kontak = [alamat, telp ? 'Telp. ' + telp : '', email].filter(Boolean).map(escapeHtml).join(' &middot; ');
+    cpRefreshCounts();
     box.innerHTML = `
         <div class="cp-pv-head">
             ${logo ? `<img src="${escapeHtml(logo)}" alt="">` : ''}
@@ -71,47 +72,58 @@ function updateCompanyProfilePreview() {
     `;
 }
 
+// Tab aktif di editor (identitas | rekening | pdf). Semua pane tetap ada di DOM supaya isian tidak hilang saat pindah tab.
+function cpSwitchTab(name) {
+    const wrap = document.querySelector('.cp-wrap');
+    if (!wrap) return;
+    wrap.dataset.tab = name;
+    wrap.querySelectorAll('.cp-tab').forEach(b => {
+        const on = b.dataset.tab === name;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    wrap.querySelectorAll('.cp-pane').forEach(p => { p.hidden = p.dataset.pane !== name; });
+}
+
+// Penanda jumlah rekening/nomor WA pada label tab
+function cpRefreshCounts() {
+    const r = document.getElementById('cp_count_rek');
+    if (r) r.textContent = profileRekeningDraft.filter(x => x.bank || x.nomor || x.an).length + profileKontakWaDraft.filter(n => (n || '').replace(/\D/g, '')).length;
+}
+
 function renderCompanyProfileForm() {
     profileRekeningDraft = (NOTA_PERUSAHAAN.rekening || []).map(r => ({ ...r }));
     profileKontakWaDraft = (NOTA_PERUSAHAAN.kontak_wa || []).slice();
     profileLogoPendingDataUrl = null;
     profileDirty = false;
     return `
-        <div class="cp-wrap">
-            <div class="cp-hero">
-                <div class="cp-hero-icon"><i class="bi bi-building"></i></div>
-                <div>
-                    <h4>Profil Perusahaan</h4>
-                    <p>Data ini dipakai untuk kop &amp; footer semua nota (Nota Pembayaran, Nota Riwayat, Kuitansi). Ubah di sini, otomatis ikut berubah di semua nota tanpa perlu edit kode.</p>
+        <div class="cp-wrap" data-tab="identitas">
+            <div class="cp-top">
+                <div class="cp-top-title">
+                    <div class="cp-top-icon"><i class="bi bi-building"></i></div>
+                    <div>
+                        <h4>Profil Perusahaan</h4>
+                        <p>Dipakai di kop &amp; footer semua nota dan penutup caption WA.</p>
+                    </div>
+                </div>
+                <div class="cp-tabs" role="tablist">
+                    <button type="button" class="cp-tab active" role="tab" aria-selected="true" data-tab="identitas" onclick="cpSwitchTab('identitas')"><i class="bi bi-briefcase-fill"></i> Identitas</button>
+                    <button type="button" class="cp-tab" role="tab" aria-selected="false" data-tab="rekening" onclick="cpSwitchTab('rekening')"><i class="bi bi-bank"></i> Rekening &amp; WA <span id="cp_count_rek" class="cp-tab-count">0</span></button>
+                    <button type="button" class="cp-tab" role="tab" aria-selected="false" data-tab="pdf" onclick="cpSwitchTab('pdf')"><i class="bi bi-file-earmark-pdf-fill"></i> Unduh PDF</button>
                 </div>
             </div>
 
             <div class="cp-layout">
                 <div class="cp-main">
-                    <section class="cp-card">
-                        <div class="cp-card-head">
-                            <div class="cp-card-icon"><i class="bi bi-card-image"></i></div>
-                            <div><h5>Logo</h5><p>Tampil di kop nota dan sidebar.</p></div>
-                        </div>
-                        <div class="cp-card-body">
+                    <section class="cp-pane cp-card" data-pane="identitas">
+                        <div class="cp-card-body cp-ident">
                             <div class="cp-logo">
                                 <div class="cp-logo-tile"><img id="cp_logo_preview" src="${escapeHtml(NOTA_PERUSAHAAN.logo)}" alt="Logo"></div>
-                                <div class="cp-logo-info">
-                                    <label class="cp-btn-upload" for="cp_logo_file"><i class="bi bi-upload"></i> Pilih Logo</label>
-                                    <input type="file" id="cp_logo_file" class="cp-file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange="handleCompanyLogoUpload(this)">
-                                    <div id="cp_logo_name" class="cp-logo-name"></div>
-                                    <p class="cp-hint">PNG/JPEG/WebP/SVG, disarankan latar transparan, maks 2MB.</p>
-                                </div>
+                                <label class="cp-btn-upload" for="cp_logo_file"><i class="bi bi-upload"></i> Ganti Logo</label>
+                                <input type="file" id="cp_logo_file" class="cp-file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange="handleCompanyLogoUpload(this)">
+                                <div id="cp_logo_name" class="cp-logo-name"></div>
+                                <p class="cp-hint">PNG/JPEG/WebP/SVG, latar transparan, maks 2MB.</p>
                             </div>
-                        </div>
-                    </section>
-
-                    <section class="cp-card">
-                        <div class="cp-card-head">
-                            <div class="cp-card-icon"><i class="bi bi-briefcase-fill"></i></div>
-                            <div><h5>Identitas</h5><p>Nama dan kontak resmi yang dicetak di kop nota.</p></div>
-                        </div>
-                        <div class="cp-card-body">
                             <div class="cp-grid">
                                 <div class="cp-field">
                                     <label for="cp_brand">Brand / Nama Singkat<span class="required">*</span></label>
@@ -137,33 +149,24 @@ function renderCompanyProfileForm() {
                         </div>
                     </section>
 
-                    <section class="cp-card">
-                        <div class="cp-card-head">
-                            <div class="cp-card-icon"><i class="bi bi-bank"></i></div>
-                            <div><h5>Rekening Pembayaran</h5><p>Dicetak di footer semua nota. Bisa lebih dari satu.</p></div>
-                        </div>
-                        <div class="cp-card-body">
+                    <section class="cp-pane cp-card" data-pane="rekening" hidden>
+                        <div class="cp-sec">
+                            <div class="cp-sec-head">
+                                <div><h5><i class="bi bi-bank"></i> Rekening Pembayaran</h5><p>Dicetak di footer semua nota.</p></div>
+                                <button type="button" class="cp-add" onclick="addCompanyRekeningRow()"><i class="bi bi-plus-lg"></i> Tambah</button>
+                            </div>
                             <div id="cp_rekening_list"></div>
-                            <button type="button" class="cp-add" onclick="addCompanyRekeningRow()"><i class="bi bi-plus-lg"></i> Tambah Rekening</button>
                         </div>
-                    </section>
-
-                    <section class="cp-card">
-                        <div class="cp-card-head">
-                            <div class="cp-card-icon"><i class="bi bi-whatsapp"></i></div>
-                            <div><h5>Kontak WA Marketing</h5><p>Dicetak di penutup caption marketing (Teks WA Otomatis &amp; Caption AI). Berbeda dari field Telepon di atas.</p></div>
-                        </div>
-                        <div class="cp-card-body">
+                        <div class="cp-sec">
+                            <div class="cp-sec-head">
+                                <div><h5><i class="bi bi-whatsapp"></i> Kontak WA Marketing</h5><p>Penutup caption marketing (Teks WA &amp; Caption AI). Beda dari Telepon.</p></div>
+                                <button type="button" class="cp-add" onclick="addCompanyKontakWaRow()"><i class="bi bi-plus-lg"></i> Tambah</button>
+                            </div>
                             <div id="cp_kontak_wa_list"></div>
-                            <button type="button" class="cp-add" onclick="addCompanyKontakWaRow()"><i class="bi bi-plus-lg"></i> Tambah Nomor WA</button>
                         </div>
                     </section>
 
-                    <section class="cp-card">
-                        <div class="cp-card-head">
-                            <div class="cp-card-icon"><i class="bi bi-file-earmark-pdf-fill"></i></div>
-                            <div><h5>Unduh PDF</h5><p>Pintasan ke dokumen PDF di aplikasi ini, tanpa perlu membuka menu masing-masing.</p></div>
-                        </div>
+                    <section class="cp-pane cp-card" data-pane="pdf" hidden>
                         <div class="cp-card-body">
                             <div class="cp-pdf-title">Dokumen umum</div>
                             <div class="cp-pdf-grid">
@@ -172,32 +175,30 @@ function renderCompanyProfileForm() {
                                 ${cpPdfTombol('pola', 'bi-diagram-3', 'Pola Konten IG', 'About Planner, A4 landscape')}
                             </div>
 
-                            <div class="cp-pdf-title">Per program</div>
-                            <div class="cp-field full">
-                                <label for="cp_pdf_program">Program</label>
-                                <select id="cp_pdf_program" onchange="cpPdfPilihProgram(this.value)">${cpPdfOpsiProgram()}</select>
+                            <div class="cp-pdf-title">Per program &amp; jamaah</div>
+                            <div class="cp-grid">
+                                <div class="cp-field">
+                                    <label for="cp_pdf_program">Program</label>
+                                    <select id="cp_pdf_program" onchange="cpPdfPilihProgram(this.value)">${cpPdfOpsiProgram()}</select>
+                                </div>
+                                <div class="cp-field">
+                                    <label for="cp_pdf_jamaah">Jamaah <span class="cp-label-hint">(untuk Tanda Terima)</span></label>
+                                    <select id="cp_pdf_jamaah" disabled><option value="">-- Pilih jamaah --</option></select>
+                                </div>
                             </div>
                             <div class="cp-pdf-grid">
-                                ${cpPdfTombol('manifest', 'bi-people-fill', 'Manifest', 'Daftar jamaah program terpilih')}
-                                ${cpPdfTombol('rooming', 'bi-door-open-fill', 'Rooming List', 'Pembagian kamar program terpilih')}
+                                ${cpPdfTombol('manifest', 'bi-people-fill', 'Manifest', 'Daftar jamaah program')}
+                                ${cpPdfTombol('rooming', 'bi-door-open-fill', 'Rooming List', 'Pembagian kamar program')}
+                                ${cpPdfTombol('tandaterima', 'bi-file-earmark-check-fill', 'Tanda Terima Dokumen', 'Bukti penyerahan dokumen')}
                             </div>
 
-                            <div class="cp-pdf-title">Per jamaah</div>
-                            <div class="cp-field full">
-                                <label for="cp_pdf_jamaah">Jamaah <span class="cp-label-hint">(pilih program dulu)</span></label>
-                                <select id="cp_pdf_jamaah" disabled><option value="">-- Pilih jamaah --</option></select>
-                            </div>
-                            <div class="cp-pdf-grid">
-                                ${cpPdfTombol('tandaterima', 'bi-file-earmark-check-fill', 'Tanda Terima Dokumen', 'Bukti penyerahan dokumen jamaah')}
-                            </div>
-
-                            <p class="cp-hint">Nota Pembayaran, Nota Riwayat, dan Kuitansi tidak ada di sini karena setiap unduhannya mencatat Kode Verifikasi ke sistem audit. Buka dari menu Pembayaran supaya pratinjau dan catatannya tetap terjaga.</p>
+                            <p class="cp-hint">Nota Pembayaran, Nota Riwayat, dan Kuitansi tidak ada di sini karena setiap unduhannya mencatat Kode Verifikasi ke sistem audit. Buka dari menu Pembayaran.</p>
                         </div>
                     </section>
                 </div>
 
                 <aside class="cp-aside">
-                    <div class="cp-aside-title"><i class="bi bi-eye"></i> Pratinjau kop &amp; footer nota <span class="cp-live">Langsung</span></div>
+                    <div class="cp-aside-title"><i class="bi bi-eye"></i> Pratinjau nota <span class="cp-live">Langsung</span></div>
                     <div id="cp_preview" class="cp-preview"></div>
                     <p class="cp-hint">Ringkasan saja. Tata letak nota sebenarnya bisa sedikit berbeda.</p>
                 </aside>
@@ -217,31 +218,24 @@ function renderCompanyProfileForm() {
 function renderCompanyRekeningRows() {
     const wrap = document.getElementById('cp_rekening_list');
     if (!wrap) return;
+    cpRefreshCounts();
     if (!profileRekeningDraft.length) {
-        wrap.innerHTML = `<p class="cp-rekening-empty"><i class="bi bi-bank"></i> Belum ada rekening. Klik "Tambah Rekening" di bawah.</p>`;
+        wrap.innerHTML = `<p class="cp-rekening-empty"><i class="bi bi-bank"></i> Belum ada rekening.</p>`;
         return;
     }
-    wrap.innerHTML = profileRekeningDraft.map((r, i) => `
-        <div class="cp-item">
-            <div class="cp-item-head">
-                <span class="cp-item-badge">${i + 1}</span>
-                <span class="cp-item-title">Rekening ${i + 1}</span>
-                <button type="button" class="btn-icon-ghost danger" title="Hapus rekening ${i + 1}" onclick="removeCompanyRekeningRow(${i})"><i class="bi bi-trash-fill"></i></button>
+    wrap.innerHTML = `<div class="cp-rek-head"><span>Nama Bank</span><span>Nomor Rekening</span><span>Atas Nama</span><span></span></div>` +
+        profileRekeningDraft.map((r, i) => `
+        <div class="cp-rek-row">
+            <div class="cp-field" data-label="Nama Bank">
+                <input type="text" aria-label="Nama bank ${i + 1}" value="${escapeHtml(r.bank || '')}" placeholder="Bank Syariah Indonesia" oninput="updateCompanyRekeningField(${i}, 'bank', this.value)">
             </div>
-            <div class="cp-item-grid">
-                <div class="cp-field">
-                    <label>Nama Bank</label>
-                    <input type="text" value="${escapeHtml(r.bank || '')}" placeholder="Contoh: Bank Syariah Indonesia" oninput="updateCompanyRekeningField(${i}, 'bank', this.value)">
-                </div>
-                <div class="cp-field">
-                    <label>Nomor Rekening</label>
-                    <input type="text" inputmode="numeric" value="${escapeHtml(r.nomor || '')}" placeholder="Contoh: 2026 64 2027" oninput="updateCompanyRekeningField(${i}, 'nomor', this.value)">
-                </div>
-                <div class="cp-field">
-                    <label>Atas Nama</label>
-                    <input type="text" value="${escapeHtml(r.an || '')}" placeholder="Contoh: Amiru Tour" oninput="updateCompanyRekeningField(${i}, 'an', this.value)">
-                </div>
+            <div class="cp-field" data-label="Nomor Rekening">
+                <input type="text" inputmode="numeric" aria-label="Nomor rekening ${i + 1}" value="${escapeHtml(r.nomor || '')}" placeholder="2026 64 2027" oninput="updateCompanyRekeningField(${i}, 'nomor', this.value)">
             </div>
+            <div class="cp-field" data-label="Atas Nama">
+                <input type="text" aria-label="Atas nama ${i + 1}" value="${escapeHtml(r.an || '')}" placeholder="Amiru Tour" oninput="updateCompanyRekeningField(${i}, 'an', this.value)">
+            </div>
+            <button type="button" class="btn-icon-ghost danger" title="Hapus rekening ${i + 1}" onclick="removeCompanyRekeningRow(${i})"><i class="bi bi-trash-fill"></i></button>
         </div>
     `).join('');
 }
@@ -267,19 +261,18 @@ function updateCompanyRekeningField(index, field, value) {
 function renderCompanyKontakWaRows() {
     const wrap = document.getElementById('cp_kontak_wa_list');
     if (!wrap) return;
+    cpRefreshCounts();
     if (!profileKontakWaDraft.length) {
-        wrap.innerHTML = `<p class="cp-rekening-empty"><i class="bi bi-whatsapp"></i> Belum ada nomor WA. Klik "Tambah Nomor WA" di bawah.</p>`;
+        wrap.innerHTML = `<p class="cp-rekening-empty"><i class="bi bi-whatsapp"></i> Belum ada nomor WA.</p>`;
         return;
     }
-    wrap.innerHTML = profileKontakWaDraft.map((n, i) => `
-        <div class="cp-item cp-item-wa">
-            <div class="cp-field">
-                <label>Nomor WA ${i + 1} <span class="cp-label-hint">(format 62xxxxxxxxxx)</span></label>
-                <input type="text" inputmode="numeric" value="${escapeHtml(n || '')}" placeholder="Contoh: 6285122336300" oninput="updateCompanyKontakWaField(${i}, this.value)">
-            </div>
+    wrap.innerHTML = `<div class="cp-wa-grid">` + profileKontakWaDraft.map((n, i) => `
+        <div class="cp-wa-item">
+            <i class="bi bi-whatsapp"></i>
+            <input type="text" inputmode="numeric" aria-label="Nomor WA ${i + 1}" value="${escapeHtml(n || '')}" placeholder="6285122336300" oninput="updateCompanyKontakWaField(${i}, this.value)">
             <button type="button" class="btn-icon-ghost danger" title="Hapus nomor ${i + 1}" onclick="removeCompanyKontakWaRow(${i})"><i class="bi bi-trash-fill"></i></button>
         </div>
-    `).join('');
+    `).join('') + `</div><p class="cp-hint">Format 62xxxxxxxxxx, tanpa spasi atau tanda hubung.</p>`;
 }
 
 function addCompanyKontakWaRow() {
@@ -333,6 +326,7 @@ async function saveCompanyProfile() {
     if (!brand || !nama || !alamat) {
         const kosong = [['cp_brand', brand], ['cp_nama', nama], ['cp_alamat', alamat]]
             .filter(w => !w[1]).map(w => document.getElementById(w[0])).filter(Boolean);
+        cpSwitchTab('identitas'); // field wajib ada di tab Identitas
         kosong.forEach(el => { if (el.classList) el.classList.add('cp-invalid'); });
         if (kosong[0] && kosong[0].focus) kosong[0].focus();
         if (statusEl) statusEl.innerHTML = `<p class="cp-status is-error"><i class="bi bi-exclamation-circle-fill"></i> Brand, Nama Perusahaan, dan Alamat wajib diisi.</p>`;
