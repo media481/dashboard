@@ -593,7 +593,7 @@ function igBindCalendarFit() {
     else window.addEventListener('resize', run);
 }
 
-// ---- Ringkasan bulan: kartu statistik + keseimbangan pilar konten ----
+// ---- Ringkasan bulan: kartu statistik ----
 function renderIgCalSummary(monthPosts, monthPlans, emptyFutureDays, pillarPlans = monthPlans) {
     const el = document.getElementById('igCalSummary');
     if (!el) return;
@@ -613,17 +613,6 @@ function renderIgCalSummary(monthPosts, monthPlans, emptyFutureDays, pillarPlans
         card(monthPosts.length, 'Draft & post', 'ig-stat-post') +
         card(emptyFutureDays, 'Hari kosong', 'ig-stat-gap' + (gapBisaDiklik ? ' ig-stat-link' : ''), gapAttrs) + '</div>';
 
-    if (igPlannerColsReady && pillarPlans.length) {
-        const counts = {};
-        pillarPlans.forEach(p => { const k = IG_PILLARS[p.pilar] ? p.pilar : '_none'; counts[k] = (counts[k] || 0) + 1; });
-        const keys = Object.keys(counts);
-        const color = k => k === '_none' ? 'var(--line)' : IG_PILLARS[k].color;
-        const label = k => k === '_none' ? 'Belum ada pilar' : IG_PILLARS[k].label;
-        html += `<div class="ig-pillar-bar" title="Keseimbangan pilar konten (ide aktif + yang sudah jadi post)">` +
-            keys.map(k => `<span style="flex:${counts[k]};background:${color(k)};"></span>`).join('') + '</div>' +
-            `<div class="ig-pillar-legend">` + keys.map(k =>
-                `<span><i style="background:${color(k)};"></i>${escapeHtml(label(k))} ${counts[k]}</span>`).join('') + '</div>';
-    }
     el.innerHTML = html;
 }
 
