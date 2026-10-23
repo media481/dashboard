@@ -6,7 +6,7 @@ Kontrak request/response tiap fungsi didokumentasikan di komentar header file `i
 
 ## Daftar fungsi
 
-Ada 16 folder fungsi di repo: 15 aktif (di tabel di bawah) ditambah `login-dashboard` yang sudah legacy. `_shared/gemini.ts` hanya acuan helper, bukan fungsi.
+Ada 17 folder fungsi di repo: 16 aktif (di tabel di bawah) ditambah `login-dashboard` yang sudah legacy. `_shared/gemini.ts` hanya acuan helper, bukan fungsi.
 
 Kolom **Auth** menunjukkan siapa yang boleh memanggil. Kolom **Deploy** menunjukkan flag yang dipakai.
 
@@ -42,6 +42,14 @@ Fungsi IG AI memakai model cadangan `gemini-3.5-flash-lite`. Aturan isinya mengi
 | `sync-rekap-program` | Sinkron gambar Rekap Program dari folder Google Drive (via Apps Script) ke tabel `rekap_program_items`. Respons: `{ ok, synced }` | Bearer token admin/user | `supabase functions deploy sync-rekap-program` |
 
 URL `send-telegram` ditempel manual di form **Pengaturan Telegram** (field "Edge Function URL").
+
+### Radar risiko keberangkatan
+
+| Fungsi | Kegunaan | Auth | Deploy |
+|---|---|---|---|
+| `radar-risiko-jamaah` | Menilai risiko tiap jamaah (pembayaran, visa, dokumen, paspor) dan tiap program yang berangkat dalam `horizon_hari` (bawaan 60). Mengembalikan skor, alasan, draf pengingat WA (tautan `wa.me` siap klik), dan ringkasan teks. Opsional kirim ringkasan ke Telegram. Hanya membaca data. Body (semua opsional): `{ program_id, horizon_hari, kirim_telegram, hanya_jika_ada_masalah }` | Bearer token admin, atau service role key (cron) | `supabase functions deploy radar-risiko-jamaah` |
+
+Butuh `sql/59_tambah_view_total_bayar.sql`. Skor memakai aturan tetap (bukan tebakan AI), bobot naik mendekati hari berangkat; levelnya `kritis` (>= 70), `tinggi` (>= 40), `sedang` (>= 20), `aman`. Daftar dokumen, aturan paspor 7 bulan, dan pemilihan harga adalah salinan dari `js/app.js`; perbarui juga di fungsi ini kalau berubah. Telegram dikirim ke penerima bertipe `radar`; kalau tidak ada, ke penerima bertipe `program`. Tes: `npm run test:edge`.
 
 ### Instagram
 

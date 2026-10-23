@@ -13,7 +13,7 @@
     "stamp": "node scripts/stamp-versions.mjs",
     "stamp:check": "node scripts/stamp-versions.mjs --check",
     "test:ig": "node test-core.js",
-    "test:edge": "node --experimental-strip-types supabase/functions/generate-ig-content-plan/test-core.mjs",
+    "test:edge": "node --experimental-strip-types supabase/functions/generate-ig-content-plan/test-core.mjs && node --experimental-strip-types supabase/functions/radar-risiko-jamaah/test-core.mjs",
     "auto:konten": "node scripts/auto-generate-konten.mjs"
   },
   "engines": {
