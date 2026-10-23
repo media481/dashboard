@@ -4019,6 +4019,9 @@ async function renderAdminPanel() {
                             <thead><tr>
                                 <th>Nama Program</th>
                                 <th>Tanggal Berangkat</th>
+                                <th>Durasi</th>
+                                <th class="col-harga">Quad</th>
+                                <th>Maskapai</th>
                                 <th>Hotel Madinah</th>
                                 <th>Hotel Mekkah</th>
                                 <th style="text-align:right;">Status Unggulan</th>
@@ -9491,7 +9494,7 @@ function renderFeaturedAdminTable() {
     const tbody = document.getElementById('featuredAdminTableBody');
     if (!tbody) return;
     if (!adminPrograms.length) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--ink-soft);">Belum ada program.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--ink-soft);">Belum ada program.</td></tr>';
         return;
     }
     // Urutkan berdasarkan tanggal berangkat terdekat di atas (program tanpa
@@ -9509,7 +9512,7 @@ function renderFeaturedAdminTable() {
         return da - db;
     });
     if (!sorted.length) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--ink-soft);">Tidak ada program aktif. Semua program sudah expired.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--ink-soft);">Tidak ada program aktif. Semua program sudah expired.</td></tr>';
         return;
     }
     tbody.innerHTML = sorted.map(p => {
@@ -9519,6 +9522,9 @@ function renderFeaturedAdminTable() {
         return `<tr>
             <td><strong>${escapeHtml(p.nama || '-')}</strong></td>
             <td>${escapeHtml(p.tgl || '-')}</td>
+            <td>${escapeHtml(p.durasi || '-')}</td>
+            <td class="col-harga">${escapeHtml(p.harga_quad || p.harga_quint || '-')}</td>
+            <td>${escapeHtml(p.maskapai || '-')}</td>
             <td>${escapeHtml(hotelNamaSingkat(p.hotel_madinah) || '-')}</td>
             <td>${escapeHtml(hotelNamaSingkat(p.hotel_makkah) || '-')}</td>
             <td style="text-align:right;">
