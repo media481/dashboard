@@ -4700,6 +4700,9 @@ async function openQuickAddProgramModal() {
     const bcInput = document.getElementById('parseBroadcastInput');
     if (bcInput) bcInput.value = '';
     syncBroadcastRefBox();
+    // Muat data referensi hotel seperti di form Tambah Program biasa, supaya
+    // hasil parse langsung membawa jarak/menit jalan kaki hotel yang tersimpan.
+    await Promise.all([ensureHotelReferenceLoaded(), ensureHotelDetailsLoaded()]).catch(() => {});
 
     // Modal bisa saja sudah ditutup pengguna sebelum persiapan di atas selesai
     if (!modal.classList.contains('open')) return;
@@ -4795,6 +4798,26 @@ function computeDuplicateProgramGroups() {
     return infoById;
 }
 
+// Konfirmasi program duplikat (dipakai Tambah Cepat & form Tambah/Edit biasa).
+// Return true kalau boleh lanjut simpan (tidak duplikat, atau admin memilih
+// tetap simpan), false kalau dibatalkan.
+async function confirmDuplicateProgram(formData, excludeId) {
+    const programDuplikat = findDuplicateProgram(formData, excludeId);
+    if (!programDuplikat) return true;
+    const hargaDup = programDuplikat.harga_quint || programDuplikat.harga_quad || programDuplikat.harga_triple || programDuplikat.harga_double;
+    return openActionConfirm({
+        title: 'Program Duplikat Terdeteksi',
+        message: `Sudah ada program dengan Nama, Tanggal Berangkat, Harga &amp; Maskapai yang sama persis:<br>`
+            + `<strong>${escapeHtml(programDuplikat.nama || '-')}</strong><br>`
+            + `<i class="bi bi-calendar-event"></i> ${escapeHtml(programDuplikat.tgl || '-')}`
+            + `${hargaDup ? ' &middot; ' + escapeHtml(hargaDup) : ''}`
+            + `${programDuplikat.maskapai ? ' &middot; ' + escapeHtml(programDuplikat.maskapai) : ''}`
+            + `<br><br>Tetap simpan sebagai program ${excludeId ? 'ini' : 'baru'} (duplikat)?`,
+        confirmLabel: 'Simpan Sebagai Duplikat',
+        danger: true
+    });
+}
+
 async function quickSaveProgramFromBroadcast() {
     const input = document.getElementById('quickAddBroadcastInput');
     const text = (input.value || '').trim();
@@ -4803,35 +4826,22 @@ async function quickSaveProgramFromBroadcast() {
     const bcInput = document.getElementById('parseBroadcastInput');
     if (!bcInput) { showToast('Form belum siap, coba lagi sebentar', 'error'); return; }
     bcInput.value = text;
+    // Pustaka detail hotel harus sudah termuat sebelum parse (dipakai combineHotel)
+    await ensureHotelDetailsLoaded().catch(() => {});
     parseBroadcastText();
 
     // Cek duplikat SEBELUM disimpan (Nama + Tanggal Berangkat + Harga [semua
     // tipe kamar] + Maskapai sama semua persis dengan program yang sudah ada)
     // -- kalau ketemu, tandai & minta konfirmasi dulu supaya tidak diam-diam
     // tersimpan dobel.
-    const formDataCekDup = getAdminFormData();
-    const programDuplikat = findDuplicateProgram(formDataCekDup, editingProgramId);
-    if (programDuplikat) {
-        const hargaDup = programDuplikat.harga_quint || programDuplikat.harga_quad || programDuplikat.harga_triple || programDuplikat.harga_double;
-        const tetapSimpan = await openActionConfirm({
-            title: 'Program Duplikat Terdeteksi',
-            message: `Sudah ada program dengan Nama, Tanggal Berangkat, Harga &amp; Maskapai yang sama persis:<br>`
-                + `<strong>${escapeHtml(programDuplikat.nama || '-')}</strong><br>`
-                + `<i class="bi bi-calendar-event"></i> ${escapeHtml(programDuplikat.tgl || '-')}`
-                + `${hargaDup ? ' &middot; ' + escapeHtml(hargaDup) : ''}`
-                + `${programDuplikat.maskapai ? ' &middot; ' + escapeHtml(programDuplikat.maskapai) : ''}`
-                + `<br><br>Tetap simpan teks broadcast ini sebagai program baru (duplikat)?`,
-            confirmLabel: 'Simpan Sebagai Duplikat',
-            danger: true
-        });
-        if (!tetapSimpan) return; // batal -> modal Tambah Cepat tetap terbuka, teks broadcast tidak hilang
-    }
+    const tetapSimpan = await confirmDuplicateProgram(getAdminFormData(), editingProgramId);
+    if (!tetapSimpan) return; // batal -> modal Tambah Cepat tetap terbuka, teks broadcast tidak hilang
 
     const saveBtn = document.getElementById('quickAddProgramSaveBtn');
     const originalLabel = saveBtn.innerHTML;
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Menyimpan...';
-    const ok = await saveAdminProgram();
+    const ok = await saveAdminProgram({ skipDuplicateCheck: true });
     saveBtn.disabled = false;
     saveBtn.innerHTML = originalLabel;
 
@@ -5389,7 +5399,7 @@ async function renderSidebarNav() {
     }
 }
 
-async function saveAdminProgram() {
+async function saveAdminProgram(opts) {
     if (!canManageProgramData()) { showToast('Akun Anda tidak punya izin untuk mengubah data program', 'error'); return false; }
     const nama = document.getElementById('admin_nama')?.value.trim();
     if (!nama) { showToast('Nama program wajib diisi!', 'error'); return false; }
@@ -5420,6 +5430,19 @@ async function saveAdminProgram() {
         if (formData[field] && !isValidUrl(formData[field])) {
             showToast(`Link ${field.replace('_',' ')} tidak valid!`, 'error');
             return false;
+        }
+    }
+
+    // Cek duplikat (Nama+Tanggal+Harga+Maskapai sama persis). Tambah Cepat sudah
+    // mengeceknya sendiri (skipDuplicateCheck). Saat EDIT, hanya ditanya kalau
+    // kombinasi tadi berubah -- supaya mengedit program yang memang sudah
+    // berstatus duplikat (mis. cuma ganti link poster) tidak ditanya terus.
+    if (!(opts && opts.skipDuplicateCheck === true)) {
+        const kunciBaru = getDuplicateKey(formData);
+        const kunciLama = oldProgramForPriceCheck ? getDuplicateKey(oldProgramForPriceCheck) : null;
+        if (kunciBaru && kunciBaru !== kunciLama) {
+            const lanjut = await confirmDuplicateProgram(formData, editingProgramId);
+            if (!lanjut) return false;
         }
     }
 
