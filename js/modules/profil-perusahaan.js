@@ -55,7 +55,6 @@ function updateCompanyProfilePreview() {
     const rek = profileRekeningDraft.filter(r => r.bank || r.nomor || r.an);
     const wa = profileKontakWaDraft.map(n => (n || '').replace(/\D/g, '')).filter(Boolean);
     const kontak = [alamat, telp ? 'Telp. ' + telp : '', email].filter(Boolean).map(escapeHtml).join(' &middot; ');
-    cpRefreshCounts();
     box.innerHTML = `
         <div class="cp-pv-head">
             ${logo ? `<img src="${escapeHtml(logo)}" alt="">` : ''}
@@ -85,12 +84,6 @@ function cpSwitchTab(name) {
     wrap.querySelectorAll('.cp-pane').forEach(p => { p.hidden = p.dataset.pane !== name; });
 }
 
-// Penanda jumlah rekening/nomor WA pada label tab
-function cpRefreshCounts() {
-    const r = document.getElementById('cp_count_rek');
-    if (r) r.textContent = profileRekeningDraft.filter(x => x.bank || x.nomor || x.an).length + profileKontakWaDraft.filter(n => (n || '').replace(/\D/g, '')).length;
-}
-
 function renderCompanyProfileForm() {
     profileRekeningDraft = (NOTA_PERUSAHAAN.rekening || []).map(r => ({ ...r }));
     profileKontakWaDraft = (NOTA_PERUSAHAAN.kontak_wa || []).slice();
@@ -107,8 +100,7 @@ function renderCompanyProfileForm() {
                     </div>
                 </div>
                 <div class="cp-tabs" role="tablist">
-                    <button type="button" class="cp-tab active" role="tab" aria-selected="true" data-tab="identitas" onclick="cpSwitchTab('identitas')"><i class="bi bi-briefcase-fill"></i> Identitas</button>
-                    <button type="button" class="cp-tab" role="tab" aria-selected="false" data-tab="rekening" onclick="cpSwitchTab('rekening')"><i class="bi bi-bank"></i> Rekening &amp; WA <span id="cp_count_rek" class="cp-tab-count">0</span></button>
+                    <button type="button" class="cp-tab active" role="tab" aria-selected="true" data-tab="identitas" onclick="cpSwitchTab('identitas')"><i class="bi bi-briefcase-fill"></i> Profil</button>
                     <button type="button" class="cp-tab" role="tab" aria-selected="false" data-tab="pdf" onclick="cpSwitchTab('pdf')"><i class="bi bi-file-earmark-pdf-fill"></i> Unduh PDF</button>
                 </div>
             </div>
@@ -149,7 +141,7 @@ function renderCompanyProfileForm() {
                         </div>
                     </section>
 
-                    <section class="cp-pane cp-card" data-pane="rekening" hidden>
+                    <section class="cp-pane cp-card" data-pane="identitas">
                         <div class="cp-sec">
                             <div class="cp-sec-head">
                                 <div><h5><i class="bi bi-bank"></i> Rekening Pembayaran</h5><p>Dicetak di footer semua nota.</p></div>
@@ -218,7 +210,6 @@ function renderCompanyProfileForm() {
 function renderCompanyRekeningRows() {
     const wrap = document.getElementById('cp_rekening_list');
     if (!wrap) return;
-    cpRefreshCounts();
     if (!profileRekeningDraft.length) {
         wrap.innerHTML = `<p class="cp-rekening-empty"><i class="bi bi-bank"></i> Belum ada rekening.</p>`;
         return;
@@ -261,7 +252,6 @@ function updateCompanyRekeningField(index, field, value) {
 function renderCompanyKontakWaRows() {
     const wrap = document.getElementById('cp_kontak_wa_list');
     if (!wrap) return;
-    cpRefreshCounts();
     if (!profileKontakWaDraft.length) {
         wrap.innerHTML = `<p class="cp-rekening-empty"><i class="bi bi-whatsapp"></i> Belum ada nomor WA.</p>`;
         return;

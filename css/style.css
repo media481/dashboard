@@ -1063,11 +1063,11 @@ main {
 .cp-tab { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; white-space: nowrap; cursor: pointer; font-family: 'Inter', sans-serif; font-size: var(--fs-md); font-weight: 600; color: var(--ink-soft); background: transparent; border: 0; border-radius: calc(var(--r-md) - 2px); transition: background .15s, color .15s; }
 .cp-tab:hover { color: var(--ink); }
 .cp-tab.active { color: var(--brand); background: var(--surface); box-shadow: 0 1px 3px rgba(15,33,56,.12); }
-.cp-tab-count { min-width: 18px; padding: 0 5px; font-size: var(--fs-xs); font-weight: 700; line-height: 18px; text-align: center; color: var(--brand); background: var(--brand-tint); border-radius: var(--r-pill); }
 
 .cp-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
-.cp-main { min-width: 0; }
+.cp-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .cp-pane[hidden] { display: none; }
+.cp-main .cp-card { width: 100%; }
 /* Tab PDF tidak punya isian: pratinjau & bar simpan disembunyikan */
 .cp-wrap[data-tab="pdf"] .cp-layout { grid-template-columns: minmax(0, 1fr); }
 .cp-wrap[data-tab="pdf"] .cp-aside, .cp-wrap[data-tab="pdf"] .cp-savebar { display: none; }
