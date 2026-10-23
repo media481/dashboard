@@ -10178,7 +10178,7 @@ const LAZY_MODULES = {
             'igRenderPlanWeekOptions', 'igRkIniHari', 'igRkRender', 'igRtRenderPanel',
             'igRtStatus', 'igRtSusunAI', 'igRtTogglePanel', 'igSalinAboutPlanner',
             'igSalinPromptPlan', 'igSalinRencanaKonten', 'igSetCalFilter', 'igUnduhAboutPlanner', 'igUnduhAboutPlannerPdf',
-            'igUnduhRencanaKonten', 'igUnduhRencanaKontenPdf', 'onIgCarouselFilesChange',
+            'igUnduhRencanaKonten', 'igUnduhRencanaKontenPdf', 'igUnduhRencanaKontenPdfLangsung', 'onIgCarouselFilesChange',
             'onIgMediaChange', 'onIgMediaTypeChange', 'openIgAboutPlannerModal',
             'openIgContentPlanModal', 'openIgRencanaKontenModal', 'openIgUploadModal',
             'saveIgPost', 'showIgPlanGenerateForm', 'syncIgCommentsNow', 'undoIgCaptionAI'
@@ -10201,7 +10201,7 @@ const LAZY_MODULES = {
         deps: ['nota'],
         api: [
             'bukaTandaTerimaDokumen', 'renderKepulanganProgramSelector', 'selectKepulanganProgram',
-            'tutupTandaTerimaModal', 'unduhTandaTerimaDokumen'
+            'tutupTandaTerimaModal', 'unduhTandaTerimaDokumen', 'unduhTandaTerimaPdfJamaah'
         ]
     },
     'manifest': {
@@ -10209,7 +10209,7 @@ const LAZY_MODULES = {
         deps: ['nota'],
         api: [
             'bukaManifestProgram', 'exportJamaahExcel', 'exportPembayaranExcel', 'tutupManifestModal',
-            'unduhManifest'
+            'unduhManifest', 'unduhManifestPdfProgram'
         ]
     },
     'rooming': {
@@ -10217,7 +10217,7 @@ const LAZY_MODULES = {
         deps: ['nota'],
         api: [
             'autoBagiKamar', 'bukaRoomingList', 'filterRoomingList', 'simpanRoomingList',
-            'tutupRoomingModal', 'unduhRoomingList'
+            'tutupRoomingModal', 'unduhRoomingList', 'unduhRoomingListPdfProgram'
         ]
     },
     'pengaturan-user': {

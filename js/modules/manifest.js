@@ -169,6 +169,25 @@ async function unduhManifest(format, btn) {
     await exportFn(html, `Manifest-${namaProgram}.${ext}`, btn);
 }
 
+
+// [SHORTCUT PROFIL PERUSAHAAN] Unduh PDF Manifest satu program langsung (tanpa membuka modal preview).
+// Data & tampilan sama persis dengan bukaManifestProgram() + unduhManifest('pdf').
+async function unduhManifestPdfProgram(programId, btn) {
+    if (!programId) { showToast('Pilih program dulu', 'error'); return; }
+    const program = dataUmroh.find(p => String(p.id) === String(programId)) || null;
+    if (!program) { showToast('Program tidak ditemukan', 'error'); return; }
+    try {
+        const { data, error } = await supabaseClient.from('kb_jamaah').select('*').eq('program_id', programId).eq('diarsipkan', false).order('nama', { ascending: true });
+        if (error) throw error;
+        if (!data || !data.length) { showToast('Belum ada jamaah untuk program ini', 'error'); return; }
+        const namaProgram = (program.nama || 'Program').replace(/[^a-zA-Z0-9]+/g, '-');
+        await exportNotaElementAsPdf(buildManifestHTML(program, data), `Manifest-${namaProgram}.pdf`, btn);
+    } catch (err) {
+        console.error('Unduh Manifest PDF error:', err);
+        showToast('Gagal memuat data manifest: ' + (err?.message || err), 'error');
+    }
+}
+
 window.addEventListener('resize', () => {
     const manifestModal = document.getElementById('manifestModal');
     if (manifestModal && manifestModal.classList.contains('open')) fitScaleInto(document.getElementById('manifestPreviewContent'));

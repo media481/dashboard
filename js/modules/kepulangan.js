@@ -426,6 +426,22 @@ async function unduhTandaTerimaDokumen(format, btn) {
     await exportFn(html, `Tanda-Terima-Dokumen-${namaJamaah}.${ext}`, btn);
 }
 
+
+// [SHORTCUT PROFIL PERUSAHAAN] Unduh PDF Tanda Terima Dokumen satu jamaah langsung (tanpa membuka modal preview).
+async function unduhTandaTerimaPdfJamaah(jamaahId, btn) {
+    if (!jamaahId) { showToast('Pilih jamaah dulu', 'error'); return; }
+    try {
+        const { data: jamaah, error } = await supabaseClient.from('kb_jamaah').select('*').eq('id', jamaahId).maybeSingle();
+        if (error || !jamaah) throw error || new Error('Data jamaah tidak ditemukan (mungkin sudah dihapus/diarsipkan)');
+        const program = dataUmroh.find(p => String(p.id) === String(jamaah.program_id)) || null;
+        const namaJamaah = (jamaah.nama || 'Jamaah').replace(/[^a-zA-Z0-9]+/g, '-');
+        await exportNotaElementAsPdf(buildDokumenTandaTerimaHTML(jamaah, program), `Tanda-Terima-Dokumen-${namaJamaah}.pdf`, btn);
+    } catch (err) {
+        console.error('Unduh Tanda Terima PDF error:', err);
+        showToast('Gagal memuat data jamaah: ' + (err?.message || err), 'error');
+    }
+}
+
 window.addEventListener('resize', () => {
     const dokModal = document.getElementById('dokTandaTerimaModal');
     if (dokModal && dokModal.classList.contains('open')) fitScaleInto(document.getElementById('dokTandaTerimaPreviewContent'));

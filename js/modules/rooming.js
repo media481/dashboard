@@ -341,3 +341,25 @@ async function unduhRoomingList(format, btn) {
     const ext = format === 'pdf' ? 'pdf' : 'jpg';
     await exportFn(html, `Rooming-List-${namaProgram}.${ext}`, btn);
 }
+
+// [SHORTCUT PROFIL PERUSAHAAN] Unduh PDF Rooming List satu program langsung (tanpa membuka modal).
+// Data sama dengan bukaRoomingList(): jamaah aktif (bukan arsip/batal), tipe kamar kosong dianggap quad.
+async function unduhRoomingListPdfProgram(programId, btn) {
+    if (!programId) { showToast('Pilih program dulu', 'error'); return; }
+    const program = dataUmroh.find(p => String(p.id) === String(programId)) || null;
+    if (!program) { showToast('Program tidak ditemukan', 'error'); return; }
+    try {
+        const { data, error } = await supabaseClient.from('kb_jamaah')
+            .select('id, nama, tipe_kamar, nomor_kamar, status')
+            .eq('program_id', programId).eq('diarsipkan', false).neq('status', 'batal')
+            .order('nama', { ascending: true });
+        if (error) throw error;
+        if (!data || !data.length) { showToast('Belum ada jamaah untuk program ini', 'error'); return; }
+        const daftar = data.map(j => ({ ...j, tipe_kamar: j.tipe_kamar || 'quad' }));
+        const namaProgram = (program.nama || 'Program').replace(/[^a-zA-Z0-9]+/g, '-');
+        await exportNotaElementAsPdf(buildRoomingListHTML(program, daftar), `Rooming-List-${namaProgram}.pdf`, btn);
+    } catch (err) {
+        console.error('Unduh Rooming List PDF error:', err);
+        showToast('Gagal memuat data jamaah: ' + (err?.message || err), 'error');
+    }
+}

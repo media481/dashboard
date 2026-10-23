@@ -158,6 +158,42 @@ function renderCompanyProfileForm() {
                             <button type="button" class="cp-add" onclick="addCompanyKontakWaRow()"><i class="bi bi-plus-lg"></i> Tambah Nomor WA</button>
                         </div>
                     </section>
+
+                    <section class="cp-card">
+                        <div class="cp-card-head">
+                            <div class="cp-card-icon"><i class="bi bi-file-earmark-pdf-fill"></i></div>
+                            <div><h5>Unduh PDF</h5><p>Pintasan ke dokumen PDF di aplikasi ini, tanpa perlu membuka menu masing-masing.</p></div>
+                        </div>
+                        <div class="cp-card-body">
+                            <div class="cp-pdf-title">Dokumen umum</div>
+                            <div class="cp-pdf-grid">
+                                ${cpPdfTombol('jadwal', 'bi-calendar-event', 'Jadwal Umrah', 'Semua program, A4 landscape')}
+                                ${cpPdfTombol('rencana', 'bi-instagram', 'Rencana Konten IG', 'Laporan 12 bulan, A4 landscape')}
+                                ${cpPdfTombol('pola', 'bi-diagram-3', 'Pola Konten IG', 'About Planner, A4 landscape')}
+                            </div>
+
+                            <div class="cp-pdf-title">Per program</div>
+                            <div class="cp-field full">
+                                <label for="cp_pdf_program">Program</label>
+                                <select id="cp_pdf_program" onchange="cpPdfPilihProgram(this.value)">${cpPdfOpsiProgram()}</select>
+                            </div>
+                            <div class="cp-pdf-grid">
+                                ${cpPdfTombol('manifest', 'bi-people-fill', 'Manifest', 'Daftar jamaah program terpilih')}
+                                ${cpPdfTombol('rooming', 'bi-door-open-fill', 'Rooming List', 'Pembagian kamar program terpilih')}
+                            </div>
+
+                            <div class="cp-pdf-title">Per jamaah</div>
+                            <div class="cp-field full">
+                                <label for="cp_pdf_jamaah">Jamaah <span class="cp-label-hint">(pilih program dulu)</span></label>
+                                <select id="cp_pdf_jamaah" disabled><option value="">-- Pilih jamaah --</option></select>
+                            </div>
+                            <div class="cp-pdf-grid">
+                                ${cpPdfTombol('tandaterima', 'bi-file-earmark-check-fill', 'Tanda Terima Dokumen', 'Bukti penyerahan dokumen jamaah')}
+                            </div>
+
+                            <p class="cp-hint">Nota Pembayaran, Nota Riwayat, dan Kuitansi tidak ada di sini karena setiap unduhannya mencatat Kode Verifikasi ke sistem audit. Buka dari menu Pembayaran supaya pratinjau dan catatannya tetap terjaga.</p>
+                        </div>
+                    </section>
                 </div>
 
                 <aside class="cp-aside">
@@ -330,6 +366,65 @@ async function saveCompanyProfile() {
     } catch (err) {
         if (statusEl) statusEl.innerHTML = `<p class="cp-status is-error"><i class="bi bi-exclamation-circle-fill"></i> Gagal menyimpan: ${escapeHtml(err.message || 'Error tidak diketahui')}</p>`;
         showToast('❌ Gagal menyimpan profil perusahaan');
+    }
+}
+
+// ---- Pintasan Unduh PDF (kartu "Unduh PDF" di Profil Perusahaan) ----
+function cpPdfTombol(jenis, ikon, judul, ket) {
+    return `<button type="button" class="cp-pdf-btn" onclick="cpUnduhPdf('${jenis}', this)">`
+        + `<i class="bi ${ikon}"></i><span><b>${escapeHtml(judul)}</b><small>${escapeHtml(ket)}</small></span></button>`;
+}
+
+function cpPdfOpsiProgram() {
+    const daftar = (typeof sortProgramsDefault === 'function' ? sortProgramsDefault(dataUmroh || []) : (dataUmroh || []));
+    return '<option value="">-- Pilih program --</option>' + daftar.map(p =>
+        `<option value="${escapeHtml(String(p.id))}">${escapeHtml(p.nama || '-')}${p.tgl ? ' — ' + escapeHtml(p.tgl) : ''}</option>`).join('');
+}
+
+// Pilih program -> isi daftar jamaah aktif (bukan arsip) untuk pintasan Tanda Terima Dokumen.
+let cpPdfJamaahReq = 0;
+async function cpPdfPilihProgram(programId) {
+    const sel = document.getElementById('cp_pdf_jamaah');
+    if (!sel) return;
+    const req = ++cpPdfJamaahReq;
+    sel.disabled = true;
+    if (!programId) { sel.innerHTML = '<option value="">-- Pilih jamaah --</option>'; return; }
+    sel.innerHTML = '<option value="">Memuat jamaah...</option>';
+    try {
+        const { data, error } = await supabaseClient.from('kb_jamaah').select('id, nama')
+            .eq('program_id', programId).eq('diarsipkan', false).order('nama', { ascending: true });
+        if (error) throw error;
+        if (req !== cpPdfJamaahReq) return; // pilihan program sudah berganti
+        sel.innerHTML = (data && data.length)
+            ? '<option value="">-- Pilih jamaah --</option>' + data.map(j => `<option value="${escapeHtml(String(j.id))}">${escapeHtml(j.nama || '-')}</option>`).join('')
+            : '<option value="">Belum ada jamaah</option>';
+        sel.disabled = !(data && data.length);
+    } catch (err) {
+        if (req !== cpPdfJamaahReq) return;
+        console.error('cpPdfPilihProgram error:', err);
+        sel.innerHTML = '<option value="">Gagal memuat jamaah</option>';
+        showToast('Gagal memuat daftar jamaah: ' + (err.message || err), 'error');
+    }
+}
+
+// Satu pintu untuk semua tombol. Tiap fungsi tujuan mengurus spinner tombolnya sendiri.
+async function cpUnduhPdf(jenis, btn) {
+    const programId = (document.getElementById('cp_pdf_program') || {}).value || '';
+    const jamaahId = (document.getElementById('cp_pdf_jamaah') || {}).value || '';
+    switch (jenis) {
+        case 'jadwal': return downloadProgramListPdf(btn);
+        case 'rencana': return igUnduhRencanaKontenPdfLangsung(btn);
+        case 'pola': return igUnduhAboutPlannerPdf.call(btn);
+        case 'manifest':
+            if (!programId) { showToast('Pilih program dulu', 'error'); return; }
+            return unduhManifestPdfProgram(programId, btn);
+        case 'rooming':
+            if (!programId) { showToast('Pilih program dulu', 'error'); return; }
+            return unduhRoomingListPdfProgram(programId, btn);
+        case 'tandaterima':
+            if (!programId) { showToast('Pilih program dulu', 'error'); return; }
+            if (!jamaahId) { showToast('Pilih jamaah dulu', 'error'); return; }
+            return unduhTandaTerimaPdfJamaah(jamaahId, btn);
     }
 }
 

@@ -3697,3 +3697,20 @@ mark.srch-hit { background: #FFE9A8; color: inherit; border-radius: var(--r-sm);
     text-align: center; padding: 30px; color: var(--ink-soft);
     display: flex; flex-direction: column; align-items: center; gap: 8px;
 }
+
+/* Kartu "Unduh PDF" di Profil Perusahaan: pintasan ke semua dokumen PDF aplikasi */
+.cp-pdf-title { font-size: var(--fs-xs, 11px); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); margin: 4px 0 8px; }
+.cp-pdf-title:not(:first-child) { margin-top: 18px; }
+.cp-pdf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; margin-top: 10px; }
+.cp-pdf-title + .cp-pdf-grid { margin-top: 0; }
+.cp-pdf-btn { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); color: var(--ink); cursor: pointer; font-family: 'Inter', sans-serif; transition: border-color .15s, background .15s; }
+.cp-pdf-btn:hover:not(:disabled) { border-color: var(--brand); background: var(--brand-tint); }
+.cp-pdf-btn:disabled { opacity: .65; cursor: progress; }
+.cp-pdf-btn > i { font-size: 20px; line-height: 1; color: var(--brand); flex: 0 0 auto; }
+.cp-pdf-btn span { display: flex; flex-direction: column; min-width: 0; }
+.cp-pdf-btn b { font-size: 13px; font-weight: 600; }
+.cp-pdf-btn small { font-size: 11px; color: var(--ink-soft); }
+.cp-field select { width: 100%; padding: 10px 12px; font-family: 'Inter', sans-serif; font-size: var(--fs-md); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); transition: border-color .15s, box-shadow .15s; }
+.cp-field select:hover:not(:disabled) { border-color: #aebdd0; }
+.cp-field select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-tint); }
+.cp-field select:disabled { opacity: .6; }

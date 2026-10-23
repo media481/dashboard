@@ -3708,6 +3708,29 @@ async function igUnduhRencanaKontenPdf() {
     }
 }
 
+// [SHORTCUT PROFIL PERUSAHAAN] Unduh PDF Rencana Konten tanpa membuka modalnya: siapkan data seperti
+// openIgRencanaKontenModal() (rencana terbaru + program aktif, periode dari bulan ini), lalu pakai
+// igUnduhRencanaKontenPdf() yang sama (preview dulu, unduh lewat tombol di preview).
+async function igUnduhRencanaKontenPdfLangsung(btn) {
+    const lama = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-arrow-repeat bi-spin"></i> Memuat data...'; }
+    try {
+        igRkIniHari();
+        const [, prog] = await Promise.all([loadIgContentPlan(), igProgramAktifRingan()]);
+        igRkProgram = prog || [];
+        igRkData = null;
+        igRkRender();
+        if (!igRkData) { showToast('Belum ada data rencana konten untuk diunduh', 'error'); return; }
+    } catch (err) {
+        console.error('igUnduhRencanaKontenPdfLangsung error:', err);
+        showToast('Gagal memuat rencana konten: ' + (err.message || err), 'error');
+        return;
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = lama; }
+    }
+    await igUnduhRencanaKontenPdf.call(btn);
+}
+
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !_plp) closeIgRencanaKontenModal();
 });
@@ -6246,6 +6269,7 @@ window.igRkLihatDiKalender = igRkLihatDiKalender;
 window.igSalinRencanaKonten = igSalinRencanaKonten;
 window.igUnduhRencanaKonten = igUnduhRencanaKonten;
 window.igUnduhRencanaKontenPdf = igUnduhRencanaKontenPdf;
+window.igUnduhRencanaKontenPdfLangsung = igUnduhRencanaKontenPdfLangsung;
 window.showIgPlanGenerateForm = showIgPlanGenerateForm;
 window.generateIgContentPlanAI = generateIgContentPlanAI;
 window.igConvertPlanToPost = igConvertPlanToPost;
