@@ -1862,7 +1862,7 @@ a.ig-dm-iconbtn { text-decoration: none; }
 
 .ig-plan-edit-imgtext { min-height: 44px; margin-bottom: 6px; }
 
-/* ---- Pembeda warna sel kalender IG per tipe konten (border tipis + pita atas + latar berwarna lembut) ----
+/* ---- Pembeda warna sel kalender IG per tipe konten (border + latar berwarna lembut) ----
    Sel yang belum punya ide/post tidak diberi kelas ig-type-*, jadi tampilannya tidak berubah.
    Hari ini tetap memakai border brand; hover tetap memakai border brand. */
 :root {
@@ -1871,7 +1871,7 @@ a.ig-dm-iconbtn { text-decoration: none; }
     --ig-type-video: #f2750f;     /* oranye  -> video / Reels */
 }
 
-/* Tampilan lembut per tipe: border 2px + pita tipis di atas sel + latar sel berwarna sangat tipis + nomor tanggal berwarna.
+/* Tampilan lembut per tipe: border 2px + latar sel berwarna sangat tipis + nomor tanggal berwarna.
    Warna aktif diambil dari --ig-type-c (diisi per tipe di bawah). */
 .ig-cal-day.ig-type-image { --ig-type-c: var(--ig-type-image); }
 .ig-cal-day.ig-type-carousel { --ig-type-c: var(--ig-type-carousel); }
@@ -1881,8 +1881,6 @@ a.ig-dm-iconbtn { text-decoration: none; }
 .ig-cal-day.ig-type-carousel:not(.ig-cal-today),
 .ig-cal-day.ig-type-video:not(.ig-cal-today) {
     border: 2px solid var(--ig-type-c);
-    box-shadow: inset 0 3px 0 0 var(--ig-type-c);
-    padding-top: 8px;
 }
 
 .ig-cal-day.ig-type-image:not(.ig-cal-today) .ig-cal-day-num,
@@ -1895,7 +1893,6 @@ a.ig-dm-iconbtn { text-decoration: none; }
 .ig-cal-day.ig-type-video:not(.ig-cal-today) {
     background: color-mix(in srgb, var(--ig-type-c) 7%, var(--surface));
     border-color: color-mix(in srgb, var(--ig-type-c) 55%, var(--surface));
-    box-shadow: inset 0 3px 0 0 color-mix(in srgb, var(--ig-type-c) 70%, var(--surface));
 }
 }
 
@@ -1916,7 +1913,6 @@ a.ig-dm-iconbtn { text-decoration: none; }
 .ig-cal-past.ig-type-video:not(.ig-cal-today) {
     background: color-mix(in srgb, var(--ig-type-c) 3%, var(--surface));
     border-color: color-mix(in srgb, var(--ig-type-c) 28%, var(--surface));
-    box-shadow: inset 0 3px 0 0 color-mix(in srgb, var(--ig-type-c) 38%, var(--surface));
 }
 .ig-cal-past.ig-type-image:not(.ig-cal-today) .ig-cal-day-num,
 .ig-cal-past.ig-type-carousel:not(.ig-cal-today) .ig-cal-day-num,
