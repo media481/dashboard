@@ -76,7 +76,7 @@ async function loadIgPosts(forceRefresh = false) {
         igPostsTotal = igPosts.length;
         renderIgPostTable();
         updateIgSchedulerCount();
-        renderIgCalendar(); // refresh calendar markers
+        igScheduleCalendarRender(); // refresh calendar markers (digabung dengan pemuat lain)
     } catch (err) {
         console.error('loadIgPosts error:', err);
         showToast('Gagal memuat daftar post IG: ' + err.message, 'error');
@@ -184,12 +184,12 @@ function renderIgPostTable() {
         // ditandai badge kecil biar kelihatan itu carousel bukan single image)
         let mediaPreview = '';
         if (post.media_type === 'image') {
-            mediaPreview = `<img src="${escapeHtmlAttr(post.media_url)}" alt="media" class="ig-media-thumb" loading="lazy">`;
+            mediaPreview = `<img src="${escapeHtmlAttr(post.media_url)}" alt="media" class="ig-media-thumb" loading="lazy" decoding="async">`;
         } else if (post.media_type === 'video') {
             mediaPreview = `<video src="${escapeHtmlAttr(post.media_url)}" class="ig-media-thumb" preload="none"></video>`;
         } else if (post.media_type === 'carousel' && post.media_url) {
             mediaPreview = `<div class="ig-post-carousel-thumb-wrap">
-                <img src="${escapeHtmlAttr(post.media_url)}" alt="carousel" class="ig-media-thumb" loading="lazy">
+                <img src="${escapeHtmlAttr(post.media_url)}" alt="carousel" class="ig-media-thumb" loading="lazy" decoding="async">
                 <span class="ig-post-carousel-count" title="Carousel"><i class="bi bi-images"></i></span>
             </div>`;
         } else {
@@ -377,6 +377,17 @@ function igChipTopik(teks) {
     return sisa ? sisa.charAt(0).toUpperCase() + sisa.slice(1) : t;
 }
 
+// Banyak pemuat data (post, rencana, tasklist) selesai hampir bersamaan dan masing-masing
+// memanggil renderIgCalendar() -> kalender dibangun ulang 3-4x berturut-turut saat halaman
+// dibuka. Jalur pemuatan memakai versi ini: beberapa panggilan dalam satu frame digabung
+// jadi satu render. Aksi pengguna (drag, simpan, dll) tetap memanggil renderIgCalendar() langsung.
+let igCalRenderRaf = 0;
+function igScheduleCalendarRender() {
+    if (igCalRenderRaf) return;
+    const jalankan = () => { igCalRenderRaf = 0; renderIgCalendar(); };
+    igCalRenderRaf = (typeof requestAnimationFrame === 'function') ? requestAnimationFrame(jalankan) : setTimeout(jalankan, 0);
+}
+
 function renderIgCalendar() {
     const monthEl = document.getElementById('igCalMonth');
     const daysEl = document.getElementById('igCalDays');
@@ -463,7 +474,7 @@ function renderIgCalendar() {
             const text = igChipText(p.caption, '(tanpa caption)');
             const hasThumb = p.media_type === 'image' && p.media_url;
             const lead = hasThumb
-                ? `<img class="ig-cal-chip-thumb" src="${escapeHtmlAttr(p.media_url)}" loading="lazy" alt="">`
+                ? `<img class="ig-cal-chip-thumb" src="${escapeHtmlAttr(p.media_url)}" loading="lazy" decoding="async" alt="">`
                 : '';
             chips.push(`<div class="ig-cal-chip ig-cal-chip-post${hasThumb ? ' ig-cal-chip-media' : ''}" style="--chip:${color};" title="${escapeHtmlAttr(`${statusLabel}${jam ? ' · ' + jam : ''} — ${text}`)}">${lead}<span>${escapeHtml(text)}</span></div>`);
         });
@@ -2190,6 +2201,9 @@ function closeIgActionModal() {
 // ---- Load semua rencana (dipakai render kalender & modal harian) ----
 async function loadIgContentPlan() {
     try {
+        // Rencana setahun tidak bergantung pada rencana harian -> diminta bersamaan
+        // (dulu menunggu giliran SESUDAH 4 probe kolom berurutan = 5-6 round trip serial).
+        const rencanaTahunP = loadIgRencanaTahun(); // gagal diam-diam kalau tabel belum ada (tidak melempar)
         const { data, error } = await withRetry(
             () => supabaseClient.from('ig_content_plan').select('*').order('tanggal', { ascending: true }),
             { label: 'Muat rencana konten IG' }
@@ -2204,28 +2218,35 @@ async function loadIgContentPlan() {
                 .update({ status: 'idea' }).in('id', orphans.map(o => o.id));
             if (!healErr) orphans.forEach(o => { o.status = 'idea'; });
         }
-        if (!igPlannerColsReady) {
-            const probe = await supabaseClient.from('ig_content_plan').select('pilar,tahap').limit(1);
-            igPlannerColsReady = !probe.error;
-        }
-        if (!igTeksGambarReady) {
-            const probeImg = await supabaseClient.from('ig_content_plan').select('teks_gambar').limit(1);
-            igTeksGambarReady = !probeImg.error;
-        }
-        if (!igTemaMingguReady) {
-            const probeTema = await supabaseClient.from('ig_content_plan').select('tema_minggu').limit(1);
-            igTemaMingguReady = !probeTema.error;
-        }
-        if (!igCanvaReady) {
-            const probeCanva = await supabaseClient.from('ig_content_plan').select('canva_url').limit(1);
-            igCanvaReady = !probeCanva.error;
-        }
-        await loadIgRencanaTahun(); // rencana tema setahun (opsional, gagal diam-diam kalau tabel belum ada)
-        renderIgCalendar();
+        await igDetectPlanColumns(igContentPlan[0]);
+        await rencanaTahunP;
+        igScheduleCalendarRender();
     } catch (err) {
         console.error('loadIgContentPlan error:', err);
         showToast('Gagal memuat rencana konten: ' + (err.message || err), 'error');
     }
+}
+
+// Deteksi kolom opsional ig_content_plan (hasil migrasi bertahap). select('*') sudah
+// membawa semua kolom yang ada, jadi cukup baca kunci baris pertama -- tanpa request
+// tambahan. Hanya kalau tabel masih kosong, kolom yang belum diketahui diprobe SECARA
+// PARALEL (dulu 4 probe berurutan di setiap pemuatan pertama). Hasil true di-cache.
+async function igDetectPlanColumns(row0) {
+    const cek = [
+        ['igPlannerColsReady', () => igPlannerColsReady, v => { igPlannerColsReady = v; }, ['pilar', 'tahap']],
+        ['igTeksGambarReady', () => igTeksGambarReady, v => { igTeksGambarReady = v; }, ['teks_gambar']],
+        ['igTemaMingguReady', () => igTemaMingguReady, v => { igTemaMingguReady = v; }, ['tema_minggu']],
+        ['igCanvaReady', () => igCanvaReady, v => { igCanvaReady = v; }, ['canva_url']]
+    ].filter(c => !c[1]());
+    if (!cek.length) return;
+    if (row0) {
+        cek.forEach(c => c[2](c[3].every(k => k in row0)));
+        return;
+    }
+    await Promise.all(cek.map(async c => {
+        const probe = await supabaseClient.from('ig_content_plan').select(c[3].join(',')).limit(1);
+        c[2](!probe.error);
+    }));
 }
 
 // ---- Buka modal Content Planner ----
@@ -2711,7 +2732,7 @@ async function loadIgTasks(attempt = 0) {
     clearTimeout(igTaskRetryTimer);
     if (igTaskLoading && attempt === 0) return;   // sudah ada request berjalan
     igTaskLoading = true;
-    if (!igTasksLoaded) { renderIgCalendar(); if (document.getElementById('igTaskModal')?.classList.contains('open')) igTaskRender(); }
+    if (!igTasksLoaded) { igScheduleCalendarRender(); if (document.getElementById('igTaskModal')?.classList.contains('open')) igTaskRender(); }
     try {
         // Retry untuk gangguan jaringan sesaat (timeout/QUIC). Error "tabel belum ada" tidak di-retry.
         const res = await withRetry(async () => {
@@ -2738,7 +2759,7 @@ async function loadIgTasks(attempt = 0) {
         }
     }
     igTaskLoading = false;
-    renderIgCalendar();
+    igScheduleCalendarRender();
     if (document.getElementById('igTaskModal')?.classList.contains('open')) igTaskRender();
 }
 
