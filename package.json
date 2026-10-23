@@ -4,8 +4,8 @@
   "description": "Dashboard Amiru — PWA manajemen program Umroh (vanilla JS + Supabase).",
   "private": true,
   "scripts": {
-    "test": "node tests/test-core.js && node tests/test-modules.js && node tests/test-total-bayar.js && node tests/test-with-retry.js && node tests/test-lazy-css.js && node tests/test-service-worker.js && node tests/test-auto-generate.js",
-    "test:ci": "node tests/test-core.js && node tests/test-modules.js && node tests/test-total-bayar.js && node tests/test-with-retry.js && node tests/test-lazy-css.js && node tests/test-service-worker.js && node tests/test-auto-generate.js",
+    "test": "node tests/test-core.js && node tests/test-modules.js && node tests/test-total-bayar.js && node tests/test-with-retry.js && node tests/test-lazy-css.js && node tests/test-service-worker.js && node tests/test-auto-generate.js && node tests/test-about-planner.js",
+    "test:ci": "node tests/test-core.js && node tests/test-modules.js && node tests/test-total-bayar.js && node tests/test-with-retry.js && node tests/test-lazy-css.js && node tests/test-service-worker.js && node tests/test-auto-generate.js && node tests/test-about-planner.js",
     "build": "node scripts/build.mjs",
     "build:check": "node scripts/build.mjs --check",
     "release": "npm run build && npm run stamp",

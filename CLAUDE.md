@@ -482,13 +482,21 @@ cari apa yang sebenarnya berubah.
 Tombol **About Planner** di sebelah "Perencanaan Konten" (halaman IG Scheduler) membuka modal `#igAboutPlannerModal`
 berisi konsep perencanaan konten Amiru yang bisa dibaca, disalin ("Salin untuk Claude"), dan diunduh (.md).
 
-- **Sumber tunggal teks:** konstanta `ABOUT_PLANNER_MD` di `js/app.js` (section 24e). Header modal (Versi, Diperbarui)
+- **Sumber tunggal teks:** konstanta `ABOUT_PLANNER_MD` di `js/modules/ig-scheduler.js` (section 24e). Header modal (Versi, Diperbarui)
   dibaca otomatis dari dua baris `Versi:` dan `Diperbarui:` di awal dokumen, jadi format dua baris itu jangan diubah.
   Teksnya template literal: jangan pakai karakter backtick atau urutan dollar-kurung-kurawal di dalamnya.
+- **Bagian pola 7 hari dibangun otomatis dari kode** (`igAboutPlannerMd()`): urutan perjalanan, tabel hari, keseimbangan,
+  tabel varian pekan, dan daftar hari yang tidak berubah diisi dari `IG_POLA_AMIRU` + `IG_POLA_VARIAN` lewat penanda
+  `{{POLA_URUTAN}}`, `{{POLA_TABEL}}`, `{{POLA_KESEIMBANGAN}}`, `{{VARIAN_TABEL}}`, `{{VARIAN_HARI_TETAP}}` di `ABOUT_PLANNER_MD`.
+  Jadi mengubah pola di kode otomatis mengubah About Planner (tidak perlu menyunting tabelnya). Kolom "Jembatan" dan keterangan
+  peran ada di `IG_ABOUT_POLA_KET`, label jenis pekan di `IG_ABOUT_JENIS_LABEL`. Teks lain tetap manual (dan tetap perlu baris
+  baru di Riwayat Revisi). Tesnya: `tests/test-about-planner.js`.
 - `ABOUT_PLANNER_PETUNJUK` ikut tersalin di depan dokumen, menyuruh Claude mengembalikan dokumen UTUH, menaikkan Versi,
   dan menambah baris di "Riwayat Revisi".
 - **Alur revisi:** salin/unduh > ubah di Claude > unggah hasilnya ke sesi pengembangan. Saat menerima dokumen revisi:
   1. Ganti isi `ABOUT_PLANNER_MD` dengan dokumen revisi (buang bagian petunjuk dan "Dampak ke sistem" kalau ikut terbawa).
+     Kembalikan lima penanda `{{...}}` di tempat tabel/kalimat pola (dokumen salinan berisi hasil render, bukan penandanya);
+     perubahan pada pola itu sendiri dibuat di `IG_POLA_AMIRU`/`IG_POLA_VARIAN` (langkah 3), bukan di teks.
   2. Pastikan Versi naik dan Riwayat Revisi bertambah.
   3. Sinkronkan aturan yang berubah ke logika yang benar-benar berjalan, sesuai bagian "Dampak ke sistem":
      `IG_PLAN_PROMPT_SISTEM`, `IG_POLA_AMIRU`, `IG_ALUR_GRUP` (bank alur per fase + bobot; `IG_TEMA_ALUR` diturunkan darinya)/`IG_TEMA_MUSIM`, `IG_JEDA_TOPIK_BULAN`, `IG_JEDA_TEMA_MUSIM_HARI`, edge function

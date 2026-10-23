@@ -2279,12 +2279,17 @@ function closeIgContentPlanModal() {
 //   3. Unggah hasilnya ke sesi pengembangan: isi ABOUT_PLANNER_MD diganti, lalu aturan yang berubah disinkronkan ke
 //      IG_PLAN_PROMPT_SISTEM, IG_POLA_AMIRU, edge function generate-ig-content-plan, dan pola-konten.md
 //      (lihat bagian "About Planner" di CLAUDE.md).
+// POLA 7 HARI DIBANGUN OTOMATIS: urutan perjalanan, tabel hari, keseimbangan, tabel varian pekan, dan daftar hari yang tidak
+// berubah di dokumen ini TIDAK diketik manual, melainkan diisi dari IG_POLA_AMIRU + IG_POLA_VARIAN lewat penanda {{...}}
+// (lihat igAboutPlannerMd). Jadi mengubah pola di kode otomatis mengubah About Planner. Saat mengganti isi ABOUT_PLANNER_MD
+// dengan dokumen revisi, pertahankan penanda {{POLA_URUTAN}}, {{POLA_TABEL}}, {{POLA_KESEIMBANGAN}}, {{VARIAN_TABEL}}, dan
+// {{VARIAN_HARI_TETAP}}. Kolom "Jembatan" dan keterangan peran ada di IG_ABOUT_POLA_KET (teks, bukan data pola).
 // Aturan menulis isinya: jangan pakai karakter backtick atau urutan dollar-kurung-kurawal di dalam teks (ini template literal).
 // Baris "Versi:" dan "Diperbarui:" dibaca otomatis untuk header modal, jadi format dua baris itu jangan diubah.
 // ============================================================
 const ABOUT_PLANNER_MD = `# About Planner: Konsep Perencanaan Konten Instagram Amiru Tour
-Versi: 16
-Diperbarui: 22 Oktober 2026
+Versi: 17
+Diperbarui: 23 Oktober 2026
 Status: disepakati Oktober 2026. Uji coba alur mingguan yang menyambung dimulai pekan Senin, 12 Oktober 2026. Ejaan resmi: "Umroh" (bukan "Umrah"), termasuk di hashtag.
 
 ## 1. Tujuan dan Prinsip
@@ -2311,19 +2316,11 @@ Sedang dijeda: bukti sosial/testimoni, engagement (polling/pertanyaan), dan info
 
 ## 3. Pola 7 Hari (satu tema mingguan)
 
-Urutan perjalanan hati calon jamaah: rasakan > pahami > siapkan > bayangkan > hindari kesalahan > terinspirasi > renungkan.
+{{POLA_URUTAN}}
 
-| Hari | Pilar | Format | Peran | Jembatan ke hari berikutnya |
-|---|---|---|---|---|
-| Senin | Storytelling | Single Post | Rasakan: momen emosional tema minggu ini | Pertanyaan: "tahu nggak caranya?" |
-| Selasa | Manasik | Image (kartu praktis) | Pahami: tata cara/doa terkait tema | "Biar siap, besok kita bahas persiapannya." |
-| Rabu | Edukasi | Carousel | Siapkan: persiapan fisik/perlengkapan terkait tema | "Besok kita bayangkan perjalanannya." |
-| Kamis | Storytelling bertahap | Carousel | Bayangkan: satu alur waktu/perjalanan, per slide | "Besok: kekeliruan yang sering terjadi." |
-| Jumat | Edukasi | Carousel | Hindari: kesalahan umum dan FAQ | "Besok ada cerita yang mengingatkan kenapa kita berangkat." |
-| Sabtu | Storytelling | Carousel | Terinspirasi: satu cerita manusiawi dalam 5 slide | "Besok kita renungkan maknanya." |
-| Minggu | Kontemplasi ibadah umroh | Carousel | Renungkan: makna tema, tanpa tokoh | Menutup dan memberi teaser tema minggu depan |
+{{POLA_TABEL}}
 
-Keseimbangan: 4 hari menyentuh hati (Senin, Kamis, Sabtu, Minggu) dan 3 hari praktis (Selasa, Rabu, Jumat).
+{{POLA_KESEIMBANGAN}}
 
 **Penyambung yang terlihat jamaah**
 - Pembuka caption (kecuali Senin) menyambung hari sebelumnya lewat isi, bukan lewat kata rujukan. Dilarang menyebut konten sebelumnya dengan kata kemarin, kemaren, semalam, tadi, "yang kita bahas", "melanjutkan", "meneruskan", dan sejenisnya (contoh yang salah: "Berbekal pertimbangan matang yang kita bahas kemarin", "Meneruskan perhitungan dana dan cuti kita kemarin"). Caranya: pembuka langsung masuk ke adegan, pertanyaan, atau masalah yang menjadi jawaban alami dari penutup hari sebelumnya, dan benang merahnya terbawa lewat tema, benda, perasaan, atau pertanyaan yang sama, sehingga caption tetap utuh bila dibaca sendiri. Rumus pembuka divariasikan.
@@ -2331,12 +2328,9 @@ Keseimbangan: 4 hari menyentuh hati (Senin, Kamis, Sabtu, Minggu) dan 3 hari pra
 - Label kecil di pojok gambar, misalnya "Seri Talbiyah · 3/7". Ditambahkan otomatis oleh sistem di akhir teks gambar.
 
 **Varian pekan (hari besar dan penjualan)**
-Supaya 52 pekan tidak terasa seragam, dua jenis pekan mengganti peran dan format di beberapa hari. Kamis, Sabtu, dan Minggu tidak berubah, jadi nuansa hati dan teaser pekan depan tetap terjaga.
+Supaya 52 pekan tidak terasa seragam, dua jenis pekan mengganti peran dan format di beberapa hari. {{VARIAN_HARI_TETAP}} tidak berubah, jadi nuansa hati dan teaser pekan depan tetap terjaga.
 
-| Jenis pekan | Senin | Selasa | Rabu | Jumat |
-|---|---|---|---|---|
-| Hari besar (ada peristiwa Hijriah di pekan itu) | Sambut (single) | Kenali (single) | Amalkan (carousel) | Tanya Jawab (single) |
-| Penjualan (tema pekan = tema penjualan musiman) | Rasakan | Rencanakan (single) | Hitung (carousel) | Pertimbangkan (carousel) |
+{{VARIAN_TABEL}}
 
 Tiap peran pengganti membawa catatan singkat untuk AI. Aturan lain tidak berubah: carousel maksimal 5 slide, tanpa hard-selling, tanpa harga, angka, ayat, atau hadis karangan. Pekan hari besar didahulukan atas pekan penjualan.
 
@@ -2492,7 +2486,60 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 | 14 | 16 Oktober 2026 | Kesehatan Rencana: panel di modal Rencana Konten dan bagian di rekap salinan/unduhan yang menghitung pekan ke depan (komposisi per fase terhadap jatah bobot, fase yang hilang atau berlebih, stok tema per fase terhadap kebutuhan setahun, rasio tema hati dan praktis dengan batas sehat 40-65% hati). Bank alur ditambah 16 tema: Madinah 11 menjadi 19 dan umroh bersama siapa 9 menjadi 17 (total 111). Hanya laporan, tidak mengubah pemilihan tema. Aturan konten harian tidak berubah |
 | 15 | 16 Oktober 2026 | Promosi program otomatis: pekan yang punya fase promosi (Kenalkan, Isi paket, Seat menipis, Penutupan) kini menyisipkan 1-2 hari praktis (Selasa, Rabu, atau Jumat) yang mengarah ke program tanpa perlu Arahan tambahan. Dulu fase hanya menjadi label di rekap karena prompt dan pemeriksa server mengabaikan konteks program tanpa arahan. Pemeriksa server melonggarkan larangan angka dan kata "tersedia" pada pekan itu. Perlu deploy ulang generate-ig-content-plan. Pause bukti sosial, polling, dan Story tidak berubah |
 | 16 | 22 Oktober 2026 | Caption tidak lagi memakai kata rujukan untuk menyambung antarkonten (kemarin, kemaren, semalam, tadi, "yang kita bahas", "melanjutkan"). Penyambung kini lewat isi: pembuka langsung masuk ke adegan atau pertanyaan yang menjawab penutup hari sebelumnya, dan benang merahnya terbawa lewat tema, benda, atau perasaan yang sama. Pemeriksa server menolak caption yang merujuk, dan pengecualian rumus rujukan pada cek 3 kata dicabut. Perlu deploy ulang generate-ig-content-plan dan generate-ig-caption. Penutup caption yang memancing hari berikutnya tidak berubah |
+| 17 | 23 Oktober 2026 | Pola 7 hari di dokumen ini kini dibangun otomatis dari IG_POLA_AMIRU dan IG_POLA_VARIAN (urutan perjalanan, tabel hari, keseimbangan, tabel varian pekan), jadi tidak bisa lagi berbeda dari yang dipakai generator. Aturan konten tidak berubah |
 `;
+
+// Keterangan peran dan kalimat jembatan per hari (kunci = getDay()). Ini teks penjelas, bukan data pola: peran, pilar, dan
+// format selalu dibaca dari IG_POLA_AMIRU. Hari yang belum tercantum di sini tampil tanpa keterangan.
+const IG_ABOUT_POLA_KET = {
+    1: { ket: 'momen emosional tema minggu ini', jembatan: 'Pertanyaan: "tahu nggak caranya?"' },
+    2: { ket: 'tata cara/doa terkait tema (kartu praktis)', jembatan: '"Biar siap, besok kita bahas persiapannya."' },
+    3: { ket: 'persiapan fisik/perlengkapan terkait tema', jembatan: '"Besok kita bayangkan perjalanannya."' },
+    4: { ket: 'satu alur waktu/perjalanan, per slide (bertahap)', jembatan: '"Besok: kekeliruan yang sering terjadi."' },
+    5: { ket: 'kesalahan umum dan FAQ', jembatan: '"Besok ada cerita yang mengingatkan kenapa kita berangkat."' },
+    6: { ket: 'satu cerita manusiawi dalam 5 slide', jembatan: '"Besok kita renungkan maknanya."' },
+    0: { ket: 'makna tema, tanpa tokoh', jembatan: 'Menutup dan memberi teaser tema minggu depan' }
+};
+const IG_ABOUT_JENIS_LABEL = {
+    hari_besar: 'Hari besar (ada peristiwa Hijriah di pekan itu)',
+    penjualan: 'Penjualan (tema pekan = tema penjualan musiman)'
+};
+
+// Dokumen About Planner utuh: ABOUT_PLANNER_MD + bagian pola yang diisi dari IG_POLA_AMIRU / IG_POLA_VARIAN.
+// Dipanggil saat dokumen ditampilkan/disalin (bukan saat modul dimuat), karena IG_POLA_AMIRU dideklarasikan di bawah.
+function igAboutPlannerMd() {
+    const urut = IG_URUTAN_PEKAN;
+    const fmt = t => t === 'carousel' ? 'Carousel' : 'Single Post';
+    const fmtPendek = t => t === 'carousel' ? 'carousel' : 'single';
+    const daftar = arr => arr.length > 1 ? arr.slice(0, -1).join(', ') + ' dan ' + arr[arr.length - 1] : (arr[0] || '');
+    const hati = urut.filter(k => ['storytelling', 'kontemplasi'].includes(IG_POLA_AMIRU[k].pilar));
+    const praktis = urut.filter(k => !hati.includes(k));
+    const namaHari = ks => ks.map(k => IG_POLA_AMIRU[k].hari);
+
+    const tabel = ['| Hari | Pilar | Format | Peran | Jembatan ke hari berikutnya |', '|---|---|---|---|---|']
+        .concat(urut.map(k => {
+            const p = IG_POLA_AMIRU[k], x = IG_ABOUT_POLA_KET[k] || {};
+            return `| ${p.hari} | ${igPolaPilarLabel(p.pilar)} | ${fmt(p.tipe)} | ${p.peran}${x.ket ? ': ' + x.ket : ''} | ${x.jembatan || '-'} |`;
+        })).join('\n');
+
+    const jenis = Object.keys(IG_POLA_VARIAN);
+    const hariVarian = urut.filter(k => jenis.some(j => IG_POLA_VARIAN[j][k]));
+    const varian = ['| Jenis pekan | ' + namaHari(hariVarian).join(' | ') + ' |', '|---|' + hariVarian.map(() => '---|').join('')]
+        .concat(jenis.map(j => `| ${IG_ABOUT_JENIS_LABEL[j] || j} | ` + hariVarian.map(k => {
+            const v = IG_POLA_VARIAN[j][k] || IG_POLA_AMIRU[k];
+            return `${v.peran} (${fmtPendek(v.tipe)})`;
+        }).join(' | ') + ' |')).join('\n');
+
+    const isi = {
+        POLA_URUTAN: 'Urutan perjalanan hati calon jamaah: ' + urut.map(k => IG_POLA_AMIRU[k].peran.toLowerCase()).join(' > ') + '.',
+        POLA_TABEL: tabel,
+        POLA_KESEIMBANGAN: `Keseimbangan: ${hati.length} hari menyentuh hati (${namaHari(hati).join(', ')}) dan ${praktis.length} hari praktis (${namaHari(praktis).join(', ')}).`,
+        VARIAN_TABEL: varian,
+        VARIAN_HARI_TETAP: daftar(namaHari(urut.filter(k => !hariVarian.includes(k))))
+    };
+    return ABOUT_PLANNER_MD.replace(/\{\{(\w+)\}\}/g, (m, k) => (k in isi ? isi[k] : m));
+}
+
 
 // Petunjuk yang ikut tersalin di depan dokumen supaya Claude mengembalikan dokumen dalam format yang bisa dipakai lagi.
 const ABOUT_PLANNER_PETUNJUK = `PETUNJUK UNTUK CLAUDE
@@ -2520,7 +2567,7 @@ function igAboutPlannerMeta(md) {
 
 // Teks yang disalin/diunduh: petunjuk untuk Claude + dokumen utuh.
 function igAboutPlannerTeksSalin() {
-    return ABOUT_PLANNER_PETUNJUK + ABOUT_PLANNER_MD.trim() + '\n';
+    return ABOUT_PLANNER_PETUNJUK + igAboutPlannerMd().trim() + '\n';
 }
 
 // Markdown ringan -> HTML aman (semua teks di-escape dulu). Mendukung judul, tabel, daftar, kutipan, tebal, miring.
@@ -2593,11 +2640,11 @@ function igAboutPlannerRender(md) {
 function openIgAboutPlannerModal() {
     const modal = document.getElementById('igAboutPlannerModal');
     if (!modal) return;
-    const meta = igAboutPlannerMeta(ABOUT_PLANNER_MD);
+    const meta = igAboutPlannerMeta(igAboutPlannerMd());
     const metaEl = document.getElementById('igAboutPlannerMeta');
     if (metaEl) metaEl.textContent = `Versi ${meta.versi}${meta.diperbarui ? ' · Diperbarui ' + meta.diperbarui : ''}`;
     const body = document.getElementById('igAboutPlannerBody');
-    if (body) { body.innerHTML = igAboutPlannerRender(ABOUT_PLANNER_MD); body.scrollTop = 0; }
+    if (body) { body.innerHTML = igAboutPlannerRender(igAboutPlannerMd()); body.scrollTop = 0; }
     modal.classList.add('open');
 }
 
@@ -2614,7 +2661,7 @@ async function igSalinAboutPlanner() {
 
 function igUnduhAboutPlanner() {
     try {
-        const meta = igAboutPlannerMeta(ABOUT_PLANNER_MD);
+        const meta = igAboutPlannerMeta(igAboutPlannerMd());
         const blob = new Blob([igAboutPlannerTeksSalin()], { type: 'text/markdown;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
