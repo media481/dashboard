@@ -390,7 +390,7 @@ Deploy ulang: `supabase functions deploy generate-ig-caption --no-verify-jwt`
 
 ## About Planner
 
-Tombol **About Planner** (di samping "Perencanaan Konten") menampilkan konsep perencanaan konten Amiru: tujuan, pola 7 hari,
+Tombol **Pola Konten** (dulu "About Planner"; di samping "Perencanaan Konten") menampilkan konsep perencanaan konten Amiru: tujuan, pola 7 hari,
 gaya bahasa, format posting, aturan anti-pengulangan, Tema Minggu otomatis, kejujuran, dan cara kerja di dashboard.
 **Salin untuk Claude** menyalin dokumen beserta petunjuk revisi; **Unduh .md** menyimpannya sebagai file. Hasil revisi dari
 Claude diunggah ke sesi pengembangan untuk memperbarui isi modal (lihat bagian "About Planner" di `CLAUDE.md`). Tidak butuh migrasi SQL maupun deploy edge function.

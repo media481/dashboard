@@ -507,7 +507,7 @@ dan Edge Function yang perlu di-deploy ulang.
 
 ## About Planner (konsep perencanaan konten, IG Scheduler)
 
-Tombol **About Planner** di sebelah "Perencanaan Konten" (halaman IG Scheduler) membuka modal `#igAboutPlannerModal`
+Tombol **Pola Konten** (dulu "About Planner"; id/modal/fungsi tetap `igAboutPlanner*`) di sebelah "Perencanaan Konten" (halaman IG Scheduler) membuka modal `#igAboutPlannerModal`
 berisi konsep perencanaan konten Amiru yang bisa dibaca, disalin ("Salin untuk Claude"), dan diunduh (.md).
 
 - **Sumber tunggal teks:** konstanta `ABOUT_PLANNER_MD` di `js/modules/ig-scheduler.js` (section 24e). Header modal (Versi, Diperbarui)
