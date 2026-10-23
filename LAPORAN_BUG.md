@@ -3,6 +3,17 @@
 Tanggal: 2026-08-07
 Tipe: analisis statis (baca kode + SQL), belum dijalankan di browser.
 
+> **Status per 23 Okt 2026** (laporan di bawah ditulis 2026-08-07 untuk `dashboard-main (46).zip` dan tidak diubah isinya):
+>
+> | Bug | Status sekarang |
+> |---|---|
+> | #1 anon key placeholder, #2 URL project salah | Selesai. `js/app.js` baris 4-5 menunjuk ke satu project; workflow `keep-supabase-alive` membaca nilai yang sama |
+> | #3 login CS (`pass_cs`) mati | Tidak relevan lagi: login berbasis password diganti Supabase Auth (`dashboard_profiles`, role `admin`/`user`/`guest`) |
+> | #4 `escapeJsAttr` tidak meng-escape `"` dan #5 URL poster | Diperbaiki: `escapeJsAttr()` kini meng-escape `"` dan backtick, dan `isValidUrl()` membatasi ke http/https |
+> | #6 RLS permisif | Sebagian besar diperbaiki (`sql/26`, `27`, `29`, `51`; `app_config` tertutup; tulis butuh role admin/user). Masih terbuka menurut `sql/00`: baca publik pada `tg_config`, `snapshot_backup`, `kb_jamaah`, `pendaftaran`, serta insert terbuka pada `jamaah_audit_log` (lihat `CHECKLIST_DEPLOY.md` bagian 6) |
+> | #7 file orphan rusak `js/index.html` | Belum dibersihkan: `js/index.html` dan `js/index.html.DISABLED_BUG` masih ada (tidak dimuat, sudah di-ignore `.assetsignore`). Sebagian besar file JS orphan lain sudah tidak ada; `utils.js` dan `index.ts` di root masih tersisa |
+> | Nomor baris dan nama file di laporan | Merujuk struktur lama; `js/app.js` kini ~10.800 baris dan sebagian logika pindah ke `js/modules/` |
+
 ## Ringkasan
 Webapp ini secara struktur sudah rapi (versi (46) sudah dipecah jadi modul di `js/`,
 tapi `index.html` HANYA memuat `js/app.js` — file JS lainnya orphan). Ditemukan

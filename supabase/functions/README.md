@@ -2,9 +2,11 @@
 
 Kumpulan Supabase Edge Function (Deno/TypeScript) untuk Dashboard Amiru. Fungsi dipakai untuk hal yang butuh secret atau server-side: proxy Telegram, AI (Gemini), OCR poster, manajemen akun, dan integrasi Instagram Graph API.
 
-Kontrak request/response tiap fungsi didokumentasikan di komentar header file `index.ts`-nya dan disesuaikan dengan pemanggilnya di `js/app.js`.
+Kontrak request/response tiap fungsi didokumentasikan di komentar header file `index.ts`-nya dan disesuaikan dengan pemanggilnya di `js/app.js` dan modul `js/modules/*.js`.
 
 ## Daftar fungsi
+
+Ada 16 folder fungsi di repo: 15 aktif (di tabel di bawah) ditambah `login-dashboard` yang sudah legacy. `_shared/gemini.ts` hanya acuan helper, bukan fungsi.
 
 Kolom **Auth** menunjukkan siapa yang boleh memanggil. Kolom **Deploy** menunjukkan flag yang dipakai.
 
@@ -52,6 +54,8 @@ URL `send-telegram` ditempel manual di form **Pengaturan Telegram** (field "Edge
 | `ig-manual-retry` | Reset post gagal ke `scheduled` lalu memicu `ig-publish` | Token login | Tanpa `--no-verify-jwt` |
 
 `ig-publish`, `ig-refresh-token`, dan `ig-sync-comments` dipanggil oleh Cloudflare Worker di `scheduler/` (publish dan sync tiap 15 menit, refresh token tiap Senin 09:00 UTC). Header `apikey` sengaja **tidak** diterima sebagai kredensial karena selalu ikut di setiap request Supabase client.
+
+Selama `IG_AUTOPUBLISH_ENABLED = false` di `js/app.js` (kondisi saat ini), frontend menyembunyikan auto-upload dan sinkron komentar dan menyimpan post IG sebagai draft. Fungsi `ig-*` dan cron tetap berjalan; post lama berstatus `scheduled` tetap diterbitkan.
 
 ### Legacy
 
@@ -113,6 +117,7 @@ URL fungsi: `https://<project-ref>.supabase.co/functions/v1/<nama-fungsi>`. `js/
 - Helper bersama (fallback multi-key Gemini, pasca-proses caption) **disalin inline** ke tiap fungsi yang memakainya. Bila helper diperbaiki, perbarui salinan di setiap fungsi. Acuannya ada di `_shared/gemini.ts` dan `generate-ig-caption/postprocess.ts`.
 - Fungsi yang dipanggil user login harus memverifikasi token ke Supabase Auth dan mengecek `dashboard_profiles.dashboard_role` dengan service role, tidak mempercayai klaim dari client.
 - Saat mengirim perubahan, sebut fungsi mana yang perlu di-deploy ulang dan kirim `index.ts`-nya utuh.
+- Tes: `npm run test:edge` menguji `generate-ig-content-plan` (`test-core.mjs`; butuh Node dengan `--experimental-strip-types`).
 
 ## Ketidaksesuaian yang perlu ditindaklanjuti
 
@@ -130,7 +135,7 @@ Dua hal di luar kendali yang berganti dari waktu ke waktu, keduanya bisa diganti
 Pengecekan yang disarankan tiap Januari dan Juli:
 
 1. Jalankan Rencana Setahun AI untuk pekan yang belum terisi dan pastikan tema musiman tayang di bulan yang tepat.
-2. Cek bank tema `IG_TEMA_ALUR` dan daftar musiman `IG_TEMA_MUSIM` di `js/app.js`.
+2. Cek bank tema `IG_ALUR_GRUP` (`IG_TEMA_ALUR` diturunkan darinya) dan daftar musiman `IG_TEMA_MUSIM` di `js/modules/ig-scheduler.js`. Langkah lengkap ada di `CHECKLIST_TAHUNAN_IG.md`.
 3. Pastikan token Instagram masih diperpanjang otomatis (`ig-refresh-token`) dan workflow `keep-supabase-alive` masih aktif.
 
 Bila konsep di **About Planner** berubah, sinkronkan ke `generate-ig-content-plan` dan `generate-ig-caption` lalu deploy ulang keduanya.

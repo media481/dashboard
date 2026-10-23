@@ -10,7 +10,7 @@ Letakkan file ini di root repo bersama `pola-konten.md`.
 
 ## Yang dicek manual
 
-1. **Bank tema alur** (`IG_ALUR_GRUP` di `js/app.js`, 111 tema dalam 5 fase: sebelum berangkat 24, Makkah 36, Madinah 19, umroh bersama siapa 17, pulang 15)
+1. **Bank tema alur** (`IG_ALUR_GRUP` di `js/modules/ig-scheduler.js`, 111 tema dalam 5 fase: sebelum berangkat 24, Makkah 36, Madinah 19, umroh bersama siapa 17, pulang 15)
    - Rotasi antar fase otomatis menurut `bobot` tiap fase. Fase paling tipis (Madinah, umroh bersama siapa) habis lebih dulu: tambahkan tema baru di fase itu lebih dulu.
    - Mau mengubah komposisi (mis. lebih banyak konten calon jamaah baru)? Ubah angka `bobot`, tidak perlu menyentuh logika.
    - Cukup untuk sekitar 2 tahun sebelum tema mulai kembali (simulasi: pekan ke-126).
@@ -18,11 +18,11 @@ Letakkan file ini di root repo bersama `pola-konten.md`.
    - Tema baru jangan mirip tema lama: cek dengan `igIsSimilarText`, atau cukup lihat peringatan saat menyimpan.
    - Tema yang tumpang tindih (misalnya fisik/stamina/kesehatan) sebaiknya tidak berdekatan.
 
-2. **Tema musiman** (`IG_TEMA_MUSIM` di `js/app.js`)
+2. **Tema musiman** (`IG_TEMA_MUSIM` di `js/modules/ig-scheduler.js`)
    - Hari besar ber-`hijriRentang`: tidak perlu diubah.
    - Tema penjualan per bulan Masehi (libur sekolah, libur akhir tahun): cocokkan dengan kalender sekolah dan kebijakan musim umroh tahun itu.
    - Tema penjualan tetap tayang 2-3 bulan sebelum musimnya.
-   - Varian peran pekan hari besar dan penjualan ada di `IG_POLA_VARIAN` (`js/app.js`). Peran baru harus ikut ditambahkan ke `IG_AWALAN_PERAN` dan ke paragraf VARIAN PEKAN di `IG_PLAN_PROMPT_SISTEM` serta `CONTENT_PLAN_SYSTEM_PROMPT` (dua teks itu harus identik).
+   - Varian peran pekan hari besar dan penjualan ada di `IG_POLA_VARIAN` (`js/modules/ig-scheduler.js`). Peran baru harus ikut ditambahkan ke `IG_AWALAN_PERAN` dan ke paragraf VARIAN PEKAN di `IG_PLAN_PROMPT_SISTEM` serta `CONTENT_PLAN_SYSTEM_PROMPT` (dua teks itu harus identik).
    - Jeda pekan musiman otomatis (`igPerluJedaMusim`). Kalau menambah tema musiman baru, cek di peta 52 pekan bahwa tidak ada dua pekan musiman biasa yang berurutan.
 
 3. **`IG_RIWAYAT_AWAL`**
@@ -31,8 +31,8 @@ Letakkan file ini di root repo bersama `pola-konten.md`.
 
 4. **Teks panduan bertanggal** (edit keempatnya bersamaan)
    - `pola-konten.md` (bagian 6, Riwayat topik)
-   - About Planner: `ABOUT_PLANNER_MD` di `js/app.js`
-   - `IG_PLAN_PROMPT_SISTEM` di `js/app.js`
+   - About Planner: `ABOUT_PLANNER_MD` di `js/modules/ig-scheduler.js`
+   - `IG_PLAN_PROMPT_SISTEM` di `js/modules/ig-scheduler.js`
    - `CONTENT_PLAN_SYSTEM_PROMPT` di `supabase/functions/generate-ig-content-plan/index.ts`
    - Cari kalimat "sebelum 12 Oktober 2026" dan "jangan diulang sebelum 12 April 2027" lalu perbarui atau hapus.
 
@@ -44,7 +44,10 @@ Letakkan file ini di root repo bersama `pola-konten.md`.
 6. **Deploy ulang bila ada perubahan di edge function**
    - `supabase functions deploy generate-ig-content-plan --no-verify-jwt`
    - `supabase functions deploy generate-ig-year-plan --no-verify-jwt`
-   - Jalankan tes: `node --experimental-strip-types supabase/functions/generate-ig-content-plan/test-core.mjs`
+   - Jalankan tes: `npm run test:edge` (edge function), `npm run test:ig` dan `npm test` (frontend)
+
+7. **Rilis frontend bila `js/modules/ig-scheduler.js` berubah**
+   - `npm run release` (minify + hash), commit sumber, `*.min.js`, dan `index.html`, lalu naikkan `CACHE_NAME` di `service-worker.js`.
 
 ## Uji cepat sesudah update
 - Generate satu pekan dengan tema yang pernah dipakai tahun lalu.

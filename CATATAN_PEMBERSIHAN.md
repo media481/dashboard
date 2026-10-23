@@ -1,3 +1,16 @@
+> **Arsip historis.** Ini catatan ronde pembersihan awal (service worker v16-v19). Banyak isinya sudah tidak berlaku. Kondisi terkini ada di
+> `CLAUDE.md` dan `README.md`. Pegangan cepat untuk membaca arsip ini:
+>
+> | Di arsip ini tertulis | Kondisi sekarang |
+> |---|---|
+> | `index.html` self-contained, lalu dipecah jadi `index.html` + `css/style.css` + `js/app.js` | `index.html` memuat `js/app.min.js` + 13 `css/*.min.css` (hasil `npm run release`); modul besar dimuat lazy dari `js/modules/*.min.js`; `js/app.js` ~10.800 baris |
+> | File lama dipindah ke `_legacy_unused/` | Folder itu tidak ada di repo. Sisa lama yang masih ada (`utils.js`, `index.ts`, `js/index.html*`, `crosscheck-fix.diff`, dst.) di-ignore `.assetsignore` |
+> | `app_config` menyimpan password login admin/CS | Login memakai Supabase Auth (`dashboard_profiles`); `app_config` tertutup untuk anon dan tidak dipakai login |
+> | Edge Function `send-telegram` dan `scan-poster-ocr` ditulis ulang | Repo kini berisi 16 Edge Function (lihat `supabase/functions/README.md`) |
+> | Sidebar: Program Umroh, Unggulan, Jadwal Tamu, Keberangkatan, section Manajemen | Sidebar dirender dari `NAV_MENU` (`js/app.js`): Navigasi, Siklus Jamaah, Social Media, Arsip, Manajemen, System; akses per role/per akun |
+> | `service-worker.js` cache v16-v19 | `CACHE_NAME` saat ini `amiru-repo-cache-v159`; aset ber-hash dibaca otomatis dari `index.html` |
+> | Koneksi Supabase di `js/app.js` baris 4-5 | Masih benar |
+
 # Catatan Pembersihan Struktur
 
 ## Kesimpulan: file yang menghubungkan ke Supabase

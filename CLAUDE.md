@@ -13,7 +13,7 @@ Bahasa UI & komentar kode: **Bahasa Indonesia**. Ikuti gaya ini saat menambah fi
 
 ## Stack
 
-- Vanilla JavaScript (tanpa framework/bundler), HTML, CSS murni
+- Vanilla JavaScript (tanpa framework; esbuild hanya dipakai untuk minify, lihat "Build & rilis"), HTML, CSS murni
 - Supabase (Postgres + RLS + Auth + Storage) sebagai backend, diakses langsung dari browser
   via `@supabase/supabase-js` (CDN) dan sebagian via `fetch()` manual ke endpoint REST.
   Login memakai **Supabase Auth** (bukan lagi password di `app_config` / `login-dashboard`)
@@ -74,7 +74,7 @@ mengunduh ulang saat file berubah.
   **CSS lazy (`css: [...]` di `LAZY_MODULES`):** modul boleh punya CSS sendiri yang TIDAK di-`<link>` di
   `index.html`, tapi diunduh paralel oleh `ensureModuleLoaded()` lewat `ensureStyleLoaded('<nama>')` (versi
   `?v=` dari kunci `css:<nama>` di `moduleVersions`, diisi `npm run stamp`). Saat ini hanya `ig-scheduler`
-  (94 KB). Halaman yang kerangkanya sudah ada di `index.html` (mis. `openIgSchedulerPage()`) harus
+  (sekitar 95 KB setelah minify). Halaman yang kerangkanya sudah ada di `index.html` (mis. `openIgSchedulerPage()`) harus
   `await ensureStyleLoaded(...)` SEBELUM menampilkan kerangka, supaya tidak tampil polos. SYARAT memindah CSS
   ke lazy: tidak ada kelas dari file itu yang dipakai di luar modulnya (cek app.js, index.html di luar blok
   modul, dan modul lain). Contoh yang ketahuan: `.ig-empty` dipakai galeri Infografis -> dipindah ke `style.css`.
@@ -94,7 +94,9 @@ mengunduh ulang saat file berubah.
 ## Struktur file AKTIF (yang benar-benar di-load browser)
 
 ```
-index.html          ← struktur HTML saja, load css/style.css + css/rekap-infografis.css + css/snapshot.css + css/jadwal-tamu.css + css/assets.css + css/hotel.css + css/detail-program.css + css/telegram.css + css/kepulangan.css + css/rooming.css + css/ig-scheduler.css + css/user-akses.css + css/keuangan.css + css/crosscheck.css + js/app.js
+index.html          ← struktur HTML saja. Memuat `js/app.min.js` + 13 file `css/*.min.css` (urutan WAJIB: lihat "URUTAN LOAD" di bawah),
+                        masing-masing ber-`?v=<hash>` yang ditempel `npm run release`. `css/ig-scheduler.min.css` TIDAK di-link
+                        (lazy: diunduh bersama modul `ig-scheduler`). Modul lain: `<script id="moduleVersions">`
 katalog.html          ← halaman marketing publik MANDIRI (CSS+JS inline, tidak memakai app.js/style.css). Baca tabel
                         `programs` via REST dengan anon key, filter sama seperti `isProgramVisibleOnDashboard`
                         (aktif, belum expired, punya poster). Sisa seat tidak ditampilkan karena `kb_jamaah`
@@ -124,12 +126,12 @@ css/style.css        ← CSS INTI (variabel :root warna brand, layout, sidebar, 
                         `css/style.css`. Cek dulu dengan `grep "style.css" index.html` kalau ragu.
 css/rekap-infografis.css ← MODUL Rekap Program & Infografis (`.rekap-*`, `@keyframes rekapSheetUp`, `.metric-clickable`,
                         `.infografis-*`, `.poster-popup*`, `.poster-missing-badge`). Di-load SETELAH style.css dan SEBELUM
-                        ig-scheduler.css. `.pd-poster-*` (modal Detail Program) sengaja TIDAK di sini; itu modul Detail Program.
+                        snapshot.css. `.pd-poster-*` (modal Detail Program) sengaja TIDAK di sini; itu modul Detail Program.
 css/hotel.css          ← MODUL Hotel Saudi Arabia (`.hotel-*`: search/tabel di Assets, import CSV, hint kecocokan hotel & saran
                         detail hotel di form Program, `#adminFormContainer .hotel-ref-hint*`, `#btnAddHotelExtra`). Di-load setelah
-                        rekap-infografis.css, sebelum ig-scheduler.css. `.assets-inner-tab-*` bukan bagian modul ini (modul Assets).
-css/kepulangan.css     ← MODUL Status Kepulangan (`.kp-*`: field inline, dropdown status berwarna). Di-load setelah hotel.css,
-                        sebelum ig-scheduler.css. `.kp-program-panel` hanya style inline (tanpa aturan CSS).
+                        assets.css, sebelum detail-program.css. `.assets-inner-tab-*` bukan bagian modul ini (modul Assets).
+css/kepulangan.css     ← MODUL Status Kepulangan (`.kp-*`: field inline, dropdown status berwarna). Di-load setelah telegram.css,
+                        sebelum rooming.css. `.kp-program-panel` hanya style inline (tanpa aturan CSS).
 css/snapshot.css      ← MODUL Snapshot/Backup (`.snap-*`). Di-load setelah rekap-infografis.css.
 css/jadwal-tamu.css   ← MODUL Jadwal Tamu (`.jadwal-status-pill`).
 css/assets.css        ← MODUL Assets (`.asset-*`, `.assets-inner-*`). PERHATIAN: `.assets-inner-*` dipakai juga oleh tab dalam
@@ -138,15 +140,16 @@ css/detail-program.css ← MODUL modal Detail Program / Teks WA (semua `.pd-*` t
 css/telegram.css      ← MODUL Telegram (`.tg-*`).
 css/rooming.css       ← MODUL Rooming List (`.rm-*`).
                         URUTAN LOAD (WAJIB dijaga, kaskade bergantung padanya): style.css, rekap-infografis, snapshot, jadwal-tamu,
-                        assets, hotel, detail-program, telegram, kepulangan, rooming, ig-scheduler, user-akses, keuangan, crosscheck.
+                        assets, hotel, detail-program, telegram, kepulangan, rooming, user-akses, keuangan, crosscheck (ig-scheduler TIDAK termasuk: CSS lazy, dimuat bersama modulnya).
                         Blok @media target-sentuh (pointer: coarse) di style.css tadinya satu daftar selector bersama banyak modul;
                         bagian selector tiap modul kini ada di @media di file modulnya, sisanya tetap di style.css.
 css/ig-scheduler.css ← MODUL IG Scheduler (semua `.ig-*`, `#ig*`, variabel `--ig-*`, `@keyframes ig-plan-spin`).
-                        Di-load SETELAH style.css. Gaya IG baru -> taruh di sini, bukan di style.css.
+                        LAZY: TIDAK di-`<link>` di index.html; diunduh paralel dengan modul `ig-scheduler` lewat
+                        `LAZY_MODULES['ig-scheduler'].css` (lihat "CSS lazy"). Gaya IG baru -> taruh di sini, bukan di style.css.
                         Pemecahan CSS dilakukan bertahap per modul (SELESAI semua: IG Scheduler, User/Akses, Keuangan, Crosscheck, Rekap/Infografis, Snapshot, Jadwal Tamu, Assets, Hotel, Detail Program, Telegram, Kepulangan, Rooming);
-                        modul baru WAJIB ditambah `<link>` di index.html (setelah style.css) lalu jalankan `npm run release`
+                        modul baru WAJIB ditambah `<link>` di index.html (setelah style.css; atau didaftarkan sebagai `css: [...]` modul lazy) lalu jalankan `npm run release`
                         (service worker membaca daftar aset dari index.html, tidak perlu ubah `APP_SHELL`); naikkan `CACHE_NAME`.
-css/user-akses.css   ← MODUL User & Akses Menu (semua `.us-*`, `.rma-*`). Di-load setelah ig-scheduler.css.
+css/user-akses.css   ← MODUL User & Akses Menu (semua `.us-*`, `.rma-*`). Di-load setelah rooming.css.
                         `.us-*` juga dipakai di luar halaman user (mis. `.us-stat` di Audit Nota, gayanya `.an-*` di keuangan.css), jadi file ini
                         tidak boleh dilepas. `.ms-*` (komponen modal bersama) dan `.cs-*` (custom select) SENGAJA
                         tetap di style.css karena bukan bagian user/akses.
@@ -166,28 +169,42 @@ js/app.js            ← file JS inti (sumber): logic utama + koneksi Supabase. 
 manifest.json         ← config PWA (name, theme_color, icons)
 service-worker.js     ← cache-first untuk aset ber-hash (daftarnya dibaca dari index.html), network-first untuk sisanya;
                         `APP_SHELL` (file tanpa hash) HARUS disinkronkan manual kalau nama file berubah.
-                        `CACHE_NAME` (saat ini `amiru-repo-cache-v157`) dinaikkan tiap rilis
-icons/                ← 9 file ikon PWA sesuai daftar di manifest.json
-sql/                  ← skema & migrasi bernomor 00-56. `00_SETUP_LENGKAP_SATU_FILE.sql` = gabungan
-                        semuanya (idempoten, bebas urutan) untuk project baru. Untuk project yang SUDAH
-                        jalan, jalankan hanya migrasi baru sesuai nomor urut. Contoh penting:
+                        `CACHE_NAME` (saat ini `amiru-repo-cache-v159`) dinaikkan tiap rilis
+icons/                ← 12 file: 9 PNG dirujuk manifest.json (dan diprecache `APP_SHELL`), `icon-180.png` (apple-touch-icon di index.html),
+                        `icon.svg` + `icon-maskable.svg` (sumber vektor)
+sql/                  ← skema & migrasi bernomor 00-59. `00_SETUP_LENGKAP_SATU_FILE.sql` = kondisi akhir migrasi 01-56 + 58
+                        (idempoten, bebas urutan) untuk project baru. **TIDAK memuat 57 dan 59**: jalankan keduanya sesudah 00
+                        (57 = kolom `programs.poster_version`, 59 = view `v_total_bayar`; 59 WAJIB sebelum frontend di-deploy).
+                        Juga tidak memuat 18 (konversi data lama) serta 39/40 (isi data hotel Saudi; pakai 40 yang terbaru).
+                        Untuk project yang SUDAH jalan, jalankan hanya migrasi baru sesuai nomor urut. Contoh penting:
                         19 (nomor nota + `nota_audit_log` append-only), 26/27 (hardening RLS),
                         28 (migrasi Supabase Auth), 29 (guest read-only di RLS), 30-36 (kelola user,
-                        akses menu), 41-51 (IG Scheduler), 52-55 (rekap program, infografis)
+                        akses menu), 41-51 + 56 (IG Scheduler), 52-55 (rekap program, infografis, hotel_detail),
+                        57 (poster_version), 58 (view `microblog_publik`), 59 (view `v_total_bayar`)
 .github/workflows/
-  keep-supabase-alive.yml ← ping REST API tiap 3 hari biar project free tier tidak auto-pause
-                            (secret repo: SUPABASE_URL & SUPABASE_ANON_KEY)
-supabase/functions/    ← 17 Edge Function + `_shared/gemini.ts` (acuan helper). Daftar, auth, secret,
+  keep-supabase-alive.yml ← ping REST API tiap 3 hari biar project free tier tidak auto-pause. TIDAK butuh secret:
+                            URL & anon key dibaca dari `js/app.js` (`const SUPABASE_URL` / `SUPABASE_ANON_KEY`, jangan ubah
+                            format deklarasinya). Juga mengaktifkan ulang dirinya sendiri (`gh workflow enable`)
+  auto-generate-konten.yml ← generate konten IG pekan depan, Minggu 03:00 WIB (Sabtu 20:00 UTC); secret AUTO_BOT_EMAIL/AUTO_BOT_PASSWORD
+PASANG-MANUAL-workflow/ ← salinan kedua workflow + BACA-DULU.txt, untuk dipasang manual lewat web GitHub kalau folder `.github`
+                          (berawalan titik) terlewat saat ekstrak/salin. Bukan bagian deploy; BELUM masuk `.assetsignore`
+supabase/functions/    ← 16 Edge Function (incl. `login-dashboard` legacy) + `_shared/gemini.ts` (acuan helper). Daftar, auth, secret,
                           dan cara deploy ada di `supabase/functions/README.md`
 scheduler/             ← Cloudflare Worker cron IG Scheduler (deploy terpisah, BUKAN bagian deploy dashboard)
 apps-script/           ← Google Apps Script listing folder Drive (Infografis, Rekap Program)
-scripts/setup-auth-accounts.mjs ← setup akun Supabase Auth awal (sekali jalan, butuh service role key)
+scripts/build.mjs       ← minify `js/app.js`, `js/modules/*.js`, `css/*.css` -> `*.min.*` (esbuild); `--check` untuk CI
+scripts/stamp-versions.mjs ← tempel hash `?v=` ke index.html (`<script>`, `<link>`, `moduleVersions`); `--check` untuk CI
+scripts/setup-auth-accounts.mjs ← setup akun Supabase Auth awal (sekali jalan, butuh service role key). Salinan lepas di root identik, tidak dipakai
 scripts/auto-generate-konten.mjs ← generate konten IG pekan depan otomatis (dipicu .github/workflows/auto-generate-konten.yml, Minggu 03:00 WIB).
                           Memuat js/app.js + js/modules/ig-scheduler.js apa adanya lewat vm (mock DOM) dan memanggil fungsi yang sama dengan tombol
                           Generate Konten (igKandidatTemaMinggu, igBuildSlotPekan, igGeneratePlanForSlots), login dengan akun Supabase Auth khusus
                           (secret AUTO_BOT_EMAIL/AUTO_BOT_PASSWORD). ATURAN: jalur generate (loadIgContentPlan, loadIgPosts, igGeneratePlanForSlots,
                           buildIgPlanProgramContext, dst.) tidak boleh bergantung pada DOM/`event`; dijaga tests/test-auto-generate.js. Setup: README_ig_scheduler.md
-tests/test-core.js     ← test minimal tanpa dependency (`npm test`)
+tests/                 ← `npm test` = 8 suite tanpa dependency: test-core (fungsi murni di app.js), test-modules (stub -> modul lazy,
+                        guard snapshot), test-total-bayar, test-with-retry, test-lazy-css, test-service-worker (juga menjaga index.html
+                        sinkron dengan `*.min.*`), test-auto-generate, test-about-planner. Detail: `tests/README.md`
+test-core.js (root)    ← BUKAN sisa lama: tes generator IG/Perencanaan Konten, dijalankan `npm run test:ig` (TIDAK ikut `npm test`).
+                        `npm run test:edge` menguji `supabase/functions/generate-ig-content-plan/test-core.mjs` (butuh Node yang mendukung `--experimental-strip-types`)
 wrangler.jsonc, .assetsignore, _headers ← deploy & header Cloudflare. `.assetsignore` WAJIB ada
                           (cegah sql/, supabase/, scheduler/, *.md, serta file sumber `css/*.css`, `js/app.js`,
                           `js/modules/*.js` yang tidak dimuat browser ikut terpublish; yang `*.min.*` dikecualikan
@@ -201,9 +218,13 @@ terpisah kecuali berniat mendaftarkannya sebagai modul lazy (`LAZY_MODULES` di a
 memprecache-nya lewat `moduleVersions` di index.html.
 
 Riwayat: proyek ini pernah beberapa kali disusun ulang (monolith → dipecah jadi ~22 file
-modular → digabung lagi jadi satu `js/app.js`). Kalau menemukan file `.js` lepas di root
-atau folder `js/` selain `app.js` (mis. `utils.js`, `test-core.js`, `js/index.html`), atau `index.ts` di root (salinan lama `generate-wa-caption`), kemungkinan besar itu sisa lama yang tidak dipakai —
-cek dulu apakah direferensikan di `index.html`/`service-worker.js` sebelum diasumsikan aktif.
+modular → digabung jadi satu `js/app.js` → kini `js/app.js` inti + modul lazy `js/modules/*.js`). File berikut adalah
+SISA LAMA yang tidak dimuat browser dan tidak dipakai skrip mana pun: `utils.js` dan `index.ts` (salinan lama
+`generate-wa-caption`) di root, `js/index.html` + `js/index.html.DISABLED_BUG`, `crosscheck-fix.diff`,
+`logo-amirutour.png` di root (yang aktif: `assets/logo-amirutour.png`), dan `setup-auth-accounts.mjs` di root
+(identik dengan `scripts/setup-auth-accounts.mjs`). Semuanya sudah di-ignore `.assetsignore`, jadi aman tidak ikut terpublish.
+**Bukan sisa:** `test-core.js` di root (dijalankan `npm run test:ig`). Kalau menemukan file lepas lain, cek dulu apakah
+direferensikan di `index.html`/`service-worker.js`/`package.json` sebelum diasumsikan aktif.
 
 ## Tabel Supabase yang dipakai
 
@@ -214,6 +235,7 @@ cek dulu apakah direferensikan di `index.html`/`service-worker.js` sebelum diasu
 | `kb_jamaah` | Data jamaah per program (kolom `dokumen` jsonb = checklist kelengkapan dokumen; `diarsipkan`, `status_kepulangan`) |
 | `pendaftaran` | Daftar minat calon jamaah sebelum resmi masuk `kb_jamaah` |
 | `pembayaran_jamaah` | Riwayat pembayaran/cicilan per jamaah (punya `nomor_nota` dari trigger DB) |
+| `v_total_bayar` (VIEW) | Total dibayar per jamaah, dihitung di database (`security_invoker`, hanya `authenticated`; sql/59). Dibaca lewat `fetchTotalBayar()` |
 | `nota_audit_log` | Ledger audit nota, append-only (UPDATE/DELETE diblokir trigger) |
 | `jamaah_audit_log` | Log audit perubahan data jamaah |
 | `kwt_kuitansi` | Kuitansi |
@@ -232,32 +254,35 @@ cek dulu apakah direferensikan di `index.html`/`service-worker.js` sebelum diasu
 | `ig_content_plan`, `ig_rencana_tahunan`, `ig_tasklist` | Perencanaan konten IG (ide harian, tema per pekan, tasklist) |
 | `microblog_publik` (VIEW) | Turunan `ig_content_plan` untuk tile/modal Microblog. Dibaca anon/guest/semua role (sql/58); hanya kolom tampilan, status `dilewati` disembunyikan, `canva_url`/`ig_post_id` tidak ikut |
 
-Daftar di atas dari `sql/00_SETUP_LENGKAP_SATU_FILE.sql`; cek file itu bila ragu.
+Daftar di atas dari `sql/00_SETUP_LENGKAP_SATU_FILE.sql` ditambah `sql/58` dan `sql/59` (view); cek file-file itu bila ragu.
 
-Setup Supabase baru: jalankan `sql/00_SETUP_LENGKAP_SATU_FILE.sql` di SQL Editor, lalu
-`sql/28_migrate_supabase_auth.sql` dan `scripts/setup-auth-accounts.mjs` untuk akun login,
-deploy Edge Function, lalu update `SUPABASE_URL` & `SUPABASE_ANON_KEY` di `js/app.js` baris 4-5
-(harus project yang SAMA dengan tempat SQL & fungsi dideploy, kalau tidak muncul error `PGRST301`).
+Setup Supabase baru: jalankan `sql/00_SETUP_LENGKAP_SATU_FILE.sql` di SQL Editor, lalu `sql/57_tambah_programs_poster_version.sql`
+dan `sql/59_tambah_view_total_bayar.sql` (dua-duanya TIDAK ada di 00), opsional `sql/40_update_hotel_saudi_arabia_2026_10.sql` (isi data hotel),
+lalu `scripts/setup-auth-accounts.mjs` untuk akun login (`sql/28` sudah tercakup di 00; hanya dijalankan terpisah di project lama yang belum migrasi),
+buat bucket Storage `ig-media` (public) kalau memakai IG Scheduler, deploy Edge Function, lalu update `SUPABASE_URL` & `SUPABASE_ANON_KEY` di `js/app.js` baris 4-5
+(harus project yang SAMA dengan tempat SQL & fungsi dideploy, kalau tidak muncul error `PGRST301`; lalu `npm run release`).
 
-## Peta bagian `js/app.js` (sekitar 20.000 baris, dibagi per komentar section)
+## Peta bagian `js/app.js` (sekitar 10.800 baris, dibagi per komentar section)
 
-1. Supabase Config — 2. State — 3. Utility Functions (termasuk `withRetry()` untuk
-   retry request baca yang gagal karena masalah jaringan) — 4. Generate Auto WA Text —
-5. Tab Switching — 6. Mobile Sidebar — 7. Render Skeleton — 8. Load Data from Supabase —
-9. Render Table — 10. Search & Sort — 11. Detail Modal — 12. Admin Login —
-13. Admin Panel — 14. Admin CRUD Operations — 15. Parse Broadcast (auto-isi form dari
-teks broadcast WA) — 16. Export/Import — 17. Delete Confirm — 18. Jadwal Tamu (CRUD) —
-18B. Form Pendaftaran (CRUD daftar minat calon jamaah, tabel `pendaftaran`) —
-19. Keberangkatan (CRUD data jamaah + tabel pembayaran/cicilan tergabung dalam satu tab,
-terhubung ke harga program & auto-sync status di kb_jamaah) — 19B. Kelola Cicilan
-(modal dipakai dari tombol "Bayar" di tabel Keberangkatan) —
-19C. Kelengkapan Dokumen (checklist dokumen per jamaah, disimpan di kolom
-kb_jamaah.dokumen jsonb) —
-20. Kuitansi — 21. Featured Programs —
-21A. Crosscheck Module (OCR poster vs data) — 21B. Telegram Module —
-22. Init — 23. Close Modals on Overlay Click — 24. Poster Hover Popup — 24e. About Planner —
-serta modul belakangan (IG Scheduler, Rencana Konten, Infografis, Rekap Program, Pengaturan User,
-Snapshot). Daftar ini tidak lengkap: cari komentar section dengan `grep -n "^// [0-9]" js/app.js`.
+Modul lazy menambah ~13.600 baris lagi (terbesar `js/modules/ig-scheduler.js`, ~6.000 baris). Penomoran di bawah mengikuti
+komentar section di file; sebagian nomor ganda/tidak berurutan (bawaan sejarah), jadi cari lewat `grep -n "^// [0-9]" js/app.js`.
+
+1. Supabase Config (baris 4-5: `SUPABASE_URL`, `SUPABASE_ANON_KEY`) — 2. State — 3. Utility Functions (termasuk `withRetry()`
+   untuk retry request baca yang gagal karena jaringan, dan `fetchTotalBayar()`) — 4. Generate Auto WA Text — 4b. Caption AI massal —
+   4c. Persist halaman terakhir — 5. Tab Switching — 5b. Halaman IG Scheduler (pembuka) + Daftar menu sidebar `NAV_MENU` —
+   5c. Infografis — 5d. Rekap Program & Infografis (kartu dashboard) — 6. Mobile Sidebar — 7. Render Skeleton —
+   8. Load Data from Supabase — 9. Render Table — 10. Search & Sort — 11. Detail Modal — 12. Login (Supabase Auth) —
+   12c. Sidebar Nav (`renderSidebarNav()`) — 12d. System Status (kondisi API & Edge Function) — 13. Admin Panel —
+   13b. Tambah Program Cepat — 14. Admin CRUD — 15. Parse Broadcast (auto-isi form dari teks broadcast WA) — 16. Export/Import —
+   17. Delete Confirm — 18. Jadwal Tamu (CRUD) — 18B. Form Pendaftaran (tabel `pendaftaran`) —
+   19. Keberangkatan (CRUD data jamaah; status pembayaran terhubung ke harga program & auto-sync `kb_jamaah`) —
+   19B/19B2. Kelola Cicilan & menu Pembayaran (kini hanya penunjuk; kodenya di modul `cicilan`/`pembayaran`) —
+   19C. Kelengkapan Dokumen (kolom `kb_jamaah.dokumen` jsonb; UI di modul `dokumen`) — 19D. Nota Pembayaran & Audit Nota
+   (inti: `logNotaAudit`, `sha256Hex`; pembangun nota di modul `nota`) — 20. Kuitansi — 21A. Crosscheck (mesin pembanding tetap di
+   app.js; panel OCR di modul `crosscheck`) — 21. Featured Programs — 21b/21c. Assets & Hotel Saudi Arabia (referensi hotel tetap di app.js) —
+   21b'. Sambutan user di header — 22. Init — 23. Close Modals on Overlay Click — 24. Poster Hover Popup — 24. IG Scheduler
+   (hanya konstanta inti, `LAZY_MODULES`, `ensureModuleLoaded()`, stub). Telegram, Snapshot, Rooming, Manifest, Pengaturan User,
+   Perusahaan kini hidup di modul lazy; yang tetap di app.js (dipakai sinkron oleh inti) tercatat di kolom terakhir tabel "Modul JS lazy".
 
 ## Role & akses
 
@@ -269,8 +294,8 @@ Role: `admin`, `user`, `guest`, atau belum login sama sekali (anonim).
   (lihat `sql/29_tambah_role_guest_readonly.sql`), jadi tidak bisa ditembus lewat API
   langsung meski punya JWT authenticated
 - `user` & `admin` → boleh tambah/edit/hapus data (dicek via `canManageProgramData()`)
-- `admin` saja → akses section "Manajemen" dan "System": Edit & Tambah Program, Crosscheck,
-  Telegram, Pengaturan User, Snapshot, Assets (default; menu untuk `user`/`guest` bisa diatur
+- `admin` saja → akses section "Manajemen" (Edit Program, Pembayaran, Unggulan, Audit Nota, Assets) dan "System"
+  (System, Crosscheck, Telegram, Pengaturan User, Snapshot, Perusahaan) (default; menu untuk `user`/`guest` bisa diatur
   lewat Pengaturan User > Akses Menu, disimpan di `role_menu_access`/`user_menu_access`)
 
 Buat akun guest baru lewat tab Admin > Pengaturan User, pilih role "Guest (lihat
@@ -461,21 +486,24 @@ perbarui di sana kalau menambah/mengubah fungsi).
 
 ## Testing & deploy frontend
 
-- `npm test` menjalankan `tests/test-core.js` (memuat `app.js` lewat `vm` dengan mock DOM).
-  Fungsi baru yang murni dan kritis (uang, tanggal, escaping) sebaiknya ditambah ke test dan
-  diekspos di `globalThis.__T`. `npm run test:edge` menguji generator rencana konten IG.
-- Frontend: `npx wrangler deploy` (tanpa build step), pastikan `.assetsignore` ada. Detail dan
-  troubleshooting di `CHECKLIST_DEPLOY.md` bagian 8 (bagian JWT Signing Key/`login-dashboard`
-  di file itu sudah usang).
-- Naikkan `CACHE_NAME` di `service-worker.js` setiap `index.html`/CSS/`app.js` berubah.
+- `npm test` menjalankan 8 suite di `tests/` (lihat `tests/README.md`): `test-core` memuat `app.js` lewat `vm` dengan mock DOM,
+  sisanya menjaga modul lazy, service worker, CSS lazy, `fetchTotalBayar()`, `withRetry()`, generator konten otomatis, dan About Planner.
+  Fungsi baru yang murni dan kritis (uang, tanggal, escaping) sebaiknya ditambah ke test dan diekspos di `globalThis.__T`.
+  `npm run test:ig` (`test-core.js` di root) menguji logika IG Scheduler; `npm run test:edge` menguji generator rencana konten di edge function.
+- `npm run check` memastikan `*.min.*` dan hash di `index.html` sinkron dengan sumbernya (exit 1 kalau basi).
+- Frontend: jalankan `npm run release`, commit sumber + `*.min.*` + `index.html`, lalu `npx wrangler deploy`. Cloudflare TIDAK menjalankan
+  build (build command kosong), jadi hasil minify harus sudah ada di repo. Pastikan `.assetsignore` ada. Detail dan troubleshooting di
+  `CHECKLIST_DEPLOY.md` bagian 8.
+- Naikkan `CACHE_NAME` di `service-worker.js` setiap `index.html`/CSS/`app.js`/modul berubah.
 
 ## Cara kirim hasil kerja (deploy ke GitHub)
 
-Kalau perubahan cuma menyentuh sebagian kecil file (bukan restrukturisasi besar),
-**kirim file yang berubah saja satu-satu**, JANGAN re-zip seluruh folder proyek.
-User tinggal replace file itu langsung di repo lalu push — re-zip seluruh proyek
-cuma buang-buang waktu/token dan bikin user harus extract & diff manual buat
-cari apa yang sebenarnya berubah.
+Kalau perubahan cuma menyentuh sebagian file (bukan restrukturisasi besar), kirim **satu zip berisi file yang berubah saja**,
+dengan path yang sama persis seperti di repo (mis. `js/modules/nota.js`, `js/modules/nota.min.js`, `index.html`, `service-worker.js`),
+JANGAN re-zip seluruh folder proyek. User tinggal ekstrak ke root repo (timpa file yang sama) lalu push. Untuk perubahan di `js/` atau `css/`
+sertakan juga hasil `npm run release` (`*.min.*` dan `index.html`) dan `service-worker.js` dengan `CACHE_NAME` yang dinaikkan.
+Sebelum mengirim, jalankan `node --check` pada file JS yang diubah dan `npm test`. Sebutkan juga migrasi SQL yang harus dijalankan
+dan Edge Function yang perlu di-deploy ulang.
 
 ## About Planner (konsep perencanaan konten, IG Scheduler)
 

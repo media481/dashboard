@@ -9,8 +9,13 @@ publish otomatis ke Instagram (bukan cuma tampil di dashboard).
 > 1. Akun Instagram Business/Creator + Meta App (dapat token akses).
 > 2. Migrasi tabel database (`ig_accounts`, `ig_posts`, dst).
 > 3. Storage bucket `ig-media` (belum ada SQL/migrasinya).
-> 4. Deploy 4 Edge Function ke Supabase.
+> 4. Deploy Edge Function ke Supabase (`ig-publish` wajib; `ig-refresh-token`, `ig-sync-comments`, `ig-manual-retry`,
+>    `ig-comment-action` dan fungsi AI bersifat pelengkap, lihat Bagian 4).
 > 5. Deploy 1 Cloudflare Worker (cron trigger tiap 15 menit).
+>
+> **Status saat ini:** di `js/app.js` flag `IG_AUTOPUBLISH_ENABLED = false`, jadi auto-upload dan sinkron komentar
+> disembunyikan dari UI dan post disimpan sebagai `draft`. Ubah ke `true` (lalu `npm run release`) setelah Bagian 1-5
+> selesai untuk mengaktifkannya. Tanpa itu, halaman IG Scheduler berfungsi sebagai perencana konten.
 >
 > Baca sampai bagian **Catatan Penting** di paling bawah sebelum deploy —
 > ada 1 known issue di alur refresh token yang perlu kamu putuskan cara
@@ -132,7 +137,7 @@ values (
 ```
 
 > `access_token` di sini **rahasia** — jangan pernah expose lewat query
-> `select *` dari client. `js/app.js` sudah eksplisit hanya
+> `select *` dari client. `js/modules/ig-scheduler.js` sudah eksplisit hanya
 > `select id, ig_user_id, fb_page_id, token_expires_at, is_active` untuk
 > ditampilkan ke UI (lihat `loadIgAccounts()`), tapi tetap double-check
 > kalau kamu menambah query baru.
@@ -141,16 +146,16 @@ values (
 
 ## 3. STORAGE BUCKET `ig-media`
 
-Belum ada migrasi SQL untuk bucket ini — buat manual:
+Bucket tidak dibuat oleh SQL — buat manual (policy hapus file-nya ada di `sql/50_tambah_ig_media_storage_policy.sql` dan sudah termasuk di `sql/00`):
 
 1. Supabase Dashboard → **Storage** → **New bucket**.
 2. Nama: `ig-media` (harus persis, ini yang dipakai `IG_STORAGE_BUCKET`
-   di `js/app.js`).
+   di `js/modules/ig-scheduler.js`).
 3. **Public bucket: ON**. Wajib — Instagram Graph API butuh URL media
    yang bisa diakses publik tanpa auth (dipakai sebagai `image_url` /
    `video_url` saat create container).
 4. Batas ukuran file bisa disamakan dengan `IG_MAX_FILE_SIZE` di
-   `js/app.js` (10MB) kalau mau konsisten.
+   `js/modules/ig-scheduler.js` (10MB) kalau mau konsisten.
 
 ---
 
@@ -192,6 +197,13 @@ supabase secrets set GEMINI_API_KEY=<apikey_dari_aistudio.google.com/apikey>
 supabase functions deploy generate-ig-caption --no-verify-jwt
 ```
 
+### 4e. ig-sync-comments dan ig-comment-action (komentar, hanya bila `IG_AUTOPUBLISH_ENABLED = true`)
+```bash
+supabase functions deploy ig-sync-comments --no-verify-jwt   # dipanggil cron tiap 15 menit
+supabase functions deploy ig-comment-action                  # balas/sembunyikan/hapus komentar dari dashboard
+```
+Butuh tabel `ig_comments` (`sql/43`, sudah di `sql/00`).
+
 Setelah deploy, cek semuanya lewat menu **System** di dashboard → card
 **"Kondisi API & Edge Function"** — tiap function di atas harus muncul
 badge **Aktif**, bukan "Belum ter-deploy" atau "Tidak terjangkau".
@@ -222,7 +234,7 @@ wrangler deploy --config wrangler.toml
 ```
 
 `wrangler.toml` sudah mengatur 2 cron trigger:
-- `*/15 * * * *` → publish cycle tiap 15 menit.
+- `*/15 * * * *` → publish cycle dan sinkron komentar tiap 15 menit.
 - `0 9 * * 1` → refresh token tiap Senin jam 09:00 UTC (16:00 WIB).
 
 ### Uji manual tanpa nunggu cron
@@ -230,6 +242,7 @@ Worker ini juga punya endpoint HTTP untuk trigger manual (berguna buat
 testing sebelum menunggu jadwal cron):
 ```bash
 curl https://<nama-worker>.<subdomain>.workers.dev/ig-publish
+curl https://<nama-worker>.<subdomain>.workers.dev/ig-sync-comments
 curl https://<nama-worker>.<subdomain>.workers.dev/ig-refresh
 ```
 

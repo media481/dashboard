@@ -1,54 +1,41 @@
-# Catatan Progres: Akses Menu Sidebar per User (Pengecualian)
+# Catatan: Akses Menu Sidebar per User (Pengecualian)
 
-Status per sesi ini: **SELESAI secara kode, BELUM diverifikasi jalan di Supabase asli**
-(karena migrasi SQL-nya belum pernah dijalankan admin).
+Ditulis ulang 2026-10-23 dari kondisi kode saat ini (versi lama berstatus "selesai secara kode, belum diverifikasi" dan merujuk ke baris
+`js/app.js` yang sudah bergeser). Catatan ini hanya menjelaskan **apa yang ada** dan **apa yang belum bisa dipastikan dari repo**.
 
-## Yang sudah selesai
+## Cara kerja
 
-- **Tahap 1 — Database**: `sql/34_tambah_akses_menu_user.sql` — tabel
-  `user_menu_access(user_id, menu_key, allowed)`. File ini sempat "hilang" dari
-  paket sebelumnya (kode di `js/app.js` sudah mereferensikannya di banyak
-  tempat, tapi file SQL-nya sendiri belum ada di folder `sql/`) — sudah dibuat
-  ulang di sesi ini mengikuti pola persis `sql/33_tambah_akses_menu_role.sql`
-  (RLS read/insert/update/delete untuk `auth.role() = 'authenticated'`, tanpa
-  seed data karena isinya murni pengecualian manual per akun).
-- **Tahap 2 — Logika `renderSidebarNav()`**: sudah ada & lengkap di
-  `js/app.js` (fungsi `loadUserMenuAccess()` + prioritas override akun >
-  fallback role > fallback lama kalau migrasi belum jalan). Tidak disentuh
-  lagi di sesi ini, cuma diverifikasi sudah benar.
-- **Tahap 3 — UI Admin**: sudah ada & lengkap, semuanya inline di
-  `js/app.js` (blok HTML "Akses Menu per User (Pengecualian)" digenerate
-  lewat template string di sekitar fungsi `renderRoleMenuAccessMatrix()` /
-  tab `usPanel-access`, bukan di `index.html` — proyek ini sudah dipecah jadi
-  index.html + js/app.js + style.css, lihat `CATATAN_PEMBERSIHAN.md` Ronde 3).
-  Fungsi terkait: `populateUmaUserSelect()`, `renderUserMenuAccessMatrix()`,
-  `saveUserMenuAccessMatrix()`, `resetUserMenuAccessMatrix()` — semua sudah
-  di-`window.`-expose dan dipanggil dari tab Userman > Akses Menu.
+Visibilitas menu sidebar ditentukan berlapis, dari yang paling kuat:
 
-## Yang BELUM dilakukan / perlu dicek di sesi berikutnya
+1. **Pengecualian per akun** di tabel `user_menu_access(user_id, menu_key, allowed)` (`sql/34_tambah_akses_menu_user.sql`).
+2. **Aturan per role** di `role_menu_access` (`sql/33_tambah_akses_menu_role.sql`).
+3. **Bawaan** dari `NAV_MENU` (`js/app.js`): menu tanpa baris di kedua tabel mengikuti gate-nya (admin saja / login / selalu).
+   Menu yang belum punya baris di `role_menu_access` (Reminder, Status Kepulangan, IG Scheduler, Infografis) default-nya tersembunyi untuk
+   `user`/`guest` sampai admin mengaturnya.
 
-1. **Migrasi belum pernah dijalankan** di Supabase project yang sebenarnya.
-   Kalau sesi berikutnya lanjut fitur ini, tanyakan dulu ke user apakah
-   `sql/34_tambah_akses_menu_user.sql` sudah dijalankan — kalau belum, tab
-   "Akses Menu per User" di Userman akan tetap menampilkan pesan
-   "Setup belum lengkap: jalankan sql/34_tambah_akses_menu_user.sql...".
-2. **Belum ada testing end-to-end** (belum ada laporan dari user bahwa
-   dropdown pilih akun → set Izinkan/Larang/Ikuti Role → Simpan → sidebar
-   akun lain berubah sesuai, benar-benar berhasil dicoba).
-3. `service-worker.js` **tidak perlu** diubah untuk perubahan ini — file SQL
-   tidak di-load browser, dan `js/app.js` bukan file baru (sudah ada di
-   `APP_SHELL` sebelumnya).
-4. Kalau nanti menambah tab sidebar baru, ingat catatan di `CLAUDE.md`:
-   `SIDEBAR_MENU_REGISTRY` harus disinkronkan manual, kalau tidak menu baru
-   itu tidak akan pernah bisa diberi akses (baik lewat role_menu_access
-   maupun user_menu_access) meski nav-item-nya sudah tampil di sidebar.
+Kedua tabel sudah termasuk di `sql/00_SETUP_LENGKAP_SATU_FILE.sql`; `sql/33` dan `sql/34` hanya perlu dijalankan terpisah di project lama.
+Kalau `sql/34` belum dijalankan, blok "Akses Menu per User" menampilkan pesan "Setup belum lengkap" dan sidebar memakai fallback role.
 
-## Cara lanjut / pasang (ringkas)
+## Letak kode
 
-1. Jalankan `sql/33_tambah_akses_menu_role.sql` dulu kalau belum pernah (Tahap
-   akses per role, prasyarat).
-2. Jalankan `sql/34_tambah_akses_menu_user.sql` (baru dibuat sesi ini).
-3. Buka Userman → Akses Menu → scroll ke blok "Akses Menu per User
-   (Pengecualian)" → pilih akun → atur → Simpan.
-4. Kalau ada bug/perilaku aneh, cek dulu `js/app.js` sekitar baris 2110-2270
-   (fungsi Tahap 3) dan baris 3757-3850 (fungsi Tahap 2 / `renderSidebarNav`).
+- `js/app.js`: `loadUserMenuAccess()` dan `renderSidebarNav()` (di sekitar section 12c), `NAV_MENU` dan `SIDEBAR_MENU_REGISTRY`
+  (section 5b), serta kerangka HTML panel `usPanel-access`.
+- `js/modules/pengaturan-user.js` (modul lazy `pengaturan-user`, dibuka lewat Admin > Pengaturan User): `renderRoleMenuAccessMatrix()`,
+  `populateUmaUserSelect()`, `renderUserMenuAccessMatrix()`, `saveUserMenuAccessMatrix()`, `resetUserMenuAccessMatrix()`.
+- Pilihan per akun: **Izinkan / Larang / Ikuti Role**.
+
+## Menambah menu baru
+
+Tambahkan satu baris di `NAV_MENU` (`js/app.js`). Isi `reg: { group: '...' }` agar menu itu muncul di matriks Akses Menu;
+`SIDEBAR_MENU_REGISTRY` diturunkan otomatis dari `NAV_MENU`, tidak perlu disinkronkan manual lagi (catatan lama yang menyuruh itu sudah usang).
+Tab dengan id `keberangkatan` dan `dokumen` sengaja tidak diganti namanya (label UI: "Data Jamaah" dan "Dokumen") supaya data `role_menu_access` lama tetap cocok.
+
+## Yang belum bisa dipastikan dari repo
+
+- Apakah `sql/34` sudah dijalankan di Supabase yang sebenarnya, dan apakah alur pilih akun > Izinkan/Larang/Ikuti Role > Simpan > sidebar berubah
+  sudah diuji end-to-end oleh admin. Tidak ada tes otomatis untuk bagian ini (`tests/` tidak menyentuh matriks akses). Tanyakan ke admin sebelum menganggapnya terverifikasi.
+
+## Catatan keamanan
+
+RLS `role_menu_access` dan `user_menu_access` mengizinkan insert/update/delete untuk semua `authenticated` (termasuk `guest`) menurut `sql/00`.
+Pembatasan ke admin hanya ada di UI. Perketat policy ke `current_dashboard_role() = 'admin'` bila perlu.

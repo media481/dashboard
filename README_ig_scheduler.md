@@ -2,7 +2,7 @@
 
 Modul Instagram Content Scheduler yang diintegrasikan ke dalam **Dashboard Amiru**.
 
-Stack: Supabase (Postgres + Storage + Edge Functions) + Vanilla JS (di `js/app.js`) + Cloudflare Worker Cron.
+Stack: Supabase (Postgres + Storage + Edge Functions) + Vanilla JS (modul lazy `js/modules/ig-scheduler.js`, dimuat saat halaman IG dibuka; konstanta inti dan loader di `js/app.js`) + Cloudflare Worker Cron.
 
 ---
 
@@ -44,6 +44,8 @@ Yang pertama membuat 3 tabel inti (`ig_accounts`, `ig_posts`, `ig_publish_logs`)
 Yang kedua menambah tabel `ig_post_media` (item-item carousel, urutan via kolom `position`) + RLS policies — dibutuhkan untuk fitur Carousel.
 Yang ketiga menambah tabel `ig_comments` — lihat bagian "Fitur Komentar" di bawah.
 Yang keempat menambah tabel `ig_content_plan` — lihat bagian "Content Planner Bulanan (AI)" di bawah.
+
+Migrasi lanjutan (45-51 dan 56: planner, pola Amiru, tema minggu, rencana tahunan, tasklist, policy storage, hardening RLS, tautan Canva) dibahas di bagian fiturnya masing-masing di bawah. Di project baru Anda tidak perlu menjalankan satu per satu: `sql/00_SETUP_LENGKAP_SATU_FILE.sql` sudah memuat 41-51 dan 56 (bucket `ig-media` tetap dibuat manual). `sql/58` (view `microblog_publik`) juga sudah ada di 00.
 
 ### 2. Buat Storage Bucket
 
@@ -302,7 +304,7 @@ Menerapkan pola konten Amiru ke Content Planner (tombol **Rencana AI** → **Pol
 
 - Maksimal 7 ide per pekan (1 per hari). Hanya single post (image) dan carousel — Rencana AI tidak membuat ide video/Reels. Rasio sehat ≈ 6 konten non-jualan : 1 Info Program.
 - Tiap ide punya **Teks di gambar** (2–4 baris pemancing) dan **caption** yang melanjutkannya, ditutup 5 hashtag. Ejaan resmi "Umroh".
-- Draf bawaan sudah dihapus: semua slot Senin–Minggu dibuat sebagai kerangka kosong (pilar & tipe sudah terisi), tinggal diisi manual atau digenerate pakai AI. Array `isi` di konstanta `IG_POLA_AMIRU` (`js/app.js`) sengaja dikosongkan; isi lagi kalau ingin draf bawaan kembali.
+- Draf bawaan sudah dihapus: semua slot Senin–Minggu dibuat sebagai kerangka kosong (pilar & tipe sudah terisi), tinggal diisi manual atau digenerate pakai AI. Array `isi` di konstanta `IG_POLA_AMIRU` (`js/modules/ig-scheduler.js`) sengaja dikosongkan; isi lagi kalau ingin draf bawaan kembali.
 - Tanggal yang sudah lewat atau sudah punya ide dilewati, jadi aman dijalankan di bulan berjalan.
 - Bagian `[isi ...]` di draf (program, hotel, nomor WA, **kutipan asli jamaah**) harus diganti data asli sebelum diposting. Testimoni wajib dari jamaah asli dan seizin mereka.
 - Tombol **Rencana AI → Generate dengan AI** sekarang juga mengikuti pola & gaya ini (edge function `generate-ig-content-plan` perlu di-deploy ulang).
@@ -407,7 +409,7 @@ Di modal **Rencana Konten**, tombol **Rencana Setahun AI** menyusun TEMA tiap pe
 **Pasang (urutan bebas, tapi function dulu baru frontend):**
 1. Jalankan `sql/48_tambah_ig_rencana_tahunan.sql` di Supabase SQL Editor (idempotent).
 2. `supabase functions deploy generate-ig-year-plan --no-verify-jwt` (memakai secret Gemini yang sama dengan function AI lain).
-3. Frontend: unggah `index.html`, `js/app.js`, `css/style.css`, dan `css/ig-scheduler.css` yang baru.
+3. Frontend: `npm run release`, lalu commit/unggah `js/modules/ig-scheduler.js` + `js/modules/ig-scheduler.min.js`, `css/ig-scheduler.css` + `css/ig-scheduler.min.css`, `index.html` (hash baru), dan `service-worker.js` (naikkan `CACHE_NAME`); sertakan `js/app.js`/`js/app.min.js` dan `css/style.css`/`css/style.min.css` bila ikut berubah.
 
 Tanpa langkah 1, dashboard tetap jalan normal; panel Rencana Setahun hanya menampilkan petunjuk menjalankan SQL.
 
