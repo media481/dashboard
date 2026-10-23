@@ -10177,7 +10177,7 @@ const LAZY_MODULES = {
             'igQuickAddPlan', 'igRefreshAll', 'igRefreshPlanPreview', 'igRenderPetaTema',
             'igRenderPlanWeekOptions', 'igRkIniHari', 'igRkRender', 'igRtRenderPanel',
             'igRtStatus', 'igRtSusunAI', 'igRtTogglePanel', 'igSalinAboutPlanner',
-            'igSalinPromptPlan', 'igSalinRencanaKonten', 'igSetCalFilter', 'igUnduhAboutPlanner',
+            'igSalinPromptPlan', 'igSalinRencanaKonten', 'igSetCalFilter', 'igUnduhAboutPlanner', 'igUnduhAboutPlannerPdf',
             'igUnduhRencanaKonten', 'igUnduhRencanaKontenPdf', 'onIgCarouselFilesChange',
             'onIgMediaChange', 'onIgMediaTypeChange', 'openIgAboutPlannerModal',
             'openIgContentPlanModal', 'openIgRencanaKontenModal', 'openIgUploadModal',

@@ -2687,6 +2687,271 @@ function igUnduhAboutPlanner() {
     }
 }
 
+// ============================================================
+// [UNDUH PDF POLA KONTEN] About Planner sebagai PDF A4 landscape.
+// Caranya SAMA dengan PDF Rencana Konten: digambar lewat jsPDF (teks asli, bukan screenshot), lalu tampil di
+// modal preview yang sama (openProgramListPreview) dengan tombol Tutup, Share WA, dan Unduh PDF.
+// Isi = dokumen yang tampil di modal (igAboutPlannerMd): judul, versi, bagian bernomor, tabel pola, daftar.
+// Hanya membaca dokumen, tidak menulis apa pun ke database.
+// ============================================================
+
+// Markdown About Planner -> daftar blok (judul, tabel, daftar, kutipan, paragraf). Aturannya sejajar dengan igAboutPlannerRender.
+function igAboutPlannerBlok(md) {
+    const lines = String(md || '').replace(/\r/g, '').split('\n');
+    const isRow = (l) => /^\s*\|.*\|\s*$/.test(l);
+    const isSep = (l) => /^\s*\|[\s:|-]+\|\s*$/.test(l);
+    const cells = (l) => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+    const isLi = (l) => /^\s*(?:[-*]|\d+\.)\s+/.test(l);
+    const out = [];
+    let i = 0;
+    while (i < lines.length) {
+        const l = lines[i];
+        if (!l.trim()) { i++; continue; }
+        const h = l.match(/^(#{1,3})\s+(.*)$/);
+        if (h) { if (h[1].length > 1) out.push({ t: 'h', lv: h[1].length, text: h[2] }); i++; continue; }
+        if (/^(Versi|Diperbarui):/.test(l)) { i++; continue; }
+        if (isRow(l) && i + 1 < lines.length && isSep(lines[i + 1])) {
+            const head = cells(l); i += 2;
+            const rows = [];
+            while (i < lines.length && isRow(lines[i])) { rows.push(cells(lines[i])); i++; }
+            out.push({ t: 'table', head, rows });
+            continue;
+        }
+        if (isLi(l)) {
+            const ordered = /^\s*\d+\./.test(l);
+            const items = [];
+            while (i < lines.length && (isLi(lines[i]) || (/^\s{2,}\S/.test(lines[i]) && items.length))) {
+                if (isLi(lines[i])) {
+                    const nested = /^\s{2,}/.test(lines[i]);
+                    const teks = lines[i].replace(/^\s*(?:[-*]|\d+\.)\s+/, '');
+                    if (nested && items.length) items[items.length - 1].subs.push(teks);
+                    else items.push({ text: teks, subs: [] });
+                } else {
+                    items[items.length - 1].text += ' ' + lines[i].trim();
+                }
+                i++;
+            }
+            out.push({ t: 'list', ordered, items });
+            continue;
+        }
+        if (/^>\s?/.test(l)) {
+            const q = [];
+            while (i < lines.length && /^>\s?/.test(lines[i])) { q.push(lines[i].replace(/^>\s?/, '')); i++; }
+            out.push({ t: 'quote', text: q.join(' ') });
+            continue;
+        }
+        const para = [];
+        while (i < lines.length && lines[i].trim() && !/^(#{1,3})\s+/.test(lines[i]) && !isRow(lines[i])
+            && !isLi(lines[i]) && !/^(Versi|Diperbarui):/.test(lines[i])) {
+            para.push(lines[i].trim()); i++;
+        }
+        if (para.length) out.push({ t: 'p', text: para.join(' ') });
+        else i++;
+    }
+    return out;
+}
+
+async function igUnduhAboutPlannerPdf() {
+    const btn = (this && this.nodeType === 1) ? this : null;
+    const oldHtml = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-arrow-repeat bi-spin"></i> Menyiapkan preview...'; }
+    try {
+        if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
+            try { await ensureLibLoaded('jspdf'); }
+            catch (_) { showToast('Modul PDF gagal dimuat — periksa koneksi internet lalu coba lagi', 'error'); return; }
+        }
+        const md = igAboutPlannerMd();
+        const meta = igAboutPlannerMeta(md);
+        const judulDoc = (String(md).match(/^#\s+(.+)$/m) || [, 'About Planner'])[1];
+        const blok = igAboutPlannerBlok(md);
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        const PW = 297, PH = 210, M = 12, CW = PW - 2 * M, BOTTOM = PH - 12;
+        const BLUE = [21, 101, 168], INK = [28, 28, 28], MUTED = [110, 118, 126], GREY = [238, 240, 242], SOFT = [234, 243, 250];
+        const T = igPdfAman;
+        const now = new Date();
+        const tglBuat = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        let y = M;
+        const lineH = (fs) => fs * 0.3528 * 1.25;
+        const ensure = (h) => { if (y + h > BOTTOM) { pdf.addPage(); y = M; return true; } return false; };
+
+        // Logo (opsional -- kalau gagal dimuat dokumen tetap dibuat tanpa logo)
+        let logo = null;
+        try {
+            const blob = await (await fetch('assets/logo-amirutour.png')).blob();
+            logo = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob); });
+        } catch (_) { /* tanpa logo */ }
+
+        // ---- Kop ----
+        const LOGO_H = 15, LOGO_W = LOGO_H * 300 / 278;
+        if (logo) pdf.addImage(logo, 'PNG', M, y, LOGO_W, LOGO_H);
+        const tx = M + (logo ? LOGO_W + 4 : 0);
+        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(16); pdf.setTextColor(...INK);
+        pdf.text('POLA KONTEN INSTAGRAM', tx, y + 6.5);
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9.5); pdf.setTextColor(...MUTED);
+        pdf.text(T('Amiru Tour | ' + judulDoc.replace(/^About Planner:\s*/i, '')), tx, y + 12.2, { maxWidth: CW - (tx - M) - 50 });
+        pdf.setFontSize(7); pdf.text('Versi ' + T(meta.versi), PW - M, y + 5.2, { align: 'right' });
+        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor(...INK);
+        pdf.text(T(meta.diperbarui || tglBuat), PW - M, y + 9.8, { align: 'right' });
+        y += LOGO_H + 3;
+        pdf.setDrawColor(...BLUE); pdf.setLineWidth(0.6); pdf.line(M, y, PW - M, y);
+        y += 5;
+
+        // Teks kaya: **tebal** dan *miring* -> kata bergaya, dibungkus per baris (font jsPDF berganti di tengah baris).
+        const tokens = (txt) => {
+            const out = [];
+            const re = /\*\*(.+?)\*\*|\*([^*\s][^*]*?)\*/g;
+            let last = 0, m;
+            const plain = (str, st) => String(str).split(/\s+/).filter(Boolean).forEach(w => out.push({ w: T(w), st }));
+            while ((m = re.exec(txt))) {
+                if (m.index > last) plain(txt.slice(last, m.index), 'normal');
+                if (m[1] != null) plain(m[1], 'bold'); else plain(m[2], 'italic');
+                last = m.index + m[0].length;
+            }
+            if (last < txt.length) plain(txt.slice(last), 'normal');
+            return out.filter(t => t.w);
+        };
+        // Gambar paragraf mulai x selebar width; kembalikan setelah y maju. forceStyle='bold' untuk judul.
+        const rich = (txt, x, width, fs, color, forceStyle) => {
+            const toks = tokens(txt), lh = lineH(fs);
+            const wOf = (t) => { pdf.setFont('helvetica', forceStyle || t.st); pdf.setFontSize(fs); return pdf.getTextWidth(t.w); };
+            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(fs);
+            const sp = pdf.getTextWidth(' ');
+            const rows = []; let row = [], rw = 0;
+            toks.forEach(t => {
+                const w = wOf(t);
+                if (row.length && rw + sp + w > width) { rows.push(row); row = []; rw = 0; }
+                row.push({ ...t, w0: w }); rw += (row.length > 1 ? sp : 0) + w;
+            });
+            if (row.length) rows.push(row);
+            rows.forEach(r => {
+                ensure(lh);
+                let cx = x;
+                r.forEach(t => {
+                    pdf.setFont('helvetica', forceStyle || t.st); pdf.setFontSize(fs); pdf.setTextColor(...color);
+                    pdf.text(t.w, cx, y + lh * 0.78);
+                    cx += t.w0 + sp;
+                });
+                y += lh;
+            });
+        };
+
+        const drawTable = (b) => {
+            const FS = 7.6, LH = lineH(FS), PADX = 1.8;
+            const n = b.head.length;
+            // Lebar kolom proporsional panjang isi (akar supaya kolom pendek tidak terlalu sempit), minimal 18 mm.
+            const plain = (c) => T(String(c).replace(/\*\*/g, '').replace(/(^|[\s(])\*([^*\s][^*]*?)\*/g, '$1$2'));
+            const len = b.head.map((h, ci) => Math.sqrt(Math.max(plain(h).length, ...b.rows.map(r => plain(r[ci] || '').length), 4)));
+            const sum = len.reduce((a, c) => a + c, 0);
+            let wc = len.map(l => Math.max(18, CW * l / sum));
+            const tot = wc.reduce((a, c) => a + c, 0);
+            wc = wc.map(w => w * CW / tot);
+            const wx = wc.map((_, i) => wc.slice(0, i).reduce((a, c) => a + c, 0));
+            const drawHead = () => {
+                pdf.setFont('helvetica', 'bold'); pdf.setFontSize(FS);
+                const hl = b.head.map((h, ci) => pdf.splitTextToSize(plain(h).toUpperCase(), wc[ci] - 2 * PADX));
+                const hh = Math.max(...hl.map(l => l.length)) * LH + 2;
+                ensure(hh + LH * 2 + 2);
+                pdf.setFillColor(...BLUE); pdf.rect(M, y, CW, hh, 'F');
+                pdf.setTextColor(255, 255, 255);
+                hl.forEach((ls, ci) => ls.forEach((l, i) => pdf.text(l, M + wx[ci] + PADX, y + 1 + LH * 0.78 + i * LH)));
+                y += hh;
+            };
+            drawHead();
+            b.rows.forEach((r, ri) => {
+                pdf.setFont('helvetica', 'normal'); pdf.setFontSize(FS);
+                const cl = b.head.map((_, ci) => pdf.splitTextToSize(plain(r[ci] || '') || '-', wc[ci] - 2 * PADX));
+                const rh = Math.max(...cl.map(l => l.length)) * LH + 2;
+                if (y + rh > BOTTOM) { pdf.addPage(); y = M; drawHead(); }
+                if (ri % 2) { pdf.setFillColor(...GREY); pdf.rect(M, y, CW, rh, 'F'); }
+                pdf.setFont('helvetica', 'normal'); pdf.setFontSize(FS); pdf.setTextColor(...INK);
+                cl.forEach((ls, ci) => {
+                    if (ci === 0) pdf.setFont('helvetica', 'bold'); else pdf.setFont('helvetica', 'normal');
+                    ls.forEach((l, i) => pdf.text(l, M + wx[ci] + PADX, y + 1 + LH * 0.78 + i * LH));
+                });
+                y += rh;
+            });
+            pdf.setDrawColor(225, 229, 233); pdf.setLineWidth(0.15); pdf.line(M, y, M + CW, y);
+            y += 3.5;
+        };
+
+        const BODY_FS = 8.4;
+        let nBagian = 0;
+        blok.forEach(b => {
+            if (b.t === 'h') {
+                if (b.lv === 2) {
+                    nBagian++;
+                    ensure(6.6 + 14);
+                    y += 1.5;
+                    pdf.setFillColor(...BLUE); pdf.rect(M, y, CW, 6.6, 'F');
+                    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9.5); pdf.setTextColor(255, 255, 255);
+                    pdf.text(T(b.text.replace(/\*\*/g, '')), M + 2, y + 4.6, { maxWidth: CW - 4 });
+                    y += 6.6 + 2.2;
+                } else {
+                    ensure(12);
+                    y += 1;
+                    pdf.setFillColor(...BLUE); pdf.roundedRect(M, y, 1.1, 4, 0.5, 0.5, 'F');
+                    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor(...INK);
+                    pdf.text(T(b.text.replace(/\*\*/g, '')), M + 3, y + 3.2, { maxWidth: CW - 4 });
+                    y += 6;
+                }
+            } else if (b.t === 'p') {
+                rich(b.text, M, CW, BODY_FS, INK);
+                y += 1.8;
+            } else if (b.t === 'quote') {
+                const y0 = y;
+                rich(b.text, M + 4, CW - 6, BODY_FS, MUTED);
+                if (y > y0) { pdf.setDrawColor(...BLUE); pdf.setLineWidth(0.7); pdf.line(M + 1.2, y0 + 0.6, M + 1.2, y - 0.6); }
+                y += 1.8;
+            } else if (b.t === 'list') {
+                b.items.forEach((it, idx) => {
+                    const lh = lineH(BODY_FS);
+                    ensure(lh + 1);
+                    if (b.ordered) {
+                        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(BODY_FS); pdf.setTextColor(...BLUE);
+                        pdf.text((idx + 1) + '.', M + 0.5, y + lh * 0.78);
+                    } else {
+                        pdf.setFillColor(...BLUE); pdf.circle(M + 1.3, y + lh * 0.55, 0.55, 'F');
+                    }
+                    rich(it.text, M + 5, CW - 5, BODY_FS, INK);
+                    it.subs.forEach(sub => {
+                        ensure(lh + 1);
+                        pdf.setFillColor(...MUTED); pdf.circle(M + 7, y + lh * 0.55, 0.4, 'F');
+                        rich(sub, M + 9.5, CW - 9.5, BODY_FS - 0.4, MUTED);
+                    });
+                    y += 0.6;
+                });
+                y += 1.4;
+            } else if (b.t === 'table') {
+                drawTable(b);
+            }
+        });
+
+        // Footer tiap halaman: nama dokumen di kiri, nomor halaman di kanan
+        const total = pdf.getNumberOfPages();
+        for (let i = 1; i <= total; i++) {
+            pdf.setPage(i);
+            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7); pdf.setTextColor(120, 130, 140);
+            pdf.text(T('Pola Konten Instagram Amiru Tour | Versi ' + meta.versi), M, PH - 6);
+            pdf.text(`Halaman ${i} dari ${total}`, PW - M, PH - 6, { align: 'right' });
+        }
+
+        // PDF TIDAK langsung diunduh: tampilkan preview dulu (modal yang sama dengan Daftar Program), unduh lewat tombol "Unduh PDF".
+        await openProgramListPreview(pdf, `Pola-Konten-v${String(meta.versi).replace(/[^\w.-]/g, '')}-${igLocalDateKey(now)}.pdf`, nBagian, total, {
+            title: 'Preview Pola Konten', unit: 'bagian', noun: 'Dokumen',
+            waJudul: 'Pola Konten Instagram Amiru Tour',
+            waText: `Assalamu'alaikum, berikut Pola Konten Instagram Amiru Tour (versi ${meta.versi}${meta.diperbarui ? ', diperbarui ' + meta.diperbarui : ''}).`
+        });
+    } catch (err) {
+        console.error('igUnduhAboutPlannerPdf error:', err);
+        showToast('Gagal membuat PDF: ' + (err.message || err), 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = oldHtml; }
+    }
+}
+
+
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeIgAboutPlannerModal();
 });
@@ -5972,6 +6237,7 @@ window.openIgAboutPlannerModal = openIgAboutPlannerModal;
 window.closeIgAboutPlannerModal = closeIgAboutPlannerModal;
 window.igSalinAboutPlanner = igSalinAboutPlanner;
 window.igUnduhAboutPlanner = igUnduhAboutPlanner;
+window.igUnduhAboutPlannerPdf = igUnduhAboutPlannerPdf;
 window.openIgRencanaKontenModal = openIgRencanaKontenModal;
 window.closeIgRencanaKontenModal = closeIgRencanaKontenModal;
 window.igRkRender = igRkRender;
