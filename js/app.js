@@ -9495,7 +9495,10 @@ function renderFeaturedAdminTable() {
     // Urutkan berdasarkan tanggal berangkat terdekat di atas (program tanpa
     // tanggal valid ditaruh paling bawah), supaya tidak bergantung ke urutan
     // adminPrograms dari tempat lain.
-    const sorted = [...adminPrograms].sort((a, b) => {
+    // Program expired (Tanggal Berangkat sudah lewat) disembunyikan dari daftar ini
+    // karena sudah tidak relevan untuk dijadikan unggulan. Program tanpa tanggal valid
+    // tetap tampil. Datanya di Admin > Program tidak berubah.
+    const sorted = adminPrograms.filter(p => !cxIsProgramExpired(p)).sort((a, b) => {
         const da = a.tgl ? parseDateFromString(a.tgl) : null;
         const db = b.tgl ? parseDateFromString(b.tgl) : null;
         if (!da && !db) return 0;
@@ -9503,6 +9506,10 @@ function renderFeaturedAdminTable() {
         if (!db) return -1;
         return da - db;
     });
+    if (!sorted.length) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--ink-soft);">Tidak ada program aktif. Semua program sudah expired.</td></tr>';
+        return;
+    }
     tbody.innerHTML = sorted.map(p => {
         const featured = isFeatured(p.id);
         const btnLabel = featured ? 'Tampil di Unggulan' : '☆ Jadikan Unggulan';
