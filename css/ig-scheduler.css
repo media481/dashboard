@@ -1862,7 +1862,7 @@ a.ig-dm-iconbtn { text-decoration: none; }
 
 .ig-plan-edit-imgtext { min-height: 44px; margin-bottom: 6px; }
 
-/* ---- Border sel kalender IG per tipe konten (warna tegas, border 2.5px) ----
+/* ---- Pembeda warna sel kalender IG per tipe konten (border tebal + pita atas + latar berwarna) ----
    Sel yang belum punya ide/post tidak diberi kelas ig-type-*, jadi tampilannya tidak berubah.
    Hari ini tetap memakai border brand; hover tetap memakai border brand. */
 :root {
@@ -1871,11 +1871,39 @@ a.ig-dm-iconbtn { text-decoration: none; }
     --ig-type-video: #f2750f;     /* oranye  -> video / Reels */
 }
 
-.ig-cal-day.ig-type-image:not(.ig-cal-today) { border: 2.5px solid var(--ig-type-image); }
+/* Tampilan mencolok per tipe: border 3px + pita warna tebal di atas sel + latar sel berwarna tipis + nomor tanggal berwarna.
+   Warna aktif diambil dari --ig-type-c (diisi per tipe di bawah). */
+.ig-cal-day.ig-type-image { --ig-type-c: var(--ig-type-image); }
+.ig-cal-day.ig-type-carousel { --ig-type-c: var(--ig-type-carousel); }
+.ig-cal-day.ig-type-video { --ig-type-c: var(--ig-type-video); }
 
-.ig-cal-day.ig-type-carousel:not(.ig-cal-today) { border: 2.5px solid var(--ig-type-carousel); }
+.ig-cal-day.ig-type-image:not(.ig-cal-today),
+.ig-cal-day.ig-type-carousel:not(.ig-cal-today),
+.ig-cal-day.ig-type-video:not(.ig-cal-today) {
+    border: 3px solid var(--ig-type-c);
+    box-shadow: inset 0 7px 0 0 var(--ig-type-c);
+    padding-top: 12px;
+}
 
-.ig-cal-day.ig-type-video:not(.ig-cal-today) { border: 2.5px solid var(--ig-type-video); }
+.ig-cal-day.ig-type-image:not(.ig-cal-today) .ig-cal-day-num,
+.ig-cal-day.ig-type-carousel:not(.ig-cal-today) .ig-cal-day-num,
+.ig-cal-day.ig-type-video:not(.ig-cal-today) .ig-cal-day-num { color: var(--ig-type-c); font-weight: 800; }
+
+@supports (background: color-mix(in srgb, red 10%, transparent)) {
+.ig-cal-day.ig-type-image:not(.ig-cal-today),
+.ig-cal-day.ig-type-carousel:not(.ig-cal-today),
+.ig-cal-day.ig-type-video:not(.ig-cal-today) { background: color-mix(in srgb, var(--ig-type-c) 16%, var(--surface)); }
+}
+
+/* chip di dalam sel bertipe: latar putih agar teks tetap jelas di atas warna sel */
+.ig-cal-day.ig-type-image .ig-cal-chip-plan,
+.ig-cal-day.ig-type-carousel .ig-cal-chip-plan,
+.ig-cal-day.ig-type-video .ig-cal-chip-plan { background: var(--surface); }
+
+/* hari yang sudah lewat jangan terlalu pudar supaya warna tipe tetap terbaca */
+.ig-cal-past.ig-type-image:not(.ig-cal-today),
+.ig-cal-past.ig-type-carousel:not(.ig-cal-today),
+.ig-cal-past.ig-type-video:not(.ig-cal-today) { opacity: .92; }
 
 .ig-cal-day.ig-type-image:not(.ig-cal-today):hover,
 .ig-cal-day.ig-type-carousel:not(.ig-cal-today):hover,
@@ -1885,13 +1913,13 @@ a.ig-dm-iconbtn { text-decoration: none; }
 
 .ig-cal-type-item { display: inline-flex; align-items: center; gap: 6px; }
 
-.ig-cal-type-swatch { width: 14px; height: 10px; border-radius: var(--r-sm); background: transparent; flex-shrink: 0; }
+.ig-cal-type-swatch { width: 18px; height: 12px; border-radius: var(--r-sm); background: transparent; flex-shrink: 0; }
 
-.ig-cal-type-swatch.ig-type-image { border: 2.5px solid var(--ig-type-image); }
+.ig-cal-type-swatch.ig-type-image { border: 2.5px solid var(--ig-type-image); background: var(--ig-type-image); }
 
-.ig-cal-type-swatch.ig-type-carousel { border: 2.5px solid var(--ig-type-carousel); }
+.ig-cal-type-swatch.ig-type-carousel { border: 2.5px solid var(--ig-type-carousel); background: var(--ig-type-carousel); }
 
-.ig-cal-type-swatch.ig-type-video { border: 2.5px solid var(--ig-type-video); }
+.ig-cal-type-swatch.ig-type-video { border: 2.5px solid var(--ig-type-video); background: var(--ig-type-video); }
 
 /* =====================================================================
    Modal Perencanaan Konten (#igContentPlanModal)
