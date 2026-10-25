@@ -3880,11 +3880,7 @@ function igRtRenderPanel() {
 
 // Panggil edge function (token login, bukan anon key; pola sama dengan igCallPlanFunction).
 async function igRtPanggilAI(payload) {
-    const response = await fetch(IG_YEAR_PLAN_FUNCTION_URL, {
-        method: 'POST',
-        headers: await igAiAuthHeaders(),
-        body: JSON.stringify(payload)
-    });
+    const response = await igFetchFunction(IG_YEAR_PLAN_FUNCTION_URL, payload, 'generate-ig-year-plan');
     if (response.status === 404) throw new Error('Edge function generate-ig-year-plan belum di-deploy (supabase functions deploy generate-ig-year-plan --no-verify-jwt).');
     if (!response.ok) {
         let detail = '';
@@ -5105,12 +5101,45 @@ async function igAiAuthHeaders() {
     };
 }
 
+// Panggil edge function IG dengan timeout dan pesan error yang jelas. "Failed to fetch" (ERR_CONNECTION_CLOSED) berarti koneksi
+// terputus sebelum ada respons: bisa karena function melewati batas waktu Supabase (~150 dtk) atau jaringan/ISP memutus.
+// Putus CEPAT (< 8 dtk) biasanya gangguan jaringan sesaat, jadi dicoba ulang sekali; putus LAMA tidak diulang
+// (akan memakan waktu yang sama lagi).
+const IG_FUNCTION_TIMEOUT_MS = 140000;
+async function igFetchFunction(url, payload, namaFungsi) {
+    const maxTry = 2;
+    for (let percobaan = 1; percobaan <= maxTry; percobaan++) {
+        const mulai = Date.now();
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), IG_FUNCTION_TIMEOUT_MS);
+        try {
+            return await fetch(url, {
+                method: 'POST',
+                headers: await igAiAuthHeaders(),
+                body: JSON.stringify(payload),
+                signal: ctrl.signal
+            });
+        } catch (err) {
+            const lama = Date.now() - mulai;
+            if (err && err.name === 'AbortError') {
+                throw new Error('Function ' + namaFungsi + ' tidak menjawab dalam ' + Math.round(IG_FUNCTION_TIMEOUT_MS / 1000) + ' detik. Coba lagi, atau kurangi arahan/konteks yang dikirim.');
+            }
+            if (lama < 8000 && percobaan < maxTry && navigator.onLine !== false) {
+                await new Promise(r => setTimeout(r, 1500));
+                continue;
+            }
+            if (navigator.onLine === false) throw new Error('Tidak ada koneksi internet. Periksa jaringan lalu coba lagi.');
+            throw new Error(lama < 8000
+                ? 'Koneksi ke server AI terputus (' + namaFungsi + '). Kemungkinan jaringan/ISP memblokir supabase.co; coba ganti jaringan (hotspot/VPN) lalu ulangi.'
+                : 'Function ' + namaFungsi + ' terputus setelah ' + Math.round(lama / 1000) + ' detik (kemungkinan melewati batas waktu server). Coba generate ulang; cek Logs di Supabase > Edge Functions.');
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+}
+
 async function igCallPlanFunction(payload) {
-    const response = await fetch(IG_CONTENT_PLAN_FUNCTION_URL, {
-        method: 'POST',
-        headers: await igAiAuthHeaders(),
-        body: JSON.stringify(payload)
-    });
+    const response = await igFetchFunction(IG_CONTENT_PLAN_FUNCTION_URL, payload, 'generate-ig-content-plan');
     if (!response.ok) {
         let detail = '';
         try { detail = (await response.json()).error || ''; } catch (e) {}

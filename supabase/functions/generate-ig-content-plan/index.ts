@@ -86,10 +86,16 @@ const FALLBACK_MODELS = ["gemini-3.5-flash-lite"];
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 const RETRY_DELAYS_MS = [3000]; // jeda sebelum putaran ulang model utama (total 2 putaran)
 
+// Batas waktu: edge function Supabase diputus gateway sekitar 150 detik (koneksi ditutup tanpa respons, di browser
+// tampil sebagai "Failed to fetch / ERR_CONNECTION_CLOSED"). Jadi tiap panggilan Gemini diberi timeout sendiri dan
+// seluruh request punya batas total; kalau waktu hampir habis, retry/cadangan/perbaikan dilewati dan error rapi dikirim.
+const GEMINI_TIMEOUT_MS = 45_000;   // timeout satu panggilan ke Gemini
+const BATAS_TOTAL_MS = 110_000;     // setelah ini jangan mulai panggilan baru (sisa dipakai untuk membalas)
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // deno-lint-ignore no-explicit-any
-async function callGeminiWithFallback(model: string, body: Record<string, unknown>): Promise<any> {
+async function callGeminiWithFallback(model: string, body: Record<string, unknown>, deadline: number = Date.now() + BATAS_TOTAL_MS): Promise<any> {
   const keys = getGeminiApiKeys();
   if (!keys.length) {
     throw new Error("GEMINI_API_KEY belum di-set di Supabase secrets");
@@ -105,10 +111,12 @@ async function callGeminiWithFallback(model: string, body: Record<string, unknow
     for (let i = 0; i < keys.length; i++) {
       try {
         // Key lewat header (bukan ?key=) supaya tidak ikut tercetak di log/URL error (sama seperti _shared/gemini.ts).
+        if (Date.now() > deadline) { lastError = lastError || "Waktu habis sebelum Gemini menjawab"; break; }
         const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": keys[i] },
           body: JSON.stringify(body),
+          signal: AbortSignal.timeout(Math.max(5_000, Math.min(GEMINI_TIMEOUT_MS, deadline - Date.now()))),
         });
         if (res.ok) return { data: await res.json(), retryable: false };
 
@@ -132,12 +140,14 @@ async function callGeminiWithFallback(model: string, body: Record<string, unknow
     const r = await tryModel(model);
     if (r.data) return r.data;
     if (!r.retryable || attempt === RETRY_DELAYS_MS.length) break;
+    if (Date.now() + RETRY_DELAYS_MS[attempt] > deadline) break;
     await sleep(RETRY_DELAYS_MS[attempt]);
   }
 
   // 2) Model cadangan
   for (const fb of FALLBACK_MODELS) {
     if (fb === model) continue;
+    if (Date.now() > deadline) break;
     const r = await tryModel(fb);
     if (r.data) return r.data;
   }
@@ -594,7 +604,7 @@ interface Konteks {
 // sudah jadi sebagai penyambung), tanpa membuang hari-hari yang sudah lolos. Anggaran waktu dijaga supaya tidak melewati
 // batas waktu Edge Function.
 const MAKS_PERBAIKAN = 2;
-const BATAS_WAKTU_PERBAIKAN_MS = 75_000;
+const BATAS_WAKTU_PERBAIKAN_MS = 45_000; // putaran perbaikan hanya dimulai kalau baru terpakai < 45 detik
 
 function susunPesan(c: Konteks, slots: Slot[], jumlah: number, konteksPekan: string, catatan: string): string {
   return `Susun paket konten Instagram yang saling menyambung untuk ${c.bulanLabel} (rentang tanggal ${c.tanggalMulai} s/d ${c.tanggalAkhir}), sebanyak TEPAT ${jumlah} ide post.
@@ -641,12 +651,12 @@ function bangunKonfigGenerasi() {
   };
 }
 
-async function panggilItems(userMsg: string): Promise<unknown[]> {
+async function panggilItems(userMsg: string, deadline: number): Promise<unknown[]> {
   const geminiData = await callGeminiWithFallback(GEMINI_MODEL, {
     system_instruction: { parts: [{ text: CONTENT_PLAN_SYSTEM_PROMPT }] },
     contents: [{ role: "user", parts: [{ text: userMsg }] }],
     generationConfig: bangunKonfigGenerasi(),
-  });
+  }, deadline);
   const rawText = ambilTeks(geminiData);
   if (!rawText) {
     const finishReason = geminiData?.candidates?.[0]?.finishReason;
@@ -804,7 +814,8 @@ Deno.serve(async (req: Request) => {
     const opsi: CekOpsi = { bolehProgram: /program|seat|harga|keberangkatan|promo/i.test(String(arahan || "")) || adaFasePromosi };
 
     // ---- Putaran 0: generate semua slot ----
-    const items0 = await panggilItems(susunPesan(konteks, slotList, jumlah, pekanCtx, ""));
+    const deadline = mulai + BATAS_TOTAL_MS;
+    const items0 = await panggilItems(susunPesan(konteks, slotList, jumlah, pekanCtx, ""), deadline);
     const slotByDate0 = slotList.length ? new Map(slotList.map((s) => [s.tanggal, s])) : null;
     const r0 = olahHasil(items0, { tanggalMulai, tanggalAkhir, slotByDate: slotByDate0, sudahLolos: [], opsi });
 
@@ -829,7 +840,7 @@ Deno.serve(async (req: Request) => {
         ].join("\n");
 
         try {
-          const itemsK = await panggilItems(susunPesan(konteks, perlu, perlu.length, baris.slice(0, 6000), catatan));
+          const itemsK = await panggilItems(susunPesan(konteks, perlu, perlu.length, baris.slice(0, 6000), catatan), deadline);
           putaranPerbaikan = k;
           const rk = olahHasil(itemsK, {
             tanggalMulai, tanggalAkhir, slotByDate: new Map(perlu.map((s) => [s.tanggal, s])), sudahLolos: lolos, opsi,

@@ -55,6 +55,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // deno-lint-ignore no-explicit-any
 async function callGeminiWithFallback(model: string, body: Record<string, unknown>): Promise<any> {
+  // Gateway Supabase memutus koneksi ~150 detik tanpa respons ("Failed to fetch" di browser): beri timeout + batas total.
+  const deadline = Date.now() + 110_000;
   const keys = getGeminiApiKeys();
   if (!keys.length) throw new Error("GEMINI_API_KEY belum di-set di Supabase secrets");
   let lastError = "";
@@ -64,10 +66,12 @@ async function callGeminiWithFallback(model: string, body: Record<string, unknow
     let retryable = false;
     for (let i = 0; i < keys.length; i++) {
       try {
+        if (Date.now() > deadline) { lastError = lastError || "Waktu habis sebelum Gemini menjawab"; break; }
         const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": keys[i] },
           body: JSON.stringify(body),
+          signal: AbortSignal.timeout(Math.max(5_000, Math.min(45_000, deadline - Date.now()))),
         });
         if (res.ok) return { data: await res.json(), retryable: false };
         const errText = await res.text();
@@ -87,10 +91,12 @@ async function callGeminiWithFallback(model: string, body: Record<string, unknow
     const r = await tryModel(model);
     if (r.data) return r.data;
     if (!r.retryable || attempt === RETRY_DELAYS_MS.length) break;
+    if (Date.now() + RETRY_DELAYS_MS[attempt] > deadline) break;
     await sleep(RETRY_DELAYS_MS[attempt]);
   }
   for (const fb of FALLBACK_MODELS) {
     if (fb === model) continue;
+    if (Date.now() > deadline) break;
     const r = await tryModel(fb);
     if (r.data) return r.data;
   }
