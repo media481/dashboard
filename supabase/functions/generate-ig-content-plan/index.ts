@@ -767,8 +767,10 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  console.log(`[ig-plan] masuk: POST ${req.headers.get("content-length") || "?"} byte`);
   const authFail = await requireStaff(req);
-  if (authFail) return authFail;
+  if (authFail) { console.log("[ig-plan] ditolak auth"); return authFail; }
+  console.log("[ig-plan] auth ok");
 
   try {
     const mulai = Date.now();
@@ -815,8 +817,10 @@ Deno.serve(async (req: Request) => {
 
     // ---- Putaran 0: generate semua slot ----
     const deadline = mulai + BATAS_TOTAL_MS;
+    console.log(`[ig-plan] body ok: ${slotList.length} slot, memanggil Gemini (${GEMINI_MODEL})`);
     const items0 = await panggilItems(susunPesan(konteks, slotList, jumlah, pekanCtx, ""), deadline);
     const slotByDate0 = slotList.length ? new Map(slotList.map((s) => [s.tanggal, s])) : null;
+    console.log(`[ig-plan] Gemini selesai ${Date.now() - mulai} ms, ${items0.length} item`);
     const r0 = olahHasil(items0, { tanggalMulai, tanggalAkhir, slotByDate: slotByDate0, sudahLolos: [], opsi });
 
     let lolos: Diterima[] = r0.lolos;
@@ -877,6 +881,7 @@ Deno.serve(async (req: Request) => {
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   } catch (err) {
+    console.error("[ig-plan] error:", String((err as Error)?.message || err));
     return new Response(JSON.stringify({ error: String((err as Error)?.message || err) }), {
       status: 500,
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
