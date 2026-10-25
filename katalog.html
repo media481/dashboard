@@ -11,7 +11,11 @@
 <link rel="icon" href="favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://vlrizloxsjejcfuxuyju.supabase.co" crossorigin>
+<link rel="preconnect" href="https://drive.google.com">
+<link rel="preconnect" href="https://lh3.googleusercontent.com">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap"></noscript>
 <style>
 :root{--bg:#F4F7FB;--surface:#fff;--ink:#1C2B3A;--ink-soft:#64758A;--brand:#1a355b;--brand-deep:#0f2138;--brand-tint:#dbe4ee;--success:#279E70;--success-tint:#E1F5EC;--warn:#E07B2E;--warn-tint:#FBEBD9;--line:#E1E8F0;--radius:14px;--shadow:0 4px 24px rgba(0,0,0,.08)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -395,7 +399,7 @@ const WA_NUMBER = "6285122336300";   // isi nomor WhatsApp admin format internas
 const BARU_HARI = 3;    // badge "Baru" tampil selama N hari sejak program dibuat
 
 const BULAN = {Januari:0,Februari:1,Maret:2,April:3,Mei:4,Juni:5,Juli:6,Agustus:7,September:8,Oktober:9,November:10,Desember:11};
-let semua = [], tampil = [];
+let semua = [], tampil = [], gridTunda = false;   // gridTunda: render grid ditunda selama slideshow
 const CACHE_KEY = 'katalog_programs_v1', CACHE_MAX_UMUR = 24 * 3600e3;   // cache daftar program maks 24 jam
 const SEL_PROGRAM_BASE = 'id,nama,tgl,durasi,maskapai,harga_quint,link_itinerary,link_poster,created_at,is_active,admin_data_lengkap';
 let SEL_PROGRAM = SEL_PROGRAM_BASE + ',poster_version';   // kolom poster_version = migrasi sql/57; kalau belum ada, otomatis turun ke SEL_PROGRAM_BASE   // dipakai muat() & penyegaran slideshow
@@ -480,6 +484,7 @@ async function muat() {
     const rows = await r.json();
     const baru = JSON.stringify(rows);
     try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), rows })); } catch {}
+    ssRowsStr = baru;
     if (!cached || JSON.stringify(cached.rows) !== baru) olah(rows);
     grid.setAttribute('aria-busy', 'false');
   } catch (e) {
@@ -521,7 +526,8 @@ function olah(rows) {
     semua.forEach(p => { p._near = terdekat.has(String(p.id)); const c = new Date(p.created_at); p._baru = !isNaN(c) && (Date.now() - c) < BARU_HARI * 864e5; });
     document.getElementById('grid').setAttribute('aria-busy', 'false');
     renderChips();
-    render();
+    // Slideshow aktif / akan otomatis jalan (?slideshow): jangan render grid dulu, gambar kartu hanya akan berebut bandwidth dengan poster slide.
+    if (ssOpen || ssAuto) gridTunda = true; else render();
     if (ssOpen) ssRebuild(); else if (ssAuto && semua.length) { ssAuto = false; mulaiSS(); }   // slideshow: ikut data terbaru / mulai otomatis via ?slideshow
   }
 }
@@ -785,7 +791,7 @@ const ss = document.getElementById('ss'), ssStage = document.getElementById('ssS
 const ssQs = new URLSearchParams(location.search);
 let ssAuto = ssQs.has('slideshow');
 let ssList = [], ssIdx = 0, ssOpen = false, ssPaused = false, ssElapsed = 0, ssLast = 0, ssRaf = 0;
-let ssSwapT, ssHideT, ssRefreshT, ssLock = null;
+let ssSwapT, ssHideT, ssRefreshT, ssLock = null, ssRowsStr = '';
 // --- Cache gambar slideshow: hanya "jendela" slide terdekat yang disimpan di memori (hemat RAM) ---
 const ssImgs = new Map();   // src -> { img, state:'loading'|'ready'|'error', promise }
 let ssPW = 1000, ssTok = 0, ssTarget = 0, ssBusy = false, ssWarmTok = 0;
@@ -926,6 +932,9 @@ async function ssRefresh() {   // data program dipakai berhari-hari di monitor p
     const r = await fetch(`${SUPABASE_URL}/rest/v1/programs?select=${SEL_PROGRAM}&order=created_at.asc`, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY } });
     if (!r.ok) return;
     const rows = await r.json();
+    const baru = JSON.stringify(rows);
+    if (baru === ssRowsStr) return;   // data sama: jangan bangun ulang daftar/grid (monitor pameran menyala berhari-hari)
+    ssRowsStr = baru;
     try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), rows })); } catch {}
     olah(rows);
   } catch {}
@@ -959,6 +968,7 @@ function tutupSS() {
   document.body.style.overflow = '';
   try { if (document.fullscreenElement) document.exitFullscreen(); } catch {}
   ssLockOff();
+  if (gridTunda) { gridTunda = false; render(); }   // grid yang tertunda dirender setelah slideshow ditutup
 }
 function tutupSSUI() { if (history.state && history.state.k === 's') history.back(); else tutupSS(); }
 addEventListener('popstate', () => { if (ssOpen) tutupSS(); });
