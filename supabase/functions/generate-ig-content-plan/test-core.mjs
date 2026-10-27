@@ -35,6 +35,15 @@ async function test(name, fn) {
 
 // ---- helper ----
 const kalimat = 'Bayangin kamu berdiri di sana, pelan-pelan dada terasa lapang dan semua beban hilang. ';
+// Carousel bercerita (About Planner v18): Slide 1 = hook tanpa keterangan, Slide 2 dst = teks + baris Keterangan.
+const KET = [
+  'Paspor dan tiket ikut kamu sampai duduk di kursi pesawat.',
+  'Duduk berjam-jam, kaki gampang dingin dan badan mudah menggigil.',
+  'Bawa sendiri yang memang rutin kamu minum, taruh di kantong yang mudah dijangkau.',
+  'Tas kecil di pangkuanmu pelan-pelan jadi teman sepanjang jalan.',
+];
+const carouselOk = (n = 5) => ['Slide 1: Koper sudah di bagasi, tas kabinmu siap?']
+  .concat(Array.from({ length: n - 1 }, (_, i) => `Slide ${i + 2}: Isi tas bagian ${i + 2}\nKeterangan: ${KET[i]}`)).join('\n');
 const captionOk = (akhir = '') => (kalimat.repeat(8).trim() + '\n\nChat WA aja ya.') + akhir;
 const slot = { tanggal: '2026-10-12', hari: 'Senin', pilar: 'storytelling', tipe_konten: 'image' };
 const item = (o = {}) => ({ tanggal: '2026-10-12', tema: 'Subuh sunyi di Madinah', tipe_konten: 'image', pilar: 'storytelling', teks_gambar: 'Pernah merinding?\nCoba rasakan', draft_caption: captionOk(), ...o });
@@ -153,7 +162,7 @@ await test('prompt: Minggu selalu salah satu hari berdoa; penanda pembimbing han
 });
 await test('slot memaksa pilar & tipe konten; carousel > 5 slide dibuang', async () => {
   const s = { ...slot, tipe_konten: 'carousel', pilar: 'edukasi' };
-  const ok = await panggil([item({ tipe_konten: 'image', pilar: 'manasik', teks_gambar: 'Slide 1: a\nSlide 2: b\nSlide 3: c' })], body({ slots: [s] }));
+  const ok = await panggil([item({ tipe_konten: 'image', pilar: 'manasik', teks_gambar: carouselOk(3) })], body({ slots: [s] }));
   assert.strictEqual(ok.json.items[0].tipe_konten, 'carousel'); assert.strictEqual(ok.json.items[0].pilar, 'edukasi');
   const lebih = await panggil([item({ teks_gambar: 'Slide 1: a\nSlide 6: z' })], body({ slots: [s] }));
   assert.ok(!lebih.json.items || lebih.json.items.length === 0);
@@ -268,8 +277,49 @@ await test('format gambar: single post tanpa "Slide n:", carousel 3-5 slide beru
     const { json } = await panggil([item({ teks_gambar: teks })], body({ slots: [sl] }));
     assert.strictEqual(json.items.length, 0, teks); assert.ok(json.ditolak[0].includes(kata), json.ditolak[0]);
   }
-  const ok = await panggil([item({ teks_gambar: 'Slide 1: a\nSlide 2: b\nSlide 3: c\nSlide 4: d\nSlide 5: e' })], body({ slots: [s] }));
-  assert.strictEqual(ok.json.items.length, 1);
+  const ok = await panggil([item({ teks_gambar: carouselOk(5) })], body({ slots: [s] }));
+  assert.strictEqual(ok.json.items.length, 1, JSON.stringify(ok.json));
+});
+await test('carousel bercerita: Slide 2 dst wajib Keterangan, Slide 1 tanpa Keterangan, panjang Keterangan dijaga', async () => {
+  const s = { ...slot, tipe_konten: 'carousel', pilar: 'edukasi' };
+  const ket = x => `Keterangan: ${x}`;
+  const kasus = [
+    ['Slide 1: Hook\nSlide 2: A\n' + ket(KET[0]) + '\nSlide 3: B', 'Slide 3 belum punya baris'],
+    ['Slide 1: Hook\n' + ket(KET[0]) + '\nSlide 2: A\n' + ket(KET[1]) + '\nSlide 3: B\n' + ket(KET[2]), 'Slide 1 adalah hook'],
+    ['Slide 1: Hook\nSlide 2: A\n' + ket(KET[0]) + '\n' + ket(KET[1]) + '\nSlide 3: B\n' + ket(KET[2]), 'lebih dari satu baris Keterangan'],
+    ['Slide 1: Hook\nSlide 2: A\n' + ket('Singkat') + '\nSlide 3: B\n' + ket(KET[2]), 'terlalu pendek'],
+    ['Slide 1: Hook\nSlide 2: A\n' + ket('Kalimat panjang sekali. '.repeat(12)) + '\nSlide 3: B\n' + ket(KET[2]), 'terlalu panjang'],
+    ['Slide 1: Hook\nSlide 2: A\nSlide 3: B\nSlide 4: C', 'belum punya baris'],
+  ];
+  for (const [teks, kata] of kasus) {
+    const { json } = await panggil([item({ teks_gambar: teks })], body({ slots: [s] }));
+    assert.strictEqual(json.items.length, 0, teks); assert.ok(json.ditolak[0].includes(kata), json.ditolak[0]);
+  }
+  // Keterangan 4 kalimat pendek tapi <= 200 karakter dan Slide 1 tanpa keterangan: lolos; batas panjang teks gambar naik ke 1600
+  const ok = await panggil([item({ teks_gambar: carouselOk(5) })], body({ slots: [s] }));
+  assert.strictEqual(ok.json.items.length, 1, JSON.stringify(ok.json));
+  assert.ok(ok.json.items[0].teks_gambar.includes('Keterangan: Paspor'), ok.json.items[0].teks_gambar);
+  const panjang = Array.from({ length: 5 }, (_, i) => `Slide ${i + 1}: ${'Judul slide yang cukup panjang '.repeat(2).trim()}${i ? '\nKeterangan: ' + 'Isi cerita pelan pelan bertambah di slide ini. '.repeat(4).trim() : ''}`).join('\n');
+  assert.ok(panjang.length > 700 && panjang.length < 1600, String(panjang.length));
+  const ok2 = await panggil([item({ teks_gambar: panjang })], body({ slots: [s] }));
+  assert.strictEqual(ok2.json.items.length, 1, JSON.stringify(ok2.json));
+  assert.strictEqual(ok2.json.items[0].teks_gambar.replace(/\n+/g, '\n'), panjang.replace(/\n+/g, '\n'), 'tidak terpotong di 700 karakter');
+});
+await test('carousel bercerita: caption yang menyalin Keterangan atau teks slide ditolak', async () => {
+  const s = { ...slot, tipe_konten: 'carousel', pilar: 'edukasi' };
+  const teks = carouselOk(5).replace('Isi tas bagian 3', 'Jaket tipis dan kaus kaki cadangan');
+  for (const salin of [KET[1], 'Jaket tipis dan kaus kaki cadangan']) {
+    const { json } = await panggil([item({ teks_gambar: teks, draft_caption: captionAwal(salin) })], body({ slots: [s] }));
+    assert.strictEqual(json.items.length, 0, salin); assert.ok(json.ditolak[0].includes('menyalin teks/keterangan Slide'), json.ditolak[0]);
+  }
+});
+await test('prompt: carousel bercerita (Slide 1 hook, Keterangan Slide 2 dst, caption melanjutkan dari titik akhir)', async () => {
+  const { calls } = await panggil([item()], body());
+  const sys = calls[0].body.system_instruction.parts[0].text;
+  assert.ok(/Slide 1 = HOOK saja/.test(sys) && /"Keterangan:"/.test(sys) && /MAKSIMAL 200 karakter/.test(sys));
+  assert.ok(/titik akhir slide terakhir/.test(sys));
+  assert.ok(!/Slide 1 = pemancing, Slide 2-4 = isi/.test(sys), 'aturan lama dicabut');
+  assert.ok(/Keterangan: Pilih foto yang jelas/.test(sys), 'contoh carousel memakai format baru');
 });
 await test('caption yang mengulang teks gambar persis ditolak', async () => {
   const hook = 'Koper sudah tertutup tapi hatimu belum';

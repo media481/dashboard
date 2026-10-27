@@ -228,8 +228,11 @@ KATEGORI & FORMAT GAMBAR:
 
 TEKS DI GAMBAR ("teks_gambar"):
 - Single post: 2-4 baris pendek (pisahkan dengan \\n), jadi pemancing yang membuat orang berhenti scroll.
-- Carousel: tulis per slide, satu slide per baris, tepat format "Slide 1: ...\\nSlide 2: ...\\nSlide 3: ...\\nSlide 4: ...\\nSlide 5: ...". Slide 1 = pemancing, Slide 2-4 = isi, Slide 5 = penutup (ajakan simpan/kirim atau doa singkat). Boleh kurang dari 5 slide, TIDAK BOLEH lebih. Jangan memakai rentang seperti "Slide 2-4".
-- JANGAN diulang persis di caption; caption adalah lanjutannya. Label seri di pojok gambar ditambahkan sistem, jangan kamu tulis.
+- Carousel: SATU CERITA UTUH yang dibaca berurutan dari Slide 1 sampai slide terakhir (boleh kurang dari 5 slide, TIDAK BOLEH lebih; jangan memakai rentang seperti "Slide 2-4"). Format tepat: satu baris "Slide n: ..." untuk teks di gambar, lalu satu baris "Keterangan: ..." tepat di bawahnya (Slide 2 dan seterusnya): "Slide 1: ...\\nSlide 2: ...\\nKeterangan: ...\\nSlide 3: ...\\nKeterangan: ...\\nSlide 4: ...\\nKeterangan: ...\\nSlide 5: ...\\nKeterangan: ...".
+- Slide 1 = HOOK saja: satu kalimat pemancing (maksimal sekitar 9 kata: adegan konkret, pengakuan jujur, atau pertanyaan yang spesifik), TANPA baris Keterangan.
+- Slide 2 sampai terakhir: teks di gambar = satu kalimat pendek (judul slide), lalu "Keterangan:" = 1-2 kalimat pendek (sekitar 12-30 kata, MAKSIMAL 200 karakter) yang melanjutkan cerita dengan detail konkret, alasan, atau perasaan. Keterangan TIDAK boleh mengulang teks di gambar dan bukan daftar. Slide terakhir = penutup (ajakan simpan/kirim atau doa singkat) beserta keterangan penutup.
+- Hook, tiap teks di gambar, dan tiap keterangan harus tersambung menjadi satu alur cerita (ada awal, tengah, akhir; tiap slide menjawab atau melanjutkan slide sebelumnya), bukan poin lepas. Carousel dan caption membahas SATU gagasan yang sama.
+- JANGAN diulang persis di caption; caption adalah lanjutannya: caption melanjutkan dari titik akhir slide terakhir dengan benang merah yang sama (benda, perasaan, atau pertanyaan) dan TIDAK menyalin teks di gambar maupun keterangan. Label seri di pojok gambar ditambahkan sistem, jangan kamu tulis.
 
 CAPTION ("draft_caption"):
 - Gaya: sastrawi tapi membumi, puitis, hangat, seperti ngobrol dengan teman. Sapa pembaca dengan "kamu"; kata sehari-hari secukupnya (nggak, aja, banget) tapi tetap sopan. Hindari kata kaku: "tersedia", "silakan", "hubungi kami". Bukan bahasa brosur, bukan hard-selling.
@@ -245,6 +248,7 @@ MUTU TULISAN (periksa diam-diam sebelum menjawab):
 - Hindari klise pembuka: "Di tengah hiruk pikuk", "Umroh bukan sekadar", "Ibadah umroh adalah", "Setiap muslim pasti", "Siapa yang tidak ingin".
 - Paragraf pertama caption langsung masuk ke adegan atau masalah nyata, bukan definisi atau pengantar umum. Satu paragraf maksimal 3 kalimat, kalimat rata-rata pendek (sekitar 18 kata) supaya enak dibaca di HP.
 - Satu hari = SATU gagasan utama. Jangan menumpuk beberapa topik dalam satu caption.
+- Carousel: baca Slide 1 sampai terakhir seperti satu cerita. Kalau satu slide bisa dipindah tempat tanpa terasa janggal, berarti belum bersambung. Caption dibuka dari titik akhir cerita itu, bukan mengulang isi slide.
 - Hari emosional: minimal satu detail konkret yang bisa dirasakan (suara, hawa, sentuhan, gerakan) dan satu kegelisahan yang jujur. Hari praktis: poin spesifik yang bisa langsung dikerjakan (bukan "persiapkan dirimu dengan baik") beserta alasan singkat kenapa penting.
 - Kata kunci tema minggu jangan diulang-ulang; ganti dengan gambaran atau sinonim. Jangan menaruh label seperti "Hook:" atau "Caption:" di dalam isi.
 - Penutup dan CTA divariasikan antarhari: "chat WA aja ya" hanya di hari praktis, dan redaksinya tidak boleh sama dua kali dalam sepekan.
@@ -270,9 +274,13 @@ Kalau boleh menitipkan satu doa malam ini, apa yang ingin kamu titipkan? Semoga 
 teks_gambar:
 Slide 1: Satu hal kecil yang sering bikin panik di bandara
 Slide 2: Foto paspor dan dokumen perjalananmu sekarang
+Keterangan: Pilih foto yang jelas dan terbaca, bukan yang miring atau gelap.
 Slide 3: Simpan di HP, kirim juga ke satu anggota keluarga
+Keterangan: Kalau satu tempat bermasalah, kamu masih punya cadangan di tangan orang yang kamu percaya.
 Slide 4: Catat nomor penting di kertas, jaga-jaga HP mati
+Keterangan: Nomor keluarga dan nomor pembimbing cukup ditulis tangan, nggak perlu colokan.
 Slide 5: Simpan postingan ini biar nggak lupa
+Keterangan: Satu kekhawatiran kecil beres sebelum kamu melangkah ke bandara.
 draft_caption:
 Pernah nggak, tanganmu refleks menepuk saku berkali-kali cuma buat memastikan dokumen masih ada? Di perjalanan sepanjang itu, rasa waswas kecil begini bisa mencuri ketenangan yang seharusnya kamu simpan untuk ibadah.
 
@@ -345,7 +353,7 @@ function buildPlanResponseSchema() {
         pilar: { type: "STRING", enum: Array.from(VALID_PILARS) },
         sudut: { type: "STRING", description: "1 kalimat: sudut baru hari ini terhadap tema minggu (rencana, tidak tampil)" },
         jembatan: { type: "STRING", description: "1 kalimat: janji penutup caption untuk hari berikutnya (rencana, tidak tampil)" },
-        teks_gambar: { type: "STRING", description: "Teks di gambar; carousel: satu baris per slide, maksimal 5 slide" },
+        teks_gambar: { type: "STRING", description: "Teks di gambar; carousel: Slide 1 = hook tanpa keterangan, Slide 2 dst = satu baris teks lalu satu baris Keterangan, maksimal 5 slide" },
         draft_caption: { type: "STRING", description: "Caption 3-5 paragraf pendek, ditutup 5 hashtag" },
       },
       required: ["tanggal", "tema", "tipe_konten", "pilar", "sudut", "jembatan", "teks_gambar", "draft_caption"],
@@ -519,7 +527,40 @@ function hookDari(teksGambar: string): string {
   return baris.replace(/^slide\s*\d+\s*[:.)\-\u2013]\s*/i, "").trim();
 }
 
-// Format teks gambar harus cocok dengan tipe slot: carousel = "Slide 1..n:" berurutan (3-5), single post = 2-4 baris tanpa "Slide".
+// Carousel bercerita (About Planner v18): Slide 1 = hook TANPA keterangan; Slide 2 dst wajib diikuti SATU baris
+// "Keterangan: ..." (1-2 kalimat pendek) tepat di bawah teks gambarnya.
+const MIN_KETERANGAN = 20;
+const MAKS_KETERANGAN = 200;
+interface SlideUrai { n: number; judul: string; ket: string[] }
+function uraiSlide(teks: string): SlideUrai[] {
+  const hasil: SlideUrai[] = [];
+  for (const raw of String(teks || "").split("\n")) {
+    const baris = raw.trim();
+    if (!baris) continue;
+    const s = baris.match(/^slide\s*(\d+)\s*[:.)\-\u2013]\s*(.*)$/i);
+    if (s) { hasil.push({ n: Number(s[1]), judul: s[2].trim(), ket: [] }); continue; }
+    const k = baris.match(/^keterangan\s*[:.)\-\u2013]\s*(.*)$/i);
+    if (k && hasil.length) hasil[hasil.length - 1].ket.push(k[1].trim());
+  }
+  return hasil;
+}
+
+function periksaKeteranganCarousel(teks: string): string {
+  for (const sl of uraiSlide(teks)) {
+    if (sl.n === 1) {
+      if (sl.ket.length) return 'Slide 1 adalah hook dan tidak memakai baris "Keterangan:" (pindahkan ceritanya ke Slide 2 dan seterusnya)';
+      continue;
+    }
+    if (!sl.ket.length) return `Slide ${sl.n} belum punya baris "Keterangan: ..." (1-2 kalimat cerita tambahan tepat di bawah teks gambarnya)`;
+    if (sl.ket.length > 1) return `Slide ${sl.n} punya lebih dari satu baris Keterangan (cukup satu baris, 1-2 kalimat)`;
+    const len = sl.ket[0].length;
+    if (len < MIN_KETERANGAN) return `Keterangan Slide ${sl.n} terlalu pendek (${len} karakter; tulis 1-2 kalimat cerita tambahan)`;
+    if (len > MAKS_KETERANGAN) return `Keterangan Slide ${sl.n} terlalu panjang (${len} karakter; maksimal ${MAKS_KETERANGAN}, ringkas jadi 1-2 kalimat pendek)`;
+  }
+  return "";
+}
+
+// Format teks gambar harus cocok dengan tipe slot: carousel = "Slide 1..n:" berurutan (3-5) + Keterangan di Slide 2 dst, single post = 2-4 baris tanpa "Slide".
 function periksaFormatGambar(tipe: string, teks: string): string {
   const t = String(teks || "").trim();
   if (!t) return "teks gambar kosong (wajib diisi)";
@@ -529,7 +570,7 @@ function periksaFormatGambar(tipe: string, teks: string): string {
     if (Math.max(0, ...nomor, maxSlideNumber(t)) > MAX_CAROUSEL_SLIDES) return `carousel melebihi ${MAX_CAROUSEL_SLIDES} slide`;
     if (nomor.length < MIN_CAROUSEL_SLIDES) return `format carousel tidak sesuai (butuh minimal ${MIN_CAROUSEL_SLIDES} baris "Slide n: ...")`;
     if (!nomor.every((n, i) => n === i + 1)) return "nomor slide tidak berurutan dari 1";
-    return "";
+    return periksaKeteranganCarousel(t);
   }
   if (nomor.length) return 'single post tidak boleh memakai format "Slide n:" (tulis 2-4 baris pendek)';
   if (t.split("\n").map((x) => x.trim()).filter(Boolean).length > MAX_TEKS_GAMBAR_BARIS) return "teks gambar single post terlalu panjang (maksimal 4 baris pendek)";
@@ -565,6 +606,15 @@ function tolakAlasan(it: { tipe_konten: string; tema: string; teks_gambar: strin
   if (bodyLen > CAPTION_MAX) return `caption terlalu panjang (${bodyLen} karakter; ringkas ke 600-1200 karakter)`;
   const hook = norm(hookDari(it.teks_gambar));
   if (hook.length >= 15 && norm(captionTanpaTag(it.draft_caption)).includes(hook)) return "caption mengulang teks gambar persis (caption harus lanjutannya, bukan salinan)";
+  if (it.tipe_konten === "carousel") {
+    const capNorm = norm(captionTanpaTag(it.draft_caption));
+    for (const sl of uraiSlide(it.teks_gambar)) {
+      for (const bagian of [sl.judul, ...sl.ket]) {
+        const b = norm(bagian);
+        if (b.length >= 18 && capNorm.includes(b)) return `caption menyalin teks/keterangan Slide ${sl.n} (caption harus melanjutkan cerita dari titik akhir slide, bukan mengulang isinya)`;
+      }
+    }
+  }
   return "";
 }
 
@@ -688,7 +738,7 @@ function olahHasil(
       tema: fixSpelling(String(it.tema).trim().slice(0, 200)),
       tipe_konten: VALID_TYPES.has(String(it.tipe_konten)) ? String(it.tipe_konten) : "image",
       pilar: VALID_PILARS.has(String(it.pilar)) ? String(it.pilar) : null,
-      teks_gambar: it.teks_gambar ? normalizeTeksGambar(fixSpelling(String(it.teks_gambar).trim().slice(0, 700))) : "",
+      teks_gambar: it.teks_gambar ? normalizeTeksGambar(fixSpelling(String(it.teks_gambar).trim().slice(0, 1600))) : "",
       draft_caption: normalizeCaption(String(it.draft_caption)),
       sudut: str(it.sudut, 300),
       jembatan: str(it.jembatan, 300),

@@ -978,11 +978,11 @@ function igDmPlanCard(pl, canEdit) {
                     : `<span class="ig-plan-canva-off" title="Jalankan sql/56_tambah_ig_content_plan_canva.sql lalu muat ulang halaman">Link Canva belum aktif (jalankan sql/56)</span>`}
             </div>
           <div class="ig-dm-edit-cols">
-            <div class="ig-dm-edit-left">${igTeksGambarReady ? `<label class="ig-dm-edit-label">Teks di gambar <em>${pl.tipe_konten === 'carousel' ? '(satu blok per slide, maks 5 slide)' : '(2–4 baris pendek)'}</em></label>
-            <textarea class="ig-dm-input ig-dm-textarea ig-dm-imgtext-input" rows="3" maxlength="800" placeholder="Contoh: Niat umroh itu muncul diam-diam."
-                oninput="this.parentNode.querySelector('.ig-dm-imgcount').textContent=this.value.length+' / 800 karakter'"
+            <div class="ig-dm-edit-left">${igTeksGambarReady ? `<label class="ig-dm-edit-label">Teks di gambar <em>${pl.tipe_konten === 'carousel' ? '(satu blok per slide: teks + Keterangan, maks 5 slide)' : '(2–4 baris pendek)'}</em></label>
+            <textarea class="ig-dm-input ig-dm-textarea ig-dm-imgtext-input" rows="7" maxlength="1600" placeholder="Contoh: Niat umroh itu muncul diam-diam."
+                oninput="this.parentNode.querySelector('.ig-dm-imgcount').textContent=this.value.length+' / 1600 karakter'"
                 onblur="igPlanUpdateField('${pl.id}','teks_gambar',this.value)">${escapeHtml(imgTxt)}</textarea>
-            <div class="ig-dm-edit-foot"><span class="ig-plan-char-count ig-dm-imgcount">${imgTxt.length} / 800 karakter</span></div>` : ''}</div>
+            <div class="ig-dm-edit-foot"><span class="ig-plan-char-count ig-dm-imgcount">${imgTxt.length} / 1600 karakter</span></div>` : ''}</div>
             <div class="ig-dm-edit-right">
             <label class="ig-dm-edit-label ig-dm-edit-label-caption">Caption</label>
             <textarea class="ig-dm-input ig-dm-textarea ig-dm-caption-input" rows="6" maxlength="2200" placeholder="Draft caption..."
@@ -1620,7 +1620,7 @@ function igBuildKonteksSeri(planId) {
     if (pola) baris.push(`Hari: ${pola.hari} (${pola.urutan}/7), peran: ${pola.peran}${pola.catatan ? ` (${pola.catatan})` : ''}`);
     if (plan.tema_minggu) baris.push(`Tema Minggu: ${plan.tema_minggu}`);
     if (plan.tema) baris.push(`Judul ide: ${plan.tema}`);
-    if (teksGambar) baris.push(`Teks di gambar (caption adalah lanjutannya):\n${teksGambar}`);
+    if (teksGambar) baris.push(`Teks di gambar (caption adalah lanjutannya; carousel: Slide 1 hook, tiap slide berikutnya diikuti Keterangan. Lanjutkan dari titik akhir ceritanya, jangan menyalin teks gambar maupun Keterangan):\n${teksGambar}`);
     const sebelumnya = tetangga(-1), besok = tetangga(1);
     if (sebelumnya) baris.push(`Konten hari sebelumnya (bahan untuk menyambung isi; jangan disebut atau dirujuk dengan kata kemarin/semalam/tadi): ${sebelumnya}`);
     if (besok) baris.push(`Konten besok (untuk teaser penutup): ${besok}`);
@@ -2298,8 +2298,8 @@ function closeIgContentPlanModal() {
 // Baris "Versi:" dan "Diperbarui:" dibaca otomatis untuk header modal, jadi format dua baris itu jangan diubah.
 // ============================================================
 const ABOUT_PLANNER_MD = `# About Planner: Konsep Perencanaan Konten Instagram Amiru Tour
-Versi: 17
-Diperbarui: 23 Oktober 2026
+Versi: 18
+Diperbarui: 27 Oktober 2026
 Status: disepakati Oktober 2026. Uji coba alur mingguan yang menyambung dimulai pekan Senin, 12 Oktober 2026. Ejaan resmi: "Umroh" (bukan "Umrah"), termasuk di hashtag.
 
 ## 1. Tujuan dan Prinsip
@@ -2381,8 +2381,25 @@ Tiap peran pengganti membawa catatan singkat untuk AI. Aturan lain tidak berubah
 
 ## 5. Format Tiap Posting
 
-1. **Teks di gambar:** 2-4 baris pendek, jadi pemancing. Untuk carousel tulis per slide: Slide 1 pemancing, Slide 2-4 isi, Slide 5 penutup (ajakan simpan/kirim atau doa singkat). Tidak diulang di caption.
+1. **Teks di gambar:** Single post: 2-4 baris pendek, jadi pemancing. Carousel (maksimal 5 slide): satu cerita utuh yang dibaca berurutan dari Slide 1 sampai slide terakhir.
+   - **Slide 1 = hook:** satu kalimat pemancing (maksimal sekitar 9 kata), tanpa keterangan.
+   - **Slide 2 sampai terakhir:** satu kalimat pendek sebagai teks di gambar, diikuti satu baris **Keterangan:** berisi 1-2 kalimat pendek (sekitar 12-30 kata, 20-200 karakter) yang melanjutkan cerita dengan detail konkret, alasan, atau perasaan. Keterangan tidak mengulang teks di gambar dan bukan daftar.
+   - **Slide terakhir = penutup:** ajakan simpan/kirim atau doa singkat, beserta keterangan penutup.
+   - Hook, teks di gambar, dan keterangan saling menyambung (awal, tengah, akhir), bukan poin lepas. Bila satu slide bisa dipindah tempat tanpa terasa janggal, ceritanya belum bersambung.
+   - Teks di gambar dan keterangan tidak diulang di caption.
+
+   Contoh carousel (Rabu, perlengkapan tas kabin):
+
+   | Slide | Teks di gambar | Keterangan |
+   |---|---|---|
+   | 1 | Koper sudah di bagasi, tas kabinmu sudah siap? | (tanpa keterangan, ini hook) |
+   | 2 | Dokumen penting selalu dipegang tangan | Paspor dan tiket ikut kamu sampai duduk di kursi, bukan tersimpan di bagasi. |
+   | 3 | Jaket tipis dan kaus kaki cadangan | Duduk berjam-jam, kaki gampang dingin dan badan mudah menggigil. |
+   | 4 | Obat pribadi yang biasa diminum | Bawa sendiri yang memang rutin kamu minum, taruh di kantong yang mudah dijangkau. |
+   | 5 | Simpan postingan ini untuk panduan | Tas kecil di pangkuanmu pelan-pelan jadi teman sepanjang jalan. Kirim juga ke yang sedang berkemas. |
+
 2. **Caption:** lanjutan dari teks gambar, tidak terlalu singkat (3-5 paragraf pendek, sekitar 600-1200 karakter, dipisah baris kosong), maksimal 2200 karakter.
+   - Carousel: caption melanjutkan dari titik akhir cerita slide terakhir dengan benang merah yang sama (benda, perasaan, atau pertanyaan) dan membahas satu gagasan utama yang sama dengan slide. Caption tidak menyalin teks di gambar maupun keterangan.
    - Konten emosional: pembukaan = suasana/refleksi; isi = hubungkan dengan pengalaman batin jamaah; penutup = pertanyaan hangat (rindu/doa), dan doa singkat HANYA di sebagian hari (lihat SUARA MANUSIA); hari lain boleh berhenti dengan satu kalimat pendek yang menggantung.
    - Konten praktis: pembukaan = masalah yang relatable; isi = poin ringkas; penutup = ajakan simpan/kirim + CTA ringan.
 3. **Hashtag:** tepat 5, langsung di baris terakhir caption, tanpa label "Hashtag:" (supaya mudah disalin). #UmrohBersamaAmiru dan #AmiruTour selalu ada, 3 lainnya relevan dengan topik.
@@ -2450,7 +2467,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 - Modal **Perencanaan Konten** dibuat sederhana dalam dua langkah: (1) pilih bulan dan pekan (Senin-Minggu), (2) isi **Tema pekan ini** (Tema Minggu, wajib, terisi otomatis dari saran). Ringkasan jumlah ide yang akan dibuat muncul di bawahnya.
 - Bagian yang jarang dipakai dilipat dan terbuka lewat klik: **Pengaturan lanjutan** (Tema pekan depan dan Arahan tambahan, keduanya opsional), **Pola 7 hari**, **Peta tema 12 bulan**, dan **Cara lain** (Isi dari Pola dan Salin Prompt).
 - **Generate Konten** menyusun ketujuh hari dalam satu panggilan AI, dengan peran per hari sesuai bagian 3. Hari yang sudah lewat atau sudah terisi dilewati. Selama menyusun, tombol menampilkan detik berjalan dan perkiraan waktu (biasanya 1-2 menit), karena hitungan n/7 baru bergerak di akhir.
-- Setiap hari hasil AI diperiksa otomatis di server. Ditolak bila memuat teks Arab, janji berlebihan, kutipan ayat atau hadis ("bersabda", "berfirman", "QS.", "HR."), placeholder [isi ...], statistik atau klaim jumlah jamaah, kata kaku (silakan, hubungi kami, tersedia), pola atau frasa yang terasa buatan AI ("bukan sekadar X, tapi Y", frasa klise, lebih dari 2 tanda tanya, lebih dari 1 emoji, doa penutup lebih dari 2 hari dari Senin sampai Sabtu, karena satu jatah dari 3 dicadangkan untuk Minggu; doa dicari di dua paragraf terakhir caption), format teks gambar yang tidak cocok dengan tipe (carousel harus Slide 1 sampai n berurutan, 3 sampai 5 slide), caption yang menyalin teks gambar, pembuka caption yang sama dengan hari lain, atau caption yang merujuk konten sebelumnya dengan kata kemarin, kemaren, semalam, tadi, "yang kita bahas", atau "melanjutkan" (kemarin dan kemaren ditolak di seluruh caption, kata lainnya di paragraf pembuka).
+- Setiap hari hasil AI diperiksa otomatis di server. Ditolak bila memuat teks Arab, janji berlebihan, kutipan ayat atau hadis ("bersabda", "berfirman", "QS.", "HR."), placeholder [isi ...], statistik atau klaim jumlah jamaah, kata kaku (silakan, hubungi kami, tersedia), pola atau frasa yang terasa buatan AI ("bukan sekadar X, tapi Y", frasa klise, lebih dari 2 tanda tanya, lebih dari 1 emoji, doa penutup lebih dari 2 hari dari Senin sampai Sabtu, karena satu jatah dari 3 dicadangkan untuk Minggu; doa dicari di dua paragraf terakhir caption), format teks gambar yang tidak cocok dengan tipe (carousel harus Slide 1 sampai n berurutan, 3 sampai 5 slide; Slide 2 dan seterusnya wajib memakai tepat satu baris Keterangan sepanjang 20-200 karakter, Slide 1 tanpa Keterangan), caption yang menyalin teks gambar atau Keterangan, pembuka caption yang sama dengan hari lain, atau caption yang merujuk konten sebelumnya dengan kata kemarin, kemaren, semalam, tadi, "yang kita bahas", atau "melanjutkan" (kemarin dan kemaren ditolak di seluruh caption, kata lainnya di paragraf pembuka).
 - Hari yang ditolak ditulis ulang sendiri (maksimal 2 putaran) dengan alasan penolakan dan hari yang sudah lolos sebagai penyambung; hari yang sudah lolos tidak dibuang. Di dashboard, hari yang ditolak diulang bersama hari sesudahnya saja, karena pembuka hari sesudahnya menyambung penutup hari yang ditolak; hari lain yang sudah lolos tetap disimpan.
 - Caption dirapikan di server: ejaan "Umroh", tepat 5 hashtag (#UmrohBersamaAmiru dan #AmiruTour selalu ada), maksimal 2200 karakter. Teks gambar juga dibersihkan dari tanda pisah panjang dan titik koma (baris tidak digabung, rentang angka seperti "Slide 2–3" dibiarkan).
 - Label seri "Seri [Tema] · n/7" ditambahkan otomatis di akhir teks gambar.
@@ -2497,6 +2514,7 @@ Tema yang sudah dipakai dalam rentang 365 hari ke belakang dan ke depan dilewati
 | 15 | 16 Oktober 2026 | Promosi program otomatis: pekan yang punya fase promosi (Kenalkan, Isi paket, Seat menipis, Penutupan) kini menyisipkan 1-2 hari praktis (Selasa, Rabu, atau Jumat) yang mengarah ke program tanpa perlu Arahan tambahan. Dulu fase hanya menjadi label di rekap karena prompt dan pemeriksa server mengabaikan konteks program tanpa arahan. Pemeriksa server melonggarkan larangan angka dan kata "tersedia" pada pekan itu. Perlu deploy ulang generate-ig-content-plan. Pause bukti sosial, polling, dan Story tidak berubah |
 | 16 | 22 Oktober 2026 | Caption tidak lagi memakai kata rujukan untuk menyambung antarkonten (kemarin, kemaren, semalam, tadi, "yang kita bahas", "melanjutkan"). Penyambung kini lewat isi: pembuka langsung masuk ke adegan atau pertanyaan yang menjawab penutup hari sebelumnya, dan benang merahnya terbawa lewat tema, benda, atau perasaan yang sama. Pemeriksa server menolak caption yang merujuk, dan pengecualian rumus rujukan pada cek 3 kata dicabut. Perlu deploy ulang generate-ig-content-plan dan generate-ig-caption. Penutup caption yang memancing hari berikutnya tidak berubah |
 | 17 | 23 Oktober 2026 | Pola 7 hari di dokumen ini kini dibangun otomatis dari IG_POLA_AMIRU dan IG_POLA_VARIAN (urutan perjalanan, tabel hari, keseimbangan, tabel varian pekan), jadi tidak bisa lagi berbeda dari yang dipakai generator. Aturan konten tidak berubah |
+| 18 | 27 Oktober 2026 | Carousel bercerita utuh: Slide 1 menjadi hook tanpa keterangan, Slide 2 dan seterusnya memakai teks di gambar yang diikuti satu baris Keterangan (1-2 kalimat pendek) sehingga seluruh slide membentuk satu cerita yang selaras dengan caption. Caption melanjutkan dari titik akhir cerita slide terakhir dan tidak menyalin teks di gambar maupun Keterangan. Pemeriksa server menolak carousel yang Slide 2 dan seterusnya tanpa Keterangan, Slide 1 yang memakai Keterangan, Keterangan yang kurang dari 20 atau lebih dari 200 karakter, dan caption yang menyalin Keterangan. Batas panjang teks gambar naik dari 700 (kolom edit 800) menjadi 1600 karakter. Perlu deploy ulang generate-ig-content-plan dan generate-ig-caption. Single post dan pola 7 hari tidak berubah |
 `;
 
 // Keterangan peran dan kalimat jembatan per hari (kunci = getDay()). Ini teks penjelas, bukan data pola: peran, pilar, dan
@@ -5579,8 +5597,11 @@ KATEGORI & FORMAT GAMBAR:
 
 TEKS DI GAMBAR ("teks_gambar"):
 - Single post: 2-4 baris pendek (pisahkan dengan \\n), jadi pemancing yang membuat orang berhenti scroll.
-- Carousel: tulis per slide, satu slide per baris, tepat format "Slide 1: ...\\nSlide 2: ...\\nSlide 3: ...\\nSlide 4: ...\\nSlide 5: ...". Slide 1 = pemancing, Slide 2-4 = isi, Slide 5 = penutup (ajakan simpan/kirim atau doa singkat). Boleh kurang dari 5 slide, TIDAK BOLEH lebih. Jangan memakai rentang seperti "Slide 2-4".
-- JANGAN diulang persis di caption; caption adalah lanjutannya. Label seri di pojok gambar ditambahkan sistem, jangan kamu tulis.
+- Carousel: SATU CERITA UTUH yang dibaca berurutan dari Slide 1 sampai slide terakhir (boleh kurang dari 5 slide, TIDAK BOLEH lebih; jangan memakai rentang seperti "Slide 2-4"). Format tepat: satu baris "Slide n: ..." untuk teks di gambar, lalu satu baris "Keterangan: ..." tepat di bawahnya (Slide 2 dan seterusnya): "Slide 1: ...\\nSlide 2: ...\\nKeterangan: ...\\nSlide 3: ...\\nKeterangan: ...\\nSlide 4: ...\\nKeterangan: ...\\nSlide 5: ...\\nKeterangan: ...".
+- Slide 1 = HOOK saja: satu kalimat pemancing (maksimal sekitar 9 kata: adegan konkret, pengakuan jujur, atau pertanyaan yang spesifik), TANPA baris Keterangan.
+- Slide 2 sampai terakhir: teks di gambar = satu kalimat pendek (judul slide), lalu "Keterangan:" = 1-2 kalimat pendek (sekitar 12-30 kata, MAKSIMAL 200 karakter) yang melanjutkan cerita dengan detail konkret, alasan, atau perasaan. Keterangan TIDAK boleh mengulang teks di gambar dan bukan daftar. Slide terakhir = penutup (ajakan simpan/kirim atau doa singkat) beserta keterangan penutup.
+- Hook, tiap teks di gambar, dan tiap keterangan harus tersambung menjadi satu alur cerita (ada awal, tengah, akhir; tiap slide menjawab atau melanjutkan slide sebelumnya), bukan poin lepas. Carousel dan caption membahas SATU gagasan yang sama.
+- JANGAN diulang persis di caption; caption adalah lanjutannya: caption melanjutkan dari titik akhir slide terakhir dengan benang merah yang sama (benda, perasaan, atau pertanyaan) dan TIDAK menyalin teks di gambar maupun keterangan. Label seri di pojok gambar ditambahkan sistem, jangan kamu tulis.
 
 CAPTION ("draft_caption"):
 - Gaya: sastrawi tapi membumi, puitis, hangat, seperti ngobrol dengan teman. Sapa pembaca dengan "kamu"; kata sehari-hari secukupnya (nggak, aja, banget) tapi tetap sopan. Hindari kata kaku: "tersedia", "silakan", "hubungi kami". Bukan bahasa brosur, bukan hard-selling.
@@ -5596,6 +5617,7 @@ MUTU TULISAN (periksa diam-diam sebelum menjawab):
 - Hindari klise pembuka: "Di tengah hiruk pikuk", "Umroh bukan sekadar", "Ibadah umroh adalah", "Setiap muslim pasti", "Siapa yang tidak ingin".
 - Paragraf pertama caption langsung masuk ke adegan atau masalah nyata, bukan definisi atau pengantar umum. Satu paragraf maksimal 3 kalimat, kalimat rata-rata pendek (sekitar 18 kata) supaya enak dibaca di HP.
 - Satu hari = SATU gagasan utama. Jangan menumpuk beberapa topik dalam satu caption.
+- Carousel: baca Slide 1 sampai terakhir seperti satu cerita. Kalau satu slide bisa dipindah tempat tanpa terasa janggal, berarti belum bersambung. Caption dibuka dari titik akhir cerita itu, bukan mengulang isi slide.
 - Hari emosional: minimal satu detail konkret yang bisa dirasakan (suara, hawa, sentuhan, gerakan) dan satu kegelisahan yang jujur. Hari praktis: poin spesifik yang bisa langsung dikerjakan (bukan "persiapkan dirimu dengan baik") beserta alasan singkat kenapa penting.
 - Kata kunci tema minggu jangan diulang-ulang; ganti dengan gambaran atau sinonim. Jangan menaruh label seperti "Hook:" atau "Caption:" di dalam isi.
 - Penutup dan CTA divariasikan antarhari: "chat WA aja ya" hanya di hari praktis, dan redaksinya tidak boleh sama dua kali dalam sepekan.
@@ -5621,9 +5643,13 @@ Kalau boleh menitipkan satu doa malam ini, apa yang ingin kamu titipkan? Semoga 
 teks_gambar:
 Slide 1: Satu hal kecil yang sering bikin panik di bandara
 Slide 2: Foto paspor dan dokumen perjalananmu sekarang
+Keterangan: Pilih foto yang jelas dan terbaca, bukan yang miring atau gelap.
 Slide 3: Simpan di HP, kirim juga ke satu anggota keluarga
+Keterangan: Kalau satu tempat bermasalah, kamu masih punya cadangan di tangan orang yang kamu percaya.
 Slide 4: Catat nomor penting di kertas, jaga-jaga HP mati
+Keterangan: Nomor keluarga dan nomor pembimbing cukup ditulis tangan, nggak perlu colokan.
 Slide 5: Simpan postingan ini biar nggak lupa
+Keterangan: Satu kekhawatiran kecil beres sebelum kamu melangkah ke bandara.
 draft_caption:
 Pernah nggak, tanganmu refleks menepuk saku berkali-kali cuma buat memastikan dokumen masih ada? Di perjalanan sepanjang itu, rasa waswas kecil begini bisa mencuri ketenangan yang seharusnya kamu simpan untuk ibadah.
 
@@ -5835,7 +5861,7 @@ function renderIgPlanResultList(year, month) {
                     </select>
                     <span class="ig-plan-save-indicator" id="igPlanSaved-${pl.id}"></span>
                </div>
-               ${igTeksGambarReady ? `<textarea class="ig-plan-edit-caption ig-plan-edit-imgtext" rows="2" maxlength="800" placeholder="Teks di gambar (single: 2–4 baris; carousel: maks 5 slide)"
+               ${igTeksGambarReady ? `<textarea class="ig-plan-edit-caption ig-plan-edit-imgtext" rows="5" maxlength="1600" placeholder="Teks di gambar (single: 2–4 baris; carousel: maks 5 slide, Slide 2 dst + Keterangan)"
                    onblur="igPlanUpdateField('${pl.id}','teks_gambar',this.value)">${escapeHtml(igSpasiSlide(pl.teks_gambar || ''))}</textarea>` : ''}
                <textarea class="ig-plan-edit-caption" rows="3"
                    onblur="igPlanUpdateField('${pl.id}','draft_caption',this.value)">${escapeHtml(pl.draft_caption || '')}</textarea>`
@@ -6067,27 +6093,27 @@ const IG_POLA_AMIRU = {
     },
     3: { // Rabu
         hari: 'Rabu', urutan: 3, peran: 'Siapkan', pilar: 'edukasi', tipe: 'carousel',
-        kosong: { tema: 'Siapkan (carousel) — isi persiapan fisik / perlengkapan terkait tema', teks: 'Slide 1: [isi pertanyaan pemancing]\nSlide 2: [isi satu poin persiapan]\nSlide 3: [isi satu poin persiapan]\nSlide 4: [isi satu poin persiapan]\nSlide 5: Simpan, biar nggak panik nanti.' },
+        kosong: { tema: 'Siapkan (carousel) — isi persiapan fisik / perlengkapan terkait tema', teks: 'Slide 1: [isi pertanyaan pemancing]\nSlide 2: [isi satu poin persiapan]\nKeterangan: [isi 1-2 kalimat cerita tambahan]\nSlide 3: [isi satu poin persiapan]\nKeterangan: [isi 1-2 kalimat cerita tambahan]\nSlide 4: [isi satu poin persiapan]\nKeterangan: [isi 1-2 kalimat cerita tambahan]\nSlide 5: Simpan, biar nggak panik nanti.\nKeterangan: [isi 1-2 kalimat penutup yang menyambung ke caption]' },
         isi: []
     },
     4: { // Kamis
         hari: 'Kamis', urutan: 4, peran: 'Bayangkan', pilar: 'storytelling', tipe: 'carousel',
-        kosong: { tema: 'Bayangkan (carousel) — isi alur waktu / perjalanan per slide', teks: 'Slide 1: [isi kalimat pemancing]\nSlide 2: [isi awal alur waktu]\nSlide 3: [isi tengah alur]\nSlide 4: [isi akhir alur]\nSlide 5: [isi penutup / ajakan ringan]' },
+        kosong: { tema: 'Bayangkan (carousel) — isi alur waktu / perjalanan per slide', teks: 'Slide 1: [isi kalimat pemancing]\nSlide 2: [isi awal alur waktu]\nKeterangan: [isi 1-2 kalimat cerita tambahan]\nSlide 3: [isi tengah alur]\nKeterangan: [isi 1-2 kalimat cerita tambahan]\nSlide 4: [isi akhir alur]\nKeterangan: [isi 1-2 kalimat cerita tambahan]\nSlide 5: [isi penutup / ajakan ringan]\nKeterangan: [isi 1-2 kalimat penutup yang menyambung ke caption]' },
         isi: []
     },
     5: { // Jumat
         hari: 'Jumat', urutan: 5, peran: 'Hindari', pilar: 'edukasi', tipe: 'carousel',
-        kosong: { tema: 'Hindari (carousel) — isi kesalahan umum / FAQ terkait tema', teks: 'Slide 1: [isi kesalahan yang sering terjadi]\nSlide 2: [isi kesalahan 1 + cara menghindarinya]\nSlide 3: [isi kesalahan 2 + cara menghindarinya]\nSlide 4: [isi kesalahan 3 atau FAQ singkat]\nSlide 5: Simpan & kirim ke temanmu yang mau berangkat.' },
+        kosong: { tema: 'Hindari (carousel) — isi kesalahan umum / FAQ terkait tema', teks: 'Slide 1: [isi kesalahan yang sering terjadi]\nSlide 2: [isi kesalahan 1]\nKeterangan: [isi 1-2 kalimat cara menghindarinya]\nSlide 3: [isi kesalahan 2]\nKeterangan: [isi 1-2 kalimat cara menghindarinya]\nSlide 4: [isi kesalahan 3 atau FAQ singkat]\nKeterangan: [isi 1-2 kalimat cara menghindarinya]\nSlide 5: Simpan & kirim ke temanmu yang mau berangkat.\nKeterangan: [isi 1-2 kalimat penutup yang menyambung ke caption]' },
         isi: []
     },
     6: { // Sabtu
         hari: 'Sabtu', urutan: 6, peran: 'Terinspirasi', pilar: 'storytelling', tipe: 'carousel',
-        kosong: { tema: 'Terinspirasi (carousel) — isi cerita manusiawi ilustrasi (bukan klaim kejadian nyata)', teks: 'Slide 1: [isi kalimat pemancing]\nSlide 2: [isi awal cerita]\nSlide 3: [isi tengah cerita]\nSlide 4: [isi akhir cerita]\nSlide 5: [isi penutup + doa singkat]' },
+        kosong: { tema: 'Terinspirasi (carousel) — isi cerita manusiawi ilustrasi (bukan klaim kejadian nyata)', teks: 'Slide 1: [isi kalimat pemancing]\nSlide 2: [isi awal cerita]\nKeterangan: [isi 1-2 kalimat cerita tambahan]\nSlide 3: [isi tengah cerita]\nKeterangan: [isi 1-2 kalimat cerita tambahan]\nSlide 4: [isi akhir cerita]\nKeterangan: [isi 1-2 kalimat cerita tambahan]\nSlide 5: [isi penutup + doa singkat]\nKeterangan: [isi 1-2 kalimat penutup yang menyambung ke caption]' },
         isi: []
     },
     0: { // Minggu
         hari: 'Minggu', urutan: 7, peran: 'Renungkan', pilar: 'kontemplasi', tipe: 'carousel',
-        kosong: { tema: 'Renungkan (carousel) — isi makna tema, tanpa tokoh', teks: 'Slide 1: [isi pertanyaan renungan]\nSlide 2: [isi makna 1]\nSlide 3: [isi makna 2]\nSlide 4: [isi hikmah]\nSlide 5: [isi doa singkat + teaser tema minggu depan]' },
+        kosong: { tema: 'Renungkan (carousel) — isi makna tema, tanpa tokoh', teks: 'Slide 1: [isi pertanyaan renungan]\nSlide 2: [isi makna 1]\nKeterangan: [isi 1-2 kalimat renungan tambahan]\nSlide 3: [isi makna 2]\nKeterangan: [isi 1-2 kalimat renungan tambahan]\nSlide 4: [isi hikmah]\nKeterangan: [isi 1-2 kalimat renungan tambahan]\nSlide 5: [isi doa singkat + teaser tema minggu depan]\nKeterangan: [isi 1-2 kalimat penutup yang menyambung ke caption]' },
         isi: []
     }
 };

@@ -107,11 +107,12 @@ Acuan (JANGAN vs TULIS):
 
 ## 5. Format Tiap Posting
 
-1. **Teks di gambar:** 2-4 baris pendek, jadi pemancing. Untuk carousel tulis per slide:
-   - Slide 1: pemancing
-   - Slide 2-4: isi
-   - Slide 5: penutup (ajakan simpan/kirim atau doa singkat)
-   - Jangan diulang di caption.
+1. **Teks di gambar:** single post 2-4 baris pendek, jadi pemancing. Carousel (maksimal 5 slide) adalah satu cerita utuh yang dibaca berurutan:
+   - Slide 1: hook (satu kalimat pemancing, maksimal sekitar 9 kata), tanpa keterangan
+   - Slide 2 sampai terakhir: satu kalimat pendek sebagai teks di gambar, diikuti satu baris `Keterangan:` (1-2 kalimat pendek, 20-200 karakter) yang melanjutkan cerita
+   - Slide terakhir: penutup (ajakan simpan/kirim atau doa singkat) beserta keterangan penutup
+   - Hook, teks di gambar, dan keterangan harus saling menyambung (awal, tengah, akhir), bukan poin lepas
+   - Jangan diulang di caption: caption melanjutkan dari titik akhir cerita slide terakhir dengan benang merah yang sama dan tidak menyalin teks di gambar maupun keterangan.
 2. **Caption:** lanjutan dari teks gambar, **tidak terlalu singkat** (3-5 paragraf pendek, sekitar 600-1200 karakter, dipisah baris kosong).
    - *Konten emosional:* pembukaan = suasana/refleksi → isi = hubungkan dengan pengalaman batin jamaah → penutup = pertanyaan hangat (rindu/doa). Doa singkat hanya di sebagian hari (lihat aturan doa di bagian 4); hari lain boleh berhenti dengan satu kalimat pendek yang menggantung.
    - *Konten praktis:* pembukaan = masalah yang relatable → isi = poin ringkas → penutup = ajakan simpan/kirim + CTA ringan.
@@ -199,7 +200,7 @@ Bertindaklah sebagai copywriter media sosial untuk biro umroh "Amiru Tour" (PT A
 
 === FORMAT TIAP POSTING (urutkan persis begini) ===
 1. Judul singkat: HARI · Pilar · Format · Peran
-2. TEKS DI GAMBAR: 2-4 baris pendek, jadi pemancing. Untuk carousel tulis per slide (maksimal 5 slide): Slide 1 pemancing, Slide 2-4 isi, Slide 5 penutup (ajakan simpan/kirim atau doa singkat). Jangan diulang di caption.
+2. TEKS DI GAMBAR: single post 2-4 baris pendek, jadi pemancing. Carousel (maksimal 5 slide) adalah satu cerita utuh: Slide 1 = hook tanpa keterangan; Slide 2 dan seterusnya = satu kalimat pendek di gambar lalu satu baris "Keterangan:" (1-2 kalimat pendek, maksimal 200 karakter) yang melanjutkan cerita; slide terakhir = penutup (ajakan simpan/kirim atau doa singkat) beserta keterangan penutup. Jangan diulang di caption: caption melanjutkan dari titik akhir cerita slide terakhir.
 3. CAPTION: lanjutan dari teks gambar, TIDAK terlalu singkat: 3-5 paragraf pendek (sekitar 600-1200 karakter) dipisah baris kosong.
    - Konten emosional: pembukaan = suasana/refleksi; isi = hubungkan dengan pengalaman batin jamaah seolah kita melihat momennya; penutup = pertanyaan hangat tentang rindu/doa; doa singkat HANYA di sebagian hari (maksimal 3 dari 7 hari, Minggu selalu salah satunya), hari lain boleh berhenti dengan satu kalimat pendek yang menggantung.
    - Konten praktis (manasik/edukasi): pembukaan = masalah yang relatable; isi = poin ringkas; penutup = ajakan simpan/kirim ke teman + CTA ringan "chat WA aja ya".
@@ -215,7 +216,7 @@ Urutan perjalanan hati calon jamaah: rasakan > pahami > siapkan > bayangkan > hi
 - RABU · Edukasi · Carousel · SIAPKAN: persiapan fisik/perlengkapan yang berkaitan dengan tema. Tutup dengan teaser Kamis.
 - KAMIS · Storytelling bertahap · Carousel · BAYANGKAN: satu alur waktu/perjalanan dipecah per slide. Tutup dengan teaser Jumat.
 - JUMAT · Edukasi · Carousel · HINDARI: kesalahan umum dan FAQ terkait tema. Tutup dengan teaser Sabtu.
-- SABTU · Storytelling · Carousel · TERINSPIRASI: satu cerita manusiawi yang selesai dalam 5 slide (Slide 1 pemancing, 2-4 cerita, 5 penutup + doa). Cerita berupa ILUSTRASI/umum ("banyak jamaah bercerita..."), bukan klaim kejadian nyata atau kutipan karangan.
+- SABTU · Storytelling · Carousel · TERINSPIRASI: satu cerita manusiawi yang selesai dalam 5 slide (Slide 1 hook, Slide 2-4 cerita beserta keterangan, Slide 5 penutup + doa). Cerita berupa ILUSTRASI/umum ("banyak jamaah bercerita..."), bukan klaim kejadian nyata atau kutipan karangan.
 - MINGGU · Kontemplasi ibadah umroh · Carousel · RENUNGKAN: renungan makna tema tanpa tokoh; tutup tenang + doa singkat + teaser tema minggu depan.
 Penyambung wajib, tanpa kata rujukan: pembuka caption (kecuali Senin) menyambung hari sebelumnya lewat isi (jangan memakai kemarin, kemaren, semalam, tadi, "yang kita bahas", "melanjutkan"), penutup caption memancing hari berikutnya. Tambahkan label kecil di pojok gambar, misalnya "Seri [Tema] · 3/7".
 Keseimbangan: 4 hari menyentuh hati (Sen, Kam, Sab, Min) dan 3 hari praktis (Sel, Rab, Jum).
@@ -265,7 +266,7 @@ Deploy ulang (urutan bebas): `supabase functions deploy generate-ig-content-plan
 **Mutu tulisan & perbaikan otomatis (Oktober 2026, function versi 5):**
 - Prompt memuat aturan mutu (hook maks. sekitar 9 kata dengan rumus berbeda tiap hari, tanpa klise pembuka, satu gagasan per hari, detail konkret, CTA divariasikan) dan **dua contoh gaya** (satu hari emosional, satu hari praktis).
 - AI diminta menulis rencana singkat per hari (**sudut** dan **jembatan**) sebelum teks gambar dan caption, supaya penutup hari ini benar-benar dijawab pembuka hari berikutnya. Kedua field ini tidak tampil di postingan.
-- Pemeriksa di server menolak: teks Arab, janji berlebihan, **kutipan atau atribusi ayat/hadis** ("bersabda", "berfirman", "QS.", "HR."), placeholder `[isi ...]`, statistik atau klaim jumlah jamaah, kata kaku (silakan/hubungi kami/tersedia), format teks gambar yang tidak cocok dengan tipe (carousel harus `Slide 1..n:` berurutan, 3 sampai 5; single post tanpa "Slide"), caption yang menyalin teks gambar, dan rumus pembuka kembar antarhari. Angka dan kata "tersedia" tetap boleh bila **Arahan tambahan** meminta info program.
+- Pemeriksa di server menolak: teks Arab, janji berlebihan, **kutipan atau atribusi ayat/hadis** ("bersabda", "berfirman", "QS.", "HR."), placeholder `[isi ...]`, statistik atau klaim jumlah jamaah, kata kaku (silakan/hubungi kami/tersedia), format teks gambar yang tidak cocok dengan tipe (carousel harus `Slide 1..n:` berurutan, 3 sampai 5, Slide 2 dan seterusnya wajib tepat satu baris `Keterangan:` 20-200 karakter dan Slide 1 tanpa Keterangan; single post tanpa "Slide"), caption yang menyalin teks gambar atau Keterangan, dan rumus pembuka kembar antarhari. Angka dan kata "tersedia" tetap boleh bila **Arahan tambahan** meminta info program.
 - Hari yang ditolak **ditulis ulang sendiri** (maksimal 2 putaran) dengan alasan penolakan dan hari yang sudah lolos sebagai penyambung; hari yang sudah lolos tidak dibuang. Dulu satu hari ditolak berarti hari-hari sesudahnya ikut dibuang dan dibuat ulang.
 - Opsional: secret `IG_PLAN_THINKING_LEVEL` (`low`, `medium`, atau `high`) menyalakan tingkat berpikir model untuk hasil lebih rapi, dengan waktu dan biaya lebih besar. Default mati.
 

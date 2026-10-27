@@ -67,9 +67,16 @@ async function test(name, fn) {
     finally { run("IG_POLA_VARIAN.hari_besar[1].peran = " + JSON.stringify(asli)); }
   });
 
+  await test('format carousel bercerita (v18) tertulis di dokumen: Slide 1 hook, Keterangan Slide 2 dst, caption melanjutkan', () => {
+    const d = doc();
+    assert.ok(d.includes('Slide 1 = hook') && d.includes('**Keterangan:**'));
+    assert.ok(d.includes('titik akhir cerita slide terakhir'));
+    assert.ok(/\| 18 \| 27 Oktober 2026 \|/.test(d), 'baris Riwayat Revisi 18');
+  });
+
   await test('header Versi/Diperbarui tetap terbaca', () => {
     const m = run('igAboutPlannerMeta(igAboutPlannerMd())');
-    assert.strictEqual(m.versi, '17');
+    assert.strictEqual(m.versi, '18');
     assert.ok(/Oktober 2026/.test(m.diperbarui));
   });
 

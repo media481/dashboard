@@ -328,7 +328,7 @@ Acuan: `pola-konten.md`. Bagian "Pola Mingguan Amiru" dan "Generate Rencana 1 Bu
 | Minggu | Renungkan | `kontemplasi` | Carousel (tanpa tokoh) |
 
 - **Alur:** Rencana Konten AI → pilih Bulan & Pekan → isi **Tema Minggu** → Generate. Satu pekan = satu panggilan AI (tujuh hari menyambung). Hari yang sudah terisi/lewat dilewati; kalau ada hasil yang ditolak (mirip riwayat atau >5 slide), klik Generate lagi — hari yang sudah jadi dikirim ke AI sebagai konteks penyambung.
-- **Carousel maksimal 5 slide**, tanpa video. Format teks gambar carousel: `Slide 1: ...` sampai `Slide 5: ...`.
+- **Carousel maksimal 5 slide**, tanpa video. Format teks gambar carousel: `Slide 1: ...` (hook, tanpa keterangan), lalu `Slide 2: ...` dengan satu baris `Keterangan: ...` tepat di bawahnya, dan seterusnya sampai `Slide 5`. Seluruh slide membentuk satu cerita yang dilanjutkan caption.
 - **Kejujuran:** AI tidak mengarang lafaz/doa Arab, testimoni, angka, atau harga. Ide Manasik dan ide yang memuat klaim tata cara/hukum/lafaz ditandai `[cek pembimbing]` di judul ide (kata "doa" atau nama ritual saja tidak ditandai); cek ke pembimbing/ustaz sebelum posting.
 - **Isi dari Pola (tanpa AI)** kini membuat kerangka kosong 7 hari sesuai tabel di atas.
 - **Migrasi (opsional):** `sql/47_tambah_ig_content_plan_tema_minggu.sql` (kolom `tema_minggu`).

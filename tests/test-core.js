@@ -227,6 +227,15 @@ test('IG_POLA_AMIRU: tanpa video & kerangka carousel maksimal 5 slide', () => {
       const n = (p.kosong.teks.match(/Slide\s*\d+/g) || []).length;
       assert.ok(n >= 1 && n <= 5, `${p.hari}: ${n} slide`);
       assert.ok(!/Slide\s*\d+\s*-\s*\d+/.test(p.kosong.teks), `${p.hari}: tanpa rentang slide`);
+      // Carousel bercerita (About Planner v18): Slide 1 = hook tanpa Keterangan, Slide 2 dst masing-masing diikuti satu baris Keterangan.
+      const baris = p.kosong.teks.split('\n');
+      baris.forEach((b, i) => {
+        const m = b.match(/^Slide\s*(\d+):/);
+        if (!m) return;
+        const berikut = /^Keterangan:/.test(baris[i + 1] || '');
+        assert.strictEqual(berikut, Number(m[1]) >= 2, `${p.hari}: Slide ${m[1]} ${Number(m[1]) >= 2 ? 'wajib' : 'tidak boleh'} diikuti Keterangan`);
+      });
+      assert.strictEqual((p.kosong.teks.match(/^Keterangan:/gm) || []).length, n - 1, `${p.hari}: jumlah Keterangan = jumlah slide - 1`);
     }
     assert.ok(!/\\n/.test(p.kosong.teks), `${p.hari}: tidak ada \\n literal`);
   });
