@@ -1325,6 +1325,8 @@ async function restoreLastView() {
         openIgSchedulerPage();
     } else if (last.view === 'infografis') {
         openInfografisPage();
+    } else if (last.view === 'dokumentasi') {
+        openDokumentasiPage();
     } else if (last.view === 'dashboard' && last.tab && last.tab !== 'umroh') {
         switchTab(last.tab);
     }
@@ -1342,6 +1344,11 @@ function switchTab(tabId) {
     }
     if (tabId === 'infografis') {
         openInfografisPage();
+        return;
+    }
+    // Dokumentasi juga halaman mandiri (tanpa header/kartu dashboard utama).
+    if (tabId === 'dokumentasi') {
+        openDokumentasiPage();
         return;
     }
 
@@ -1372,6 +1379,13 @@ function switchTab(tabId) {
         document.getElementById('dashboardView').style.display = 'block';
     }
 
+    // ...dan halaman Dokumentasi
+    const dokumentasiView = document.getElementById('dokumentasiPageView');
+    if (dokumentasiView && dokumentasiView.style.display !== 'none') {
+        dokumentasiView.style.display = 'none';
+        document.getElementById('dashboardView').style.display = 'block';
+    }
+
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tabId);
     });
@@ -1388,7 +1402,6 @@ function switchTab(tabId) {
     if (tabId === 'dokumen') renderDokProgramSelector();
     if (tabId === 'kepulangan') renderKepulanganProgramSelector();
     if (tabId === 'arsip') { loadArsipJamaah().then(renderArsipProgramSelector); }
-    if (tabId === 'dokumentasi') renderDkgProgramSelector();
 
     saveLastView({ view: 'dashboard', tab: tabId });
 }
@@ -1414,6 +1427,8 @@ async function openIgSchedulerPage() {
     if (infografisView && infografisView.style.display !== 'none') {
         infografisView.style.display = 'none';
     }
+
+    hideDokumentasiPageView();
 
     const activeTabBtn = document.querySelector('.sidebar .nav-item[data-tab].active');
     previousActiveTabForIg = activeTabBtn ? activeTabBtn.dataset.tab : null;
@@ -1746,6 +1761,8 @@ function openInfografisPage() {
         igView.style.display = 'none';
     }
 
+    hideDokumentasiPageView();
+
     const activeTabBtn = document.querySelector('.sidebar .nav-item[data-tab].active');
     previousActiveTabForInfografis = activeTabBtn ? activeTabBtn.dataset.tab : null;
 
@@ -1780,6 +1797,82 @@ function closeInfografisPage() {
     }
 
     saveLastView({ view: 'dashboard', tab: previousActiveTabForInfografis || 'umroh' });
+}
+
+// ============================================================
+// 5c. DOKUMENTASI — halaman mandiri (tanpa header/kartu/tab dashboard utama)
+// Isi halaman ada di modul lazy `dokumentasi` (js/modules/dokumentasi.js + css/dokumentasi.css).
+// ============================================================
+let previousActiveTabForDokumentasi = null;
+
+// Sembunyikan halaman Dokumentasi tanpa mengubah dashboardView (dipakai halaman besar lain
+// saat mereka sendiri yang mengatur dashboardView), supaya dua halaman tidak bertumpuk.
+function hideDokumentasiPageView() {
+    const v = document.getElementById('dokumentasiPageView');
+    if (v && v.style.display !== 'none') v.style.display = 'none';
+}
+
+async function openDokumentasiPage() {
+    const adminView = document.getElementById('adminPageView');
+    if (adminView && adminView.style.display !== 'none') adminView.style.display = 'none';
+    const igView = document.getElementById('igSchedulerPageView');
+    if (igView && igView.style.display !== 'none') igView.style.display = 'none';
+    const infografisView = document.getElementById('infografisPageView');
+    if (infografisView && infografisView.style.display !== 'none') infografisView.style.display = 'none';
+
+    const activeTabBtn = document.querySelector('.sidebar .nav-item[data-tab].active');
+    const aktif = activeTabBtn ? activeTabBtn.dataset.tab : null;
+    // Jangan menyimpan "dokumentasi" sebagai tab sebelumnya (mis. klik ulang menu yang sama).
+    if (aktif && !['dokumentasi', 'igScheduler', 'infografis'].includes(aktif)) previousActiveTabForDokumentasi = aktif;
+
+    // CSS modul dimuat lazy: tunggu dulu supaya kerangka halaman tidak tampil polos.
+    ensureModuleLoaded('dokumentasi').catch(() => {});
+    try {
+        await ensureStyleLoaded('dokumentasi');
+    } catch (err) {
+        console.error('Gagal memuat CSS Dokumentasi:', err);
+        showToast('Gagal memuat halaman Dokumentasi. Periksa koneksi lalu coba lagi.', 'error');
+        return;
+    }
+
+    document.getElementById('dashboardView').style.display = 'none';
+    document.getElementById('dokumentasiPageView').style.display = 'block';
+
+    document.querySelectorAll('.sidebar .nav-item').forEach(item => item.classList.remove('active'));
+    const navBtn = document.querySelector('.sidebar .nav-item[data-tab="dokumentasi"]');
+    if (navBtn) navBtn.classList.add('active');
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    saveLastView({ view: 'dokumentasi' });
+
+    try {
+        await ensureModuleLoaded('dokumentasi');
+    } catch (err) {
+        console.error('Gagal memuat modul Dokumentasi:', err);
+        showToast('Gagal memuat modul Dokumentasi. Periksa koneksi lalu coba lagi.', 'error');
+        return;
+    }
+    renderDkgProgramSelector();
+}
+
+function closeDokumentasiPage() {
+    document.getElementById('dokumentasiPageView').style.display = 'none';
+    document.getElementById('dashboardView').style.display = 'block';
+
+    document.querySelectorAll('.sidebar .nav-item').forEach(item => item.classList.remove('active'));
+    if (previousActiveTabForDokumentasi) {
+        document.querySelectorAll('.sidebar .nav-item[data-tab]').forEach(item => {
+            item.classList.toggle('active', item.dataset.tab === previousActiveTabForDokumentasi);
+        });
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === previousActiveTabForDokumentasi);
+        });
+    } else {
+        const umrohNav = document.querySelector('.sidebar .nav-item[data-tab="umroh"]');
+        if (umrohNav) umrohNav.classList.add('active');
+    }
+
+    saveLastView({ view: 'dashboard', tab: previousActiveTabForDokumentasi || 'umroh' });
 }
 
 // forceSync = true kalau dipanggil dari tombol "Refresh" -> minta Edge
@@ -3240,6 +3333,7 @@ async function openAdminPanel(subtab) {
     if (infografisPageView && infografisPageView.style.display !== 'none') {
         infografisPageView.style.display = 'none';
     }
+    hideDokumentasiPageView();
 
     // Remember which dashboard tab was active so we can restore it on close
     const activeTabBtn = document.querySelector('.sidebar .nav-item[data-tab].active');
@@ -5384,7 +5478,7 @@ async function renderSidebarNav() {
     // kembalikan ke tab "Program Umroh" supaya tidak nyangkut di halaman kosong.
     if (!loggedIn) {
         const activePanel = document.querySelector('.tab-panel.active');
-        const loggedinOnlyIds = ['tab-info', 'tab-todocs', 'tab-pendaftaran', 'tab-keberangkatan', 'tab-dokumen', 'tab-kepulangan', 'tab-arsip', 'tab-dokumentasi'];
+        const loggedinOnlyIds = ['tab-info', 'tab-todocs', 'tab-pendaftaran', 'tab-keberangkatan', 'tab-dokumen', 'tab-kepulangan', 'tab-arsip'];
         if (activePanel && loggedinOnlyIds.includes(activePanel.id)) {
             switchTab('umroh');
         }
@@ -5396,6 +5490,11 @@ async function renderSidebarNav() {
         const infografisPageView = document.getElementById('infografisPageView');
         if (infografisPageView && infografisPageView.style.display !== 'none') {
             closeInfografisPage();
+            switchTab('umroh');
+        }
+        const dokumentasiPageView = document.getElementById('dokumentasiPageView');
+        if (dokumentasiPageView && dokumentasiPageView.style.display !== 'none') {
+            closeDokumentasiPage();
             switchTab('umroh');
         }
     }

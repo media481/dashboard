@@ -8,6 +8,9 @@
 
 .dkg-loading { padding: 28px 12px; text-align: center; color: var(--ink-soft); font-size: var(--fs-md); }
 
+/* ---------- Halaman mandiri (#dokumentasiPageView di index.html) ---------- */
+.dkg-page { display: block; }
+
 /* ---------- Toolbar (pemilih program + tombol aksi) ----------
    Kerangka ada di index.html (#dkgProgramSelector, kelas inti .kb-program-selector) -> dirapikan lewat ID. */
 #dkgProgramSelector { gap: 8px; align-items: stretch; margin-bottom: 12px; }
@@ -35,16 +38,11 @@
 .dkg-empty-desc strong { color: var(--ink); }
 .dkg-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
 
-/* ---------- Ringkasan: satu baris ---------- */
-.dkg-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 10px; font-size: var(--fs-sm); color: var(--ink-soft); }
-.dkg-progress { display: flex; align-items: center; gap: 8px; width: 170px; flex-shrink: 0; }
-.dkg-progress strong { color: var(--brand); font-size: var(--fs-md); min-width: 34px; text-align: right; }
-.dkg-progress-bar { flex: 1; height: 6px; border-radius: var(--r-pill); background: var(--brand-tint); overflow: hidden; }
-.dkg-progress-bar > span { display: block; height: 100%; background: var(--success); border-radius: var(--r-pill); transition: width .3s ease; }
-.dkg-stats { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px; }
-.dkg-stat b { color: var(--ink); font-weight: 700; }
-.dkg-range { margin-left: auto; white-space: nowrap; }
-.dkg-range .bi { font-size: 11px; margin-right: 2px; }
+/* ---------- Kartu ringkasan (memakai .metrics/.metric-card inti, sama dgn dashboard) ---------- */
+.dkg-metrics { margin-bottom: 12px; gap: 10px; }
+.dkg-metrics .metric-card { padding: 10px 14px; }
+.dkg-metrics .m-sub { font-size: var(--fs-xs); color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.dkg-metrics .dkg-pct { color: var(--success-ink); font-weight: 600; }
 
 /* ---------- Filter ---------- */
 .dkg-filterbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -128,8 +126,6 @@
 
 /* ---------- Layar kecil ---------- */
 @media (max-width: 720px) {
-    .dkg-progress { width: 100%; }
-    .dkg-range { margin-left: 0; }
     .dkg-item-main { grid-template-columns: 44px minmax(0, 1fr); row-gap: 4px; }
     .dkg-item-side { grid-column: 2; justify-content: space-between; }
     .dkg-detail { margin-left: 0; }

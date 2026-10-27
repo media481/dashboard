@@ -118,12 +118,19 @@ T('stub LAZY_MODULES: semua nama di api ada di modul, dan semua fungsi yang dipa
   assert(def && def.src === 'js/modules/dokumentasi.min.js' && def.css.includes('dokumentasi'));
   def.api.forEach(n => assert.strictEqual(run(`typeof ${n}`), 'function', n + ' tidak terdefinisi di modul'));
   const html = fs.readFileSync(ROOT + '/index.html', 'utf8');
-  const start = html.indexOf('id="tab-dokumentasi"');
-  const blok = html.slice(start, html.indexOf('id="igSchedulerPageView"', start)) + html.slice(html.indexOf('id="dkgModal"'), html.indexOf('id="hotelImportModal"'));
+  const start = html.indexOf('id="dokumentasiPageView"');
+  assert(start > 0, 'halaman mandiri #dokumentasiPageView tidak ada di index.html');
+  assert(!html.includes('id="tab-dokumentasi"'), 'panel tab lama masih ada');
+  const blok = html.slice(start, html.indexOf('id="adminPageView"', start)) + html.slice(html.indexOf('id="dkgModal"'), html.indexOf('id="hotelImportModal"'));
   const dipakai = new Set();
   for (const m of blok.matchAll(/data-action="([A-Za-z0-9_]+)"/g)) dipakai.add(m[1]);
   for (const m of blok.matchAll(/on(?:submit|change|click)="([A-Za-z0-9_]+)\(/g)) dipakai.add(m[1]);
   assert(dipakai.size >= 8, 'markup Dokumentasi tidak terbaca');
+  // Buka/tutup halaman ada di app.js (inti), bukan di modul lazy.
+  const appSrc = fs.readFileSync(ROOT + '/js/app.js', 'utf8');
+  ['openDokumentasiPage', 'closeDokumentasiPage'].forEach(n => assert(new RegExp('function ' + n + '\\(').test(appSrc), n + ' tidak ada di app.js'));
+  assert(dipakai.has('closeDokumentasiPage'), 'tombol kembali tidak terpasang');
+  dipakai.delete('closeDokumentasiPage');
   dipakai.forEach(n => assert(def.api.includes(n), n + ' dipakai index.html tetapi tidak ada di LAZY_MODULES.dokumentasi.api'));
 });
 

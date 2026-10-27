@@ -36,9 +36,9 @@
     <!-- [OPTIMASI LOAD] app.js dipindah dari akhir <body> ke <head> (tetap defer, tetap SETELAH
          supabase-js, jadi urutan eksekusi & waktu eksekusinya sama persis). Bedanya browser
          menemukan & mulai mengunduhnya sejak awal, bukan setelah mem-parse ~1.700 baris HTML. -->
-    <script src="js/app.min.js?v=6928128564" defer></script>
+    <script src="js/app.min.js?v=29440e94ff" defer></script>
     <!-- Versi modul lazy (js/modules/*.min.js), ditulis scripts/stamp-versions.mjs; dibaca ensureModuleLoaded() di app.js. -->
-    <script id="moduleVersions" type="application/json">{"assets":"221e3f21c0","audit-nota":"432b80f3ae","cicilan":"fd68a81509","crosscheck":"ac6cbc4c35","dokumen":"ce31fab51f","dokumentasi":"a51b7e21d9","ig-scheduler":"0e3099b0eb","kepulangan":"f7fcc6d1a5","manifest":"8f2cad3ed4","nota":"7801555c0f","pembayaran":"2147f979cf","pengaturan-user":"a9b4a8668d","profil-perusahaan":"007ba5bf94","rooming":"67fbf1bf85","snapshot":"062241176b","telegram":"74a94f11ce","css:assets":"a4dbf40f02","css:crosscheck":"16c71d3920","css:detail-program":"4d5fb4cf31","css:dokumentasi":"40aed6a74d","css:hotel":"3296e9f174","css:ig-scheduler":"bc0f800120","css:jadwal-tamu":"5b38b692e4","css:kepulangan":"8ca3a4d75e","css:keuangan":"38647f22ed","css:rekap-infografis":"ca9c348d92","css:rooming":"4e64020e50","css:snapshot":"21d56e0d3c","css:style":"d82521ebb1","css:telegram":"18837c7919","css:user-akses":"5d2d1bf508"}</script>
+    <script id="moduleVersions" type="application/json">{"assets":"221e3f21c0","audit-nota":"432b80f3ae","cicilan":"fd68a81509","crosscheck":"ac6cbc4c35","dokumen":"ce31fab51f","dokumentasi":"361016a87c","ig-scheduler":"0e3099b0eb","kepulangan":"f7fcc6d1a5","manifest":"8f2cad3ed4","nota":"7801555c0f","pembayaran":"2147f979cf","pengaturan-user":"a9b4a8668d","profil-perusahaan":"007ba5bf94","rooming":"67fbf1bf85","snapshot":"062241176b","telegram":"74a94f11ce","css:assets":"a4dbf40f02","css:crosscheck":"16c71d3920","css:detail-program":"4d5fb4cf31","css:dokumentasi":"37fc43a1ac","css:hotel":"3296e9f174","css:ig-scheduler":"bc0f800120","css:jadwal-tamu":"5b38b692e4","css:kepulangan":"8ca3a4d75e","css:keuangan":"38647f22ed","css:rekap-infografis":"ca9c348d92","css:rooming":"4e64020e50","css:snapshot":"21d56e0d3c","css:style":"d82521ebb1","css:telegram":"18837c7919","css:user-akses":"5d2d1bf508"}</script>
 
     <link rel="stylesheet" href="css/style.min.css?v=d82521ebb1">
     <link rel="stylesheet" href="css/rekap-infografis.min.css?v=ca9c348d92">
@@ -378,23 +378,6 @@
                         </div>
                     </div>
                 </div>
-
-                <div class="tab-panel" id="tab-dokumentasi">
-                    <div class="kb-program-selector" id="dkgProgramSelector">
-                        <select id="dkgProgramSelect" class="searchable-select" data-cs-inline="1" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." onchange="selectDkgProgram(this.value)">
-                            <option value="">-- Pilih Program --</option>
-                        </select>
-                        <button type="button" class="btn-primary btn-compact" id="dkgBtnTambah" data-action="openDkgModal" style="display:none;"><i class="bi bi-plus-lg"></i> Tambah Kegiatan</button>
-                        <button type="button" class="btn-secondary btn-compact" id="dkgBtnTemplate" data-action="openDkgTemplateModal" style="display:none;" title="Isi otomatis alur umroh lengkap dari berangkat sampai pulang"><i class="bi bi-magic"></i> Buat dari Template</button>
-                        <button type="button" class="btn-secondary btn-compact" id="dkgBtnSalin" data-action="salinJadwalDokumentasi" style="display:none;" title="Salin jadwal sebagai teks untuk dikirim ke tim konten"><i class="bi bi-clipboard-fill"></i> Salin Jadwal</button>
-                    </div>
-                    <div id="dkgBody">
-                        <div class="kb-no-program">
-                            <i class="bi bi-camera-reels-fill"></i>
-                            <p>Pilih program di atas untuk melihat jadwal & dokumentasi kegiatan umrohnya.</p>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -552,6 +535,35 @@
             </div>
             <div id="infografisGalleryBody">
                 <div class="ig-empty"><i class="bi bi-hourglass-split"></i> Memuat...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="dokumentasiPageView" class="admin-page" style="display:none;">
+        <div class="admin-page-header">
+            <button class="admin-back-btn" data-action="closeDokumentasiPage" title="Kembali ke Dashboard">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <div>
+                <h1><span>Dokumentasi</span></h1>
+                <p>Jadwal &amp; dokumentasi kegiatan umroh, dari berangkat sampai pulang</p>
+            </div>
+        </div>
+        <div class="dkg-page">
+            <div class="kb-program-selector" id="dkgProgramSelector">
+                <select id="dkgProgramSelect" class="searchable-select" data-cs-inline="1" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." onchange="selectDkgProgram(this.value)">
+                <option value="">-- Pilih Program --</option>
+                </select>
+                <button type="button" class="btn-primary btn-compact" id="dkgBtnTambah" data-action="openDkgModal" style="display:none;"><i class="bi bi-plus-lg"></i> Tambah Kegiatan</button>
+                <button type="button" class="btn-secondary btn-compact" id="dkgBtnTemplate" data-action="openDkgTemplateModal" style="display:none;" title="Isi otomatis alur umroh lengkap dari berangkat sampai pulang"><i class="bi bi-magic"></i> Buat dari Template</button>
+                <button type="button" class="btn-secondary btn-compact" id="dkgBtnSalin" data-action="salinJadwalDokumentasi" style="display:none;" title="Salin jadwal sebagai teks untuk dikirim ke tim konten"><i class="bi bi-clipboard-fill"></i> Salin Jadwal</button>
+            </div>
+            <div id="dkgBody">
+                <div class="dkg-empty">
+                    <span class="dkg-empty-icon"><i class="bi bi-camera-reels-fill"></i></span>
+                    <h4 class="dkg-empty-title">Pilih program umroh</h4>
+                    <p class="dkg-empty-desc">Pilih program di atas untuk melihat jadwal &amp; dokumentasi kegiatan umrohnya.</p>
+                </div>
             </div>
         </div>
     </div>

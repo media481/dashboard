@@ -215,17 +215,21 @@ function dkgSummaryHtml() {
         const tgls = dkgItems.map(i => i.tanggal).filter(Boolean).sort();
         return tgls.length ? `${dkgFormatTanggalPendek(tgls[0])} – ${dkgFormatTanggal(tgls[tgls.length - 1], false)}` : '';
     })();
-    const stat = (n, lbl) => `<span class="dkg-stat"><b>${n}</b> ${lbl}</span>`;
+    const kartu = (ikon, warna, nilai, label, sub) => `
+            <div class="metric-card">
+                <div class="m-icon ${warna}"><i class="bi ${ikon}"></i></div>
+                <div class="m-info">
+                    <div class="m-value">${nilai}</div>
+                    <div class="m-label">${label}</div>
+                    ${sub ? `<div class="m-sub">${sub}</div>` : ''}
+                </div>
+            </div>`;
     return `
-        <div class="dkg-summary">
-            <div class="dkg-progress" title="Kegiatan yang sudah diambil atau diposting, di luar yang dilewati">
-                <div class="dkg-progress-bar"><span style="width:${pct}%"></span></div>
-                <strong>${pct}%</strong>
-            </div>
-            <div class="dkg-stats">
-                ${stat(total, 'kegiatan')}${stat(rencana, 'rencana')}${stat(diambil, 'diambil')}${stat(diposting, 'diposting')}
-                ${tglRentang ? `<span class="dkg-range"><i class="bi bi-calendar3"></i> ${escapeHtml(tglRentang)}</span>` : ''}
-            </div>
+        <div class="metrics dkg-metrics">
+            ${kartu('bi-camera-reels-fill', 'icon-brand', total, 'Total Kegiatan', tglRentang ? escapeHtml(tglRentang) : '')}
+            ${kartu('bi-clock-history', 'icon-danger', rencana, 'Belum Diambil', lewat > 0 ? `${lewat} dilewati` : '')}
+            ${kartu('bi-camera-fill', 'icon-warn', diambil, 'Sudah Diambil', 'siap diedit / diposting')}
+            ${kartu('bi-check2-circle', 'icon-success', diposting, 'Sudah Diposting', `<span class="dkg-pct" title="Kegiatan yang sudah diambil atau diposting, di luar yang dilewati">${pct}% selesai</span>`)}
         </div>`;
 }
 
