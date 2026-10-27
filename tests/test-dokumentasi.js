@@ -138,7 +138,7 @@ T('render: input user di-escape, tidak ada "undefined", guest tidak melihat tomb
   const admin = body.innerHTML;
   assert(!admin.includes('<img src=x') && !admin.includes('<script>1'), 'judul/lokasi tidak di-escape');
   assert(!/undefined|\bnull\b/.test(admin), 'ada undefined/null di HTML');
-  assert(admin.includes('data-action="deleteDkg"') && admin.includes('Sudah diambil'));
+  assert(admin.includes('data-action="deleteDkg"') && admin.includes('dkg-stat'));
   assert(!admin.includes('href="javascript:'), 'link javascript: lolos ke href');
   run('canManageProgramData = () => false; renderDkgContent()');
   const guest = body.innerHTML;

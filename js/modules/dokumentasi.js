@@ -215,16 +215,16 @@ function dkgSummaryHtml() {
         const tgls = dkgItems.map(i => i.tanggal).filter(Boolean).sort();
         return tgls.length ? `${dkgFormatTanggalPendek(tgls[0])} – ${dkgFormatTanggal(tgls[tgls.length - 1], false)}` : '';
     })();
+    const stat = (n, lbl) => `<span class="dkg-stat"><b>${n}</b> ${lbl}</span>`;
     return `
         <div class="dkg-summary">
-            <div class="dkg-stat"><span class="dkg-stat-num">${total}</span><span class="dkg-stat-lbl">Kegiatan</span></div>
-            <div class="dkg-stat"><span class="dkg-stat-num">${rencana}</span><span class="dkg-stat-lbl">Rencana</span></div>
-            <div class="dkg-stat"><span class="dkg-stat-num">${diambil}</span><span class="dkg-stat-lbl">Sudah diambil</span></div>
-            <div class="dkg-stat"><span class="dkg-stat-num">${diposting}</span><span class="dkg-stat-lbl">Sudah diposting</span></div>
             <div class="dkg-progress" title="Kegiatan yang sudah diambil atau diposting, di luar yang dilewati">
-                <div class="dkg-progress-top"><span>Progres dokumentasi</span><strong>${pct}%</strong></div>
                 <div class="dkg-progress-bar"><span style="width:${pct}%"></span></div>
-                ${tglRentang ? `<div class="dkg-progress-sub">${escapeHtml(tglRentang)}</div>` : ''}
+                <strong>${pct}%</strong>
+            </div>
+            <div class="dkg-stats">
+                ${stat(total, 'kegiatan')}${stat(rencana, 'rencana')}${stat(diambil, 'diambil')}${stat(diposting, 'diposting')}
+                ${tglRentang ? `<span class="dkg-range"><i class="bi bi-calendar3"></i> ${escapeHtml(tglRentang)}</span>` : ''}
             </div>
         </div>`;
 }
@@ -254,10 +254,10 @@ function dkgItemHtml(it, canEdit) {
     const open = dkgOpenDetail.has(it.id);
     const media = (it.jenis_media || []).map(m => {
         const o = DKG_MEDIA.find(x => x.value === m);
-        return o ? `<span class="dkg-tag"><i class="bi ${o.icon}"></i> ${escapeHtml(o.label)}</span>` : '';
+        return o ? `<i class="bi ${o.icon} dkg-ico" title="${escapeHtmlAttr(o.label)}"></i>` : '';
     }).join('');
     const pilar = it.pilar && typeof IG_PILLARS === 'object' && IG_PILLARS[it.pilar]
-        ? `<span class="dkg-tag dkg-tag-pilar"><i class="bi bi-bullseye"></i> ${escapeHtml(IG_PILLARS[it.pilar].label)}</span>` : '';
+        ? `<i class="bi bi-bullseye dkg-ico" title="Pilar: ${escapeHtmlAttr(IG_PILLARS[it.pilar].label)}"></i>` : '';
 
     const detailRows = [];
     if (it.deskripsi) detailRows.push(['Gambaran kegiatan', it.deskripsi]);
@@ -280,27 +280,31 @@ function dkgItemHtml(it, canEdit) {
             <button type="button" class="dkg-icon-btn dkg-icon-danger" title="Hapus kegiatan" data-action="deleteDkg" data-args='${escapeHtmlAttr(JSON.stringify([it.id]))}'><i class="bi bi-trash3-fill"></i></button>
         </div>` : '';
 
+    const idArg = escapeHtmlAttr(JSON.stringify([it.id]));
+    const meta = [
+        it.lokasi ? `<span><i class="bi bi-geo-alt-fill"></i> ${escapeHtml(it.lokasi)}</span>` : '',
+        `<span>${escapeHtml(kategori.label)}</span>`,
+    ].filter(Boolean).join('<span class="dkg-dot">·</span>');
+    const icons = `${media}${pilar}${it.content_plan_id ? '<i class="bi bi-link-45deg dkg-ico dkg-ico-linked" title="Sudah ada di Perencanaan Konten"></i>' : ''}`;
+    const toggleBtn = adaDetail
+        ? `<button type="button" class="dkg-icon-btn dkg-toggle" title="${open ? 'Sembunyikan detail' : 'Lihat detail & shot list'}" aria-expanded="${open}" data-action="toggleDkgDetail" data-args='${idArg}'><i class="bi ${open ? 'bi-chevron-up' : 'bi-chevron-down'}"></i></button>`
+        : '';
+
     return `
-        <article class="dkg-item${it.status === 'dilewati' ? ' is-skipped' : ''}" data-id="${escapeHtmlAttr(it.id)}">
+        <article class="dkg-item${it.status === 'dilewati' ? ' is-skipped' : ''}${open ? ' is-open' : ''}" data-id="${escapeHtmlAttr(it.id)}">
             <div class="dkg-item-main">
                 <div class="dkg-time">${it.waktu ? escapeHtml(it.waktu) : '<span class="dkg-time-empty">–</span>'}</div>
                 <div class="dkg-item-body">
                     <div class="dkg-item-title">${escapeHtml(it.judul)}</div>
-                    <div class="dkg-item-meta">
-                        ${it.lokasi ? `<span><i class="bi bi-geo-alt-fill"></i> ${escapeHtml(it.lokasi)}</span>` : ''}
-                        <span class="dkg-kat">${escapeHtml(kategori.label)}</span>
-                        ${media}${pilar}
-                        ${it.content_plan_id ? `<span class="dkg-tag dkg-tag-linked"><i class="bi bi-link-45deg"></i> Ada di Perencanaan Konten</span>` : ''}
-                    </div>
+                    <div class="dkg-item-meta">${meta}${icons ? `<span class="dkg-icos">${icons}</span>` : ''}</div>
                 </div>
                 <div class="dkg-item-side">
                     ${statusCtl}
                     ${actions}
+                    ${toggleBtn}
                 </div>
             </div>
-            ${adaDetail ? `
-            <button type="button" class="dkg-toggle" aria-expanded="${open}" data-action="toggleDkgDetail" data-args='${escapeHtmlAttr(JSON.stringify([it.id]))}'><i class="bi ${open ? 'bi-chevron-up' : 'bi-chevron-down'}"></i> ${open ? 'Sembunyikan detail' : 'Lihat detail & shot list'}</button>
-            <div class="dkg-detail"${open ? '' : ' hidden'}>${detailHtml}</div>` : ''}
+            ${adaDetail ? `<div class="dkg-detail"${open ? '' : ' hidden'}>${detailHtml}</div>` : ''}
         </article>`;
 }
 
@@ -351,9 +355,9 @@ function renderDkgContent() {
         return `
             <section class="dkg-day">
                 <header class="dkg-day-head">
-                    <span class="dkg-day-badge">${g.persiapan ? '<i class="bi bi-clipboard2-check-fill"></i>' : g.hari}</span>
-                    <div><div class="dkg-day-title">${escapeHtml(judul)}</div>${sub ? `<div class="dkg-day-sub">${escapeHtml(sub)}</div>` : ''}</div>
-                    <span class="dkg-day-count">${g.items.length} kegiatan</span>
+                    <span class="dkg-day-title">${escapeHtml(judul)}</span>
+                    ${sub ? `<span class="dkg-day-sub">${escapeHtml(sub)}</span>` : ''}
+                    <span class="dkg-day-count">${g.items.length}</span>
                 </header>
                 <div class="dkg-day-items">${g.items.map(it => dkgItemHtml(it, canEdit)).join('')}</div>
             </section>`;
