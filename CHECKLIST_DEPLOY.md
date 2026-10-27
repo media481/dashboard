@@ -35,6 +35,7 @@ Jangan ubah format deklarasinya (`const SUPABASE_URL = "..."`).
 3. Jalankan **dua migrasi yang tidak ada di 00**, masing-masing New Query → Run:
    - `sql/57_tambah_programs_poster_version.sql` (kolom `programs.poster_version`, dipakai tombol Refresh Poster)
    - `sql/59_tambah_view_total_bayar.sql` (view `v_total_bayar`; **wajib sebelum frontend dipakai**, kalau tidak total bayar dan status Lunas/DP gagal dimuat)
+   - `sql/60_tambah_dokumentasi_kegiatan.sql` (tabel `dokumentasi_kegiatan`, untuk menu Social Media > Dokumentasi; tanpa ini menu menampilkan pesan agar migrasi dijalankan)
 4. Opsional: `sql/40_update_hotel_saudi_arabia_2026_10.sql` untuk mengisi data referensi hotel Arab Saudi (tabelnya sudah dibuat di 00).
    `sql/18` (konversi data pendaftaran lama) hanya perlu di database lama yang masih punya baris status `baru`.
 5. Buat bucket Storage `ig-media` (**public**) di Dashboard → Storage bila memakai IG Scheduler.
@@ -58,7 +59,7 @@ ADMIN_PASSWORD=... CS_PASSWORD=... USER_PASSWORD=... GUEST_PASSWORD=... \
 node scripts/setup-auth-accounts.mjs
 ```
 Akun berikutnya dibuat dari **Admin > Pengaturan User** (butuh Edge Function `admin-create-user` dan `admin-reset-user-password`, bagian 3).
-Setelah `sql/00` dijalankan, menu sidebar yang belum ada di `role_menu_access` (Reminder, Status Kepulangan, IG Scheduler, Infografis)
+Setelah `sql/00` dijalankan, menu sidebar yang belum ada di `role_menu_access` (Reminder, Status Kepulangan, IG Scheduler, Infografis, Dokumentasi)
 default-nya tersembunyi untuk `user`/`guest` sampai admin mengaturnya di Pengaturan User > Akses Menu.
 
 ---
@@ -159,7 +160,7 @@ kalau ada policy buatan manual atau migrasi yang belum dijalankan, jadi cek di D
 ## 7. RINGKASAN PERINTAH (copy-paste)
 
 ```bash
-# 1. (SQL Editor) jalankan berurutan: sql/00_SETUP_LENGKAP_SATU_FILE.sql, sql/57_..., sql/59_...
+# 1. (SQL Editor) jalankan berurutan: sql/00_SETUP_LENGKAP_SATU_FILE.sql, sql/57_..., sql/59_..., sql/60_...
 #    (opsional: sql/40_update_hotel_saudi_arabia_2026_10.sql)
 
 # 2. akun login (lokal, sekali)

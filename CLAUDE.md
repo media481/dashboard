@@ -70,6 +70,7 @@ mengunduh ulang saat file berubah.
   | `profil-perusahaan` | Admin > Perusahaan: form editor profil (brand, nama, alamat, logo, rekening, kontak WA), `saveCompanyProfile()` | `switchAdminSubTab('profil')` → `renderCompanyProfilePanel()` (mengisi `#companyProfileMount`, sekali per panel) | `NOTA_PERUSAHAAN`, `COMPANY_PROFILE_KEY`, `loadCompanyProfile()` (dibaca sinkron oleh nota, caption WA, sapaan sidebar) |
   | `snapshot` | Admin > Snapshot / Backup: ambil/pulihkan snapshot, daftar timeline, snapshot pengaman (strict) | `switchAdminSubTab('snapshot')`, tombol Ambil, snapshot harian, `clearAllAdminData()`/`importAdminData()` | `maybeDailySnapshot()`, `SNAP_DAILY_KEY` |
   | `telegram` | Admin > Telegram: konfigurasi, penerima, kirim notifikasi, pengingat otomatis (`checkAndSendReminders`) | `switchAdminSubTab('telegram')`; `sendTelegramNotif` setelah simpan program/jadwal; `checkAndSendReminders` 2 detik setelah boot | `formatTgProgram()`, `formatTgJadwal()` (hasilnya dipakai sinkron sebagai argumen `sendTelegramNotif`) |
+  | `dokumentasi` | Social Media > Dokumentasi (tab `dokumentasi`, panel `#tab-dokumentasi` di index.html): jadwal & dokumentasi kegiatan umroh per program dari berangkat sampai pulang (tabel `dokumentasi_kegiatan`, sql/60): kelompok per hari, shot list, jenis media, status rencana/diambil/diposting/dilewati, link Drive, filter, Salin Jadwal (teks WA), Buat dari Template (`dkgSusunTemplate()`, `DKG_KATALOG`), dan `dkgToContentPlan()` yang memasukkan kegiatan sebagai ide ke `ig_content_plan` | `switchTab('dokumentasi')` → `renderDkgProgramSelector()`; CSS lazy `css/dokumentasi.css` (`css: ['dokumentasi']`); semua nama berawalan `dkg` (jangan bentrok dengan `dok*` milik modul `dokumen`) | - |
 
   **CSS lazy (`css: [...]` di `LAZY_MODULES`):** modul boleh punya CSS sendiri yang TIDAK di-`<link>` di
   `index.html`, tapi diunduh paralel oleh `ensureModuleLoaded()` lewat `ensureStyleLoaded('<nama>')` (versi
@@ -172,15 +173,15 @@ service-worker.js     ← cache-first untuk aset ber-hash (daftarnya dibaca dari
                         `CACHE_NAME` (saat ini `amiru-repo-cache-v159`) dinaikkan tiap rilis
 icons/                ← 12 file: 9 PNG dirujuk manifest.json (dan diprecache `APP_SHELL`), `icon-180.png` (apple-touch-icon di index.html),
                         `icon.svg` + `icon-maskable.svg` (sumber vektor)
-sql/                  ← skema & migrasi bernomor 00-59. `00_SETUP_LENGKAP_SATU_FILE.sql` = kondisi akhir migrasi 01-56 + 58
-                        (idempoten, bebas urutan) untuk project baru. **TIDAK memuat 57 dan 59**: jalankan keduanya sesudah 00
+sql/                  ← skema & migrasi bernomor 00-60. `00_SETUP_LENGKAP_SATU_FILE.sql` = kondisi akhir migrasi 01-56 + 58
+                        (idempoten, bebas urutan) untuk project baru. **TIDAK memuat 57, 59, dan 60**: jalankan ketiganya sesudah 00
                         (57 = kolom `programs.poster_version`, 59 = view `v_total_bayar`; 59 WAJIB sebelum frontend di-deploy).
                         Juga tidak memuat 18 (konversi data lama) serta 39/40 (isi data hotel Saudi; pakai 40 yang terbaru).
                         Untuk project yang SUDAH jalan, jalankan hanya migrasi baru sesuai nomor urut. Contoh penting:
                         19 (nomor nota + `nota_audit_log` append-only), 26/27 (hardening RLS),
                         28 (migrasi Supabase Auth), 29 (guest read-only di RLS), 30-36 (kelola user,
                         akses menu), 41-51 + 56 (IG Scheduler), 52-55 (rekap program, infografis, hotel_detail),
-                        57 (poster_version), 58 (view `microblog_publik`), 59 (view `v_total_bayar`)
+                        57 (poster_version), 58 (view `microblog_publik`), 59 (view `v_total_bayar`), 60 (tabel `dokumentasi_kegiatan`, menu Dokumentasi)
 .github/workflows/
   keep-supabase-alive.yml ← ping REST API tiap 3 hari biar project free tier tidak auto-pause. TIDAK butuh secret:
                             URL & anon key dibaca dari `js/app.js` (`const SUPABASE_URL` / `SUPABASE_ANON_KEY`, jangan ubah
@@ -200,7 +201,7 @@ scripts/auto-generate-konten.mjs ← generate konten IG pekan depan otomatis (di
                           Generate Konten (igKandidatTemaMinggu, igBuildSlotPekan, igGeneratePlanForSlots), login dengan akun Supabase Auth khusus
                           (secret AUTO_BOT_EMAIL/AUTO_BOT_PASSWORD). ATURAN: jalur generate (loadIgContentPlan, loadIgPosts, igGeneratePlanForSlots,
                           buildIgPlanProgramContext, dst.) tidak boleh bergantung pada DOM/`event`; dijaga tests/test-auto-generate.js. Setup: README_ig_scheduler.md
-tests/                 ← `npm test` = 8 suite tanpa dependency: test-core (fungsi murni di app.js), test-modules (stub -> modul lazy,
+tests/                 ← `npm test` = 9 suite tanpa dependency: test-core (fungsi murni di app.js), test-modules (stub -> modul lazy,
                         guard snapshot), test-total-bayar, test-with-retry, test-lazy-css, test-service-worker (juga menjaga index.html
                         sinkron dengan `*.min.*`), test-auto-generate, test-about-planner. Detail: `tests/README.md`
 test-core.js (root)    ← BUKAN sisa lama: tes generator IG/Perencanaan Konten, dijalankan `npm run test:ig` (TIDAK ikut `npm test`).
@@ -253,6 +254,7 @@ direferensikan di `index.html`/`service-worker.js`/`package.json` sebelum diasum
 | `ig_comments` | Komentar IG hasil `ig-sync-comments` |
 | `ig_content_plan`, `ig_rencana_tahunan`, `ig_tasklist` | Perencanaan konten IG (ide harian, tema per pekan, tasklist) |
 | `microblog_publik` (VIEW) | Turunan `ig_content_plan` untuk tile/modal Microblog. Dibaca anon/guest/semua role (sql/58); hanya kolom tampilan, status `dilewati` disembunyikan, `canva_url`/`ig_post_id` tidak ikut |
+| `dokumentasi_kegiatan` | Menu Dokumentasi (Social Media): satu baris per kegiatan umroh per program (hari ke-N, tanggal, fase, lokasi, shot list, jenis media, status, link Drive, `content_plan_id` ke `ig_content_plan`). Baca admin/user/guest, tulis admin/user (sql/60, tidak termasuk di 00) |
 
 Daftar di atas dari `sql/00_SETUP_LENGKAP_SATU_FILE.sql` ditambah `sql/58` dan `sql/59` (view); cek file-file itu bila ragu.
 
@@ -496,7 +498,7 @@ perbarui di sana kalau menambah/mengubah fungsi).
 
 ## Testing & deploy frontend
 
-- `npm test` menjalankan 8 suite di `tests/` (lihat `tests/README.md`): `test-core` memuat `app.js` lewat `vm` dengan mock DOM,
+- `npm test` menjalankan 9 suite di `tests/` (lihat `tests/README.md`): `test-core` memuat `app.js` lewat `vm` dengan mock DOM,
   sisanya menjaga modul lazy, service worker, CSS lazy, `fetchTotalBayar()`, `withRetry()`, generator konten otomatis, dan About Planner.
   Fungsi baru yang murni dan kritis (uang, tanggal, escaping) sebaiknya ditambah ke test dan diekspos di `globalThis.__T`.
   `npm run test:ig` (`test-core.js` di root) menguji logika IG Scheduler; `npm run test:edge` menguji generator rencana konten di edge function.

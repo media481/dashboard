@@ -36,9 +36,9 @@
     <!-- [OPTIMASI LOAD] app.js dipindah dari akhir <body> ke <head> (tetap defer, tetap SETELAH
          supabase-js, jadi urutan eksekusi & waktu eksekusinya sama persis). Bedanya browser
          menemukan & mulai mengunduhnya sejak awal, bukan setelah mem-parse ~1.700 baris HTML. -->
-    <script src="js/app.min.js?v=da871ec04d" defer></script>
+    <script src="js/app.min.js?v=6928128564" defer></script>
     <!-- Versi modul lazy (js/modules/*.min.js), ditulis scripts/stamp-versions.mjs; dibaca ensureModuleLoaded() di app.js. -->
-    <script id="moduleVersions" type="application/json">{"assets":"221e3f21c0","audit-nota":"432b80f3ae","cicilan":"fd68a81509","crosscheck":"ac6cbc4c35","dokumen":"ce31fab51f","ig-scheduler":"0e3099b0eb","kepulangan":"f7fcc6d1a5","manifest":"8f2cad3ed4","nota":"7801555c0f","pembayaran":"2147f979cf","pengaturan-user":"a9b4a8668d","profil-perusahaan":"007ba5bf94","rooming":"67fbf1bf85","snapshot":"062241176b","telegram":"74a94f11ce","css:assets":"a4dbf40f02","css:crosscheck":"16c71d3920","css:detail-program":"4d5fb4cf31","css:hotel":"3296e9f174","css:ig-scheduler":"bc0f800120","css:jadwal-tamu":"5b38b692e4","css:kepulangan":"8ca3a4d75e","css:keuangan":"38647f22ed","css:rekap-infografis":"ca9c348d92","css:rooming":"4e64020e50","css:snapshot":"21d56e0d3c","css:style":"d82521ebb1","css:telegram":"18837c7919","css:user-akses":"5d2d1bf508"}</script>
+    <script id="moduleVersions" type="application/json">{"assets":"221e3f21c0","audit-nota":"432b80f3ae","cicilan":"fd68a81509","crosscheck":"ac6cbc4c35","dokumen":"ce31fab51f","dokumentasi":"034b5cb944","ig-scheduler":"0e3099b0eb","kepulangan":"f7fcc6d1a5","manifest":"8f2cad3ed4","nota":"7801555c0f","pembayaran":"2147f979cf","pengaturan-user":"a9b4a8668d","profil-perusahaan":"007ba5bf94","rooming":"67fbf1bf85","snapshot":"062241176b","telegram":"74a94f11ce","css:assets":"a4dbf40f02","css:crosscheck":"16c71d3920","css:detail-program":"4d5fb4cf31","css:dokumentasi":"88970b5e91","css:hotel":"3296e9f174","css:ig-scheduler":"bc0f800120","css:jadwal-tamu":"5b38b692e4","css:kepulangan":"8ca3a4d75e","css:keuangan":"38647f22ed","css:rekap-infografis":"ca9c348d92","css:rooming":"4e64020e50","css:snapshot":"21d56e0d3c","css:style":"d82521ebb1","css:telegram":"18837c7919","css:user-akses":"5d2d1bf508"}</script>
 
     <link rel="stylesheet" href="css/style.min.css?v=d82521ebb1">
     <link rel="stylesheet" href="css/rekap-infografis.min.css?v=ca9c348d92">
@@ -375,6 +375,23 @@
                         <div class="kb-no-program">
                             <i class="bi bi-house-door-fill"></i>
                             <p>Pilih program di atas untuk melihat & mengubah status kepulangan jamaah.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-panel" id="tab-dokumentasi">
+                    <div class="kb-program-selector" id="dkgProgramSelector">
+                        <select id="dkgProgramSelect" class="searchable-select" data-cs-inline="1" data-placeholder="-- Pilih Program --" data-search-placeholder="Cari paket umroh..." onchange="selectDkgProgram(this.value)">
+                            <option value="">-- Pilih Program --</option>
+                        </select>
+                        <button type="button" class="btn-primary btn-compact" id="dkgBtnTambah" data-action="openDkgModal" style="display:none;"><i class="bi bi-plus-lg"></i> Tambah Kegiatan</button>
+                        <button type="button" class="btn-secondary btn-compact" id="dkgBtnTemplate" data-action="openDkgTemplateModal" style="display:none;" title="Isi otomatis alur umroh lengkap dari berangkat sampai pulang"><i class="bi bi-magic"></i> Buat dari Template</button>
+                        <button type="button" class="btn-secondary btn-compact" id="dkgBtnSalin" data-action="salinJadwalDokumentasi" style="display:none;" title="Salin jadwal sebagai teks untuk dikirim ke tim konten"><i class="bi bi-clipboard-fill"></i> Salin Jadwal</button>
+                    </div>
+                    <div id="dkgBody">
+                        <div class="kb-no-program">
+                            <i class="bi bi-camera-reels-fill"></i>
+                            <p>Pilih program di atas untuk melihat jadwal & dokumentasi kegiatan umrohnya.</p>
                         </div>
                     </div>
                 </div>
@@ -1091,6 +1108,133 @@
                 <div class="form-actions">
                     <button type="submit" class="btn-submit"><i class="bi bi-floppy-fill"></i> Simpan</button>
                     <button type="button" class="btn-cancel" data-action="closeAssetModal">Batal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="dkgModal">
+    <div class="modal-content modal-w-560" role="dialog" aria-modal="true" aria-labelledby="dkgModalTitle">
+        <div class="modal-header">
+            <h2><i class="bi bi-camera-reels-fill"></i> <span id="dkgModalTitle">Tambah Kegiatan</span></h2>
+            <button class="modal-close" data-action="closeDkgModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="dkgForm" onsubmit="saveDkg(event)">
+                <input type="hidden" id="dkg_editId" value="">
+                <div class="form-group">
+                    <label>Nama kegiatan <span class="required">*</span></label>
+                    <input type="text" id="dkg_judul" placeholder="Contoh: Thawaf umroh" required maxlength="150">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Hari ke- <span class="required">*</span></label>
+                        <input type="number" id="dkg_hari_ke" min="1" max="60" value="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tanggal <span class="text-soft-medium">(opsional)</span></label>
+                        <input type="date" id="dkg_tanggal" onchange="dkgOnTanggalChange()">
+                    </div>
+                    <div class="form-group">
+                        <label>Waktu <span class="text-soft-medium">(opsional)</span></label>
+                        <input type="text" id="dkg_waktu" placeholder="05:30 / Ba'da Subuh" maxlength="40">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tahap perjalanan</label>
+                        <select id="dkg_fase"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Jenis kegiatan</label>
+                        <select id="dkg_kategori"></select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Lokasi <span class="text-soft-medium">(opsional)</span></label>
+                    <input type="text" id="dkg_lokasi" placeholder="Contoh: Masjid Nabawi" maxlength="150">
+                </div>
+                <div class="form-group">
+                    <label>Gambaran kegiatan <span class="text-soft-medium">(opsional)</span></label>
+                    <textarea id="dkg_deskripsi" rows="2" placeholder="Apa yang terjadi di kegiatan ini"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Media yang diambil</label>
+                    <div id="dkgMediaChecks"></div>
+                </div>
+                <div class="form-group">
+                    <label>Shot list <span class="text-soft-medium">(yang perlu diambil)</span></label>
+                    <textarea id="dkg_shot_list" rows="3" placeholder="Momen, sudut, atau narasumber yang perlu didokumentasikan"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Pilar konten IG</label>
+                        <select id="dkg_pilar"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="dkg_status"></select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Ide konten <span class="text-soft-medium">(opsional)</span></label>
+                    <textarea id="dkg_ide_konten" rows="2" placeholder="Ide postingan dari kegiatan ini"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Link hasil dokumentasi <span class="text-soft-medium">(Drive, opsional)</span></label>
+                    <input type="text" id="dkg_link_drive" placeholder="https://drive.google.com/..." maxlength="500">
+                </div>
+                <div class="form-group">
+                    <label>Catatan lapangan <span class="text-soft-medium">(opsional)</span></label>
+                    <textarea id="dkg_catatan" rows="2" placeholder="Catatan untuk tim di lapangan"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit"><i class="bi bi-floppy-fill"></i> Simpan</button>
+                    <button type="button" class="btn-cancel" data-action="closeDkgModal">Batal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="dkgTemplateModal">
+    <div class="modal-content modal-w-560" role="dialog" aria-modal="true" aria-labelledby="dkgTemplateModalTitle">
+        <div class="modal-header">
+            <h2 id="dkgTemplateModalTitle"><i class="bi bi-magic"></i> Buat dari Template</h2>
+            <button class="modal-close" data-action="closeDkgTemplateModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="dkgTemplateForm" onsubmit="applyDkgTemplate(event)">
+                <p class="text-soft-medium" style="margin-bottom:12px;">Mengisi jadwal dokumentasi dari alur umroh standar: persiapan, keberangkatan, Madinah, Makkah, sampai kepulangan, lengkap dengan shot list dan ide konten. Semua bisa diedit setelahnya.</p>
+                <div id="dkgTplWarn" class="text-soft-medium" style="display:none;margin-bottom:12px;"></div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tanggal berangkat</label>
+                        <input type="date" id="dkgTpl_tgl">
+                    </div>
+                    <div class="form-group">
+                        <label>Durasi (hari)</label>
+                        <input type="number" id="dkgTpl_durasi" min="6" max="30" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Urutan kota</label>
+                        <select id="dkgTpl_urutan">
+                            <option value="madinah-makkah">Madinah dulu, lalu Makkah</option>
+                            <option value="makkah-madinah">Makkah dulu, lalu Madinah</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Hari di Madinah</label>
+                        <input type="number" id="dkgTpl_madinah" min="2" max="26" required>
+                    </div>
+                </div>
+                <p class="text-soft-medium" style="margin-bottom:12px;">Tanggal kosong = kegiatan dibuat tanpa tanggal (bisa diisi belakangan). Hari di Makkah mengikuti sisa durasi.</p>
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit"><i class="bi bi-magic"></i> Buat Jadwal</button>
+                    <button type="button" class="btn-cancel" data-action="closeDkgTemplateModal">Batal</button>
                 </div>
             </form>
         </div>

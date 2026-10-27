@@ -1,0 +1,214 @@
+/* ============================================================
+   MODUL Dokumentasi Kegiatan Umroh (Social Media > Dokumentasi)
+   Semua kelas berawalan .dkg-*. LAZY: TIDAK di-<link> di index.html; diunduh bersama modul
+   js/modules/dokumentasi.js lewat LAZY_MODULES['dokumentasi'].css (lihat CLAUDE.md "CSS lazy").
+   Jangan memakai kelas .dkg-* di luar modul ini (kerangka panel di index.html hanya memakai kelas inti).
+   Gaya kartu sengaja polos (tanpa garis aksen berwarna di tepi kartu).
+   ============================================================ */
+
+.dkg-loading {
+    padding: 36px 12px;
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: var(--fs-lg);
+}
+
+/* ---------- Ringkasan ---------- */
+.dkg-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(220px, 1.6fr);
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.dkg-stat,
+.dkg-progress {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 10px 12px;
+}
+.dkg-stat { display: flex; flex-direction: column; gap: 2px; }
+.dkg-stat-num { font-size: 22px; font-weight: 700; color: var(--brand); line-height: 1.1; }
+.dkg-stat-lbl { font-size: var(--fs-sm); color: var(--ink-soft); }
+.dkg-progress-top { display: flex; justify-content: space-between; align-items: baseline; font-size: var(--fs-sm); color: var(--ink-soft); margin-bottom: 6px; }
+.dkg-progress-top strong { color: var(--brand); font-size: var(--fs-lg); }
+.dkg-progress-bar { height: 8px; border-radius: var(--r-pill); background: var(--brand-tint); overflow: hidden; }
+.dkg-progress-bar > span { display: block; height: 100%; background: var(--success); border-radius: var(--r-pill); transition: width .3s ease; }
+.dkg-progress-sub { margin-top: 6px; font-size: var(--fs-xs); color: var(--ink-soft); }
+
+/* ---------- Filter ---------- */
+.dkg-filterbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+.dkg-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.dkg-chip {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink-soft);
+    border-radius: var(--r-pill);
+    padding: 5px 12px;
+    font-size: var(--fs-md);
+    font-family: inherit;
+    cursor: pointer;
+}
+.dkg-chip:hover { border-color: var(--brand); color: var(--brand); }
+.dkg-chip.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+.dkg-status-filter {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    border-radius: var(--r-md);
+    padding: 6px 10px;
+    font-size: var(--fs-md);
+    font-family: inherit;
+}
+
+/* ---------- Hari ---------- */
+.dkg-day { margin-bottom: 18px; }
+.dkg-day-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.dkg-day-badge {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--brand);
+    color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: var(--fs-lg);
+    flex-shrink: 0;
+}
+.dkg-day-title { font-weight: 700; color: var(--ink); font-size: 15px; }
+.dkg-day-sub { font-size: var(--fs-sm); color: var(--ink-soft); }
+.dkg-day-count { margin-left: auto; font-size: var(--fs-sm); color: var(--ink-soft); white-space: nowrap; }
+.dkg-day-items { display: flex; flex-direction: column; gap: 8px; }
+
+/* ---------- Kegiatan ---------- */
+.dkg-item {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 10px 12px;
+}
+.dkg-item.is-skipped { opacity: .6; }
+.dkg-item.is-skipped .dkg-item-title { text-decoration: line-through; }
+.dkg-item-main {
+    display: grid;
+    grid-template-columns: 78px minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: start;
+}
+.dkg-time { font-size: var(--fs-md); font-weight: 600; color: var(--brand); padding-top: 2px; }
+.dkg-time-empty { color: var(--ink-soft); font-weight: 400; }
+.dkg-item-title { font-weight: 600; color: var(--ink); font-size: var(--fs-lg); line-height: 1.35; }
+.dkg-item-meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-top: 5px; font-size: var(--fs-sm); color: var(--ink-soft); }
+.dkg-item-meta .bi { font-size: 11px; }
+.dkg-kat {
+    background: var(--bg);
+    border-radius: var(--r-pill);
+    padding: 2px 9px;
+    color: var(--ink-soft);
+}
+.dkg-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--brand-tint);
+    color: var(--brand);
+    border-radius: var(--r-pill);
+    padding: 2px 9px;
+    font-size: var(--fs-sm);
+}
+.dkg-tag-pilar { background: #ece8f8; color: #4b3c93; }
+.dkg-tag-linked { background: var(--success-tint); color: var(--success-ink); }
+.dkg-item-side { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* Status */
+.dkg-status-select,
+.dkg-status-pill {
+    border-radius: var(--r-pill);
+    border: 1px solid transparent;
+    padding: 4px 10px;
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    font-family: inherit;
+}
+.dkg-status-select { cursor: pointer; }
+.dkg-st-neutral { background: var(--bg); color: var(--ink-soft); border-color: var(--line); }
+.dkg-st-warn { background: var(--warn-tint); color: var(--warn-ink); }
+.dkg-st-ok { background: var(--success-tint); color: var(--success-ink); }
+.dkg-st-muted { background: #eceff3; color: #7a8796; }
+
+/* Aksi */
+.dkg-actions { display: flex; gap: 4px; }
+.dkg-icon-btn {
+    width: 32px; height: 32px;
+    border-radius: var(--r-md);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink-soft);
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+}
+.dkg-icon-btn:hover:not(:disabled) { color: var(--brand); border-color: var(--brand); }
+.dkg-icon-btn:disabled { opacity: .55; cursor: default; color: var(--success); }
+.dkg-icon-danger:hover:not(:disabled) { color: var(--danger); border-color: var(--danger); }
+
+/* Detail */
+.dkg-toggle {
+    margin-top: 8px;
+    background: none; border: 0; padding: 0;
+    color: var(--brand);
+    font-size: var(--fs-sm); font-family: inherit; font-weight: 600;
+    cursor: pointer;
+}
+.dkg-toggle:hover { text-decoration: underline; }
+.dkg-detail {
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: var(--bg);
+    border-radius: var(--r-md);
+    display: flex; flex-direction: column; gap: 8px;
+}
+.dkg-detail[hidden] { display: none; }
+.dkg-detail-k { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); margin-bottom: 2px; }
+.dkg-detail-v { font-size: var(--fs-md); color: var(--ink); white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
+.dkg-detail-v a { color: var(--brand); font-weight: 600; }
+
+/* ---------- Modal ---------- */
+.dkg-checks { display: flex; flex-wrap: wrap; gap: 8px; }
+.dkg-check { cursor: pointer; }
+.dkg-check input { position: absolute; opacity: 0; pointer-events: none; }
+.dkg-check span {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    border-radius: var(--r-pill);
+    padding: 5px 12px;
+    font-size: var(--fs-md);
+    color: var(--ink-soft);
+}
+.dkg-check input:checked + span { background: var(--brand); border-color: var(--brand); color: #fff; }
+.dkg-check input:focus-visible + span { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* ---------- Layar kecil ---------- */
+@media (max-width: 860px) {
+    .dkg-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dkg-progress { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+    .dkg-item-main { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+    .dkg-time { padding-top: 0; }
+    .dkg-item-side { justify-content: space-between; }
+    .dkg-day-count { display: none; }
+}
+@media (pointer: coarse) {
+    .dkg-icon-btn { width: 40px; height: 40px; }
+    .dkg-chip { padding: 8px 14px; }
+}

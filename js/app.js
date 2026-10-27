@@ -1388,6 +1388,7 @@ function switchTab(tabId) {
     if (tabId === 'dokumen') renderDokProgramSelector();
     if (tabId === 'kepulangan') renderKepulanganProgramSelector();
     if (tabId === 'arsip') { loadArsipJamaah().then(renderArsipProgramSelector); }
+    if (tabId === 'dokumentasi') renderDkgProgramSelector();
 
     saveLastView({ view: 'dashboard', tab: tabId });
 }
@@ -1495,7 +1496,8 @@ const NAV_MENU = [
     ]},
     { label: 'Social Media', gate: 'login', group: true, items: [
         { tab: 'igScheduler', icon: 'bi-instagram', text: 'IG Scheduler', reg: { group: 'Social Media' } },
-        { tab: 'infografis', icon: 'bi-images', text: 'Infografis', reg: { group: 'Social Media' } }
+        { tab: 'infografis', icon: 'bi-images', text: 'Infografis', reg: { group: 'Social Media' } },
+        { tab: 'dokumentasi', icon: 'bi-camera-reels-fill', text: 'Dokumentasi', reg: { group: 'Social Media' } }
     ]},
     { label: 'Arsip', gate: 'login', group: true, items: [
         { tab: 'arsip', icon: 'bi-archive-fill', text: 'Arsip Jamaah', reg: { group: 'Navigasi' } }
@@ -5382,7 +5384,7 @@ async function renderSidebarNav() {
     // kembalikan ke tab "Program Umroh" supaya tidak nyangkut di halaman kosong.
     if (!loggedIn) {
         const activePanel = document.querySelector('.tab-panel.active');
-        const loggedinOnlyIds = ['tab-info', 'tab-todocs', 'tab-pendaftaran', 'tab-keberangkatan', 'tab-dokumen', 'tab-kepulangan', 'tab-arsip'];
+        const loggedinOnlyIds = ['tab-info', 'tab-todocs', 'tab-pendaftaran', 'tab-keberangkatan', 'tab-dokumen', 'tab-kepulangan', 'tab-arsip', 'tab-dokumentasi'];
         if (activePanel && loggedinOnlyIds.includes(activePanel.id)) {
             switchTab('umroh');
         }
@@ -10194,6 +10196,16 @@ const LAZY_MODULES = {
         src: 'js/modules/dokumen.min.js',
         api: [
             'renderDokProgramSelector', 'renderTodoCsPanel', 'selectDokProgram'
+        ]
+    },
+    'dokumentasi': {
+        src: 'js/modules/dokumentasi.min.js',
+        // CSS khusus (.dkg-*) ikut diunduh paralel & ditunggu; kerangka panel di index.html hanya memakai kelas inti.
+        css: ['dokumentasi'],
+        api: [
+            'applyDkgTemplate', 'closeDkgModal', 'closeDkgTemplateModal', 'dkgOnTanggalChange',
+            'openDkgModal', 'openDkgTemplateModal', 'renderDkgProgramSelector', 'saveDkg',
+            'salinJadwalDokumentasi', 'selectDkgProgram'
         ]
     },
     'kepulangan': {

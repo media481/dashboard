@@ -7,7 +7,7 @@ mock DOM/Supabase minimal, atau mengekstrak satu fungsi lalu menjalankannya terp
 ## Cara menjalankan
 
 ```bash
-npm test             # semua 8 suite di tests/ (sama dengan npm run test:ci)
+npm test             # semua 9 suite di tests/ (sama dengan npm run test:ci)
 node tests/test-core.js   # satu suite saja
 
 npm run test:ig      # test-core.js di ROOT repo: logika IG Scheduler / Perencanaan Konten
@@ -30,6 +30,7 @@ file `*.min.*` di disk.
 | `test-service-worker.js` | `service-worker.js` di Node dengan Cache API tiruan: aset ber-hash (`?v=`) cache-first tanpa menyentuh jaringan, hash baru = unduh baru, 404 tidak disimpan, fallback offline, install memprecache aset dari `index.html`, activate membuang cache lama dan aset basi, dan `index.html` sinkron dengan `*.min.*` di disk |
 | `test-auto-generate.js` | `scripts/auto-generate-konten.mjs` dengan Supabase dan edge function palsu: jalur generate tidak bergantung DOM, pekan depan terisi 7 hari memakai tema Rencana Setahun, dijalankan ulang tidak menggandakan, `DRY_RUN=1` tidak memanggil AI dan tidak menyimpan, `TARGET_SENIN` bukan Senin = error |
 | `test-about-planner.js` | Dokumen About Planner dibangun dari `IG_POLA_AMIRU` + `IG_POLA_VARIAN` (tidak ada penanda `{{...}}` tersisa) dan ikut berubah saat pola diubah; header `Versi:`/`Diperbarui:` tetap terbaca |
+| `test-dokumentasi.js` | Modul Dokumentasi: template alur umroh lolos CHECK constraint sql/60 untuk semua kombinasi durasi/urutan/hari Madinah, tanggal per hari, teks Salin Jadwal, pengamanan link (`dkgSafeUrl`), escape HTML saat render + guest tanpa tombol ubah, serta kecocokan `LAZY_MODULES.dokumentasi.api` dengan markup `index.html`. `USE_MIN=1` menguji hasil build |
 
 ## Tes di luar `npm test`
 

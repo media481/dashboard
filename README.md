@@ -15,7 +15,7 @@ Dashboard web (PWA) untuk **PT Amiru Haramain Indonesia** (travel Umroh). Dipaka
 | Operasional jamaah | Pendaftaran, Data Jamaah (Keberangkatan), Kelengkapan Dokumen, Status Kepulangan, Arsip Jamaah |
 | Keuangan | Pembayaran dan cicilan, kuitansi PDF (jsPDF), nomor nota resmi dari database, Audit Nota (append-only) |
 | Jadwal | Jadwal Tamu dan Reminder (To-Do CS) |
-| Social Media | IG Scheduler (jadwal, kalender, rencana konten AI dan Rencana Setahun, tasklist, About Planner; publish otomatis dan komentar tersedia tetapi dimatikan lewat `IG_AUTOPUBLISH_ENABLED = false`), Infografis, Rekap Program, Microblog |
+| Social Media | IG Scheduler (jadwal, kalender, rencana konten AI dan Rencana Setahun, tasklist, About Planner; publish otomatis dan komentar tersedia tetapi dimatikan lewat `IG_AUTOPUBLISH_ENABLED = false`), Infografis, Rekap Program, Microblog, Dokumentasi (jadwal dan dokumentasi kegiatan umroh dari berangkat sampai pulang: shot list, status ambil/posting, link Drive, template alur umroh, dan tombol "jadikan ide konten" ke Perencanaan Konten) |
 | Katalog publik | `katalog.html` dan `katalog-flip.html` (flipbook), halaman mandiri tanpa login |
 | Manajemen dan System | Edit Program (hotel 1-4, parse broadcast WA dengan AI), Pembayaran, Audit Nota, Crosscheck poster vs data (OCR), Telegram, Pengaturan User dan akses menu, Snapshot backup, Assets (termasuk referensi hotel Saudi), Perusahaan, System (status API dan Edge Function) |
 
@@ -53,23 +53,23 @@ Detail Edge Function ada di [`supabase/functions/README.md`](supabase/functions/
 ```
 index.html              Struktur HTML. Memuat js/app.min.js dan css/*.min.css ber-?v=<hash>; daftar versi modul lazy ada di <script id="moduleVersions">
 js/app.js               Sumber JS inti (~10.800 baris): logic utama, koneksi Supabase, loader modul lazy (LAZY_MODULES)
-js/modules/*.js         Sumber 15 modul lazy: ig-scheduler, crosscheck, dokumen, kepulangan, manifest, rooming, pengaturan-user,
+js/modules/*.js         Sumber 16 modul lazy: ig-scheduler, dokumentasi, crosscheck, dokumen, kepulangan, manifest, rooming, pengaturan-user,
                         assets, nota, pembayaran, audit-nota, cicilan, profil-perusahaan, snapshot, telegram
 js/*.min.js, css/*.min.css, js/modules/*.min.js
                         HASIL build (yang benar-benar dimuat browser). Jangan diedit; dibuat ulang oleh npm run release
-css/*.css               Sumber CSS: style.css (inti) + 13 modul (rekap-infografis, snapshot, jadwal-tamu, assets, hotel, detail-program,
+css/*.css               Sumber CSS: style.css (inti) + 14 modul (dokumentasi (lazy), rekap-infografis, snapshot, jadwal-tamu, assets, hotel, detail-program,
                         telegram, kepulangan, rooming, user-akses, keuangan, crosscheck, ig-scheduler). ig-scheduler dimuat lazy
 katalog.html            Katalog publik mandiri (CSS+JS inline)
 katalog-flip.html       Versi flipbook katalog publik, juga mandiri
 manifest.json           Konfigurasi PWA
 service-worker.js       Aset ber-hash cache-first, sisanya network-first; CACHE_NAME dinaikkan tiap rilis
 icons/, assets/         Ikon PWA dan logo (aktif: assets/logo-amirutour.png)
-sql/                    Skema dan migrasi (00 = setup satu file untuk 01-56 dan 58; 57 dan 59 dijalankan terpisah; 18, 39, 40 data/konversi)
+sql/                    Skema dan migrasi (00 = setup satu file untuk 01-56 dan 58; 57, 59, dan 60 dijalankan terpisah; 18, 39, 40 data/konversi)
 supabase/functions/     16 Edge Function (Deno/TypeScript) + _shared/gemini.ts (acuan)
 scheduler/              Cloudflare Worker cron untuk IG Scheduler (deploy terpisah)
 apps-script/            Google Apps Script untuk listing folder Drive (Infografis, Rekap Program)
 scripts/                build.mjs, stamp-versions.mjs (rilis), setup-auth-accounts.mjs (sekali jalan), auto-generate-konten.mjs (workflow konten IG)
-tests/                  8 suite tes tanpa dependency (npm test); test-core.js di root = tes IG (npm run test:ig)
+tests/                  9 suite tes tanpa dependency (npm test); test-core.js di root = tes IG (npm run test:ig)
 .github/workflows/      keep-supabase-alive.yml (ping tiap 3 hari), auto-generate-konten.yml (Minggu 03:00 WIB)
 PASANG-MANUAL-workflow/ Salinan kedua workflow + petunjuk pasang manual lewat web GitHub (bukan bagian deploy)
 wrangler.jsonc          Konfigurasi deploy frontend ke Cloudflare
@@ -126,7 +126,7 @@ npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --config scheduler/wrangler.to
 ## Testing
 
 ```bash
-npm test             # 8 suite di tests/ (fungsi inti, modul lazy, service worker, CSS lazy, total bayar, retry, konten otomatis, About Planner)
+npm test             # 9 suite di tests/ (fungsi inti, modul lazy, service worker, CSS lazy, total bayar, retry, konten otomatis, About Planner, Dokumentasi)
 npm run test:ig      # test-core.js di root: logika IG Scheduler / Perencanaan Konten
 npm run test:edge    # generator rencana konten IG di edge function (butuh Node dengan --experimental-strip-types, mis. Node 22)
 npm run check        # file *.min.* dan versi di index.html sinkron dengan sumber
