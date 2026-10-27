@@ -13,6 +13,67 @@
     font-size: var(--fs-lg);
 }
 
+/* ---------- Toolbar (pemilih program + tombol aksi) ----------
+   Kerangka ada di index.html (#dkgProgramSelector, memakai kelas inti .kb-program-selector),
+   jadi dirapikan lewat ID di sini. Semua kontrol dibuat setinggi sama (42px) supaya sebaris rapi. */
+#dkgProgramSelector {
+    gap: 10px;
+    align-items: stretch;
+    margin-bottom: 18px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+}
+#dkgProgramSelector .cs-select-wrapper.cs-inline { flex: 1 1 320px; min-width: 0; }
+#dkgProgramSelector .cs-select-trigger { min-height: 42px; padding-top: 0; padding-bottom: 0; }
+#dkgProgramSelector .btn-compact {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 42px;
+    padding: 0 16px;
+    font-size: var(--fs-md);
+    font-weight: 600;
+    font-family: inherit;
+    white-space: nowrap;
+    flex: 0 0 auto;
+}
+#dkgProgramSelector .btn-secondary.btn-compact { background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
+#dkgProgramSelector .btn-secondary.btn-compact:hover { border-color: var(--brand); color: var(--brand); background: var(--surface); }
+#dkgProgramSelector .btn-compact:hover { transform: none; }
+
+/* ---------- Empty state ---------- */
+.dkg-empty {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 48px 20px 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+.dkg-empty-icon {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: var(--brand-tint);
+    color: var(--brand);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    margin-bottom: 16px;
+}
+.dkg-empty-title { margin: 0 0 6px; font-size: 17px; font-weight: 700; color: var(--ink); }
+.dkg-empty-desc { margin: 0; font-size: var(--fs-lg); line-height: 1.55; color: var(--ink-soft); }
+.dkg-empty-desc strong { color: var(--ink); }
+.dkg-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 22px; }
+.dkg-empty-actions .btn-compact {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    height: 42px; padding: 0 18px;
+    font-size: var(--fs-md); font-weight: 600; font-family: inherit;
+}
+.dkg-empty-actions .btn-secondary.btn-compact { background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
+.dkg-empty-actions .btn-secondary.btn-compact:hover { border-color: var(--brand); color: var(--brand); }
+.dkg-empty-actions .btn-compact:hover { transform: none; }
+
 /* ---------- Ringkasan ---------- */
 .dkg-summary {
     display: grid;
@@ -203,6 +264,11 @@
     .dkg-progress { grid-column: 1 / -1; }
 }
 @media (max-width: 640px) {
+    #dkgProgramSelector .cs-select-wrapper.cs-inline { flex-basis: 100%; }
+    #dkgProgramSelector .btn-compact { flex: 1 1 auto; padding: 0 12px; }
+    .dkg-empty { padding: 32px 12px 40px; }
+    .dkg-empty-actions { width: 100%; }
+    .dkg-empty-actions .btn-compact { flex: 1 1 100%; }
     .dkg-item-main { grid-template-columns: minmax(0, 1fr); gap: 6px; }
     .dkg-time { padding-top: 0; }
     .dkg-item-side { justify-content: space-between; }

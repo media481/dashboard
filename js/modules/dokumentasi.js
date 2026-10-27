@@ -158,7 +158,7 @@ async function loadDkgForProgram(programId) {
     if (!body) return;
 
     if (!programId) {
-        body.innerHTML = `<div class="kb-no-program"><i class="bi bi-camera-reels-fill"></i><p>Pilih program di atas untuk melihat jadwal & dokumentasi kegiatan umrohnya.</p></div>`;
+        body.innerHTML = dkgEmptyHtml('bi-camera-reels-fill', 'Pilih program umroh', 'Pilih program di atas untuk melihat jadwal & dokumentasi kegiatan umrohnya.');
         return;
     }
     body.innerHTML = `<div class="dkg-loading"><i class="bi bi-arrow-repeat bi-spin"></i> Memuat jadwal dokumentasi…</div>`;
@@ -179,8 +179,9 @@ async function loadDkgForProgram(programId) {
         if (requested !== dkgProgramId) return;
         console.error('loadDkgForProgram error:', err);
         body.innerHTML = dkgTabelBelumAda(err)
-            ? `<div class="kb-no-program"><i class="bi bi-database-exclamation"></i><p>Tabel dokumentasi belum dibuat di database. Jalankan <strong>sql/60_tambah_dokumentasi_kegiatan.sql</strong> di Supabase SQL Editor, lalu muat ulang halaman.</p></div>`
-            : `<div class="kb-no-program"><i class="bi bi-exclamation-triangle-fill"></i><p>Gagal memuat jadwal dokumentasi: ${escapeHtml(err.message || 'kesalahan tidak dikenal')}</p><button type="button" class="btn-secondary btn-compact" data-action="selectDkgProgram" data-args='${escapeHtmlAttr(JSON.stringify([programId]))}'>Coba lagi</button></div>`;
+            ? dkgEmptyHtml('bi-database-exclamation', 'Tabel belum dibuat', 'Jalankan <strong>sql/60_tambah_dokumentasi_kegiatan.sql</strong> di Supabase SQL Editor, lalu muat ulang halaman.')
+            : dkgEmptyHtml('bi-exclamation-triangle-fill', 'Gagal memuat jadwal', escapeHtml(err.message || 'kesalahan tidak dikenal'),
+                `<button type="button" class="btn-secondary btn-compact" data-action="selectDkgProgram" data-args='${escapeHtmlAttr(JSON.stringify([programId]))}'><i class="bi bi-arrow-clockwise"></i> Coba lagi</button>`);
     }
 }
 
@@ -303,6 +304,17 @@ function dkgItemHtml(it, canEdit) {
         </article>`;
 }
 
+// Empty state seragam modul ini (ikon bulat + judul + penjelasan + aksi opsional).
+function dkgEmptyHtml(icon, judul, desc, aksiHtml) {
+    return `
+        <div class="dkg-empty">
+            <span class="dkg-empty-icon"><i class="bi ${icon}"></i></span>
+            <h4 class="dkg-empty-title">${judul}</h4>
+            <p class="dkg-empty-desc">${desc}</p>
+            ${aksiHtml ? `<div class="dkg-empty-actions">${aksiHtml}</div>` : ''}
+        </div>`;
+}
+
 function renderDkgContent() {
     const body = document.getElementById('dkgBody');
     if (!body || !dkgProgramId) return;
@@ -310,12 +322,14 @@ function renderDkgContent() {
     const canEdit = canManageProgramData();
 
     if (!dkgItems.length) {
-        body.innerHTML = `
-            <div class="kb-no-program">
-                <i class="bi bi-camera-reels-fill"></i>
-                <p>Belum ada jadwal dokumentasi untuk program ini.${canEdit ? ' Mulai cepat dengan <strong>Buat dari Template</strong> (alur umroh lengkap dari berangkat sampai pulang), atau tambah kegiatan satu per satu.' : ''}</p>
-                ${canEdit ? `<button type="button" class="btn-primary btn-compact" data-action="openDkgTemplateModal"><i class="bi bi-magic"></i> Buat dari Template</button>` : ''}
-            </div>`;
+        body.innerHTML = dkgEmptyHtml('bi-camera-reels-fill', 'Belum ada jadwal dokumentasi',
+            canEdit
+                ? 'Mulai cepat dengan <strong>Buat dari Template</strong> (alur umroh lengkap dari berangkat sampai pulang), atau tambah kegiatan satu per satu.'
+                : 'Jadwal dokumentasi untuk program ini belum disusun oleh tim.',
+            canEdit
+                ? `<button type="button" class="btn-primary btn-compact" data-action="openDkgTemplateModal"><i class="bi bi-magic"></i> Buat dari Template</button>
+                   <button type="button" class="btn-secondary btn-compact" data-action="openDkgModal"><i class="bi bi-plus-lg"></i> Tambah Kegiatan</button>`
+                : '');
         return;
     }
 
@@ -346,7 +360,7 @@ function renderDkgContent() {
     }).join('');
 
     body.innerHTML = dkgSummaryHtml() + dkgFilterBarHtml() +
-        (hariHtml || `<div class="kb-no-program"><i class="bi bi-funnel-fill"></i><p>Tidak ada kegiatan yang cocok dengan filter ini.</p></div>`);
+        (hariHtml || dkgEmptyHtml('bi-funnel-fill', 'Tidak ada hasil', 'Tidak ada kegiatan yang cocok dengan filter ini.'));
 }
 
 function toggleDkgDetail(id) {
