@@ -479,6 +479,16 @@ perbarui di sana kalau menambah/mengubah fungsi).
   jangan terima header `apikey` sebagai kredensial (selalu ikut di tiap request).
 - Saat mengirim hasil kerja, sebut fungsi mana yang perlu di-deploy ulang. Untuk fungsi yang
   diubah, kirim `index.ts`-nya utuh supaya bisa langsung di-paste ke Dashboard.
+- **Tanda kutip di string prompt (jebakan yang pernah merusak deploy):** banyak prompt dan panduan di edge function berupa string
+  berkutip ganda (mis. `MEDIA_GUIDE` di `generate-ig-caption`, `TUJUAN_GUIDE`, pesan alasan penolakan). Menyisipkan `"..."` mentah
+  di dalamnya memutus string dan deploy gagal dengan `Expected ',', got '...'` ("The module's source code could not be parsed").
+  Saat menambah teks ke string seperti itu: pakai kutip tunggal `'...'` untuk kata yang perlu dikutip, atau escape `\"`; di template
+  literal (backtick) JANGAN memakai backtick atau `${` mentah, dan tulis `\\n` bila butuh karakter `\n` literal di prompt. Samakan
+  gaya kutip dengan baris di sekitarnya.
+- **Wajib uji parse sebelum mengirim edge function.** Tes `test:edge` hanya memuat `generate-ig-content-plan` dan `radar-risiko-jamaah`,
+  jadi fungsi lain (mis. `generate-ig-caption`, `scan-poster-ocr`) bisa rusak tanpa ketahuan. Untuk SETIAP `index.ts` yang diubah jalankan
+  `npx esbuild supabase/functions/<nama>/index.ts --log-level=error --outfile=/tmp/cek.js` (tanpa output error = lolos), lalu
+  `npm run test:edge` untuk fungsi yang punya tes. Baru kirim file dan sebut fungsi yang perlu di-deploy ulang.
 - Masalah yang diketahui: `generate-wa-caption` masih import `_shared/gemini.ts` (melanggar aturan
   di atas); `app.js` memanggil `parse-broadcast-ai`, `generate-tg-reminder`,
   `generate-payment-reminder-wa`, `sync-infografis` yang source-nya tidak ada di repo;
