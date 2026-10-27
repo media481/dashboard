@@ -246,7 +246,7 @@ const MEDIA_GUIDE: Record<MediaType, string> = {
   video:
     "Konten VIDEO/REELS (di luar pola mingguan yang berbasis gambar): caption jadi pelengkap video. Pembuka SANGAT singkat (<= 10 kata) dan selaras dengan 3 detik pertama video; boleh lebih ringkas dari panjang standar.",
   carousel:
-    "Konten CAROUSEL (maksimal 5 slide): pembuka memancing orang menggeser dan menyebut ada beberapa slide/poin. Caption melanjutkan teks di slide, JANGAN mengulangnya. Bila konsep memuat teks slide dengan baris "Keterangan:", itu satu cerita utuh (Slide 1 hook, Slide 2 dst teks + keterangan): lanjutkan dari titik akhir ceritanya dengan benang merah yang sama (benda, perasaan, atau pertanyaan) dan jangan menyalin teks slide maupun keterangannya.",
+    "Konten CAROUSEL (maksimal 5 slide): pembuka memancing orang menggeser dan menyebut ada beberapa slide/poin. Caption melanjutkan teks di slide, JANGAN mengulangnya. Bila konsep memuat teks slide dengan baris 'Keterangan:', itu satu cerita utuh (Slide 1 hook, Slide 2 dst teks + keterangan): lanjutkan dari titik akhir ceritanya dengan benang merah yang sama (benda, perasaan, atau pertanyaan) dan jangan menyalin teks slide maupun keterangannya.",
 };
 
 function buildSystemPrompt(tujuan: Tujuan, mediaType: MediaType): string {
