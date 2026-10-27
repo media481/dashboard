@@ -70,13 +70,14 @@ mengunduh ulang saat file berubah.
   | `profil-perusahaan` | Admin > Perusahaan: form editor profil (brand, nama, alamat, logo, rekening, kontak WA), `saveCompanyProfile()` | `switchAdminSubTab('profil')` → `renderCompanyProfilePanel()` (mengisi `#companyProfileMount`, sekali per panel) | `NOTA_PERUSAHAAN`, `COMPANY_PROFILE_KEY`, `loadCompanyProfile()` (dibaca sinkron oleh nota, caption WA, sapaan sidebar) |
   | `snapshot` | Admin > Snapshot / Backup: ambil/pulihkan snapshot, daftar timeline, snapshot pengaman (strict) | `switchAdminSubTab('snapshot')`, tombol Ambil, snapshot harian, `clearAllAdminData()`/`importAdminData()` | `maybeDailySnapshot()`, `SNAP_DAILY_KEY` |
   | `telegram` | Admin > Telegram: konfigurasi, penerima, kirim notifikasi, pengingat otomatis (`checkAndSendReminders`) | `switchAdminSubTab('telegram')`; `sendTelegramNotif` setelah simpan program/jadwal; `checkAndSendReminders` 2 detik setelah boot | `formatTgProgram()`, `formatTgJadwal()` (hasilnya dipakai sinkron sebagai argumen `sendTelegramNotif`) |
-  | `dokumentasi` | Social Media > Dokumentasi (tab `dokumentasi`, panel `#tab-dokumentasi` di index.html): jadwal & dokumentasi kegiatan umroh per program dari berangkat sampai pulang (tabel `dokumentasi_kegiatan`, sql/60): kelompok per hari, shot list, jenis media, status rencana/diambil/diposting/dilewati, link Drive, filter, Salin Jadwal (teks WA), Buat dari Template (`dkgSusunTemplate()`, `DKG_KATALOG`), dan `dkgToContentPlan()` yang memasukkan kegiatan sebagai ide ke `ig_content_plan` | `switchTab('dokumentasi')` → `renderDkgProgramSelector()`; CSS lazy `css/dokumentasi.css` (`css: ['dokumentasi']`); semua nama berawalan `dkg` (jangan bentrok dengan `dok*` milik modul `dokumen`) | - |
+  | `dokumentasi` | Social Media > Dokumentasi (HALAMAN MANDIRI `#dokumentasiPageView` di index.html, bukan tab-panel: tanpa header/kartu/bar tab dashboard utama, pola sama dengan IG Scheduler/Infografis): jadwal & dokumentasi kegiatan umroh per program dari berangkat sampai pulang (tabel `dokumentasi_kegiatan`, sql/60): 4 kartu ringkasan bergaya `.metric-card` dashboard (Total Kegiatan, Belum Diambil, Sudah Diambil, Sudah Diposting + % selesai), kelompok per hari (satu kartu per hari, baris kegiatan ringkas), shot list, jenis media, status rencana/diambil/diposting/dilewati, link Drive, filter, Salin Jadwal (teks WA), Buat dari Template (`dkgSusunTemplate()`, `DKG_KATALOG`), dan `dkgToContentPlan()` yang memasukkan kegiatan sebagai ide ke `ig_content_plan` | `switchTab('dokumentasi')` → `openDokumentasiPage()` (app.js bagian 5c2: menunggu `ensureStyleLoaded('dokumentasi')`, menampilkan halaman, lalu `renderDkgProgramSelector()`); `closeDokumentasiPage()` kembali ke tab sebelumnya; `restoreLastView` memakai `view: 'dokumentasi'`; CSS lazy `css/dokumentasi.css` (`css: ['dokumentasi']`); semua nama berawalan `dkg` (jangan bentrok dengan `dok*` milik modul `dokumen`) | - |
 
   **CSS lazy (`css: [...]` di `LAZY_MODULES`):** modul boleh punya CSS sendiri yang TIDAK di-`<link>` di
   `index.html`, tapi diunduh paralel oleh `ensureModuleLoaded()` lewat `ensureStyleLoaded('<nama>')` (versi
-  `?v=` dari kunci `css:<nama>` di `moduleVersions`, diisi `npm run stamp`). Saat ini hanya `ig-scheduler`
-  (sekitar 95 KB setelah minify). Halaman yang kerangkanya sudah ada di `index.html` (mis. `openIgSchedulerPage()`) harus
-  `await ensureStyleLoaded(...)` SEBELUM menampilkan kerangka, supaya tidak tampil polos. SYARAT memindah CSS
+  `?v=` dari kunci `css:<nama>` di `moduleVersions`, diisi `npm run stamp`). Saat ini `ig-scheduler`
+  (sekitar 95 KB setelah minify) dan `dokumentasi` (kecil, ±7 KB). Halaman yang kerangkanya sudah ada di `index.html` (mis. `openIgSchedulerPage()`) harus
+  `await ensureStyleLoaded(...)` SEBELUM menampilkan kerangka, supaya tidak tampil polos (`openDokumentasiPage()` melakukan hal yang sama,
+  sehingga kerangka `#dokumentasiPageView` boleh memakai kelas `.dkg-*`, mis. `.dkg-page`, `.dkg-empty`, dan aturan `#dkgProgramSelector`). SYARAT memindah CSS
   ke lazy: tidak ada kelas dari file itu yang dipakai di luar modulnya (cek app.js, index.html di luar blok
   modul, dan modul lain). Contoh yang ketahuan: `.ig-empty` dipakai galeri Infografis -> dipindah ke `style.css`.
   CSS lain (`keuangan`, `user-akses`, `crosscheck`, dst.) BELUM bisa lazy karena markup panel admin-nya dirender
@@ -272,7 +273,7 @@ komentar section di file; sebagian nomor ganda/tidak berurutan (bawaan sejarah),
 1. Supabase Config (baris 4-5: `SUPABASE_URL`, `SUPABASE_ANON_KEY`) — 2. State — 3. Utility Functions (termasuk `withRetry()`
    untuk retry request baca yang gagal karena jaringan, dan `fetchTotalBayar()`) — 4. Generate Auto WA Text — 4b. Caption AI massal —
    4c. Persist halaman terakhir — 5. Tab Switching — 5b. Halaman IG Scheduler (pembuka) + Daftar menu sidebar `NAV_MENU` —
-   5c. Infografis — 5d. Rekap Program & Infografis (kartu dashboard) — 6. Mobile Sidebar — 7. Render Skeleton —
+   5c. Infografis — 5c2. Dokumentasi (halaman mandiri: `openDokumentasiPage()`/`closeDokumentasiPage()`/`hideDokumentasiPageView()`) — 5d. Rekap Program & Infografis (kartu dashboard) — 6. Mobile Sidebar — 7. Render Skeleton —
    8. Load Data from Supabase — 9. Render Table — 10. Search & Sort — 11. Detail Modal — 12. Login (Supabase Auth) —
    12c. Sidebar Nav (`renderSidebarNav()`) — 12d. System Status (kondisi API & Edge Function) — 13. Admin Panel —
    13b. Tambah Program Cepat — 14. Admin CRUD — 15. Parse Broadcast (auto-isi form dari teks broadcast WA) — 16. Export/Import —

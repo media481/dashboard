@@ -35,7 +35,7 @@ Jangan ubah format deklarasinya (`const SUPABASE_URL = "..."`).
 3. Jalankan **dua migrasi yang tidak ada di 00**, masing-masing New Query → Run:
    - `sql/57_tambah_programs_poster_version.sql` (kolom `programs.poster_version`, dipakai tombol Refresh Poster)
    - `sql/59_tambah_view_total_bayar.sql` (view `v_total_bayar`; **wajib sebelum frontend dipakai**, kalau tidak total bayar dan status Lunas/DP gagal dimuat)
-   - `sql/60_tambah_dokumentasi_kegiatan.sql` (tabel `dokumentasi_kegiatan`, untuk menu Social Media > Dokumentasi; tanpa ini menu menampilkan pesan agar migrasi dijalankan)
+   - `sql/60_tambah_dokumentasi_kegiatan.sql` (tabel `dokumentasi_kegiatan`, untuk halaman Social Media > Dokumentasi; tanpa ini halaman menampilkan pesan agar migrasi dijalankan)
 4. Opsional: `sql/40_update_hotel_saudi_arabia_2026_10.sql` untuk mengisi data referensi hotel Arab Saudi (tabelnya sudah dibuat di 00).
    `sql/18` (konversi data pendaftaran lama) hanya perlu di database lama yang masih punya baris status `baru`.
 5. Buat bucket Storage `ig-media` (**public**) di Dashboard → Storage bila memakai IG Scheduler.

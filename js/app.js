@@ -1800,7 +1800,7 @@ function closeInfografisPage() {
 }
 
 // ============================================================
-// 5c. DOKUMENTASI — halaman mandiri (tanpa header/kartu/tab dashboard utama)
+// 5c2. DOKUMENTASI — halaman mandiri (tanpa header/kartu/tab dashboard utama)
 // Isi halaman ada di modul lazy `dokumentasi` (js/modules/dokumentasi.js + css/dokumentasi.css).
 // ============================================================
 let previousActiveTabForDokumentasi = null;

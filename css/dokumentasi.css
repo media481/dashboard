@@ -2,8 +2,11 @@
    MODUL Dokumentasi Kegiatan Umroh (Social Media > Dokumentasi)
    Semua kelas berawalan .dkg-*. LAZY: TIDAK di-<link> di index.html; diunduh bersama modul
    js/modules/dokumentasi.js lewat LAZY_MODULES['dokumentasi'].css (lihat CLAUDE.md "CSS lazy").
-   Jangan memakai kelas .dkg-* di luar modul ini (kerangka panel di index.html hanya memakai kelas inti).
-   Desain: simpel & kompak -- satu kartu per hari, baris kegiatan satu garis, tanpa garis aksen warna.
+   Dipakai oleh halaman mandiri #dokumentasiPageView (index.html) -- halaman itu baru ditampilkan setelah CSS ini termuat
+   (openDokumentasiPage() di app.js), jadi kerangkanya boleh memakai .dkg-page / .dkg-empty / #dkgProgramSelector.
+   Jangan memakai kelas .dkg-* di luar halaman & modul ini.
+   Desain: simpel & kompak -- 4 kartu ringkasan (memakai .metrics/.metric-card inti), satu kartu per hari,
+   baris kegiatan satu garis, tanpa garis aksen warna.
    ============================================================ */
 
 .dkg-loading { padding: 28px 12px; text-align: center; color: var(--ink-soft); font-size: var(--fs-md); }

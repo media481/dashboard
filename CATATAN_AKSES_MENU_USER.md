@@ -10,7 +10,7 @@ Visibilitas menu sidebar ditentukan berlapis, dari yang paling kuat:
 1. **Pengecualian per akun** di tabel `user_menu_access(user_id, menu_key, allowed)` (`sql/34_tambah_akses_menu_user.sql`).
 2. **Aturan per role** di `role_menu_access` (`sql/33_tambah_akses_menu_role.sql`).
 3. **Bawaan** dari `NAV_MENU` (`js/app.js`): menu tanpa baris di kedua tabel mengikuti gate-nya (admin saja / login / selalu).
-   Menu yang belum punya baris di `role_menu_access` (Reminder, Status Kepulangan, IG Scheduler, Infografis) default-nya tersembunyi untuk
+   Menu yang belum punya baris di `role_menu_access` (Reminder, Status Kepulangan, IG Scheduler, Infografis, Dokumentasi) default-nya tersembunyi untuk
    `user`/`guest` sampai admin mengaturnya.
 
 Kedua tabel sudah termasuk di `sql/00_SETUP_LENGKAP_SATU_FILE.sql`; `sql/33` dan `sql/34` hanya perlu dijalankan terpisah di project lama.
