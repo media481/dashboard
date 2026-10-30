@@ -1,14 +1,15 @@
 -- ============================================================================
---  SETUP LENGKAP DASHBOARD AMIRU — 1 FILE, BEBAS URUTAN (v3, idempoten penuh)
+--  SETUP LENGKAP DASHBOARD AMIRU — 1 FILE, BEBAS URUTAN (v4, idempoten penuh)
 -- ============================================================================
 --  Cara pakai:
 --    1. Buka Supabase Dashboard -> SQL Editor -> New Query.
 --    2. Paste SELURUH isi file ini.
 --    3. Klik Run (Ctrl/Cmd+Enter).
---    4. Selesai. TIDAK perlu menjalankan file SQL lainnya (lihat "TIDAK
---       termasuk" di bawah untuk 3 pengecualian).
+--    4. Selesai. TIDAK perlu menjalankan file SQL bernomor lainnya. Satu-satunya
+--       langkah SQL susulan yang opsional adalah mengisi data hotel Arab Saudi
+--       (lihat "TIDAK termasuk" di bawah).
 --
---  File ini adalah KONDISI AKHIR dari migrasi sql/01 s.d. sql/56, dengan
+--  File ini adalah KONDISI AKHIR dari migrasi sql/01 s.d. sql/61, dengan
 --  kebijakan RLS FINAL langsung tertanam:
 --    - 01-17, 19-27 : tabel inti, kolom tambahan, nota/kuitansi, audit log,
 --                     RPC auth lama, rate-limit login, hardening RLS
@@ -19,6 +20,12 @@
 --    - 41-51, 56    : IG Scheduler (akun, post, carousel, log, komentar,
 --                     content planner, rencana tahunan, tasklist, policy storage)
 --    - 52-53, 55    : rekap_program_items & infografis_items (baca publik)
+--    - 57           : programs.poster_version (tombol Refresh Poster)
+--    - 58           : view microblog_publik (Microblog tanpa login)
+--    - 59           : view v_total_bayar (total dibayar per jamaah, di database)
+--    - 60           : dokumentasi_kegiatan (Social Media > Dokumentasi)
+--    - 61           : hardening: RPC password lama dicabut dari PUBLIC + RLS
+--                     login_rate_limit (lihat bagian 14)
 --
 --  TIDAK termasuk (sengaja, bukan skema):
 --    - sql/18  : konversi DATA pendaftaran lama (baru -> deal). Hanya perlu di
@@ -27,7 +34,11 @@
 --                untuk mengisi, jalankan sql/40_update_hotel_saudi_arabia_2026_10.sql
 --                (versi terbaru) setelah file ini.
 --    - Bucket Storage `ig-media` dibuat manual di Dashboard -> Storage
---                (public). Policy hapus file-nya ada di bagian 18 di bawah.
+--                (public). Policy hapus file-nya ada di bagian 18i di bawah.
+--
+--  Migrasi bernomor 01-61 tetap disimpan HANYA untuk project yang sudah berjalan
+--  (jalankan yang nomornya lebih baru dari yang pernah dijalankan). Daftar urutan,
+--  dependensi, dan statusnya ada di sql/README.md.
 --
 --  IDEMPOTEN PENUH: untuk setiap tabel, SEMUA policy lama (nama apa pun —
 --  "Allow ...", "Auth ...", "Pub read ...", "Admin/User ...", dst) dihapus
@@ -52,14 +63,19 @@
 --    assets = tulis admin saja; ig_accounts tidak bisa ditulis client.
 --  * READ: tabel inti (programs, kb_jamaah, pendaftaran, dst) masih PUBLIK
 --    (true) agar halaman depan bisa menampilkan data tanpa login;
---    pembayaran_jamaah, assets, hotel_*, role/user_menu_access = authenticated;
---    tabel IG = admin/user saja.
+--    pembayaran_jamaah, v_total_bayar, assets, hotel_*, role/user_menu_access
+--    = authenticated; tabel IG = admin/user saja; dokumentasi_kegiatan =
+--    admin/user/guest (tulis admin/user).
+--  * View microblog_publik (ig_content_plan tanpa kolom internal) dan tabel
+--    rekap_program_items / infografis_items boleh dibaca anon.
 --  * app_config (password lama) tertutup total untuk anon. RPC login lama
 --    (verify_dashboard_password, set_admin_password) sudah DICABUT dari
 --    anon/authenticated (hanya service_role / Edge Function login-dashboard).
 --  * PERINGATAN (sama seperti sebelumnya): tg_config (bot token) &
 --    snapshot_backup masih publik-read, dan kb_jamaah/pendaftaran (berisi
 --    NIK/KTP/paspor) juga publik-read. Kunci ke authenticated bila mau lebih aman.
+--  * role_menu_access & user_menu_access: tulis terbuka untuk semua role yang
+--    login (pembatasan "hanya admin" hanya di UI). Kunci ke admin bila mau lebih aman.
 -- ============================================================================
 
 create extension if not exists pgcrypto;
@@ -190,6 +206,7 @@ create table if not exists programs (
     tgl_berangkat_aktual date,
     tgl_pulang_aktual date,
     kuota_pax integer not null default 45,
+    poster_version bigint,
     created_at timestamptz not null default now()
 );
 create index if not exists idx_programs_created_at on programs (created_at desc);
@@ -199,10 +216,13 @@ alter table programs add column if not exists status_kepulangan text not null de
 alter table programs add column if not exists tgl_berangkat_aktual date;
 alter table programs add column if not exists tgl_pulang_aktual date;
 alter table programs add column if not exists kuota_pax integer not null default 45;
+alter table programs add column if not exists poster_version bigint;   -- sql/57
 alter table programs drop constraint if exists programs_kuota_pax_check;
 alter table programs add constraint programs_kuota_pax_check check (kuota_pax > 0);
 comment on column programs.kuota_pax is
     'Jumlah kuota pax/kursi program ini (default 45). Dipakai untuk status "terisi/kuota" di tabel Program Umroh.';
+comment on column programs.poster_version is
+    'Timestamp (ms) terakhir tombol "Refresh Poster" ditekan; ditempel sebagai &v=... di URL poster supaya cache browser ikut diperbarui (sql/57).';
 
 alter table programs enable row level security;
 select _setup_drop_policies('programs');
@@ -532,6 +552,30 @@ create trigger trg_lindungi_nomor_kuitansi
     for each row execute function lindungi_nomor_kuitansi();
 
 -- ============================================================================
+-- 10b. V_TOTAL_BAYAR (view; sql/59)
+--      Total dibayar per jamaah dihitung di database, bukan di browser (browser
+--      terpotong diam-diam di 1000 baris & URL .in() kepanjangan). Satu baris per
+--      jamaah, bisa difilter per program lewat program_id. Refund = baris negatif,
+--      jadi SUM() otomatis mengurangi. Dibaca lewat fetchTotalBayar() di js/app.js
+--      dan Edge Function radar-risiko-jamaah.
+--      security_invoker = true -> RLS pembayaran_jamaah & kb_jamaah tetap berlaku
+--      atas nama pemanggil; hanya authenticated yang boleh membaca.
+-- ============================================================================
+create or replace view public.v_total_bayar
+with (security_invoker = true) as
+select
+    p.jamaah_id,
+    j.program_id,
+    sum(p.jumlah)  as total_dibayar,
+    count(*)::int  as jumlah_transaksi
+from public.pembayaran_jamaah p
+join public.kb_jamaah j on j.id = p.jamaah_id
+group by p.jamaah_id, j.program_id;
+
+revoke all on public.v_total_bayar from public, anon;
+grant select on public.v_total_bayar to authenticated;
+
+-- ============================================================================
 -- 11. NOTA_AUDIT_LOG  (ledger append-only)
 -- ============================================================================
 create table if not exists nota_audit_log (
@@ -644,8 +688,9 @@ create policy "Admin/User delete snapshot_backup" on snapshot_backup for delete 
 -- ============================================================================
 -- 14. RPC AUTH LAMA + RATE-LIMIT LOGIN
 --     verify_dashboard_password / set_admin_password sudah DICABUT dari
---     anon & authenticated (sql/28) — hanya service_role (Edge Function
---     login-dashboard) yang masih bisa memanggilnya selama masa transisi.
+--     PUBLIC, anon & authenticated (sql/28 + sql/61) — hanya service_role (Edge
+--     Function login-dashboard) yang masih bisa memanggilnya selama masa transisi.
+--     login_rate_limit memakai RLS tanpa policy (sql/61): tertutup untuk client.
 -- ============================================================================
 create or replace function verify_dashboard_password(p_pass text)
 returns jsonb
@@ -1239,8 +1284,9 @@ select _setup_drop_policies('rekap_program_items');
 create policy "Public read rekap_program_items" on rekap_program_items
     for select to anon, authenticated using (true);
 
--- NOTA: sql/55 mengubah policy tabel ini tetapi TIDAK ADA migrasi yang membuat
--- tabelnya — kolom di bawah mengikuti rekap_program_items & query di js/app.js
+-- infografis_items: sql/55 mengubah policy tabel ini; sebelum sql/55 versi
+-- terbaru, tidak ada migrasi yang membuat tabelnya (dibuat manual). Kolom di bawah
+-- mengikuti rekap_program_items & query di js/app.js
 -- (select id, name, thumb_url, full_url, drive_updated_at).
 create table if not exists infografis_items (
     id               text primary key,          -- ID file Google Drive
@@ -1257,6 +1303,127 @@ create policy "Public read infografis_items" on infografis_items
     for select to anon, authenticated using (true);
 
 -- ============================================================================
+-- 20. DOKUMENTASI_KEGIATAN  (Social Media > Dokumentasi; sql/60)
+--     Satu baris = satu kegiatan dalam perjalanan umroh sebuah program, dari
+--     keberangkatan sampai kepulangan: jadwal per hari, shot list, jenis media,
+--     status dokumentasi (rencana -> sudah_diambil -> sudah_diposting / dilewati),
+--     link Drive, dan content_plan_id (terisi saat kegiatan "dijadikan ide
+--     konten" = baris baru di ig_content_plan). Butuh programs & ig_content_plan.
+--     RLS: baca admin/user/guest; tulis admin/user (pola sql/29 & sql/44).
+--     Menu baru `dokumentasi` default TERSEMBUNYI untuk user/guest sampai Admin
+--     mengizinkannya di Pengaturan User > Akses Menu.
+-- ============================================================================
+create table if not exists dokumentasi_kegiatan (
+    id uuid primary key default gen_random_uuid(),
+    program_id uuid not null references programs(id) on delete cascade,
+
+    hari_ke integer not null default 1,          -- hari ke-N perjalanan (1 = hari keberangkatan)
+    tanggal date,                                -- tanggal kegiatan (dihitung dari tgl berangkat, boleh diubah)
+    waktu text,                                  -- teks bebas: "05:30", "Ba'da Subuh", "Siang"
+    fase text not null default 'lainnya',        -- tahap perjalanan
+    kategori text not null default 'lainnya',    -- jenis kegiatan
+    lokasi text,                                 -- mis. "Masjid Nabawi", "Bandara Juanda"
+    judul text not null,                         -- nama kegiatan
+    deskripsi text,                              -- gambaran singkat kegiatan
+
+    jenis_media text[] not null default '{}',    -- foto / video / reels / story / testimoni
+    shot_list text,                              -- apa saja yang perlu diambil
+    pilar text,                                  -- pilar konten IG yang cocok (IG_PILLARS)
+    ide_konten text,                             -- ide konten turunan dari kegiatan ini
+
+    status text not null default 'rencana',      -- rencana -> sudah_diambil -> sudah_diposting (atau dilewati)
+    link_drive text,                             -- folder/file hasil dokumentasi
+    catatan text,                                -- catatan lapangan
+    urutan integer not null default 0,           -- urutan dalam satu hari
+
+    content_plan_id uuid references ig_content_plan(id) on delete set null,
+
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+alter table dokumentasi_kegiatan drop constraint if exists dokumentasi_kegiatan_hari_ke_check;
+alter table dokumentasi_kegiatan add constraint dokumentasi_kegiatan_hari_ke_check
+    check (hari_ke between 1 and 60);
+
+alter table dokumentasi_kegiatan drop constraint if exists dokumentasi_kegiatan_fase_check;
+alter table dokumentasi_kegiatan add constraint dokumentasi_kegiatan_fase_check
+    check (fase in ('persiapan', 'keberangkatan', 'madinah', 'makkah', 'kepulangan', 'lainnya'));
+
+alter table dokumentasi_kegiatan drop constraint if exists dokumentasi_kegiatan_kategori_check;
+alter table dokumentasi_kegiatan add constraint dokumentasi_kegiatan_kategori_check
+    check (kategori in ('perjalanan', 'ibadah', 'ziarah', 'hotel', 'kebersamaan', 'lainnya'));
+
+alter table dokumentasi_kegiatan drop constraint if exists dokumentasi_kegiatan_status_check;
+alter table dokumentasi_kegiatan add constraint dokumentasi_kegiatan_status_check
+    check (status in ('rencana', 'sudah_diambil', 'sudah_diposting', 'dilewati'));
+
+alter table dokumentasi_kegiatan drop constraint if exists dokumentasi_kegiatan_judul_check;
+alter table dokumentasi_kegiatan add constraint dokumentasi_kegiatan_judul_check
+    check (char_length(btrim(judul)) > 0);
+
+create index if not exists idx_dokumentasi_kegiatan_program
+    on dokumentasi_kegiatan (program_id, hari_ke, urutan);
+create index if not exists idx_dokumentasi_kegiatan_status
+    on dokumentasi_kegiatan (status);
+
+alter table dokumentasi_kegiatan enable row level security;
+select _setup_drop_policies('dokumentasi_kegiatan');
+create policy "Read dokumentasi_kegiatan" on dokumentasi_kegiatan
+    for select using (current_dashboard_role() in ('admin', 'user', 'guest'));
+create policy "Admin/User insert dokumentasi_kegiatan" on dokumentasi_kegiatan
+    for insert with check (current_dashboard_role() in ('admin', 'user'));
+create policy "Admin/User update dokumentasi_kegiatan" on dokumentasi_kegiatan
+    for update using (current_dashboard_role() in ('admin', 'user'));
+create policy "Admin/User delete dokumentasi_kegiatan" on dokumentasi_kegiatan
+    for delete using (current_dashboard_role() in ('admin', 'user'));
+
+-- Trigger updated_at
+create or replace function set_updated_at_dokumentasi_kegiatan()
+returns trigger as $$
+begin
+    new.updated_at = now();
+    return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_dokumentasi_kegiatan_updated_at on dokumentasi_kegiatan;
+create trigger trg_dokumentasi_kegiatan_updated_at
+    before update on dokumentasi_kegiatan
+    for each row execute function set_updated_at_dokumentasi_kegiatan();
+
+-- ============================================================================
+-- 21. MICROBLOG_PUBLIK (view; sql/58)
+--     Tile/modal "Microblog" di dashboard utama boleh dibuka TANPA login (guest &
+--     pengunjung anonim, baca saja). ig_content_plan sendiri hanya untuk admin &
+--     user (bagian 18f), jadi dibuat VIEW yang hanya memuat kolom tampilan dan
+--     menyembunyikan rencana berstatus 'dilewati' (canva_url, ig_post_id,
+--     sumber_program_id TIDAK ikut). View berjalan dengan hak pemilik (TANPA
+--     security_invoker), jadi bisa membaca ig_content_plan walau anon tidak
+--     punya policy di tabelnya. Kolom yang dipakai (pilar, tahap, teks_gambar,
+--     tema_minggu) sudah dibuat di bagian 18f.
+-- ============================================================================
+drop view if exists public.microblog_publik;
+
+create view public.microblog_publik as
+select
+    id,
+    tanggal,
+    tema,
+    tipe_konten,
+    draft_caption,
+    status,
+    pilar,
+    tahap,
+    teks_gambar,
+    tema_minggu
+from public.ig_content_plan
+where status <> 'dilewati';
+
+revoke all on public.microblog_publik from public;
+grant select on public.microblog_publik to anon, authenticated;
+
+-- ============================================================================
 -- Bersihkan helper sementara
 -- ============================================================================
 drop function if exists _setup_drop_policies(text);
@@ -1271,27 +1438,6 @@ drop function if exists _setup_drop_policies(text);
 --  - Buat bucket Storage `ig-media` (public) bila memakai IG Scheduler.
 --  - Opsional: isi data hotel lewat sql/40_update_hotel_saudi_arabia_2026_10.sql
 --  - Menu sidebar yang belum ada di role_menu_access (todocs, kepulangan,
---    igScheduler, infografis) default-nya TERSEMBUNYI untuk user/guest sampai
---    Admin mengaturnya di Userman > Akses Menu Sidebar.
+--    igScheduler, infografis, dokumentasi) default-nya TERSEMBUNYI untuk
+--    user/guest sampai Admin mengaturnya di Pengaturan User > Akses Menu.
 -- ============================================================================
-
--- 18x. Microblog publik (view tanpa kolom internal, bisa dibaca anon/guest) -- sql/58
-drop view if exists public.microblog_publik;
-
-create view public.microblog_publik as
-select
-  id,
-  tanggal,
-  tema,
-  tipe_konten,
-  draft_caption,
-  status,
-  pilar,
-  tahap,
-  teks_gambar,
-  tema_minggu
-from public.ig_content_plan
-where status <> 'dilewati';
-
-revoke all on public.microblog_publik from public;
-grant select on public.microblog_publik to anon, authenticated;

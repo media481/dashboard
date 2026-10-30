@@ -23,9 +23,13 @@ create index if not exists idx_pendaftaran_created_at on pendaftaran (created_at
 
 alter table pendaftaran enable row level security;
 
+drop policy if exists "Allow read pendaftaran" on pendaftaran;
 create policy "Allow read pendaftaran" on pendaftaran for select using (true);
+drop policy if exists "Allow insert pendaftaran" on pendaftaran;
 create policy "Allow insert pendaftaran" on pendaftaran for insert with check (true);
+drop policy if exists "Allow update pendaftaran" on pendaftaran;
 create policy "Allow update pendaftaran" on pendaftaran for update using (true);
+drop policy if exists "Allow delete pendaftaran" on pendaftaran;
 create policy "Allow delete pendaftaran" on pendaftaran for delete using (true);
 
 -- Selesai. Setelah ini fitur "Form Pendaftaran" di menu sidebar siap dipakai.

@@ -3,8 +3,8 @@
 Urutan supaya dashboard jalan (baca data **dan** bisa login/tulis). Kondisi terkini: login memakai **Supabase Auth**,
 frontend dideploy ke **Cloudflare Workers Static Assets**, dan ada satu langkah build ringan (`npm run release`).
 
-Ringkasan jalur SQL: `sql/00_SETUP_LENGKAP_SATU_FILE.sql` = kondisi akhir migrasi 01-56 dan 58 (idempoten, **bebas urutan**).
-Dua migrasi **tidak** ikut di dalamnya dan wajib dijalankan sesudahnya: `57` dan `59`.
+Ringkasan jalur SQL: `sql/00_SETUP_LENGKAP_SATU_FILE.sql` = kondisi akhir migrasi 01-61 (idempoten, **bebas urutan**). Untuk project baru
+itu satu-satunya file SQL yang wajib. Urutan, dependensi, dan status tiap migrasi: `sql/README.md`.
 
 ---
 
@@ -32,10 +32,11 @@ Jangan ubah format deklarasinya (`const SUPABASE_URL = "..."`).
 
 1. Buka Supabase Dashboard → project yang **sama** dengan `js/app.js` → **SQL Editor**.
 2. New Query → paste isi `sql/00_SETUP_LENGKAP_SATU_FILE.sql` → **Run**. Tidak boleh ada error merah (idempoten, aman diulang).
-3. Jalankan **dua migrasi yang tidak ada di 00**, masing-masing New Query → Run:
-   - `sql/57_tambah_programs_poster_version.sql` (kolom `programs.poster_version`, dipakai tombol Refresh Poster)
-   - `sql/59_tambah_view_total_bayar.sql` (view `v_total_bayar`; **wajib sebelum frontend dipakai**, kalau tidak total bayar dan status Lunas/DP gagal dimuat)
-   - `sql/60_tambah_dokumentasi_kegiatan.sql` (tabel `dokumentasi_kegiatan`, untuk halaman Social Media > Dokumentasi; tanpa ini halaman menampilkan pesan agar migrasi dijalankan)
+3. Selesai untuk skema: `00` sudah memuat kolom `programs.poster_version` (57), view `microblog_publik` (58), view `v_total_bayar` (59, **wajib
+   ada sebelum frontend dipakai**, kalau tidak total bayar dan status Lunas/DP gagal dimuat), tabel `dokumentasi_kegiatan` (60), dan hardening
+   RPC login lama (61). Tidak ada migrasi bernomor lain yang perlu dijalankan.
+   Project yang SUDAH berjalan dan tidak memakai `00`: jalankan hanya migrasi yang nomornya lebih baru dari yang terakhir dijalankan
+   (lihat `sql/README.md`); untuk project dengan kondisi tidak jelas, menjalankan `00` ulang aman tetapi menghapus semua policy lama (termasuk buatan manual).
 4. Opsional: `sql/40_update_hotel_saudi_arabia_2026_10.sql` untuk mengisi data referensi hotel Arab Saudi (tabelnya sudah dibuat di 00).
    `sql/18` (konversi data pendaftaran lama) hanya perlu di database lama yang masih punya baris status `baru`.
 5. Buat bucket Storage `ig-media` (**public**) di Dashboard → Storage bila memakai IG Scheduler.
@@ -89,6 +90,10 @@ supabase functions deploy ig-refresh-token --no-verify-jwt
 supabase functions deploy ig-sync-comments --no-verify-jwt
 supabase functions deploy ig-comment-action
 supabase functions deploy ig-manual-retry
+
+# Opsional
+supabase functions deploy radar-risiko-jamaah       # butuh view v_total_bayar (sudah di sql/00)
+supabase functions deploy admin-change-password     # tidak dipanggil app.js saat ini
 ```
 `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY` otomatis tersedia di runtime Edge Function.
 
@@ -142,8 +147,11 @@ kalau ada policy buatan manual atau migrasi yang belum dijalankan, jadi cek di D
 | Item | Status | Keterangan |
 |---|---|---|
 | Password lama di `app_config` | 🟢 | Tertutup total untuk anon; login memakai Supabase Auth |
+| RPC login lama (`verify_dashboard_password`, `set_admin_password`) dan `login_rate_limit` | 🟢 di `sql/00` | EXECUTE dicabut dari `PUBLIC`/`anon`/`authenticated` (hanya `service_role`), RLS `login_rate_limit` aktif. Project yang dibangun lewat migrasi bernomor dan belum menjalankan `00` ini: jalankan `sql/61`, karena `sql/28` hanya mencabut dari `anon, authenticated` sehingga hak lewat `PUBLIC` masih tersisa (`set_admin_password` tanpa auth guard) |
 | Write sembarangan (anon) | 🟢 | Tulis butuh role `admin`/`user` (`current_dashboard_role()`); guest read-only; hapus `programs` dan `pembayaran_jamaah` khusus admin; `assets` tulis admin saja |
-| `pembayaran_jamaah`, `assets`, `hotel_*`, akses menu | 🟢 | Baca hanya `authenticated` |
+| `pembayaran_jamaah`, `v_total_bayar`, `assets`, `hotel_*`, akses menu | 🟢 | Baca hanya `authenticated` (`v_total_bayar` `security_invoker`, mengikuti RLS tabel dasarnya) |
+| `dokumentasi_kegiatan` | 🟢 | Baca admin/user/guest, tulis admin/user (`current_dashboard_role()`); anon tidak bisa |
+| `microblog_publik` (view), `rekap_program_items`, `infografis_items` | 🟢 | Sengaja boleh dibaca anon. View `microblog_publik` hanya memuat kolom tampilan dan menyembunyikan status `dilewati`; tabel Drive hanya nama file + URL gambar yang memang publik |
 | **`role_menu_access`, `user_menu_access`** | 🟡 | TULIS terbuka untuk semua `authenticated` (termasuk `guest`) lewat API; hanya UI yang membatasinya ke admin. Perketat ke `current_dashboard_role() = 'admin'` bila perlu |
 | Tabel IG (`ig_*`) | 🟢 | Admin/user saja (sql/51); `ig_accounts` tidak bisa ditulis client |
 | **Telegram bot token (`tg_config`)** | 🔴 | Baca masih publik (`select using (true)`) dan token dibaca client, jadi bisa diambil lewat REST API publik. Kunci ke `authenticated` bila mau aman (fitur Telegram jadi butuh login) |
@@ -160,7 +168,7 @@ kalau ada policy buatan manual atau migrasi yang belum dijalankan, jadi cek di D
 ## 7. RINGKASAN PERINTAH (copy-paste)
 
 ```bash
-# 1. (SQL Editor) jalankan berurutan: sql/00_SETUP_LENGKAP_SATU_FILE.sql, sql/57_..., sql/59_..., sql/60_...
+# 1. (SQL Editor) jalankan sql/00_SETUP_LENGKAP_SATU_FILE.sql (cukup satu file; kondisi akhir migrasi 01-61)
 #    (opsional: sql/40_update_hotel_saudi_arabia_2026_10.sql)
 
 # 2. akun login (lokal, sekali)

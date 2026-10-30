@@ -14,7 +14,7 @@ Kolom **Auth** menunjukkan siapa yang boleh memanggil. Kolom **Deploy** menunjuk
 
 | Fungsi | Kegunaan | Auth | Deploy |
 |---|---|---|---|
-| `admin-create-user` | Membuat akun baru (role `admin`/`user`/`guest`) dari Pengaturan User. Butuh `sql/30_tambah_kelola_user.sql` | Bearer token admin | `supabase functions deploy admin-create-user` |
+| `admin-create-user` | Membuat akun baru (role `admin`/`user`/`guest`) dari Pengaturan User. Butuh kolom `dashboard_profiles.email` (`sql/30`, sudah di `sql/00`) | Bearer token admin | `supabase functions deploy admin-create-user` |
 | `admin-reset-user-password` | Admin mengganti password user lain tanpa tahu password lama | Bearer token admin | `supabase functions deploy admin-reset-user-password` |
 | `admin-change-password` | Mengganti password akun bersama per role (`admin`/`user`/`guest`). Tidak dipanggil `app.js` saat ini | Bearer token admin | `supabase functions deploy admin-change-password` |
 
@@ -49,7 +49,7 @@ URL `send-telegram` ditempel manual di form **Pengaturan Telegram** (field "Edge
 |---|---|---|---|
 | `radar-risiko-jamaah` | Menilai risiko tiap jamaah (pembayaran, visa, dokumen, paspor) dan tiap program yang berangkat dalam `horizon_hari` (bawaan 60). Mengembalikan skor, alasan, draf pengingat WA (tautan `wa.me` siap klik), dan ringkasan teks. Opsional kirim ringkasan ke Telegram. Hanya membaca data. Body (semua opsional): `{ program_id, horizon_hari, kirim_telegram, hanya_jika_ada_masalah }` | Bearer token admin, atau service role key (cron) | `supabase functions deploy radar-risiko-jamaah` |
 
-Butuh `sql/59_tambah_view_total_bayar.sql`. Skor memakai aturan tetap (bukan tebakan AI), bobot naik mendekati hari berangkat; levelnya `kritis` (>= 70), `tinggi` (>= 40), `sedang` (>= 20), `aman`. Daftar dokumen, aturan paspor 7 bulan, dan pemilihan harga adalah salinan dari `js/app.js`; perbarui juga di fungsi ini kalau berubah. Telegram dikirim ke penerima bertipe `radar`; kalau tidak ada, ke penerima bertipe `program`. Tes: `npm run test:edge`.
+Butuh view `v_total_bayar` (sudah di `sql/00`; project lama: `sql/59_tambah_view_total_bayar.sql`). Skor memakai aturan tetap (bukan tebakan AI), bobot naik mendekati hari berangkat; levelnya `kritis` (>= 70), `tinggi` (>= 40), `sedang` (>= 20), `aman`. Daftar dokumen, aturan paspor 7 bulan, dan pemilihan harga adalah salinan dari `js/app.js`; perbarui juga di fungsi ini kalau berubah. Telegram dikirim ke penerima bertipe `radar`; kalau tidak ada, ke penerima bertipe `program`. Tes: `npm run test:edge`.
 
 ### Instagram
 
@@ -68,6 +68,32 @@ Selama `IG_AUTOPUBLISH_ENABLED = false` di `js/app.js` (kondisi saat ini), front
 ### Legacy
 
 `login-dashboard` (login berbasis password + JWT buatan sendiri) sudah digantikan Supabase Auth. Fungsi ini sudah tidak dipakai dan sebaiknya di-undeploy. Bila sudah, hapus juga secret `DASHBOARD_JWT_SECRET` dan `DASHBOARD_JWT_KID`.
+Fungsi ini memanggil RPC `verify_dashboard_password()` dengan service role. Sejak `sql/00` (v4) dan `sql/61`, RPC itu hanya bisa dipanggil `service_role`, jadi
+client (anon key) tidak lagi bisa memanggilnya langsung.
+
+## Ketergantungan database
+
+Fungsi yang mengakses database memakai `SUPABASE_SERVICE_ROLE_KEY`, jadi **melewati RLS**: yang menentukan fungsi berjalan atau tidak adalah
+tabel/kolom/view-nya ada, bukan policy-nya (`generate-wa-caption`, `scan-poster-ocr`, dan `send-telegram` tidak menyentuh database). Semua objek di bawah sudah dibuat oleh `sql/00_SETUP_LENGKAP_SATU_FILE.sql` (v4); kolom "Migrasi" hanya berguna untuk project
+yang dibangun lewat migrasi bernomor (lihat `sql/README.md`). Daftar ini hasil pembacaan kode `index.ts` tiap fungsi.
+
+| Fungsi | Tabel / view / RPC yang diakses | Migrasi |
+|---|---|---|
+| `admin-create-user`, `admin-reset-user-password`, `admin-change-password` | `dashboard_profiles` (cek role admin; `admin-create-user` juga menulis profil baru), Auth Admin API | 28, 30 |
+| `generate-ig-caption`, `generate-ig-content-plan`, `generate-ig-year-plan` | `dashboard_profiles` (cek role admin/user). Isi konten dikirim client, fungsi tidak membaca tabel konten | 28 |
+| `generate-wa-caption`, `scan-poster-ocr`, `send-telegram` | Tidak ada (token Telegram dikirim client dari `tg_config`) | - |
+| `sync-rekap-program` | `dashboard_profiles`, `rekap_program_items` (tulis) | 28, 52 |
+| `radar-risiko-jamaah` | `dashboard_profiles`, `kb_jamaah`, `programs`, view `v_total_bayar`, `tg_config` (penerima Telegram) | 28, 59 |
+| `ig-publish` | `dashboard_profiles`, `ig_accounts`, `ig_posts`, `ig_post_media`, `ig_publish_logs` | 28, 41, 42 |
+| `ig-refresh-token` | `ig_accounts`, `ig_publish_logs` | 41 |
+| `ig-sync-comments` | `ig_accounts`, `ig_posts`, `ig_comments` (tulis), `tg_config` | 41, 43 |
+| `ig-comment-action` | `dashboard_profiles`, `ig_accounts`, `ig_comments` | 28, 41, 43 |
+| `ig-manual-retry` | `ig_posts` (lalu memanggil `ig-publish`) | 41 |
+| `login-dashboard` (legacy) | RPC `verify_dashboard_password` (hanya `service_role`) | 25, 61 |
+| `sync-infografis` (source tidak ada di repo) | Diduga `infografis_items` (tulis); tabel dibuat `sql/00` / `sql/55` | 55 |
+
+`parse-broadcast-ai`, `generate-tg-reminder`, dan `generate-payment-reminder-wa` juga dipanggil `app.js` tanpa source di repo, jadi ketergantungan
+databasenya tidak bisa diaudit dari sini.
 
 ## Secret dan environment
 
@@ -110,7 +136,7 @@ done
 
 # Fungsi yang wajib JWT user login
 for f in admin-create-user admin-reset-user-password admin-change-password \
-         sync-rekap-program ig-comment-action ig-manual-retry; do
+         sync-rekap-program radar-risiko-jamaah ig-comment-action ig-manual-retry; do
   supabase functions deploy $f
 done
 ```

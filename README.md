@@ -46,7 +46,7 @@ Cloudflare Worker cron (scheduler/) ── tiap 15 menit ───────�
                                     └─ Senin 09:00 UTC ─────────  ig-refresh-token
 ```
 
-Detail Edge Function ada di [`supabase/functions/README.md`](supabase/functions/README.md). Detail modul Instagram ada di [`README_ig_scheduler.md`](README_ig_scheduler.md).
+Detail Edge Function (termasuk tabel yang dibaca tiap fungsi) ada di [`supabase/functions/README.md`](supabase/functions/README.md). Skema database ada di [`sql/README.md`](sql/README.md). Detail modul Instagram ada di [`README_ig_scheduler.md`](README_ig_scheduler.md).
 
 ## Struktur repo
 
@@ -64,8 +64,8 @@ katalog-flip.html       Versi flipbook katalog publik, juga mandiri
 manifest.json           Konfigurasi PWA
 service-worker.js       Aset ber-hash cache-first, sisanya network-first; CACHE_NAME dinaikkan tiap rilis
 icons/, assets/         Ikon PWA dan logo (aktif: assets/logo-amirutour.png)
-sql/                    Skema dan migrasi (00 = setup satu file untuk 01-56 dan 58; 57, 59, dan 60 dijalankan terpisah; 18, 39, 40 data/konversi)
-supabase/functions/     16 Edge Function (Deno/TypeScript) + _shared/gemini.ts (acuan)
+sql/                    Skema dan migrasi 00-61 (00 = setup satu file, kondisi akhir 01-61; 18, 39, 40 = data/konversi, opsional). Urutan dan dependensi: sql/README.md
+supabase/functions/     17 folder Edge Function (16 aktif + login-dashboard legacy; Deno/TypeScript) + _shared/gemini.ts (acuan)
 scheduler/              Cloudflare Worker cron untuk IG Scheduler (deploy terpisah)
 apps-script/            Google Apps Script untuk listing folder Drive (Infografis, Rekap Program)
 scripts/                build.mjs, stamp-versions.mjs (rilis), setup-auth-accounts.mjs (sekali jalan), auto-generate-konten.mjs (workflow konten IG)
@@ -85,7 +85,7 @@ wrangler.jsonc          Konfigurasi deploy frontend ke Cloudflare
 
 Butuh: akun Supabase, akun Cloudflare, Node.js 18+, dan Supabase CLI (`npm i -g supabase`).
 
-1. **Database.** Di Supabase SQL Editor, jalankan `sql/00_SETUP_LENGKAP_SATU_FILE.sql` (idempoten, aman diulang; isinya kondisi akhir migrasi 01-56 dan 58). Lalu jalankan `sql/57_tambah_programs_poster_version.sql` dan `sql/59_tambah_view_total_bayar.sql`, dua migrasi yang BELUM termasuk di 00 (59 wajib ada sebelum frontend dipakai). Opsional: `sql/40_update_hotel_saudi_arabia_2026_10.sql` untuk mengisi data hotel Saudi. Untuk project yang sudah berjalan, jalankan hanya migrasi baru dari `sql/` sesuai nomor urut.
+1. **Database.** Di Supabase SQL Editor, jalankan `sql/00_SETUP_LENGKAP_SATU_FILE.sql` (idempoten, aman diulang; isinya kondisi akhir migrasi 01-61, termasuk view `v_total_bayar` yang wajib ada sebelum frontend dipakai). Itu satu-satunya file SQL yang wajib. Opsional: `sql/40_update_hotel_saudi_arabia_2026_10.sql` untuk mengisi data hotel Saudi. Untuk project yang sudah berjalan, jalankan hanya migrasi yang nomornya lebih baru dari yang pernah dijalankan; urutan, dependensi, dan status tiap migrasi ada di [`sql/README.md`](sql/README.md).
 2. **Akun login.** Tabel `dashboard_profiles` dan helper role sudah ada di `sql/00` (isi `sql/28` tercakup di sana; `sql/28` hanya dijalankan terpisah di project lama yang belum bermigrasi dari login berbasis password). Buat 4 akun awal dengan `scripts/setup-auth-accounts.mjs` (sekali saja, butuh service role key, jangan pernah ditaruh di kode client). Akun berikutnya dibuat dari Pengaturan User.
 3. **Edge Function.** Deploy fungsi yang dibutuhkan dan set secret-nya. Lihat [`supabase/functions/README.md`](supabase/functions/README.md).
 4. **Konfigurasi frontend.** Isi `SUPABASE_URL` dan `SUPABASE_ANON_KEY` di `js/app.js` (bagian "Supabase Config", baris 4-5) dengan project yang **sama** dengan tempat SQL dan fungsi dideploy, lalu `npm run release`. Project yang tidak cocok menyebabkan error `PGRST301`.
@@ -151,7 +151,8 @@ Tes memuat `app.js` dan modul lewat `vm` dengan mock DOM dan Supabase tiruan, ta
 |---|---|
 | `CLAUDE.md` | Konteks mendalam untuk pengembangan (modul lazy, build dan rilis, peta `app.js`, alur pembayaran, aturan Edge Function) |
 | `CHECKLIST_DEPLOY.md` | Urutan setup dan deploy (SQL, akun Supabase Auth, Edge Function, frontend Cloudflare) dan catatan keamanan |
-| `supabase/functions/README.md` | Daftar Edge Function, auth, secret, deploy, dan ketidaksesuaian yang perlu ditindaklanjuti |
+| `sql/README.md` | Urutan, dependensi, dan status tiap migrasi SQL (00-61), aturan menambah migrasi, dan cara skema diverifikasi |
+| `supabase/functions/README.md` | Daftar Edge Function, auth, secret, ketergantungan database, deploy, dan ketidaksesuaian yang perlu ditindaklanjuti |
 | `INSTAGRAM_AUTOUPLOAD_SETUP.md`, `README_ig_scheduler.md` | Setup dan arsitektur IG Scheduler |
 | `pola-konten.md`, `CHECKLIST_TAHUNAN_IG.md` | Pola konten Instagram dan checklist tahunan generator |
 | `tests/README.md` | Isi dan cara menjalankan suite tes |
@@ -160,5 +161,5 @@ Tes memuat `app.js` dan modul lewat `vm` dengan mock DOM dan Supabase tiruan, ta
 ## Keamanan
 
 - `SUPABASE_SERVICE_ROLE_KEY` hanya untuk server (Edge Function, Worker, skrip setup), tidak pernah di client atau repo.
-- Anon key di `js/app.js` memang publik. Perlindungan data ada di RLS (`sql/26`, `27`, `29`, `51`; kondisi akhirnya ada di `sql/00`).
+- Anon key di `js/app.js` memang publik. Perlindungan data ada di RLS (`sql/26`, `27`, `29`, `51`, `61`; kondisi akhirnya ada di `sql/00`).
 - `CHECKLIST_DEPLOY.md` bagian 6 mencatat risiko yang masih terbuka menurut `sql/00`: `tg_config` (token bot Telegram), `snapshot_backup`, serta tabel jamaah (`kb_jamaah`, `pendaftaran`) masih bisa dibaca publik, dan `jamaah_audit_log` menerima insert tanpa login. Verifikasi kebijakan RLS di database yang berjalan.

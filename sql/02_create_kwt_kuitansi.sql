@@ -20,6 +20,9 @@ alter table kwt_kuitansi enable row level security;
 -- Samakan dengan pola RLS tabel kb_jamaah/programs yang sudah ada di project ini
 -- (akses langsung via anon key dari sisi client). Sesuaikan bila kebijakan RLS
 -- project Anda berbeda / lebih ketat.
+drop policy if exists "Allow read kwt_kuitansi" on kwt_kuitansi;
 create policy "Allow read kwt_kuitansi" on kwt_kuitansi for select using (true);
+drop policy if exists "Allow insert kwt_kuitansi" on kwt_kuitansi;
 create policy "Allow insert kwt_kuitansi" on kwt_kuitansi for insert with check (true);
+drop policy if exists "Allow delete kwt_kuitansi" on kwt_kuitansi;
 create policy "Allow delete kwt_kuitansi" on kwt_kuitansi for delete using (true);

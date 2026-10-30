@@ -19,6 +19,10 @@
 -- tetap berlaku atas nama pemanggil (hanya user yang login yang bisa baca,
 -- sama seperti sebelumnya, lihat 27_hardening_rls_pembayaran_select.sql).
 -- Refund = baris negatif, jadi SUM() otomatis mengurangi total.
+--
+-- Butuh pembayaran_jamaah dan kb_jamaah. Sudah termasuk di
+-- sql/00_SETUP_LENGKAP_SATU_FILE.sql (v4); file ini hanya untuk project yang
+-- sudah berjalan. Dipakai juga oleh Edge Function radar-risiko-jamaah.
 -- ============================================================
 
 create or replace view public.v_total_bayar

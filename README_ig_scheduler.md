@@ -45,7 +45,7 @@ Yang kedua menambah tabel `ig_post_media` (item-item carousel, urutan via kolom 
 Yang ketiga menambah tabel `ig_comments` — lihat bagian "Fitur Komentar" di bawah.
 Yang keempat menambah tabel `ig_content_plan` — lihat bagian "Content Planner Bulanan (AI)" di bawah.
 
-Migrasi lanjutan (45-51 dan 56: planner, pola Amiru, tema minggu, rencana tahunan, tasklist, policy storage, hardening RLS, tautan Canva) dibahas di bagian fiturnya masing-masing di bawah. Di project baru Anda tidak perlu menjalankan satu per satu: `sql/00_SETUP_LENGKAP_SATU_FILE.sql` sudah memuat 41-51 dan 56 (bucket `ig-media` tetap dibuat manual). `sql/58` (view `microblog_publik`) juga sudah ada di 00.
+Migrasi lanjutan (45-51 dan 56: planner, pola Amiru, tema minggu, rencana tahunan, tasklist, policy storage, hardening RLS, tautan Canva) dibahas di bagian fiturnya masing-masing di bawah. Di project baru Anda tidak perlu menjalankan satu per satu: `sql/00_SETUP_LENGKAP_SATU_FILE.sql` (v4) sudah memuat 41-51 dan 56 (bucket `ig-media` tetap dibuat manual). `sql/58` (view `microblog_publik`) dan `sql/60` (tabel `dokumentasi_kegiatan`, terhubung ke `ig_content_plan`) juga sudah ada di 00. Urutan migrasi: `sql/README.md`.
 
 ### 2. Buat Storage Bucket
 

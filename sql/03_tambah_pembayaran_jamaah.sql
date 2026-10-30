@@ -22,9 +22,13 @@ create index if not exists idx_pembayaran_jamaah_tanggal on pembayaran_jamaah (t
 
 alter table pembayaran_jamaah enable row level security;
 
+drop policy if exists "Allow read pembayaran_jamaah" on pembayaran_jamaah;
 create policy "Allow read pembayaran_jamaah" on pembayaran_jamaah for select using (true);
+drop policy if exists "Allow insert pembayaran_jamaah" on pembayaran_jamaah;
 create policy "Allow insert pembayaran_jamaah" on pembayaran_jamaah for insert with check (true);
+drop policy if exists "Allow update pembayaran_jamaah" on pembayaran_jamaah;
 create policy "Allow update pembayaran_jamaah" on pembayaran_jamaah for update using (true);
+drop policy if exists "Allow delete pembayaran_jamaah" on pembayaran_jamaah;
 create policy "Allow delete pembayaran_jamaah" on pembayaran_jamaah for delete using (true);
 
 -- Selesai. Setelah ini fitur "Pembayaran & Cicilan" di menu sidebar siap dipakai.

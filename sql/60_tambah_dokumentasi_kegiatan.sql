@@ -15,8 +15,9 @@
 --   baca  : admin, user, guest (guest read-only)
 --   tulis : admin, user
 --
--- Jalankan SETELAH sql/00_SETUP_LENGKAP_SATU_FILE.sql (butuh tabel programs
--- dan ig_content_plan). Tidak termasuk di 00. Idempoten, aman diulang.
+-- Butuh tabel programs dan ig_content_plan (sql/44). Sudah termasuk di
+-- sql/00_SETUP_LENGKAP_SATU_FILE.sql (v4); file ini hanya untuk project yang
+-- sudah berjalan. Idempoten, aman diulang.
 -- ============================================================
 
 create table if not exists dokumentasi_kegiatan (

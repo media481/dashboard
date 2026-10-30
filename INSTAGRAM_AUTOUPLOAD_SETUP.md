@@ -118,10 +118,11 @@ jalan, idempotent — aman diulang):
 --    isi dari sql/42_tambah_ig_carousel.sql (jalankan SETELAH file di atas)
 ```
 
-Kalau kamu jalankan `sql/00_SETUP_LENGKAP_SATU_FILE.sql` (lihat
-`CHECKLIST_DEPLOY.md`), cek dulu apakah kedua migrasi ini sudah
-tergabung di sana — kalau belum, jalankan manual dari file aslinya:
-`sql/41_tambah_ig_scheduler.sql` lalu `sql/42_tambah_ig_carousel.sql`.
+Kalau kamu menjalankan `sql/00_SETUP_LENGKAP_SATU_FILE.sql` (lihat
+`CHECKLIST_DEPLOY.md`), kedua migrasi ini (dan seluruh migrasi IG 43-51, 56)
+sudah tergabung di sana, jadi langkah ini tidak perlu. Jalankan file aslinya
+(`sql/41_tambah_ig_scheduler.sql` lalu `sql/42_tambah_ig_carousel.sql`) hanya di
+project lama yang belum punya tabelnya. Urutan lengkap: `sql/README.md`.
 
 ### Masukkan akun IG (ganti isi tanda kurung sudut)
 

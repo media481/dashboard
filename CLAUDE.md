@@ -174,15 +174,19 @@ service-worker.js     ← cache-first untuk aset ber-hash (daftarnya dibaca dari
                         `CACHE_NAME` (saat ini `amiru-repo-cache-v159`) dinaikkan tiap rilis
 icons/                ← 12 file: 9 PNG dirujuk manifest.json (dan diprecache `APP_SHELL`), `icon-180.png` (apple-touch-icon di index.html),
                         `icon.svg` + `icon-maskable.svg` (sumber vektor)
-sql/                  ← skema & migrasi bernomor 00-60. `00_SETUP_LENGKAP_SATU_FILE.sql` = kondisi akhir migrasi 01-56 + 58
-                        (idempoten, bebas urutan) untuk project baru. **TIDAK memuat 57, 59, dan 60**: jalankan ketiganya sesudah 00
-                        (57 = kolom `programs.poster_version`, 59 = view `v_total_bayar`; 59 WAJIB sebelum frontend di-deploy).
-                        Juga tidak memuat 18 (konversi data lama) serta 39/40 (isi data hotel Saudi; pakai 40 yang terbaru).
-                        Untuk project yang SUDAH jalan, jalankan hanya migrasi baru sesuai nomor urut. Contoh penting:
+sql/                  ← skema & migrasi bernomor 00-61 + `sql/README.md` (urutan, dependensi, status tiap migrasi, aturan menambah migrasi).
+                        `00_SETUP_LENGKAP_SATU_FILE.sql` = kondisi akhir migrasi 01-61 (v4; idempoten, bebas urutan, RLS final tertanam)
+                        untuk project baru: tidak ada file bernomor lain yang wajib dijalankan. Tidak memuat 18 (konversi DATA pendaftaran
+                        lama) serta 39/40 (isi data hotel Saudi; pakai 40 yang terbaru, opsional, jalankan sesudah 00).
+                        Untuk project yang SUDAH jalan, jalankan hanya migrasi baru sesuai nomor urut (atau `00` lagi: idempoten, tetapi
+                        menghapus semua policy lama termasuk yang dibuat manual). Contoh penting:
                         19 (nomor nota + `nota_audit_log` append-only), 26/27 (hardening RLS),
                         28 (migrasi Supabase Auth), 29 (guest read-only di RLS), 30-36 (kelola user,
                         akses menu), 41-51 + 56 (IG Scheduler), 52-55 (rekap program, infografis, hotel_detail),
-                        57 (poster_version), 58 (view `microblog_publik`), 59 (view `v_total_bayar`), 60 (tabel `dokumentasi_kegiatan`, menu Dokumentasi)
+                        57 (poster_version), 58 (view `microblog_publik`), 59 (view `v_total_bayar`; WAJIB ada sebelum frontend dipakai),
+                        60 (tabel `dokumentasi_kegiatan`, menu Dokumentasi), 61 (hardening: cabut EXECUTE RPC password lama dari PUBLIC + RLS `login_rate_limit`).
+                        Migrasi baru: nomor berikutnya 62, WAJIB idempoten (`drop policy if exists` sebelum `create policy`) dan kondisi akhirnya
+                        WAJIB ditanam ke `00` (lihat `sql/README.md` bagian "Aturan menambah migrasi baru")
 .github/workflows/
   keep-supabase-alive.yml ← ping REST API tiap 3 hari biar project free tier tidak auto-pause. TIDAK butuh secret:
                             URL & anon key dibaca dari `js/app.js` (`const SUPABASE_URL` / `SUPABASE_ANON_KEY`, jangan ubah
@@ -190,7 +194,7 @@ sql/                  ← skema & migrasi bernomor 00-60. `00_SETUP_LENGKAP_SATU
   auto-generate-konten.yml ← generate konten IG pekan depan, Minggu 03:00 WIB (Sabtu 20:00 UTC); secret AUTO_BOT_EMAIL/AUTO_BOT_PASSWORD
 PASANG-MANUAL-workflow/ ← salinan kedua workflow + BACA-DULU.txt, untuk dipasang manual lewat web GitHub kalau folder `.github`
                           (berawalan titik) terlewat saat ekstrak/salin. Bukan bagian deploy; BELUM masuk `.assetsignore`
-supabase/functions/    ← 16 Edge Function (incl. `login-dashboard` legacy) + `_shared/gemini.ts` (acuan helper). Daftar, auth, secret,
+supabase/functions/    ← 17 folder Edge Function (16 aktif + `login-dashboard` legacy) + `_shared/gemini.ts` (acuan helper). Daftar, auth, secret,
                           dan cara deploy ada di `supabase/functions/README.md`
 scheduler/             ← Cloudflare Worker cron IG Scheduler (deploy terpisah, BUKAN bagian deploy dashboard)
 apps-script/           ← Google Apps Script listing folder Drive (Infografis, Rekap Program)
@@ -245,7 +249,7 @@ direferensikan di `index.html`/`service-worker.js`/`package.json` sebelum diasum
 | `dashboard_profiles` | Satu baris per akun Supabase Auth: `dashboard_role` (`admin`/`user`/`guest`), label, email, last login. Dipakai RLS dan semua Edge Function untuk cek role |
 | `role_menu_access`, `user_menu_access` | Akses menu sidebar per role dan pengecualian per user |
 | `app_config` | Key-value config. Password login sudah TIDAK dipakai lagi sejak migrasi Supabase Auth |
-| `login_rate_limit` | Sisa rate-limit login versi lama |
+| `login_rate_limit` | Sisa rate-limit login versi lama. RLS aktif tanpa policy (tertutup untuk client; sql/61 untuk project lama) |
 | `tg_config` | Config Telegram (bot token, edge URL, daftar penerima) |
 | `snapshot_backup` | Snapshot backup data (maks 10, `MAX_SNAPSHOTS`) |
 | `assets` | Link/bookmark dokumen penting (menu Assets, admin saja) |
@@ -255,12 +259,13 @@ direferensikan di `index.html`/`service-worker.js`/`package.json` sebelum diasum
 | `ig_comments` | Komentar IG hasil `ig-sync-comments` |
 | `ig_content_plan`, `ig_rencana_tahunan`, `ig_tasklist` | Perencanaan konten IG (ide harian, tema per pekan, tasklist) |
 | `microblog_publik` (VIEW) | Turunan `ig_content_plan` untuk tile/modal Microblog. Dibaca anon/guest/semua role (sql/58); hanya kolom tampilan, status `dilewati` disembunyikan, `canva_url`/`ig_post_id` tidak ikut |
-| `dokumentasi_kegiatan` | Menu Dokumentasi (Social Media): satu baris per kegiatan umroh per program (hari ke-N, tanggal, fase, lokasi, shot list, jenis media, status, link Drive, `content_plan_id` ke `ig_content_plan`). Baca admin/user/guest, tulis admin/user (sql/60, tidak termasuk di 00) |
+| `dokumentasi_kegiatan` | Menu Dokumentasi (Social Media): satu baris per kegiatan umroh per program (hari ke-N, tanggal, fase, lokasi, shot list, jenis media, status, link Drive, `content_plan_id` ke `ig_content_plan`). Baca admin/user/guest, tulis admin/user (sql/60; sudah termasuk di 00 v4) |
 
-Daftar di atas dari `sql/00_SETUP_LENGKAP_SATU_FILE.sql` ditambah `sql/58` dan `sql/59` (view); cek file-file itu bila ragu.
+Daftar di atas adalah isi `sql/00_SETUP_LENGKAP_SATU_FILE.sql` (v4, mencakup migrasi 01-61 termasuk view `v_total_bayar` dan
+`microblog_publik`); cek file itu dan `sql/README.md` bila ragu. Pemetaan Edge Function ke tabel ada di `supabase/functions/README.md`.
 
-Setup Supabase baru: jalankan `sql/00_SETUP_LENGKAP_SATU_FILE.sql` di SQL Editor, lalu `sql/57_tambah_programs_poster_version.sql`
-dan `sql/59_tambah_view_total_bayar.sql` (dua-duanya TIDAK ada di 00), opsional `sql/40_update_hotel_saudi_arabia_2026_10.sql` (isi data hotel),
+Setup Supabase baru: jalankan `sql/00_SETUP_LENGKAP_SATU_FILE.sql` di SQL Editor (cukup file ini; tidak ada migrasi bernomor lain yang wajib),
+opsional `sql/40_update_hotel_saudi_arabia_2026_10.sql` (isi data hotel),
 lalu `scripts/setup-auth-accounts.mjs` untuk akun login (`sql/28` sudah tercakup di 00; hanya dijalankan terpisah di project lama yang belum migrasi),
 buat bucket Storage `ig-media` (public) kalau memakai IG Scheduler, deploy Edge Function, lalu update `SUPABASE_URL` & `SUPABASE_ANON_KEY` di `js/app.js` baris 4-5
 (harus project yang SAMA dengan tempat SQL & fungsi dideploy, kalau tidak muncul error `PGRST301`; lalu `npm run release`).
@@ -330,7 +335,8 @@ satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
   `fetchTotalBayar({ programId | programIds })` di `app.js` (dipaginasi 1000 baris). Jangan kembali
   ke `select('jumlah').in('jamaah_id', ...)` + sum di JS: terpotong diam-diam di 1000 baris dan
   URL `.in()` kepanjangan. Kalau mau menambah halaman yang butuh total bayar, pakai helper itu.
-  SQL 59 WAJIB dijalankan sebelum frontend ini di-deploy. Query yang butuh baris rinci
+  View ini sudah ada di `sql/00` (project lama yang belum punya: jalankan `sql/59`); tanpanya total bayar dan status Lunas/DP gagal
+  dimuat, jadi WAJIB ada sebelum frontend ini di-deploy. Query yang butuh baris rinci
   (modal Kelola Cicilan, riwayat nota, export) tetap membaca `pembayaran_jamaah`.
 - `saveCicilan()` punya guard `cicilanSaving` untuk cegah insert dobel kalau
   tombol submit di-double click/tap saat koneksi lambat.
@@ -462,6 +468,9 @@ satu tempat itu untuk reskin semua elemen (sidebar, tombol aktif, dsb).
   (otomatis diprecache); file tanpa hash (ikon, dst.) tambahkan ke `APP_SHELL` di `service-worker.js`.
   Naikkan `CACHE_NAME` versinya
 - Akurasi data finansial adalah prioritas karena datanya dipakai untuk laporan resmi
+- Mengubah skema database: tulis migrasi `sql/NN_*.sql` (idempoten) DAN tanam kondisi akhirnya ke `sql/00_SETUP_LENGKAP_SATU_FILE.sql`
+  (tabel/kolom/policy/fungsi), lalu perbarui `sql/README.md`, daftar tabel di bagian ini, `README.md`, dan `CHECKLIST_DEPLOY.md`. Aturan lengkap:
+  `sql/README.md` bagian "Aturan menambah migrasi baru". Jangan biarkan `00` tertinggal dari migrasi terbaru.
 
 ## Aturan Edge Function (supabase/functions/*)
 

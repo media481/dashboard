@@ -13,7 +13,7 @@ Visibilitas menu sidebar ditentukan berlapis, dari yang paling kuat:
    Menu yang belum punya baris di `role_menu_access` (Reminder, Status Kepulangan, IG Scheduler, Infografis, Dokumentasi) default-nya tersembunyi untuk
    `user`/`guest` sampai admin mengaturnya.
 
-Kedua tabel sudah termasuk di `sql/00_SETUP_LENGKAP_SATU_FILE.sql`; `sql/33` dan `sql/34` hanya perlu dijalankan terpisah di project lama.
+Kedua tabel sudah termasuk di `sql/00_SETUP_LENGKAP_SATU_FILE.sql` (v4); `sql/33` dan `sql/34` hanya perlu dijalankan terpisah di project lama (urutan: `sql/README.md`).
 Kalau `sql/34` belum dijalankan, blok "Akses Menu per User" menampilkan pesan "Setup belum lengkap" dan sidebar memakai fallback role.
 
 ## Letak kode

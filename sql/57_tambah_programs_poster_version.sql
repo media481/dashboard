@@ -10,5 +10,7 @@
 --
 -- JALANKAN SQL INI DULU sebelum deploy js/app.js & katalog.html baru.
 -- Aman dijalankan ulang.
+-- Sudah termasuk di sql/00_SETUP_LENGKAP_SATU_FILE.sql (v4); file ini hanya untuk
+-- project yang sudah berjalan dan belum punya kolomnya.
 -- ============================================================
 alter table programs add column if not exists poster_version bigint;

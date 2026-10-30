@@ -12,7 +12,21 @@
 -- yang memang sudah di-share "Anyone with the link"), jadi tidak ada data sensitif.
 -- Policy insert/update/delete TIDAK disentuh: hanya Edge Function sync-infografis
 -- (service role) yang menulis, dan tombol Refresh tetap hanya untuk admin/user.
+--
+-- CATATAN URUTAN: tidak ada migrasi lain yang membuat tabel infografis_items
+-- (dulu dibuat manual), jadi file ini membuatnya sendiri bila belum ada (kolom
+-- sama dengan rekap_program_items di sql/52). Aman untuk tabel yang sudah ada.
+-- Sudah termasuk di sql/00_SETUP_LENGKAP_SATU_FILE.sql.
 -- ============================================================
+
+create table if not exists infografis_items (
+  id               text primary key,          -- ID file Google Drive
+  name             text,
+  thumb_url        text,
+  full_url         text,
+  drive_updated_at timestamptz,
+  synced_at        timestamptz default now()
+);
 
 alter table infografis_items enable row level security;
 

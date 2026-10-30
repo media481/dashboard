@@ -13,6 +13,9 @@
 -- jadi bisa membaca ig_content_plan walau anon tidak punya policy di tabelnya.
 -- Tabel ig_content_plan sendiri TIDAK diubah: insert/update/delete dan baca
 -- penuh tetap hanya admin & user.
+--
+-- Butuh tabel ig_content_plan (sql/44). Sudah termasuk di
+-- sql/00_SETUP_LENGKAP_SATU_FILE.sql; file ini hanya untuk project yang sudah berjalan.
 -- ============================================================
 
 -- Pastikan kolom Content Planner yang dipakai view ini ada (sama dengan sql/45, 46, 47).

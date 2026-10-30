@@ -29,7 +29,9 @@ drop policy if exists "Allow update app_config" on app_config;
 
 -- Anon (publik) TIDAK boleh baca/ubah apa pun di app_config.
 -- Read/write hanya boleh lewat SECURITY DEFINER function di bawah.
+drop policy if exists "No anon read app_config" on app_config;
 create policy "No anon read app_config"  on app_config for select using (false);
+drop policy if exists "No anon write app_config" on app_config;
 create policy "No anon write app_config" on app_config for all    using (false) with check (false);
 
 -- ------------------------------------------------------------
